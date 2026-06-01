@@ -1,1 +1,121 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VTdGF0ZSwgdXNlRWZmZWN0IH0gZnJvbSAicmVhY3QiCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gIkAvbGliL3N1cGFiYXNlL2NsaWVudCIKaW1wb3J0IExpbmsgZnJvbSAibmV4dC9saW5rIgppbXBvcnQgeyB1c2VSb3V0ZXIgfSBmcm9tICJuZXh0L25hdmlnYXRpb24iCgpleHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBSZXNldFBhc3N3b3JkUGFnZSgpIHsKICBjb25zdCBbcGFzc3dvcmQsIHNldFBhc3N3b3JkXSA9IHVzZVN0YXRlKCIiKQogIGNvbnN0IFtjb25maXJtUGFzc3dvcmQsIHNldENvbmZpcm1QYXNzd29yZF0gPSB1c2VTdGF0ZSgiIikKICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlPHN0cmluZyB8IG51bGw+KG51bGwpCiAgY29uc3QgW2xvYWRpbmcsIHNldExvYWRpbmddID0gdXNlU3RhdGUoZmFsc2UpCiAgY29uc3Qgcm91dGVyID0gdXNlUm91dGVyKCkKICBjb25zdCBzdXBhYmFzZSA9IGNyZWF0ZUNsaWVudCgpCgogIHVzZUVmZmVjdCgoKSA9PiB7CiAgICAvLyBDaGVjayBpZiB3ZSBoYXZlIGEgdmFsaWQgc2Vzc2lvbiBmcm9tIHRoZSByZXNldCBsaW5rCiAgICBjb25zdCBjaGVja1Nlc3Npb24gPSBhc3luYyAoKSA9PiB7CiAgICAgIGNvbnN0IHsgZGF0YTogeyBzZXNzaW9uIH0gfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguZ2V0U2Vzc2lvbigpCiAgICAgIGlmICghc2Vzc2lvbikgewogICAgICAgIHJvdXRlci5wdXNoKCIvYXV0aC9mb3Jnb3QtcGFzc3dvcmQiKQogICAgICB9CiAgICB9CiAgICBjaGVja1Nlc3Npb24oKQogIH0sIFtzdXBhYmFzZSwgcm91dGVyXSkKCiAgY29uc3QgaGFuZGxlUmVzZXQgPSBhc3luYyAoZTogUmVhY3QuRm9ybUV2ZW50KSA9PiB7CiAgICBlLnByZXZlbnREZWZhdWx0KCkKICAgIHNldExvYWRpbmcodHJ1ZSkKICAgIHNldEVycm9yKG51bGwpCgogICAgaWYgKHBhc3N3b3JkICE9PSBjb25maXJtUGFzc3dvcmQpIHsKICAgICAgc2V0RXJyb3IoIlBhc3N3b3JkcyBkbyBub3QgbWF0Y2giKQogICAgICBzZXRMb2FkaW5nKGZhbHNlKQogICAgICByZXR1cm4KICAgIH0KCiAgICBpZiAocGFzc3dvcmQubGVuZ3RoIDwgOCkgewogICAgICBzZXRFcnJvcigiUGFzc3dvcmQgbXVzdCBiZSBhdCBsZWFzdCA4IGNoYXJhY3RlcnMiKQogICAgICBzZXRMb2FkaW5nKGZhbHNlKQogICAgICByZXR1cm4KICAgIH0KCiAgICBjb25zdCB7IGVycm9yIH0gPSBhd2FpdCBzdXBhYmFzZS5hdXRoLnVwZGF0ZVVzZXIoeyBwYXNzd29yZCB9KQoKICAgIGlmIChlcnJvcikgewogICAgICBzZXRFcnJvcihlcnJvci5tZXNzYWdlKQogICAgICBzZXRMb2FkaW5nKGZhbHNlKQogICAgICByZXR1cm4KICAgIH0KCiAgICByb3V0ZXIucHVzaCgiL2F0bGFzL2FjY291bnQiKQogIH0KCiAgcmV0dXJuICgKICAgIDxkaXYgY2xhc3NOYW1lPSJtaW4taC1zY3JlZW4gYmctWyMwYTBhMGZdIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHB4LTQiPgogICAgICA8ZGl2IGNsYXNzTmFtZT0iZml4ZWQgaW5zZXQtMCBvdmVyZmxvdy1oaWRkZW4gcG9pbnRlci1ldmVudHMtbm9uZSI+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFic29sdXRlIHRvcC0xLzQgbGVmdC0xLzQgdy05NiBoLTk2IGJnLVsjN2M2ZmVlXS81IHJvdW5kZWQtZnVsbCBibHVyLTN4bCIgLz4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iYWJzb2x1dGUgYm90dG9tLTEvNCByaWdodC0xLzQgdy05NiBoLTk2IGJnLVsjNGVjZGM0XS81IHJvdW5kZWQtZnVsbCBibHVyLTN4bCIgLz4KICAgICAgPC9kaXY+CgogICAgICA8ZGl2IGNsYXNzTmFtZT0icmVsYXRpdmUgdy1mdWxsIG1heC13LW1kIj4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIgbWItOCI+CiAgICAgICAgICA8TGluayBocmVmPSIvIiBjbGFzc05hbWU9ImlubGluZS1ibG9jayI+CiAgICAgICAgICAgIDxoMSBjbGFzc05hbWU9InRleHQtMnhsIGZvbnQtYm9sZCB0cmFja2luZy1bMC4yZW1dIHRleHQtd2hpdGUvOTAiPklOVEVSTElOS0VEPC9oMT4KICAgICAgICAgIDwvTGluaz4KICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS80MCB0ZXh0LXNtIG10LTIiPlNldCB5b3VyIG5ldyBwYXNzd29yZDwvcD4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgPGZvcm0gb25TdWJtaXQ9e2hhbmRsZVJlc2V0fSBjbGFzc05hbWU9ImJnLVsjMWExYTJlXS81MCBiYWNrZHJvcC1ibHVyLXNtIGJvcmRlciBib3JkZXItd2hpdGUvMTAgcm91bmRlZC0yeGwgcC04Ij4KICAgICAgICAgIHtlcnJvciAmJiAoCiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYi02IHAtNCBiZy1yZWQtNTAwLzEwIGJvcmRlciBib3JkZXItcmVkLTUwMC8yMCByb3VuZGVkLXhsIHRleHQtcmVkLTQwMCB0ZXh0LXNtIj4KICAgICAgICAgICAgICB7ZXJyb3J9CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgKX0KCiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ic3BhY2UteS02Ij4KICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICA8bGFiZWwgaHRtbEZvcj0icGFzc3dvcmQiIGNsYXNzTmFtZT0iYmxvY2sgdGV4dC1zbSBmb250LW1lZGl1bSB0ZXh0LXdoaXRlLzcwIG1iLTIiPgogICAgICAgICAgICAgICAgTmV3IHBhc3N3b3JkCiAgICAgICAgICAgICAgPC9sYWJlbD4KICAgICAgICAgICAgICA8aW5wdXQKICAgICAgICAgICAgICAgIGlkPSJwYXNzd29yZCIKICAgICAgICAgICAgICAgIHR5cGU9InBhc3N3b3JkIgogICAgICAgICAgICAgICAgdmFsdWU9e3Bhc3N3b3JkfQogICAgICAgICAgICAgICAgb25DaGFuZ2U9eyhlKSA9PiBzZXRQYXNzd29yZChlLnRhcmdldC52YWx1ZSl9CiAgICAgICAgICAgICAgICByZXF1aXJlZAogICAgICAgICAgICAgICAgbWluTGVuZ3RoPXs4fQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LWZ1bGwgcHgtNCBweS0zIGJnLVsjMGEwYTBmXSBib3JkZXIgYm9yZGVyLXdoaXRlLzEwIHJvdW5kZWQteGwgdGV4dC13aGl0ZSBwbGFjZWhvbGRlci13aGl0ZS8zMCBmb2N1czpvdXRsaW5lLW5vbmUgZm9jdXM6Ym9yZGVyLVsjN2M2ZmVlXS81MCB0cmFuc2l0aW9uLWNvbG9ycyIKICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPSJNaW5pbXVtIDggY2hhcmFjdGVycyIKICAgICAgICAgICAgICAvPgogICAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICAgIDxkaXY+CiAgICAgICAgICAgICAgPGxhYmVsIGh0bWxGb3I9ImNvbmZpcm1QYXNzd29yZCIgY2xhc3NOYW1lPSJibG9jayB0ZXh0LXNtIGZvbnQtbWVkaXVtIHRleHQtd2hpdGUvNzAgbWItMiI+CiAgICAgICAgICAgICAgICBDb25maXJtIHBhc3N3b3JkCiAgICAgICAgICAgICAgPC9sYWJlbD4KICAgICAgICAgICAgICA8aW5wdXQKICAgICAgICAgICAgICAgIGlkPSJjb25maXJtUGFzc3dvcmQiCiAgICAgICAgICAgICAgICB0eXBlPSJwYXNzd29yZCIKICAgICAgICAgICAgICAgIHZhbHVlPXtjb25maXJtUGFzc3dvcmR9CiAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldENvbmZpcm1QYXNzd29yZChlLnRhcmdldC52YWx1ZSl9CiAgICAgICAgICAgICAgICByZXF1aXJlZAogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LWZ1bGwgcHgtNCBweS0zIGJnLVsjMGEwYTBmXSBib3JkZXIgYm9yZGVyLXdoaXRlLzEwIHJvdW5kZWQteGwgdGV4dC13aGl0ZSBwbGFjZWhvbGRlci13aGl0ZS8zMCBmb2N1czpvdXRsaW5lLW5vbmUgZm9jdXM6Ym9yZGVyLVsjN2M2ZmVlXS81MCB0cmFuc2l0aW9uLWNvbG9ycyIKICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPSJDb25maXJtIHlvdXIgcGFzc3dvcmQiCiAgICAgICAgICAgICAgLz4KICAgICAgICAgICAgPC9kaXY+CgogICAgICAgICAgICA8YnV0dG9uCiAgICAgICAgICAgICAgdHlwZT0ic3VibWl0IgogICAgICAgICAgICAgIGRpc2FibGVkPXtsb2FkaW5nfQogICAgICAgICAgICAgIGNsYXNzTmFtZT0idy1mdWxsIHB5LTQgYmctZ3JhZGllbnQtdG8tciBmcm9tLVsjN2M2ZmVlXSB0by1bIzRlY2RjNF0gcm91bmRlZC14bCBmb250LW1lZGl1bSBob3ZlcjpvcGFjaXR5LTkwIHRyYW5zaXRpb24tb3BhY2l0eSBkaXNhYmxlZDpvcGFjaXR5LTUwIGRpc2FibGVkOmN1cnNvci1ub3QtYWxsb3dlZCIKICAgICAgICAgICAgPgogICAgICAgICAgICAgIHtsb2FkaW5nID8gIlVwZGF0aW5nLi4uIiA6ICJVcGRhdGUgcGFzc3dvcmQifQogICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgIDwvZGl2PgogICAgICAgIDwvZm9ybT4KICAgICAgPC9kaXY+CiAgICA8L2Rpdj4KICApCn0K"}
+"use client"
+
+import { useState, useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+export default function ResetPasswordPage() {
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Check if we have a valid session from the reset link
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push("/auth/forgot-password")
+      }
+    }
+    checkSession()
+  }, [supabase, router])
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters")
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    router.push("/atlas/account")
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#7c6fee]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4ecdc4]/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">INTERLINKED</h1>
+          </Link>
+          <p className="text-white/40 text-sm mt-2">Set your new password</p>
+        </div>
+
+        <form onSubmit={handleReset} className="bg-[#1a1a2e]/50 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-white/70 mb-2">
+                New password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
+                placeholder="Minimum 8 characters"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white/70 mb-2">
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Updating..." : "Update password"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
