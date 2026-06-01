@@ -10,109 +10,134 @@ interface ProductCardProps {
   isHidden?: boolean
   iconSrc?: string
   href?: string
-  availability?: {
-    mac?: boolean
-    windows?: boolean
-  }
+  availability?: { mac?: boolean; windows?: boolean }
 }
 
-export function ProductCard({ name, status, isActive = false, isHidden = false, iconSrc, href, availability }: ProductCardProps) {
+export function ProductCard({
+  name, status, isActive = false, isHidden = false, iconSrc, href, availability,
+}: ProductCardProps) {
   const CardWrapper = href ? Link : "div"
   const wrapperProps = href ? { href } : {}
-  
+
   return (
     <CardWrapper
-      {...wrapperProps as any}
+      {...(wrapperProps as any)}
       className={cn(
-        "relative group h-72 w-full rounded-lg border border-white/10 bg-white/[0.02] backdrop-blur-sm transition-all duration-500 block",
-        href && "cursor-pointer",
-        isActive && "border-white/20 bg-white/[0.04] shadow-[0_0_40px_rgba(255,255,255,0.05)]",
-        isHidden && "select-none",
-        !isHidden && "hover:border-white/30 hover:bg-white/[0.05] hover:shadow-[0_0_60px_rgba(255,255,255,0.08)]"
+        "relative group h-72 w-full rounded-xl border transition-all duration-300 block overflow-hidden",
+        isHidden ? "cursor-default" : href ? "cursor-pointer" : "cursor-default"
       )}
+      style={{
+        background: "#0C0E1C",
+        borderColor: isActive ? "rgba(62,207,178,0.3)" : "#1E2240",
+        boxShadow: isActive ? "0 0 40px rgba(62,207,178,0.05)" : "none",
+      }}
+      onMouseEnter={e => {
+        if (!isHidden) {
+          const el = e.currentTarget as HTMLElement
+          el.style.borderColor = "rgba(62,207,178,0.45)"
+          el.style.boxShadow = "0 0 32px rgba(62,207,178,0.08)"
+        }
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.borderColor = isActive ? "rgba(62,207,178,0.3)" : "#1E2240"
+        el.style.boxShadow = isActive ? "0 0 40px rgba(62,207,178,0.05)" : "none"
+      }}
     >
-      {/* Subtle corner accents */}
-      <div className={cn(
-        "absolute top-0 left-0 w-8 h-8 border-l border-t transition-all duration-500",
-        isActive ? "border-white/30" : "border-white/10",
-        isHidden && "border-white/5"
-      )} />
-      <div className={cn(
-        "absolute bottom-0 right-0 w-8 h-8 border-r border-b transition-all duration-500",
-        isActive ? "border-white/30" : "border-white/10",
-        isHidden && "border-white/5"
-      )} />
+      {/* Corner accents */}
+      <div className="absolute top-0 left-0 w-8 h-8 pointer-events-none"
+        style={{ borderLeft: "1px solid rgba(62,207,178,0.25)", borderTop: "1px solid rgba(62,207,178,0.25)" }} />
+      <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none"
+        style={{ borderRight: "1px solid rgba(62,207,178,0.25)", borderBottom: "1px solid rgba(62,207,178,0.25)" }} />
 
-      {/* Content */}
-      <div className={cn(
-        "flex flex-col items-center justify-center h-full px-6 transition-all duration-500",
-        isHidden && "blur-sm"
-      )}>
+      {/* Top teal strip when active */}
+      {isActive && (
+        <div className="absolute top-0 inset-x-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(62,207,178,0.5), transparent)" }} />
+      )}
+
+      <div className={cn("flex flex-col items-center justify-center h-full px-6", isHidden && "blur-sm")}>
         {isHidden ? (
           <>
-            <div className="h-16 w-16 bg-white/10 rounded-lg mb-4" />
-            <div className="h-4 w-24 bg-white/10 rounded mb-3" />
-            <div className="h-3 w-16 bg-white/5 rounded" />
+            <div className="h-16 w-16 rounded-lg mb-4" style={{ background: "#1E2240" }} />
+            <div className="h-4 w-24 rounded mb-3" style={{ background: "#1E2240" }} />
+            <div className="h-3 w-16 rounded" style={{ background: "#13151F" }} />
           </>
         ) : (
           <>
             {iconSrc && (
               <div className="relative mb-6">
                 <img
-                  src={iconSrc || "/placeholder.svg"}
+                  src={iconSrc}
                   alt={`${name} icon`}
-                  className={cn(
-                    "w-20 h-20 object-contain transition-all duration-700 ease-out",
-                    isActive 
-                      ? "blur-md opacity-60 group-hover:blur-none group-hover:opacity-100" 
-                      : "blur-[2px] opacity-80 group-hover:blur-[1px] group-hover:opacity-90"
-                  )}
+                  className="w-20 h-20 object-contain transition-all duration-500"
+                  style={{
+                    filter: isActive
+                      ? "blur(6px) drop-shadow(0 0 14px rgba(62,207,178,0.4))"
+                      : "blur(2px) opacity(0.7)",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLImageElement).style.filter =
+                      "blur(0px) drop-shadow(0 0 18px rgba(62,207,178,0.5))"
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLImageElement).style.filter = isActive
+                      ? "blur(6px) drop-shadow(0 0 14px rgba(62,207,178,0.4))"
+                      : "blur(2px) opacity(0.7)"
+                  }}
                 />
               </div>
             )}
-            <h3 className={cn(
-              "text-2xl font-light tracking-[0.3em] mb-4 transition-all duration-700 ease-out",
-              isActive 
-                ? "text-white blur-md group-hover:blur-none" 
-                : "text-white/90"
-            )}>
-              {name}
+
+            <h3 style={{
+              fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
+              fontSize: "22px",
+              fontWeight: "normal",
+              letterSpacing: "6px",
+              color: "#E8ECFF",
+              marginBottom: "6px",
+              textIndent: "6px",
+            }}>
+              {name?.replace("®", "")}
+              {name?.includes("®") && (
+                <sup style={{ fontSize: "0.4em", color: "rgba(255,255,255,0.3)", verticalAlign: "super" }}>®</sup>
+              )}
             </h3>
-            {status && !availability && (
-              <span className={cn(
-                "text-xs tracking-[0.2em] uppercase px-3 py-1 rounded-full border transition-all duration-300",
-                isActive 
-                  ? "text-white/80 border-white/20 bg-white/5" 
-                  : "text-white/50 border-white/10"
-              )}>
+
+            {status && (
+              <span style={{
+                fontSize: "9px",
+                fontWeight: 700,
+                letterSpacing: "2.5px",
+                color: isActive ? "#3ECFB2" : "#353860",
+                textTransform: "uppercase",
+                marginBottom: "12px",
+              }}>
                 {status}
               </span>
             )}
+
             {availability && (
-              <div className="flex flex-col items-center gap-2">
+              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                 {availability.mac && (
-                  <span className="flex items-center gap-2 text-xs tracking-[0.15em] text-white/70">
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                    </svg>
-                    Now Available for Mac
-                  </span>
+                  <span style={{
+                    fontSize: "9px", letterSpacing: "1px", color: "#4A5280",
+                    padding: "3px 8px", borderRadius: "4px",
+                    border: "1px solid #1E2240", background: "#0A0D1C",
+                  }}>macOS</span>
                 )}
-                {availability.windows === false && (
-                  <span className="text-xs tracking-[0.15em] text-white/40">
-                    Windows Coming Soon
-                  </span>
+                {availability.windows && (
+                  <span style={{
+                    fontSize: "9px", letterSpacing: "1px", color: "#4A5280",
+                    padding: "3px 8px", borderRadius: "4px",
+                    border: "1px solid #1E2240", background: "#0A0D1C",
+                  }}>Windows</span>
                 )}
               </div>
             )}
           </>
         )}
       </div>
-
-      {/* Glow effect for active card */}
-      {isActive && (
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-white/[0.02] to-transparent pointer-events-none" />
-      )}
     </CardWrapper>
   )
 }
