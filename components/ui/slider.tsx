@@ -1,1 +1,59 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgU2xpZGVyUHJpbWl0aXZlIGZyb20gJ0ByYWRpeC11aS9yZWFjdC1zbGlkZXInCgppbXBvcnQgeyBjbiB9IGZyb20gJ0AvbGliL3V0aWxzJwoKZnVuY3Rpb24gU2xpZGVyKHsKICBjbGFzc05hbWUsCiAgZGVmYXVsdFZhbHVlLAogIHZhbHVlLAogIG1pbiA9IDAsCiAgbWF4ID0gMTAwLAogIC4uLnByb3BzCn06IFJlYWN0LkNvbXBvbmVudFByb3BzPHR5cGVvZiBTbGlkZXJQcmltaXRpdmUuUm9vdD4pIHsKICBjb25zdCBfdmFsdWVzID0gUmVhY3QudXNlTWVtbygKICAgICgpID0+CiAgICAgIEFycmF5LmlzQXJyYXkodmFsdWUpCiAgICAgICAgPyB2YWx1ZQogICAgICAgIDogQXJyYXkuaXNBcnJheShkZWZhdWx0VmFsdWUpCiAgICAgICAgICA/IGRlZmF1bHRWYWx1ZQogICAgICAgICAgOiBbbWluLCBtYXhdLAogICAgW3ZhbHVlLCBkZWZhdWx0VmFsdWUsIG1pbiwgbWF4XSwKICApCgogIHJldHVybiAoCiAgICA8U2xpZGVyUHJpbWl0aXZlLlJvb3QKICAgICAgZGF0YS1zbG90PSJzbGlkZXIiCiAgICAgIGRlZmF1bHRWYWx1ZT17ZGVmYXVsdFZhbHVlfQogICAgICB2YWx1ZT17dmFsdWV9CiAgICAgIG1pbj17bWlufQogICAgICBtYXg9e21heH0KICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAncmVsYXRpdmUgZmxleCB3LWZ1bGwgdG91Y2gtbm9uZSBpdGVtcy1jZW50ZXIgc2VsZWN0LW5vbmUgZGF0YS1bZGlzYWJsZWRdOm9wYWNpdHktNTAgZGF0YS1bb3JpZW50YXRpb249dmVydGljYWxdOmgtZnVsbCBkYXRhLVtvcmllbnRhdGlvbj12ZXJ0aWNhbF06bWluLWgtNDQgZGF0YS1bb3JpZW50YXRpb249dmVydGljYWxdOnctYXV0byBkYXRhLVtvcmllbnRhdGlvbj12ZXJ0aWNhbF06ZmxleC1jb2wnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgPgogICAgICA8U2xpZGVyUHJpbWl0aXZlLlRyYWNrCiAgICAgICAgZGF0YS1zbG90PSJzbGlkZXItdHJhY2siCiAgICAgICAgY2xhc3NOYW1lPSJiZy1tdXRlZCByZWxhdGl2ZSBncm93IG92ZXJmbG93LWhpZGRlbiByb3VuZGVkLWZ1bGwgZGF0YS1bb3JpZW50YXRpb249aG9yaXpvbnRhbF06aC0xLjUgZGF0YS1bb3JpZW50YXRpb249aG9yaXpvbnRhbF06dy1mdWxsIGRhdGEtW29yaWVudGF0aW9uPXZlcnRpY2FsXTpoLWZ1bGwgZGF0YS1bb3JpZW50YXRpb249dmVydGljYWxdOnctMS41IgogICAgICA+CiAgICAgICAgPFNsaWRlclByaW1pdGl2ZS5SYW5nZQogICAgICAgICAgZGF0YS1zbG90PSJzbGlkZXItcmFuZ2UiCiAgICAgICAgICBjbGFzc05hbWU9ImJnLXByaW1hcnkgYWJzb2x1dGUgZGF0YS1bb3JpZW50YXRpb249aG9yaXpvbnRhbF06aC1mdWxsIGRhdGEtW29yaWVudGF0aW9uPXZlcnRpY2FsXTp3LWZ1bGwiCiAgICAgICAgLz4KICAgICAgPC9TbGlkZXJQcmltaXRpdmUuVHJhY2s+CiAgICAgIHtBcnJheS5mcm9tKHsgbGVuZ3RoOiBfdmFsdWVzLmxlbmd0aCB9LCAoXywgaW5kZXgpID0+ICgKICAgICAgICA8U2xpZGVyUHJpbWl0aXZlLlRodW1iCiAgICAgICAgICBkYXRhLXNsb3Q9InNsaWRlci10aHVtYiIKICAgICAgICAgIGtleT17aW5kZXh9CiAgICAgICAgICBjbGFzc05hbWU9ImJvcmRlci1wcmltYXJ5IHJpbmctcmluZy81MCBibG9jayBzaXplLTQgc2hyaW5rLTAgcm91bmRlZC1mdWxsIGJvcmRlciBiZy13aGl0ZSBzaGFkb3ctc20gdHJhbnNpdGlvbi1bY29sb3IsYm94LXNoYWRvd10gaG92ZXI6cmluZy00IGZvY3VzLXZpc2libGU6cmluZy00IGZvY3VzLXZpc2libGU6b3V0bGluZS1oaWRkZW4gZGlzYWJsZWQ6cG9pbnRlci1ldmVudHMtbm9uZSBkaXNhYmxlZDpvcGFjaXR5LTUwIgogICAgICAgIC8+CiAgICAgICkpfQogICAgPC9TbGlkZXJQcmltaXRpdmUuUm9vdD4KICApCn0KCmV4cG9ydCB7IFNsaWRlciB9Cg=="}
+'use client'
+
+import * as React from 'react'
+import * as SliderPrimitive from '@radix-ui/react-slider'
+
+import { cn } from '@/lib/utils'
+
+function Slider({
+  className,
+  defaultValue,
+  value,
+  min = 0,
+  max = 100,
+  ...props
+}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+  const _values = React.useMemo(
+    () =>
+      Array.isArray(value)
+        ? value
+        : Array.isArray(defaultValue)
+          ? defaultValue
+          : [min, max],
+    [value, defaultValue, min, max],
+  )
+
+  return (
+    <SliderPrimitive.Root
+      data-slot="slider"
+      defaultValue={defaultValue}
+      value={value}
+      min={min}
+      max={max}
+      className={cn(
+        'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
+        className,
+      )}
+      {...props}
+    >
+      <SliderPrimitive.Track
+        data-slot="slider-track"
+        className="bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+      >
+        <SliderPrimitive.Range
+          data-slot="slider-range"
+          className="bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
+        />
+      </SliderPrimitive.Track>
+      {Array.from({ length: _values.length }, (_, index) => (
+        <SliderPrimitive.Thumb
+          data-slot="slider-thumb"
+          key={index}
+          className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+        />
+      ))}
+    </SliderPrimitive.Root>
+  )
+}
+
+export { Slider }
