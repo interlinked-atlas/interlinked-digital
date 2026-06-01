@@ -1,1 +1,92 @@
-{"data":"aW1wb3J0ICogYXMgUmVhY3QgZnJvbSAncmVhY3QnCgppbXBvcnQgeyBjbiB9IGZyb20gJ0AvbGliL3V0aWxzJwoKZnVuY3Rpb24gQ2FyZCh7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J2Rpdic+KSB7CiAgcmV0dXJuICgKICAgIDxkaXYKICAgICAgZGF0YS1zbG90PSJjYXJkIgogICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICdiZy1jYXJkIHRleHQtY2FyZC1mb3JlZ3JvdW5kIGZsZXggZmxleC1jb2wgZ2FwLTYgcm91bmRlZC14bCBib3JkZXIgcHktNiBzaGFkb3ctc20nLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIENhcmRIZWFkZXIoeyBjbGFzc05hbWUsIC4uLnByb3BzIH06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdkaXYnPikgewogIHJldHVybiAoCiAgICA8ZGl2CiAgICAgIGRhdGEtc2xvdD0iY2FyZC1oZWFkZXIiCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ0Bjb250YWluZXIvY2FyZC1oZWFkZXIgZ3JpZCBhdXRvLXJvd3MtbWluIGdyaWQtcm93cy1bYXV0b19hdXRvXSBpdGVtcy1zdGFydCBnYXAtMiBweC02IGhhcy1kYXRhLVtzbG90PWNhcmQtYWN0aW9uXTpncmlkLWNvbHMtWzFmcl9hdXRvXSBbLmJvcmRlci1iXTpwYi02JywKICAgICAgICBjbGFzc05hbWUsCiAgICAgICl9CiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpmdW5jdGlvbiBDYXJkVGl0bGUoeyBjbGFzc05hbWUsIC4uLnByb3BzIH06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdkaXYnPikgewogIHJldHVybiAoCiAgICA8ZGl2CiAgICAgIGRhdGEtc2xvdD0iY2FyZC10aXRsZSIKICAgICAgY2xhc3NOYW1lPXtjbignbGVhZGluZy1ub25lIGZvbnQtc2VtaWJvbGQnLCBjbGFzc05hbWUpfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gQ2FyZERlc2NyaXB0aW9uKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwnZGl2Jz4pIHsKICByZXR1cm4gKAogICAgPGRpdgogICAgICBkYXRhLXNsb3Q9ImNhcmQtZGVzY3JpcHRpb24iCiAgICAgIGNsYXNzTmFtZT17Y24oJ3RleHQtbXV0ZWQtZm9yZWdyb3VuZCB0ZXh0LXNtJywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIENhcmRBY3Rpb24oeyBjbGFzc05hbWUsIC4uLnByb3BzIH06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdkaXYnPikgewogIHJldHVybiAoCiAgICA8ZGl2CiAgICAgIGRhdGEtc2xvdD0iY2FyZC1hY3Rpb24iCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2NvbC1zdGFydC0yIHJvdy1zcGFuLTIgcm93LXN0YXJ0LTEgc2VsZi1zdGFydCBqdXN0aWZ5LXNlbGYtZW5kJywKICAgICAgICBjbGFzc05hbWUsCiAgICAgICl9CiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpmdW5jdGlvbiBDYXJkQ29udGVudCh7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J2Rpdic+KSB7CiAgcmV0dXJuICgKICAgIDxkaXYKICAgICAgZGF0YS1zbG90PSJjYXJkLWNvbnRlbnQiCiAgICAgIGNsYXNzTmFtZT17Y24oJ3B4LTYnLCBjbGFzc05hbWUpfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gQ2FyZEZvb3Rlcih7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J2Rpdic+KSB7CiAgcmV0dXJuICgKICAgIDxkaXYKICAgICAgZGF0YS1zbG90PSJjYXJkLWZvb3RlciIKICAgICAgY2xhc3NOYW1lPXtjbignZmxleCBpdGVtcy1jZW50ZXIgcHgtNiBbLmJvcmRlci10XTpwdC02JywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmV4cG9ydCB7CiAgQ2FyZCwKICBDYXJkSGVhZGVyLAogIENhcmRGb290ZXIsCiAgQ2FyZFRpdGxlLAogIENhcmRBY3Rpb24sCiAgQ2FyZERlc2NyaXB0aW9uLAogIENhcmRDb250ZW50LAp9Cg=="}
+import * as React from 'react'
+
+import { cn } from '@/lib/utils'
+
+function Card({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn('leading-none font-semibold', className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn('text-muted-foreground text-sm', className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        'col-start-2 row-span-2 row-start-1 self-start justify-self-end',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn('px-6', className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn('flex items-center px-6 [.border-t]:pt-6', className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
