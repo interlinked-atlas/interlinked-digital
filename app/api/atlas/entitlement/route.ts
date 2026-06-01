@@ -1,1 +1,98 @@
-{"data":"aW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0BzdXBhYmFzZS9zdXBhYmFzZS1qcycKCmNvbnN0IHN1cGFiYXNlQWRtaW4gPSBjcmVhdGVDbGllbnQoCiAgcHJvY2Vzcy5lbnYuTkVYVF9QVUJMSUNfU1VQQUJBU0VfVVJMISwKICBwcm9jZXNzLmVudi5TVVBBQkFTRV9TRVJWSUNFX1JPTEVfS0VZIQopCgovLyBHRVQgL2FwaS9hdGxhcy9lbnRpdGxlbWVudAovLyBDaGVjayBzdWJzY3JpcHRpb24gc3RhdHVzIGFuZCBlbnRpdGxlbWVudHMKZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIEdFVChyZXF1ZXN0OiBSZXF1ZXN0KSB7CiAgdHJ5IHsKICAgIGNvbnN0IGF1dGhIZWFkZXIgPSByZXF1ZXN0LmhlYWRlcnMuZ2V0KCdhdXRob3JpemF0aW9uJykKICAgIGlmICghYXV0aEhlYWRlcj8uc3RhcnRzV2l0aCgnQmVhcmVyICcpKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7IGVycm9yOiAnVW5hdXRob3JpemVkJyB9LCB7IHN0YXR1czogNDAxIH0pCiAgICB9CgogICAgY29uc3QgdG9rZW4gPSBhdXRoSGVhZGVyLnN1YnN0cmluZyg3KQogICAgY29uc3QgeyBkYXRhOiB7IHVzZXIgfSwgZXJyb3I6IGF1dGhFcnJvciB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbi5hdXRoLmdldFVzZXIodG9rZW4pCiAgICAKICAgIGlmIChhdXRoRXJyb3IgfHwgIXVzZXIpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgZXJyb3I6ICdJbnZhbGlkIHRva2VuJyB9LCB7IHN0YXR1czogNDAxIH0pCiAgICB9CgogICAgLy8gR2V0IHN1YnNjcmlwdGlvbgogICAgY29uc3QgeyBkYXRhOiBzdWJzY3JpcHRpb24gfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4KICAgICAgLmZyb20oJ3N1YnNjcmlwdGlvbnMnKQogICAgICAuc2VsZWN0KCcqJykKICAgICAgLmVxKCd1c2VyX2lkJywgdXNlci5pZCkKICAgICAgLnNpbmdsZSgpCgogICAgaWYgKCFzdWJzY3JpcHRpb24pIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgICB2YWxpZDogZmFsc2UsCiAgICAgICAgcmVhc29uOiAnbm9fc3Vic2NyaXB0aW9uJywKICAgICAgfSkKICAgIH0KCiAgICAvLyBDaGVjayBpZiBzdWJzY3JpcHRpb24gaXMgYWN0aXZlCiAgICBjb25zdCBpc0FjdGl2ZSA9IHN1YnNjcmlwdGlvbi5zdGF0dXMgPT09ICdhY3RpdmUnIHx8IHN1YnNjcmlwdGlvbi5zdGF0dXMgPT09ICd0cmlhbGluZycKICAgIGNvbnN0IGlzUGFzdER1ZSA9IHN1YnNjcmlwdGlvbi5zdGF0dXMgPT09ICdwYXN0X2R1ZScKICAgIAogICAgLy8gQWxsb3cgZ3JhY2UgcGVyaW9kIGZvciBwYXN0X2R1ZQogICAgY29uc3QgZ3JhY2VQZXJpb2REYXlzID0gMwogICAgY29uc3QgcGVyaW9kRW5kID0gbmV3IERhdGUoc3Vic2NyaXB0aW9uLmN1cnJlbnRfcGVyaW9kX2VuZCkKICAgIGNvbnN0IGdyYWNlRW5kID0gbmV3IERhdGUocGVyaW9kRW5kLmdldFRpbWUoKSArIGdyYWNlUGVyaW9kRGF5cyAqIDI0ICogNjAgKiA2MCAqIDEwMDApCiAgICBjb25zdCBpbkdyYWNlUGVyaW9kID0gaXNQYXN0RHVlICYmIG5ldyBEYXRlKCkgPCBncmFjZUVuZAoKICAgIGlmICghaXNBY3RpdmUgJiYgIWluR3JhY2VQZXJpb2QpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgICB2YWxpZDogZmFsc2UsCiAgICAgICAgcmVhc29uOiBzdWJzY3JpcHRpb24uc3RhdHVzLAogICAgICAgIGV4cGlyZWRfYXQ6IHN1YnNjcmlwdGlvbi5jdXJyZW50X3BlcmlvZF9lbmQsCiAgICAgIH0pCiAgICB9CgogICAgLy8gR2V0IGRldmljZSBhY3RpdmF0aW9ucwogICAgY29uc3QgeyBkYXRhOiBhY3RpdmF0aW9ucyB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAuZnJvbSgnZGV2aWNlX2FjdGl2YXRpb25zJykKICAgICAgLnNlbGVjdCgnKicpCiAgICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAgIC5lcSgnaXNfYWN0aXZlJywgdHJ1ZSkKCiAgICBjb25zdCBtYXhEZXZpY2VzID0gc3Vic2NyaXB0aW9uLnBsYW4gPT09ICdwcm8nID8gMyA6IDEKCiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oewogICAgICB2YWxpZDogdHJ1ZSwKICAgICAgcGxhbjogc3Vic2NyaXB0aW9uLnBsYW4sCiAgICAgIHN0YXR1czogc3Vic2NyaXB0aW9uLnN0YXR1cywKICAgICAgY3VycmVudF9wZXJpb2RfZW5kOiBzdWJzY3JpcHRpb24uY3VycmVudF9wZXJpb2RfZW5kLAogICAgICBjYW5jZWxfYXRfcGVyaW9kX2VuZDogc3Vic2NyaXB0aW9uLmNhbmNlbF9hdF9wZXJpb2RfZW5kLAogICAgICBpbl9ncmFjZV9wZXJpb2Q6IGluR3JhY2VQZXJpb2QsCiAgICAgIGZlYXR1cmVzOiB7CiAgICAgICAgdW5saW1pdGVkX2luc3RhbGxzOiBzdWJzY3JpcHRpb24ucGxhbiA9PT0gJ3BybycsCiAgICAgICAgZGFpbHlfaW5zdGFsbF9saW1pdDogc3Vic2NyaXB0aW9uLnBsYW4gPT09ICdwcm8nID8gbnVsbCA6IDMsCiAgICAgICAgYnVsa19xdWV1ZTogc3Vic2NyaXB0aW9uLnBsYW4gPT09ICdwcm8nLAogICAgICAgIHVuaW5zdGFsbF9tYW5hZ2VyOiBzdWJzY3JpcHRpb24ucGxhbiA9PT0gJ3BybycsCiAgICAgICAgcmVjb3Zlcnlfc3lzdGVtOiBzdWJzY3JpcHRpb24ucGxhbiA9PT0gJ3BybycsCiAgICAgICAgbWF4X2RldmljZXM6IG1heERldmljZXMsCiAgICAgIH0sCiAgICAgIGFjdGl2YXRpb25zOiB7CiAgICAgICAgY3VycmVudDogYWN0aXZhdGlvbnM/Lmxlbmd0aCB8fCAwLAogICAgICAgIG1heDogbWF4RGV2aWNlcywKICAgICAgICBkZXZpY2VzOiBhY3RpdmF0aW9ucz8ubWFwKGEgPT4gKHsKICAgICAgICAgIGlkOiBhLmlkLAogICAgICAgICAgZGV2aWNlX25hbWU6IGEuZGV2aWNlX25hbWUsCiAgICAgICAgICBhY3RpdmF0ZWRfYXQ6IGEuYWN0aXZhdGVkX2F0LAogICAgICAgICAgbGFzdF9zZWVuX2F0OiBhLmxhc3Rfc2Vlbl9hdCwKICAgICAgICB9KSksCiAgICAgIH0sCiAgICB9KQogIH0gY2F0Y2ggewogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICB7IGVycm9yOiAnSW50ZXJuYWwgc2VydmVyIGVycm9yJyB9LAogICAgICB7IHN0YXR1czogNTAwIH0KICAgICkKICB9Cn0K"}
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// GET /api/atlas/entitlement
+// Check subscription status and entitlements
+export async function GET(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Get subscription
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!subscription) {
+      return NextResponse.json({
+        valid: false,
+        reason: 'no_subscription',
+      })
+    }
+
+    // Check if subscription is active
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+    const isPastDue = subscription.status === 'past_due'
+    
+    // Allow grace period for past_due
+    const gracePeriodDays = 3
+    const periodEnd = new Date(subscription.current_period_end)
+    const graceEnd = new Date(periodEnd.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000)
+    const inGracePeriod = isPastDue && new Date() < graceEnd
+
+    if (!isActive && !inGracePeriod) {
+      return NextResponse.json({
+        valid: false,
+        reason: subscription.status,
+        expired_at: subscription.current_period_end,
+      })
+    }
+
+    // Get device activations
+    const { data: activations } = await supabaseAdmin
+      .from('device_activations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+
+    const maxDevices = subscription.plan === 'pro' ? 3 : 1
+
+    return NextResponse.json({
+      valid: true,
+      plan: subscription.plan,
+      status: subscription.status,
+      current_period_end: subscription.current_period_end,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      in_grace_period: inGracePeriod,
+      features: {
+        unlimited_installs: subscription.plan === 'pro',
+        daily_install_limit: subscription.plan === 'pro' ? null : 3,
+        bulk_queue: subscription.plan === 'pro',
+        uninstall_manager: subscription.plan === 'pro',
+        recovery_system: subscription.plan === 'pro',
+        max_devices: maxDevices,
+      },
+      activations: {
+        current: activations?.length || 0,
+        max: maxDevices,
+        devices: activations?.map(a => ({
+          id: a.id,
+          device_name: a.device_name,
+          activated_at: a.activated_at,
+          last_seen_at: a.last_seen_at,
+        })),
+      },
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
