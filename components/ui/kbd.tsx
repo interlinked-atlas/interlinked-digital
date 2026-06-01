@@ -1,1 +1,28 @@
-{"data":"aW1wb3J0IHsgY24gfSBmcm9tICdAL2xpYi91dGlscycKCmZ1bmN0aW9uIEtiZCh7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J2tiZCc+KSB7CiAgcmV0dXJuICgKICAgIDxrYmQKICAgICAgZGF0YS1zbG90PSJrYmQiCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2JnLW11dGVkIHctZml0IHRleHQtbXV0ZWQtZm9yZWdyb3VuZCBwb2ludGVyLWV2ZW50cy1ub25lIGlubGluZS1mbGV4IGgtNSBtaW4tdy01IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMSByb3VuZGVkLXNtIHB4LTEgZm9udC1zYW5zIHRleHQteHMgZm9udC1tZWRpdW0gc2VsZWN0LW5vbmUnLAogICAgICAgICJbJl9zdmc6bm90KFtjbGFzcyo9J3NpemUtJ10pXTpzaXplLTMiLAogICAgICAgICdbW2RhdGEtc2xvdD10b29sdGlwLWNvbnRlbnRdXyZdOmJnLWJhY2tncm91bmQvMjAgW1tkYXRhLXNsb3Q9dG9vbHRpcC1jb250ZW50XV8mXTp0ZXh0LWJhY2tncm91bmQgZGFyazpbW2RhdGEtc2xvdD10b29sdGlwLWNvbnRlbnRdXyZdOmJnLWJhY2tncm91bmQvMTAnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIEtiZEdyb3VwKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwnZGl2Jz4pIHsKICByZXR1cm4gKAogICAgPGtiZAogICAgICBkYXRhLXNsb3Q9ImtiZC1ncm91cCIKICAgICAgY2xhc3NOYW1lPXtjbignaW5saW5lLWZsZXggaXRlbXMtY2VudGVyIGdhcC0xJywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmV4cG9ydCB7IEtiZCwgS2JkR3JvdXAgfQo="}
+import { cn } from '@/lib/utils'
+
+function Kbd({ className, ...props }: React.ComponentProps<'kbd'>) {
+  return (
+    <kbd
+      data-slot="kbd"
+      className={cn(
+        'bg-muted w-fit text-muted-foreground pointer-events-none inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-sm px-1 font-sans text-xs font-medium select-none',
+        "[&_svg:not([class*='size-'])]:size-3",
+        '[[data-slot=tooltip-content]_&]:bg-background/20 [[data-slot=tooltip-content]_&]:text-background dark:[[data-slot=tooltip-content]_&]:bg-background/10',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function KbdGroup({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <kbd
+      data-slot="kbd-group"
+      className={cn('inline-flex items-center gap-1', className)}
+      {...props}
+    />
+  )
+}
+
+export { Kbd, KbdGroup }
