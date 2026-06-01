@@ -1,1 +1,35 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgeyB1c2VUb2FzdCB9IGZyb20gJ0AvaG9va3MvdXNlLXRvYXN0JwppbXBvcnQgewogIFRvYXN0LAogIFRvYXN0Q2xvc2UsCiAgVG9hc3REZXNjcmlwdGlvbiwKICBUb2FzdFByb3ZpZGVyLAogIFRvYXN0VGl0bGUsCiAgVG9hc3RWaWV3cG9ydCwKfSBmcm9tICdAL2NvbXBvbmVudHMvdWkvdG9hc3QnCgpleHBvcnQgZnVuY3Rpb24gVG9hc3RlcigpIHsKICBjb25zdCB7IHRvYXN0cyB9ID0gdXNlVG9hc3QoKQoKICByZXR1cm4gKAogICAgPFRvYXN0UHJvdmlkZXI+CiAgICAgIHt0b2FzdHMubWFwKGZ1bmN0aW9uICh7IGlkLCB0aXRsZSwgZGVzY3JpcHRpb24sIGFjdGlvbiwgLi4ucHJvcHMgfSkgewogICAgICAgIHJldHVybiAoCiAgICAgICAgICA8VG9hc3Qga2V5PXtpZH0gey4uLnByb3BzfT4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImdyaWQgZ2FwLTEiPgogICAgICAgICAgICAgIHt0aXRsZSAmJiA8VG9hc3RUaXRsZT57dGl0bGV9PC9Ub2FzdFRpdGxlPn0KICAgICAgICAgICAgICB7ZGVzY3JpcHRpb24gJiYgKAogICAgICAgICAgICAgICAgPFRvYXN0RGVzY3JpcHRpb24+e2Rlc2NyaXB0aW9ufTwvVG9hc3REZXNjcmlwdGlvbj4KICAgICAgICAgICAgICApfQogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAge2FjdGlvbn0KICAgICAgICAgICAgPFRvYXN0Q2xvc2UgLz4KICAgICAgICAgIDwvVG9hc3Q+CiAgICAgICAgKQogICAgICB9KX0KICAgICAgPFRvYXN0Vmlld3BvcnQgLz4KICAgIDwvVG9hc3RQcm92aWRlcj4KICApCn0K"}
+'use client'
+
+import { useToast } from '@/hooks/use-toast'
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from '@/components/ui/toast'
+
+export function Toaster() {
+  const { toasts } = useToast()
+
+  return (
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  )
+}
