@@ -1,1 +1,49 @@
-{"data":"ZXhwb3J0IGludGVyZmFjZSBQcm9kdWN0IHsKICBpZDogc3RyaW5nCiAgbmFtZTogc3RyaW5nCiAgZGVzY3JpcHRpb246IHN0cmluZwogIHByaWNlSW5DZW50czogbnVtYmVyCiAgaW50ZXJ2YWw6ICdtb250aCcgfCAneWVhcicKICBmZWF0dXJlczogc3RyaW5nW10KICBsaW1pdGF0aW9ucz86IHN0cmluZ1tdCiAgcG9wdWxhcj86IGJvb2xlYW4KfQoKZXhwb3J0IGNvbnN0IFBST0RVQ1RTOiBQcm9kdWN0W10gPSBbCiAgewogICAgaWQ6ICdhdGxhcy1iYXNpYycsCiAgICBuYW1lOiAnQVRMQVMgQmFzaWMnLAogICAgZGVzY3JpcHRpb246ICdQZXJmZWN0IGZvciBjYXN1YWwgdXNlcnMgd2hvIG5lZWQgdGhlIGVzc2VudGlhbCBBVExBUyBleHBlcmllbmNlLicsCiAgICBwcmljZUluQ2VudHM6IDE0OTksIC8vICQxNC45OQogICAgaW50ZXJ2YWw6ICdtb250aCcsCiAgICBmZWF0dXJlczogWwogICAgICAnU3RhbmRhcmQgaW5zdGFsbGF0aW9ucycsCiAgICAgICdDb3JlIEFUTEFTIHdvcmtmbG93IHRvb2xzJywKICAgICAgJ1NpbmdsZSBjb21wdXRlciBhY3RpdmF0aW9uJywKICAgICAgJ1VwIHRvIDMgaW5zdGFsbHMgZGFpbHknLAogICAgXSwKICAgIGxpbWl0YXRpb25zOiBbCiAgICAgICdCdWxrIHF1ZXVlIGluc3RhbGxzIGRpc2FibGVkJywKICAgICAgJ1VuaW5zdGFsbCBNYW5hZ2VyIHVuYXZhaWxhYmxlJywKICAgICAgJ1JlY292ZXJ5IFN5c3RlbSB1bmF2YWlsYWJsZScsCiAgICBdLAogIH0sCiAgewogICAgaWQ6ICdhdGxhcy1wcm8nLAogICAgbmFtZTogJ0FUTEFTIFBybycsCiAgICBkZXNjcmlwdGlvbjogJ0J1aWx0IGZvciBwcm9mZXNzaW9uYWwgcHJvZHVjZXJzLCBlbmdpbmVlcnMsIHN0dWRpb3MsIGFuZCBhZHZhbmNlZCB3b3JrZmxvd3MuJywKICAgIHByaWNlSW5DZW50czogMjk5OSwgLy8gJDI5Ljk5CiAgICBpbnRlcnZhbDogJ21vbnRoJywKICAgIGZlYXR1cmVzOiBbCiAgICAgICdFdmVyeXRoaW5nIGluIEJhc2ljJywKICAgICAgJ1VubGltaXRlZCBpbnN0YWxsYXRpb25zJywKICAgICAgJ0J1bGsgcXVldWUgaW5zdGFsbGF0aW9uIHN1cHBvcnQnLAogICAgICAnU21hcnQgVW5pbnN0YWxsIE1hbmFnZXInLAogICAgICAnUmVjb3ZlcnkgU3lzdGVtJywKICAgICAgJ1VwIHRvIDMgY29tcHV0ZXIgYWN0aXZhdGlvbnMnLAogICAgICAnRmFzdGVyIHdvcmtmbG93IG1hbmFnZW1lbnQnLAogICAgICAnRnV0dXJlIHVwZGF0ZXMgaW5jbHVkZWQnLAogICAgXSwKICAgIHBvcHVsYXI6IHRydWUsCiAgfSwKXQo="}
+export interface Product {
+  id: string
+  name: string
+  description: string
+  priceInCents: number
+  interval: 'month' | 'year'
+  features: string[]
+  limitations?: string[]
+  popular?: boolean
+}
+
+export const PRODUCTS: Product[] = [
+  {
+    id: 'atlas-basic',
+    name: 'ATLAS Basic',
+    description: 'Perfect for casual users who need the essential ATLAS experience.',
+    priceInCents: 1499, // $14.99
+    interval: 'month',
+    features: [
+      'Standard installations',
+      'Core ATLAS workflow tools',
+      'Single computer activation',
+      'Up to 3 installs daily',
+    ],
+    limitations: [
+      'Bulk queue installs disabled',
+      'Uninstall Manager unavailable',
+      'Recovery System unavailable',
+    ],
+  },
+  {
+    id: 'atlas-pro',
+    name: 'ATLAS Pro',
+    description: 'Built for professional producers, engineers, studios, and advanced workflows.',
+    priceInCents: 2999, // $29.99
+    interval: 'month',
+    features: [
+      'Everything in Basic',
+      'Unlimited installations',
+      'Bulk queue installation support',
+      'Smart Uninstall Manager',
+      'Recovery System',
+      'Up to 3 computer activations',
+      'Faster workflow management',
+      'Future updates included',
+    ],
+    popular: true,
+  },
+]
