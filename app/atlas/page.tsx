@@ -1,1 +1,341 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgeyB1c2VTdGF0ZSB9IGZyb20gJ3JlYWN0JwppbXBvcnQgSW1hZ2UgZnJvbSAnbmV4dC9pbWFnZScKaW1wb3J0IExpbmsgZnJvbSAnbmV4dC9saW5rJwppbXBvcnQgeyBDaGVjaywgRG93bmxvYWQsIFgsIE1lbnUgfSBmcm9tICdsdWNpZGUtcmVhY3QnCgpleHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBBdGxhc1BhZ2UoKSB7CiAgY29uc3QgW2lzVmlkZW9Nb2RhbE9wZW4sIHNldElzVmlkZW9Nb2RhbE9wZW5dID0gdXNlU3RhdGUoZmFsc2UpCiAgY29uc3QgW2lzTW9iaWxlTWVudU9wZW4sIHNldElzTW9iaWxlTWVudU9wZW5dID0gdXNlU3RhdGUoZmFsc2UpCgogIGNvbnN0IHNjcm9sbFRvU2VjdGlvbiA9IChpZDogc3RyaW5nKSA9PiB7CiAgICBjb25zdCBlbGVtZW50ID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoaWQpCiAgICBpZiAoZWxlbWVudCkgewogICAgICBlbGVtZW50LnNjcm9sbEludG9WaWV3KHsgYmVoYXZpb3I6ICdzbW9vdGgnIH0pCiAgICB9CiAgICBzZXRJc01vYmlsZU1lbnVPcGVuKGZhbHNlKQogIH0KCiAgcmV0dXJuICgKICAgIDxkaXYgY2xhc3NOYW1lPSJtaW4taC1zY3JlZW4gYmctWyMwYTBhMGZdIHRleHQtd2hpdGUiPgogICAgICB7LyogTmF2aWdhdGlvbiAqL30KICAgICAgPG5hdiBjbGFzc05hbWU9ImZpeGVkIHRvcC0wIGxlZnQtMCByaWdodC0wIHotNTAgYmctWyMwYTBhMGZdLzgwIGJhY2tkcm9wLWJsdXIteGwgYm9yZGVyLWIgYm9yZGVyLXdoaXRlLzUiPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYXgtdy03eGwgbXgtYXV0byBweC00IHNtOnB4LTYgbGc6cHgtOCI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIGgtMTYiPgogICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIiPgogICAgICAgICAgICAgIDxJbWFnZSAKICAgICAgICAgICAgICAgIHNyYz0iL2ltYWdlcy9hdGxhcy1pY29uLnBuZyIgCiAgICAgICAgICAgICAgICBhbHQ9IkFUTEFTIiAKICAgICAgICAgICAgICAgIHdpZHRoPXszMn0gCiAgICAgICAgICAgICAgICBoZWlnaHQ9ezMyfQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LTggaC04IgogICAgICAgICAgICAgIC8+CiAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPSJ0ZXh0LXhsIGZvbnQtc2VtaWJvbGQgdHJhY2tpbmctd2lkZSI+QVRMQVM8L3NwYW4+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAKICAgICAgICAgICAgey8qIERlc2t0b3AgTmF2aWdhdGlvbiAqL30KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImhpZGRlbiBtZDpmbGV4IGl0ZW1zLWNlbnRlciBnYXAtOCI+CiAgICAgICAgICAgICAgPGJ1dHRvbiBvbkNsaWNrPXsoKSA9PiBzY3JvbGxUb1NlY3Rpb24oJ3ByaWNpbmcnKX0gY2xhc3NOYW1lPSJ0ZXh0LXNtIHRleHQtd2hpdGUvNjAgaG92ZXI6dGV4dC13aGl0ZSB0cmFuc2l0aW9uLWNvbG9ycyI+UHJpY2luZzwvYnV0dG9uPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdkb3dubG9hZCcpfSBjbGFzc05hbWU9InRleHQtc20gdGV4dC13aGl0ZS82MCBob3Zlcjp0ZXh0LXdoaXRlIHRyYW5zaXRpb24tY29sb3JzIj5Eb3dubG9hZDwvYnV0dG9uPgogICAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJoaWRkZW4gbWQ6YmxvY2siPgogICAgICAgICAgICAgIDxidXR0b24gCiAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzY3JvbGxUb1NlY3Rpb24oJ3ByaWNpbmcnKX0KICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0icHgtNCBweS0yIGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQtbGcgdGV4dC1zbSBmb250LW1lZGl1bSBob3ZlcjpvcGFjaXR5LTkwIHRyYW5zaXRpb24tb3BhY2l0eSIKICAgICAgICAgICAgICA+CiAgICAgICAgICAgICAgICBHZXQgQVRMQVMKICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgPC9kaXY+CgogICAgICAgICAgICB7LyogTW9iaWxlIE1lbnUgQnV0dG9uICovfQogICAgICAgICAgICA8YnV0dG9uIAogICAgICAgICAgICAgIGNsYXNzTmFtZT0ibWQ6aGlkZGVuIHAtMiIKICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRJc01vYmlsZU1lbnVPcGVuKCFpc01vYmlsZU1lbnVPcGVuKX0KICAgICAgICAgICAgPgogICAgICAgICAgICAgIDxNZW51IGNsYXNzTmFtZT0idy02IGgtNiIgLz4KICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgey8qIE1vYmlsZSBOYXZpZ2F0aW9uICovfQogICAgICAgIHtpc01vYmlsZU1lbnVPcGVuICYmICgKICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtZDpoaWRkZW4gYmctWyMwZDBkMWFdIGJvcmRlci10IGJvcmRlci13aGl0ZS81Ij4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9InB4LTQgcHktNCBzcGFjZS15LTQiPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdwcmljaW5nJyl9IGNsYXNzTmFtZT0iYmxvY2sgdy1mdWxsIHRleHQtbGVmdCB0ZXh0LXNtIHRleHQtd2hpdGUvNjAgaG92ZXI6dGV4dC13aGl0ZSB0cmFuc2l0aW9uLWNvbG9ycyI+UHJpY2luZzwvYnV0dG9uPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdkb3dubG9hZCcpfSBjbGFzc05hbWU9ImJsb2NrIHctZnVsbCB0ZXh0LWxlZnQgdGV4dC1zbSB0ZXh0LXdoaXRlLzYwIGhvdmVyOnRleHQtd2hpdGUgdHJhbnNpdGlvbi1jb2xvcnMiPkRvd25sb2FkPC9idXR0b24+CiAgICAgICAgICAgICAgPGJ1dHRvbiAKICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHNjcm9sbFRvU2VjdGlvbigncHJpY2luZycpfQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LWZ1bGwgcHgtNCBweS0yIGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQtbGcgdGV4dC1zbSBmb250LW1lZGl1bSIKICAgICAgICAgICAgICA+CiAgICAgICAgICAgICAgICBHZXQgQVRMQVMKICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICApfQogICAgICA8L25hdj4KCiAgICAgIHsvKiBIZXJvIFNlY3Rpb24gKi99CiAgICAgIDxzZWN0aW9uIGNsYXNzTmFtZT0icmVsYXRpdmUgcHQtMzIgcGItMjAgcHgtNCBzbTpweC02IGxnOnB4LTggb3ZlcmZsb3ctaGlkZGVuIj4KICAgICAgICB7LyogQmFja2dyb3VuZCBFZmZlY3RzICovfQogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSBpbnNldC0wIGJnLWdyYWRpZW50LXRvLWIgZnJvbS1bIzdjNmZlZV0vMTAgdmlhLXRyYW5zcGFyZW50IHRvLXRyYW5zcGFyZW50IiAvPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSB0b3AtMS8yIGxlZnQtMS8yIC10cmFuc2xhdGUteC0xLzIgLXRyYW5zbGF0ZS15LTEvMiB3LVs4MDBweF0gaC1bODAwcHhdIGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0vMjAgdG8tWyM0ZWNkYzRdLzIwIHJvdW5kZWQtZnVsbCBibHVyLTN4bCBvcGFjaXR5LTMwIiAvPgogICAgICAgIAogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJyZWxhdGl2ZSBtYXgtdy03eGwgbXgtYXV0byI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIgbWItMTYiPgogICAgICAgICAgICB7LyogTG9nbyAqL30KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXgganVzdGlmeS1jZW50ZXIgbWItOCI+CiAgICAgICAgICAgICAgPEltYWdlIAogICAgICAgICAgICAgICAgc3JjPSIvaW1hZ2VzL2F0bGFzLWljb24ucG5nIiAKICAgICAgICAgICAgICAgIGFsdD0iQVRMQVMgTG9nbyIgCiAgICAgICAgICAgICAgICB3aWR0aD17MTIwfSAKICAgICAgICAgICAgICAgIGhlaWdodD17MTIwfQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LTI0IGgtMjQgbWQ6dy0zMiBtZDpoLTMyIgogICAgICAgICAgICAgIC8+CiAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgey8qIEhlYWRsaW5lICovfQogICAgICAgICAgICA8aDEgY2xhc3NOYW1lPSJ0ZXh0LTV4bCBtZDp0ZXh0LTd4bCBsZzp0ZXh0LTh4bCBmb250LWJvbGQgbWItNiBiZy1ncmFkaWVudC10by1yIGZyb20tWyM3YzZmZWVdIHRvLVsjNGVjZGM0XSBiZy1jbGlwLXRleHQgdGV4dC10cmFuc3BhcmVudCI+CiAgICAgICAgICAgICAgQVRMQVMKICAgICAgICAgICAgPC9oMT4KICAgICAgICAgICAgCiAgICAgICAgICAgIHsvKiBQbGFjZWhvbGRlciBmb3IgZnV0dXJlIGNvbnRlbnQgKi99CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYi0xMCI+CiAgICAgICAgICAgICAgey8qIENvbnRlbnQgd2lsbCBiZSBhZGRlZCBoZXJlIGxhdGVyICovfQogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgIHsvKiBQbGFjZWhvbGRlciBmb3IgZnV0dXJlIGltYWdlICovfQogICAgICAgICAgPGRpdiBjbGFzc05hbWU9InJlbGF0aXZlIG1heC13LTR4bCBteC1hdXRvIj4KICAgICAgICAgICAgey8qIEltYWdlIHdpbGwgYmUgYWRkZWQgaGVyZSBsYXRlciAqL30KICAgICAgICAgIDwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICA8L3NlY3Rpb24+CgogICAgICB7LyogUHJpY2luZyBTZWN0aW9uICovfQogICAgICA8c2VjdGlvbiBpZD0icHJpY2luZyIgY2xhc3NOYW1lPSJweS0yMCBweC00IHNtOnB4LTYgbGc6cHgtOCBiZy1bIzBkMGQxYV0iPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYXgtdy03eGwgbXgtYXV0byI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIgbWItMTYiPgogICAgICAgICAgICA8aDIgY2xhc3NOYW1lPSJ0ZXh0LTN4bCBtZDp0ZXh0LTR4bCBmb250LWJvbGQgbWItNCI+QVRMQVMgU3Vic2NyaXB0aW9uIFBsYW5zPC9oMj4KICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIG1heC13LTJ4bCBteC1hdXRvIj5DaG9vc2UgdGhlIHBsYW4gdGhhdCB3b3JrcyBmb3IgeW91PC9wPgogICAgICAgICAgPC9kaXY+CgogICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImdyaWQgZ3JpZC1jb2xzLTEgbWQ6Z3JpZC1jb2xzLTIgZ2FwLTggbWF4LXctNHhsIG14LWF1dG8iPgogICAgICAgICAgICB7LyogQmFzaWMgUGxhbiAqL30KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9InAtOCBiZy1bIzFhMWEyZV0gcm91bmRlZC0yeGwgYm9yZGVyIGJvcmRlci13aGl0ZS8xMCI+CiAgICAgICAgICAgICAgPGgzIGNsYXNzTmFtZT0idGV4dC0yeGwgZm9udC1zZW1pYm9sZCBtYi0yIj5CYXNpYzwvaDM+CiAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIHRleHQtc20gbWItNCI+UGVyZmVjdCBmb3IgY2FzdWFsIHVzZXJzPC9wPgogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYi02Ij4KICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0idGV4dC01eGwgZm9udC1ib2xkIj4kMTQuOTk8L3NwYW4+CiAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQtd2hpdGUvNTAiPi9tb250aDwvc3Bhbj4KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAKICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ibWItNiI+CiAgICAgICAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQteHMgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGVyIHRleHQtd2hpdGUvNDAgbWItMyI+SW5jbHVkZWQ8L3A+CiAgICAgICAgICAgICAgICA8dWwgY2xhc3NOYW1lPSJzcGFjZS15LTMiPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgU3RhbmRhcmQgaW5zdGFsbGF0aW9ucwogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgQ29yZSBBVExBUyB3b3JrZmxvdyB0b29scwogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgU2luZ2xlIGNvbXB1dGVyIGFjdGl2YXRpb24KICAgICAgICAgICAgICAgICAgPC9saT4KICAgICAgICAgICAgICAgICAgPGxpIGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTMgdGV4dC13aGl0ZS83MCI+CiAgICAgICAgICAgICAgICAgICAgPENoZWNrIGNsYXNzTmFtZT0idy01IGgtNSB0ZXh0LVsjNGVjZGM0XSBmbGV4LXNocmluay0wIiAvPgogICAgICAgICAgICAgICAgICAgIFVwIHRvIDMgaW5zdGFsbHMgZGFpbHkKICAgICAgICAgICAgICAgICAgPC9saT4KICAgICAgICAgICAgICAgIDwvdWw+CiAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9Im1iLTgiPgogICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXhzIHVwcGVyY2FzZSB0cmFja2luZy13aWRlciB0ZXh0LXdoaXRlLzQwIG1iLTMiPkxpbWl0YXRpb25zPC9wPgogICAgICAgICAgICAgICAgPHVsIGNsYXNzTmFtZT0ic3BhY2UteS0yIHRleHQtc20gdGV4dC13aGl0ZS80MCI+CiAgICAgICAgICAgICAgICAgIDxsaSBjbGFzc05hbWU9ImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICA8WCBjbGFzc05hbWU9InctNCBoLTQgZmxleC1zaHJpbmstMCIgLz4KICAgICAgICAgICAgICAgICAgICBCdWxrIHF1ZXVlIGluc3RhbGxzIGRpc2FibGVkCiAgICAgICAgICAgICAgICAgIDwvbGk+CiAgICAgICAgICAgICAgICAgIDxsaSBjbGFzc05hbWU9ImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICA8WCBjbGFzc05hbWU9InctNCBoLTQgZmxleC1zaHJpbmstMCIgLz4KICAgICAgICAgICAgICAgICAgICBVbmluc3RhbGwgTWFuYWdlciB1bmF2YWlsYWJsZQogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiI+CiAgICAgICAgICAgICAgICAgICAgPFggY2xhc3NOYW1lPSJ3LTQgaC00IGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgUmVjb3ZlcnkgU3lzdGVtIHVuYXZhaWxhYmxlCiAgICAgICAgICAgICAgICAgIDwvbGk+CiAgICAgICAgICAgICAgICA8L3VsPgogICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgIAogICAgICAgICAgICAgIDxMaW5rIAogICAgICAgICAgICAgICAgaHJlZj0iL2F0bGFzL2NoZWNrb3V0P3BsYW49YXRsYXMtYmFzaWMiCiAgICAgICAgICAgICAgICBjbGFzc05hbWU9ImJsb2NrIHctZnVsbCBweS00IHRleHQtY2VudGVyIGJvcmRlciBib3JkZXItd2hpdGUvMjAgcm91bmRlZC14bCBmb250LW1lZGl1bSBob3ZlcjpiZy13aGl0ZS81IHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICAgID4KICAgICAgICAgICAgICAgIEdldCBCYXNpYwogICAgICAgICAgICAgIDwvTGluaz4KICAgICAgICAgICAgPC9kaXY+CgogICAgICAgICAgICB7LyogUHJvIFBsYW4gKi99CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJyZWxhdGl2ZSBwLTggYmctZ3JhZGllbnQtdG8tYiBmcm9tLVsjMWExYTJlXSB0by1bIzBkMGQxYV0gcm91bmRlZC0yeGwgYm9yZGVyIGJvcmRlci1bIzdjNmZlZV0vMzAgc2hhZG93LWxnIHNoYWRvdy1bIzdjNmZlZV0vMTAiPgogICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0iYWJzb2x1dGUgLXRvcC0zIGxlZnQtMS8yIC10cmFuc2xhdGUteC0xLzIgcHgtNCBweS0xIGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQtZnVsbCB0ZXh0LXhzIGZvbnQtbWVkaXVtIj5Nb3N0IFBvcHVsYXI8L3NwYW4+CiAgICAgICAgICAgICAgPGgzIGNsYXNzTmFtZT0idGV4dC0yeGwgZm9udC1zZW1pYm9sZCBtYi0yIj5Qcm88L2gzPgogICAgICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCB0ZXh0LXNtIG1iLTQiPkZvciBwcm9mZXNzaW9uYWxzIGFuZCBzdHVkaW9zPC9wPgogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYi02Ij4KICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0idGV4dC01eGwgZm9udC1ib2xkIj4kMjkuOTk8L3NwYW4+CiAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQtd2hpdGUvNTAiPi9tb250aDwvc3Bhbj4KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAKICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ibWItOCI+CiAgICAgICAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQteHMgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGVyIHRleHQtd2hpdGUvNDAgbWItMyI+RXZlcnl0aGluZyBpbiBCYXNpYywgcGx1czwvcD4KICAgICAgICAgICAgICAgIDx1bCBjbGFzc05hbWU9InNwYWNlLXktMyI+CiAgICAgICAgICAgICAgICAgIDxsaSBjbGFzc05hbWU9ImZsZXggaXRlbXMtY2VudGVyIGdhcC0zIHRleHQtd2hpdGUvNzAiPgogICAgICAgICAgICAgICAgICAgIDxDaGVjayBjbGFzc05hbWU9InctNSBoLTUgdGV4dC1bIzRlY2RjNF0gZmxleC1zaHJpbmstMCIgLz4KICAgICAgICAgICAgICAgICAgICBVbmxpbWl0ZWQgaW5zdGFsbGF0aW9ucwogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgQnVsayBxdWV1ZSBpbnN0YWxsYXRpb24gc3VwcG9ydAogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgU21hcnQgVW5pbnN0YWxsIE1hbmFnZXIKICAgICAgICAgICAgICAgICAgPC9saT4KICAgICAgICAgICAgICAgICAgPGxpIGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTMgdGV4dC13aGl0ZS83MCI+CiAgICAgICAgICAgICAgICAgICAgPENoZWNrIGNsYXNzTmFtZT0idy01IGgtNSB0ZXh0LVsjNGVjZGM0XSBmbGV4LXNocmluay0wIiAvPgogICAgICAgICAgICAgICAgICAgIFJlY292ZXJ5IFN5c3RlbQogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgVXAgdG8gMyBjb21wdXRlciBhY3RpdmF0aW9ucwogICAgICAgICAgICAgICAgICA8L2xpPgogICAgICAgICAgICAgICAgICA8bGkgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8Q2hlY2sgY2xhc3NOYW1lPSJ3LTUgaC01IHRleHQtWyM0ZWNkYzRdIGZsZXgtc2hyaW5rLTAiIC8+CiAgICAgICAgICAgICAgICAgICAgRmFzdGVyIHdvcmtmbG93IG1hbmFnZW1lbnQKICAgICAgICAgICAgICAgICAgPC9saT4KICAgICAgICAgICAgICAgICAgPGxpIGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTMgdGV4dC13aGl0ZS83MCI+CiAgICAgICAgICAgICAgICAgICAgPENoZWNrIGNsYXNzTmFtZT0idy01IGgtNSB0ZXh0LVsjNGVjZGM0XSBmbGV4LXNocmluay0wIiAvPgogICAgICAgICAgICAgICAgICAgIEZ1dHVyZSB1cGRhdGVzIGluY2x1ZGVkCiAgICAgICAgICAgICAgICAgIDwvbGk+CiAgICAgICAgICAgICAgICA8L3VsPgogICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgIAogICAgICAgICAgICAgIDxMaW5rIAogICAgICAgICAgICAgICAgaHJlZj0iL2F0bGFzL2NoZWNrb3V0P3BsYW49YXRsYXMtcHJvIgogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJibG9jayB3LWZ1bGwgcHktNCB0ZXh0LWNlbnRlciBiZy1ncmFkaWVudC10by1yIGZyb20tWyM3YzZmZWVdIHRvLVsjNGVjZGM0XSByb3VuZGVkLXhsIGZvbnQtbWVkaXVtIGhvdmVyOm9wYWNpdHktOTAgdHJhbnNpdGlvbi1vcGFjaXR5IgogICAgICAgICAgICAgID4KICAgICAgICAgICAgICAgIEdldCBQcm8KICAgICAgICAgICAgICA8L0xpbms+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgPC9kaXY+CiAgICAgICAgICAKICAgICAgICAgIHsvKiBFbnRlcnByaXNlIENUQSAqL30KICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtdC0xMiB0ZXh0LWNlbnRlciI+CiAgICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCBtYi00Ij5OZWVkIGEgY3VzdG9tIHNvbHV0aW9uIGZvciB5b3VyIHRlYW0gb3Igc3R1ZGlvPzwvcD4KICAgICAgICAgICAgPGEgCiAgICAgICAgICAgICAgaHJlZj0ibWFpbHRvOmludGVybGlua2VkLmRpZ2l0YWxAZ21haWwuY29tIgogICAgICAgICAgICAgIGNsYXNzTmFtZT0iaW5saW5lLWZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHRleHQtWyM0ZWNkYzRdIGhvdmVyOnRleHQtWyM3YzZmZWVdIHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICA+CiAgICAgICAgICAgICAgQ29udGFjdCB1cyBmb3IgRW50ZXJwcmlzZSBwcmljaW5nCiAgICAgICAgICAgICAgPHN2ZyBjbGFzc05hbWU9InctNCBoLTQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPgogICAgICAgICAgICAgICAgPHBhdGggc3Ryb2tlTGluZWNhcD0icm91bmQiIHN0cm9rZUxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlV2lkdGg9ezJ9IGQ9Ik0xNyA4bDQgNG0wIDBsLTQgNG00LTRIMyIgLz4KICAgICAgICAgICAgICA8L3N2Zz4KICAgICAgICAgICAgPC9hPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvc2VjdGlvbj4KCiAgICAgIHsvKiBEb3dubG9hZCBTZWN0aW9uICovfQogICAgICA8c2VjdGlvbiBpZD0iZG93bmxvYWQiIGNsYXNzTmFtZT0icHktMjAgcHgtNCBzbTpweC02IGxnOnB4LTgiPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYXgtdy03eGwgbXgtYXV0byI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIgbWItMTYiPgogICAgICAgICAgICA8aDIgY2xhc3NOYW1lPSJ0ZXh0LTN4bCBtZDp0ZXh0LTR4bCBmb250LWJvbGQgbWItNCI+RG93bmxvYWQgQVRMQVM8L2gyPgogICAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtd2hpdGUvNTAgbWF4LXctMnhsIG14LWF1dG8iPkdldCBzdGFydGVkIGluIHNlY29uZHM8L3A+CiAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ibWF4LXctbWQgbXgtYXV0byI+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJwLTggYmctWyMxYTFhMmVdIHJvdW5kZWQtMnhsIGJvcmRlciBib3JkZXItd2hpdGUvMTAgdGV4dC1jZW50ZXIiPgogICAgICAgICAgICAgIHsvKiBtYWNPUyBJY29uICovfQogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJpbmxpbmUtZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgdy0xNiBoLTE2IGJnLXdoaXRlLzEwIHJvdW5kZWQtMnhsIG1iLTYiPgogICAgICAgICAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGNsYXNzTmFtZT0idy0xMCBoLTEwIHRleHQtd2hpdGUiIGZpbGw9ImN1cnJlbnRDb2xvciI+CiAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xOC43MSAxOS41Yy0uODMgMS4yNC0xLjcxIDIuNDUtMy4wNSAyLjQ3LTEuMzQuMDMtMS43Ny0uNzktMy4yOS0uNzktMS41MyAwLTIgLjc3LTMuMjcuODItMS4zMS4wNS0yLjMtMS4zMi0zLjE0LTIuNTNDNC4yNSAxNyAyLjk0IDEyLjQ1IDQuNyA5LjM5Yy44Ny0xLjUyIDIuNDMtMi40OCA0LjEyLTIuNTEgMS4yOC0uMDIgMi41Ljg3IDMuMjkuODcuNzggMCAyLjI2LTEuMDcgMy44MS0uOTEuNjUuMDMgMi40Ny4yNiAzLjY0IDEuOTgtLjA5LjA2LTIuMTcgMS4yOC0yLjE1IDMuODEuMDMgMy4wMiAyLjY1IDQuMDMgMi42OCA0LjA0LS4wMy4wNy0uNDIgMS40NC0xLjM4IDIuODNNMTMgMy41Yy43My0uODMgMS45NC0xLjQ2IDIuOTQtMS41LjEzIDEuMTctLjM0IDIuMzUtMS4wNCAzLjE5LS42OS44NS0xLjgzIDEuNTEtMi45NSAxLjQyLS4xNS0xLjE1LjQxLTIuMzUgMS4wNS0zLjExeiIvPgogICAgICAgICAgICAgICAgPC9zdmc+CiAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgPGgzIGNsYXNzTmFtZT0idGV4dC14bCBmb250LXNlbWlib2xkIG1iLTIiPkFUTEFTIGZvciBtYWNPUzwvaDM+CiAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIHRleHQtc20gbWItNCI+UmVxdWlyZXMgbWFjT1MgMTEuMCBvciBsYXRlcjwvcD4KICAgICAgICAgICAgICAKICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9ImlubGluZS1ibG9jayBweC0zIHB5LTEgYmctd2hpdGUvMTAgcm91bmRlZC1mdWxsIHRleHQteHMgZm9udC1tZWRpdW0gbWItNiI+djEuMC4wPC9zcGFuPgogICAgICAgICAgICAgIAogICAgICAgICAgICAgIDxhIAogICAgICAgICAgICAgICAgaHJlZj0iIyIKICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0iYmxvY2sgdy1mdWxsIHB5LTMgYmctZ3JhZGllbnQtdG8tciBmcm9tLVsjN2M2ZmVlXSB0by1bIzRlY2RjNF0gcm91bmRlZC14bCBmb250LW1lZGl1bSBob3ZlcjpvcGFjaXR5LTkwIHRyYW5zaXRpb24tb3BhY2l0eSBtYi00IgogICAgICAgICAgICAgID4KICAgICAgICAgICAgICAgIDxEb3dubG9hZCBjbGFzc05hbWU9InctNSBoLTUgaW5saW5lLWJsb2NrIG1yLTIiIC8+CiAgICAgICAgICAgICAgICBEb3dubG9hZCBmb3IgbWFjT1MKICAgICAgICAgICAgICA8L2E+CiAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzQwIHRleHQteHMiPgogICAgICAgICAgICAgICAgQWxyZWFkeSBoYXZlIGEgbGljZW5zZT8gRG93bmxvYWQgYW5kIGVudGVyIHlvdXIga2V5IHRvIGFjdGl2YXRlLgogICAgICAgICAgICAgIDwvcD4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9zZWN0aW9uPgoKICAgICAgey8qIEZvb3RlciAqL30KICAgICAgPGZvb3RlciBjbGFzc05hbWU9InB5LTEyIHB4LTQgc206cHgtNiBsZzpweC04IGJvcmRlci10IGJvcmRlci13aGl0ZS81Ij4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ibWF4LXctN3hsIG14LWF1dG8iPgogICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXggZmxleC1jb2wgbWQ6ZmxleC1yb3cgaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiBnYXAtOCI+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiI+CiAgICAgICAgICAgICAgPEltYWdlIAogICAgICAgICAgICAgICAgc3JjPSIvaW1hZ2VzL2F0bGFzLWljb24ucG5nIiAKICAgICAgICAgICAgICAgIGFsdD0iQVRMQVMiIAogICAgICAgICAgICAgICAgd2lkdGg9ezI0fSAKICAgICAgICAgICAgICAgIGhlaWdodD17MjR9CiAgICAgICAgICAgICAgICBjbGFzc05hbWU9InctNiBoLTYiCiAgICAgICAgICAgICAgLz4KICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQtbGcgZm9udC1zZW1pYm9sZCI+QVRMQVM8L3NwYW4+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAKICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXggZmxleC13cmFwIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtNiB0ZXh0LXNtIHRleHQtd2hpdGUvNTAiPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdoZXJvJyl9IGNsYXNzTmFtZT0iaG92ZXI6dGV4dC13aGl0ZSB0cmFuc2l0aW9uLWNvbG9ycyI+SG9tZTwvYnV0dG9uPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdwcmljaW5nJyl9IGNsYXNzTmFtZT0iaG92ZXI6dGV4dC13aGl0ZSB0cmFuc2l0aW9uLWNvbG9ycyI+UHJpY2luZzwvYnV0dG9uPgogICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2Nyb2xsVG9TZWN0aW9uKCdkb3dubG9hZCcpfSBjbGFzc05hbWU9ImhvdmVyOnRleHQtd2hpdGUgdHJhbnNpdGlvbi1jb2xvcnMiPkRvd25sb2FkPC9idXR0b24+CiAgICAgICAgICAgICAgPGEgaHJlZj0ibWFpbHRvOmF0bGFzLmJ5dGl0YW5AZ21haWwuY29tIiBjbGFzc05hbWU9ImhvdmVyOnRleHQtd2hpdGUgdHJhbnNpdGlvbi1jb2xvcnMiPkNvbnRhY3Q8L2E+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAKICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXggaXRlbXMtY2VudGVyIGdhcC02IHRleHQtc20gdGV4dC13aGl0ZS81MCI+CiAgICAgICAgICAgICAgPGEgaHJlZj0iIyIgY2xhc3NOYW1lPSJob3Zlcjp0ZXh0LXdoaXRlIHRyYW5zaXRpb24tY29sb3JzIj5UZXJtczwvYT4KICAgICAgICAgICAgICA8YSBocmVmPSIjIiBjbGFzc05hbWU9ImhvdmVyOnRleHQtd2hpdGUgdHJhbnNpdGlvbi1jb2xvcnMiPlByaXZhY3k8L2E+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgPC9kaXY+CiAgICAgICAgICAKICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtdC04IHB0LTggYm9yZGVyLXQgYm9yZGVyLXdoaXRlLzUgdGV4dC1jZW50ZXIgdGV4dC1zbSB0ZXh0LXdoaXRlLzQwIj4KICAgICAgICAgICAgPHA+JmNvcHk7IDIwMjUgSW50ZXJMaW5rZWQuIEFsbCByaWdodHMgcmVzZXJ2ZWQuPC9wPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZm9vdGVyPgoKICAgICAgey8qIFZpZGVvIE1vZGFsICovfQogICAgICB7aXNWaWRlb01vZGFsT3BlbiAmJiAoCiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZpeGVkIGluc2V0LTAgei01MCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBiZy1ibGFjay84MCBiYWNrZHJvcC1ibHVyLXNtIHAtNCI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0icmVsYXRpdmUgdy1mdWxsIG1heC13LTR4bCBiZy1bIzFhMWEyZV0gcm91bmRlZC0yeGwgb3ZlcmZsb3ctaGlkZGVuIj4KICAgICAgICAgICAgPGJ1dHRvbiAKICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRJc1ZpZGVvTW9kYWxPcGVuKGZhbHNlKX0KICAgICAgICAgICAgICBjbGFzc05hbWU9ImFic29sdXRlIHRvcC00IHJpZ2h0LTQgei0xMCBwLTIgYmctYmxhY2svNTAgcm91bmRlZC1mdWxsIGhvdmVyOmJnLWJsYWNrLzcwIHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICA+CiAgICAgICAgICAgICAgPFggY2xhc3NOYW1lPSJ3LTUgaC01IiAvPgogICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFzcGVjdC12aWRlbyBiZy1bIzBhMGEwZl0gZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIiPgogICAgICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCI+RGVtbyB2aWRlbyBwbGFjZWhvbGRlcjwvcD4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgKX0KICAgIDwvZGl2PgogICkKfQo="}
+'use client'
+
+import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Check, Download, X, Menu } from 'lucide-react'
+
+export default function AtlasPage() {
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+    }
+    setIsMobileMenuOpen(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <Image 
+                src="/images/atlas-icon.png" 
+                alt="ATLAS" 
+                width={32} 
+                height={32}
+                className="w-8 h-8"
+              />
+              <span className="text-xl font-semibold tracking-wide">ATLAS</span>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-8">
+              <button onClick={() => scrollToSection('pricing')} className="text-sm text-white/60 hover:text-white transition-colors">Pricing</button>
+              <button onClick={() => scrollToSection('download')} className="text-sm text-white/60 hover:text-white transition-colors">Download</button>
+            </div>
+
+            <div className="hidden md:block">
+              <button 
+                onClick={() => scrollToSection('pricing')}
+                className="px-4 py-2 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Get ATLAS
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              className="md:hidden p-2"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-[#0d0d1a] border-t border-white/5">
+            <div className="px-4 py-4 space-y-4">
+              <button onClick={() => scrollToSection('pricing')} className="block w-full text-left text-sm text-white/60 hover:text-white transition-colors">Pricing</button>
+              <button onClick={() => scrollToSection('download')} className="block w-full text-left text-sm text-white/60 hover:text-white transition-colors">Download</button>
+              <button 
+                onClick={() => scrollToSection('pricing')}
+                className="w-full px-4 py-2 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-lg text-sm font-medium"
+              >
+                Get ATLAS
+              </button>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#7c6fee]/10 via-transparent to-transparent" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-[#7c6fee]/20 to-[#4ecdc4]/20 rounded-full blur-3xl opacity-30" />
+        
+        <div className="relative max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            {/* Logo */}
+            <div className="flex justify-center mb-8">
+              <Image 
+                src="/images/atlas-icon.png" 
+                alt="ATLAS Logo" 
+                width={120} 
+                height={120}
+                className="w-24 h-24 md:w-32 md:h-32"
+              />
+            </div>
+
+            {/* Headline */}
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] bg-clip-text text-transparent">
+              ATLAS
+            </h1>
+            
+            {/* Placeholder for future content */}
+            <div className="mb-10">
+              {/* Content will be added here later */}
+            </div>
+          </div>
+
+          {/* Placeholder for future image */}
+          <div className="relative max-w-4xl mx-auto">
+            {/* Image will be added here later */}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-[#0d0d1a]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">ATLAS Subscription Plans</h2>
+            <p className="text-white/50 max-w-2xl mx-auto">Choose the plan that works for you</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Basic Plan */}
+            <div className="p-8 bg-[#1a1a2e] rounded-2xl border border-white/10">
+              <h3 className="text-2xl font-semibold mb-2">Basic</h3>
+              <p className="text-white/50 text-sm mb-4">Perfect for casual users</p>
+              <div className="mb-6">
+                <span className="text-5xl font-bold">$14.99</span>
+                <span className="text-white/50">/month</span>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Included</p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Standard installations
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Core ATLAS workflow tools
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Single computer activation
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Up to 3 installs daily
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="mb-8">
+                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Limitations</p>
+                <ul className="space-y-2 text-sm text-white/40">
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 flex-shrink-0" />
+                    Bulk queue installs disabled
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 flex-shrink-0" />
+                    Uninstall Manager unavailable
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 flex-shrink-0" />
+                    Recovery System unavailable
+                  </li>
+                </ul>
+              </div>
+              
+              <Link 
+                href="/atlas/checkout?plan=atlas-basic"
+                className="block w-full py-4 text-center border border-white/20 rounded-xl font-medium hover:bg-white/5 transition-colors"
+              >
+                Get Basic
+              </Link>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="relative p-8 bg-gradient-to-b from-[#1a1a2e] to-[#0d0d1a] rounded-2xl border border-[#7c6fee]/30 shadow-lg shadow-[#7c6fee]/10">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-full text-xs font-medium">Most Popular</span>
+              <h3 className="text-2xl font-semibold mb-2">Pro</h3>
+              <p className="text-white/50 text-sm mb-4">For professionals and studios</p>
+              <div className="mb-6">
+                <span className="text-5xl font-bold">$29.99</span>
+                <span className="text-white/50">/month</span>
+              </div>
+              
+              <div className="mb-8">
+                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Everything in Basic, plus</p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Unlimited installations
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Bulk queue installation support
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Smart Uninstall Manager
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Recovery System
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Up to 3 computer activations
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Faster workflow management
+                  </li>
+                  <li className="flex items-center gap-3 text-white/70">
+                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
+                    Future updates included
+                  </li>
+                </ul>
+              </div>
+              
+              <Link 
+                href="/atlas/checkout?plan=atlas-pro"
+                className="block w-full py-4 text-center bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
+              >
+                Get Pro
+              </Link>
+            </div>
+          </div>
+          
+          {/* Enterprise CTA */}
+          <div className="mt-12 text-center">
+            <p className="text-white/50 mb-4">Need a custom solution for your team or studio?</p>
+            <a 
+              href="mailto:interlinked.digital@gmail.com"
+              className="inline-flex items-center gap-2 text-[#4ecdc4] hover:text-[#7c6fee] transition-colors"
+            >
+              Contact us for Enterprise pricing
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Download Section */}
+      <section id="download" className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Download ATLAS</h2>
+            <p className="text-white/50 max-w-2xl mx-auto">Get started in seconds</p>
+          </div>
+
+          <div className="max-w-md mx-auto">
+            <div className="p-8 bg-[#1a1a2e] rounded-2xl border border-white/10 text-center">
+              {/* macOS Icon */}
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-6">
+                <svg viewBox="0 0 24 24" className="w-10 h-10 text-white" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+              </div>
+              
+              <h3 className="text-xl font-semibold mb-2">ATLAS for macOS</h3>
+              <p className="text-white/50 text-sm mb-4">Requires macOS 11.0 or later</p>
+              
+              <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6">v1.0.0</span>
+              
+              <a 
+                href="#"
+                className="block w-full py-3 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity mb-4"
+              >
+                <Download className="w-5 h-5 inline-block mr-2" />
+                Download for macOS
+              </a>
+              
+              <p className="text-white/40 text-xs">
+                Already have a license? Download and enter your key to activate.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-2">
+              <Image 
+                src="/images/atlas-icon.png" 
+                alt="ATLAS" 
+                width={24} 
+                height={24}
+                className="w-6 h-6"
+              />
+              <span className="text-lg font-semibold">ATLAS</span>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/50">
+              <button onClick={() => scrollToSection('hero')} className="hover:text-white transition-colors">Home</button>
+              <button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Pricing</button>
+              <button onClick={() => scrollToSection('download')} className="hover:text-white transition-colors">Download</button>
+              <a href="mailto:atlas.bytitan@gmail.com" className="hover:text-white transition-colors">Contact</a>
+            </div>
+            
+            <div className="flex items-center gap-6 text-sm text-white/50">
+              <a href="#" className="hover:text-white transition-colors">Terms</a>
+              <a href="#" className="hover:text-white transition-colors">Privacy</a>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-white/5 text-center text-sm text-white/40">
+            <p>&copy; 2025 InterLinked. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Video Modal */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-4xl bg-[#1a1a2e] rounded-2xl overflow-hidden">
+            <button 
+              onClick={() => setIsVideoModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="aspect-video bg-[#0a0a0f] flex items-center justify-center">
+              <p className="text-white/50">Demo video placeholder</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
