@@ -1,1 +1,206 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VTdGF0ZSwgdXNlRWZmZWN0IH0gZnJvbSAicmVhY3QiCmltcG9ydCB7IGNuIH0gZnJvbSAiQC9saWIvdXRpbHMiCmltcG9ydCB7IENoZXZyb25MZWZ0LCBDaGV2cm9uUmlnaHQsIFggfSBmcm9tICJsdWNpZGUtcmVhY3QiCgppbnRlcmZhY2UgUHJvZHVjdCB7CiAgbmFtZT86IHN0cmluZwogIHN0YXR1cz86IHN0cmluZwogIGlzQWN0aXZlPzogYm9vbGVhbgogIGlzSGlkZGVuPzogYm9vbGVhbgogIGljb25TcmM/OiBzdHJpbmcKfQoKaW50ZXJmYWNlIFByb2R1Y3RDYXJvdXNlbFByb3BzIHsKICBwcm9kdWN0czogUHJvZHVjdFtdCiAgaXNPcGVuOiBib29sZWFuCiAgb25DbG9zZTogKCkgPT4gdm9pZAp9CgpleHBvcnQgZnVuY3Rpb24gUHJvZHVjdENhcm91c2VsKHsgcHJvZHVjdHMsIGlzT3Blbiwgb25DbG9zZSB9OiBQcm9kdWN0Q2Fyb3VzZWxQcm9wcykgewogIGNvbnN0IFtjdXJyZW50SW5kZXgsIHNldEN1cnJlbnRJbmRleF0gPSB1c2VTdGF0ZSgwKQogIGNvbnN0IFtpc0FuaW1hdGluZywgc2V0SXNBbmltYXRpbmddID0gdXNlU3RhdGUoZmFsc2UpCiAgY29uc3QgW2lzVmlzaWJsZSwgc2V0SXNWaXNpYmxlXSA9IHVzZVN0YXRlKGZhbHNlKQoKICB1c2VFZmZlY3QoKCkgPT4gewogICAgaWYgKGlzT3BlbikgewogICAgICBzZXRDdXJyZW50SW5kZXgoMCkKICAgICAgc2V0VGltZW91dCgoKSA9PiBzZXRJc1Zpc2libGUodHJ1ZSksIDUwKQogICAgfSBlbHNlIHsKICAgICAgc2V0SXNWaXNpYmxlKGZhbHNlKQogICAgfQogIH0sIFtpc09wZW5dKQoKICBjb25zdCBnb1RvUHJldmlvdXMgPSAoKSA9PiB7CiAgICBpZiAoaXNBbmltYXRpbmcpIHJldHVybgogICAgc2V0SXNBbmltYXRpbmcodHJ1ZSkKICAgIHNldEN1cnJlbnRJbmRleCgocHJldikgPT4gKHByZXYgPT09IDAgPyBwcm9kdWN0cy5sZW5ndGggLSAxIDogcHJldiAtIDEpKQogICAgc2V0VGltZW91dCgoKSA9PiBzZXRJc0FuaW1hdGluZyhmYWxzZSksIDUwMCkKICB9CgogIGNvbnN0IGdvVG9OZXh0ID0gKCkgPT4gewogICAgaWYgKGlzQW5pbWF0aW5nKSByZXR1cm4KICAgIHNldElzQW5pbWF0aW5nKHRydWUpCiAgICBzZXRDdXJyZW50SW5kZXgoKHByZXYpID0+IChwcmV2ID09PSBwcm9kdWN0cy5sZW5ndGggLSAxID8gMCA6IHByZXYgKyAxKSkKICAgIHNldFRpbWVvdXQoKCkgPT4gc2V0SXNBbmltYXRpbmcoZmFsc2UpLCA1MDApCiAgfQoKICBjb25zdCBoYW5kbGVDbG9zZSA9ICgpID0+IHsKICAgIHNldElzVmlzaWJsZShmYWxzZSkKICAgIHNldFRpbWVvdXQob25DbG9zZSwgMzAwKQogIH0KCiAgdXNlRWZmZWN0KCgpID0+IHsKICAgIGNvbnN0IGhhbmRsZUtleURvd24gPSAoZTogS2V5Ym9hcmRFdmVudCkgPT4gewogICAgICBpZiAoIWlzT3BlbikgcmV0dXJuCiAgICAgIGlmIChlLmtleSA9PT0gIkFycm93TGVmdCIpIGdvVG9QcmV2aW91cygpCiAgICAgIGlmIChlLmtleSA9PT0gIkFycm93UmlnaHQiKSBnb1RvTmV4dCgpCiAgICAgIGlmIChlLmtleSA9PT0gIkVzY2FwZSIpIGhhbmRsZUNsb3NlKCkKICAgIH0KICAgIHdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCJrZXlkb3duIiwgaGFuZGxlS2V5RG93bikKICAgIHJldHVybiAoKSA9PiB3aW5kb3cucmVtb3ZlRXZlbnRMaXN0ZW5lcigia2V5ZG93biIsIGhhbmRsZUtleURvd24pCiAgfSwgW2lzT3BlbiwgaXNBbmltYXRpbmddKQoKICBpZiAoIWlzT3BlbikgcmV0dXJuIG51bGwKCiAgY29uc3QgcHJvZHVjdCA9IHByb2R1Y3RzW2N1cnJlbnRJbmRleF0KCiAgcmV0dXJuICgKICAgIDxkaXYgCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgImZpeGVkIGluc2V0LTAgei01MCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi0zMDAiLAogICAgICAgIGlzVmlzaWJsZSA/ICJvcGFjaXR5LTEwMCIgOiAib3BhY2l0eS0wIgogICAgICApfQogICAgPgogICAgICB7LyogQmFja2Ryb3AgKi99CiAgICAgIDxkaXYgCiAgICAgICAgY2xhc3NOYW1lPSJhYnNvbHV0ZSBpbnNldC0wIGJnLVsjMGEwYTBhXS85NSBiYWNrZHJvcC1ibHVyLW1kIgogICAgICAgIG9uQ2xpY2s9e2hhbmRsZUNsb3NlfQogICAgICAvPgoKICAgICAgey8qIENsb3NlIGJ1dHRvbiAqL30KICAgICAgPGJ1dHRvbgogICAgICAgIG9uQ2xpY2s9e2hhbmRsZUNsb3NlfQogICAgICAgIGNsYXNzTmFtZT0iYWJzb2x1dGUgdG9wLTggcmlnaHQtOCB6LTEwIHAtMiB0ZXh0LXdoaXRlLzQwIGhvdmVyOnRleHQtd2hpdGUvODAgdHJhbnNpdGlvbi1jb2xvcnMgZHVyYXRpb24tMzAwIgogICAgICAgIGFyaWEtbGFiZWw9IkNsb3NlIGdhbGxlcnkiCiAgICAgID4KICAgICAgICA8WCBjbGFzc05hbWU9InctNiBoLTYiIC8+CiAgICAgIDwvYnV0dG9uPgoKICAgICAgey8qIE5hdmlnYXRpb24gYXJyb3dzICovfQogICAgICA8YnV0dG9uCiAgICAgICAgb25DbGljaz17Z29Ub1ByZXZpb3VzfQogICAgICAgIGNsYXNzTmFtZT0iYWJzb2x1dGUgbGVmdC04IHotMTAgcC0zIHRleHQtd2hpdGUvMzAgaG92ZXI6dGV4dC13aGl0ZS83MCB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi0zMDAgaG92ZXI6c2NhbGUtMTEwIgogICAgICAgIGFyaWEtbGFiZWw9IlByZXZpb3VzIHByb2R1Y3QiCiAgICAgID4KICAgICAgICA8Q2hldnJvbkxlZnQgY2xhc3NOYW1lPSJ3LTEwIGgtMTAiIC8+CiAgICAgIDwvYnV0dG9uPgoKICAgICAgPGJ1dHRvbgogICAgICAgIG9uQ2xpY2s9e2dvVG9OZXh0fQogICAgICAgIGNsYXNzTmFtZT0iYWJzb2x1dGUgcmlnaHQtOCB6LTEwIHAtMyB0ZXh0LXdoaXRlLzMwIGhvdmVyOnRleHQtd2hpdGUvNzAgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tMzAwIGhvdmVyOnNjYWxlLTExMCIKICAgICAgICBhcmlhLWxhYmVsPSJOZXh0IHByb2R1Y3QiCiAgICAgID4KICAgICAgICA8Q2hldnJvblJpZ2h0IGNsYXNzTmFtZT0idy0xMCBoLTEwIiAvPgogICAgICA8L2J1dHRvbj4KCiAgICAgIHsvKiBQcm9kdWN0IGNhcmQgLSBlbmxhcmdlZCAqL30KICAgICAgPGRpdiAKICAgICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICAgInJlbGF0aXZlIHotMTAgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIGVhc2Utb3V0IiwKICAgICAgICAgIGlzVmlzaWJsZSA/ICJzY2FsZS0xMDAgb3BhY2l0eS0xMDAiIDogInNjYWxlLTkwIG9wYWNpdHktMCIKICAgICAgICApfQogICAgICA+CiAgICAgICAgPGRpdgogICAgICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgInJlbGF0aXZlIGdyb3VwIGgtWzI4cmVtXSB3LVsyNHJlbV0gcm91bmRlZC14bCBib3JkZXIgYmctd2hpdGUvWzAuMDNdIGJhY2tkcm9wLWJsdXItc20gdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIiwKICAgICAgICAgICAgcHJvZHVjdC5pc0FjdGl2ZSAKICAgICAgICAgICAgICA/ICJib3JkZXItd2hpdGUvMjUgc2hhZG93LVswXzBfODBweF9yZ2JhKDI1NSwyNTUsMjU1LDAuMDgpXSIgCiAgICAgICAgICAgICAgOiAiYm9yZGVyLXdoaXRlLzEwIiwKICAgICAgICAgICAgcHJvZHVjdC5pc0hpZGRlbiAmJiAic2VsZWN0LW5vbmUiCiAgICAgICAgICApfQogICAgICAgID4KICAgICAgICAgIHsvKiBTdWJ0bGUgY29ybmVyIGFjY2VudHMgKi99CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAgICJhYnNvbHV0ZSB0b3AtMCBsZWZ0LTAgdy0xMiBoLTEyIGJvcmRlci1sLTIgYm9yZGVyLXQtMiByb3VuZGVkLXRsLXhsIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTUwMCIsCiAgICAgICAgICAgIHByb2R1Y3QuaXNBY3RpdmUgPyAiYm9yZGVyLXdoaXRlLzQwIiA6ICJib3JkZXItd2hpdGUvMTUiLAogICAgICAgICAgICBwcm9kdWN0LmlzSGlkZGVuICYmICJib3JkZXItd2hpdGUvNSIKICAgICAgICAgICl9IC8+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAgICJhYnNvbHV0ZSBib3R0b20tMCByaWdodC0wIHctMTIgaC0xMiBib3JkZXItci0yIGJvcmRlci1iLTIgcm91bmRlZC1ici14bCB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi01MDAiLAogICAgICAgICAgICBwcm9kdWN0LmlzQWN0aXZlID8gImJvcmRlci13aGl0ZS80MCIgOiAiYm9yZGVyLXdoaXRlLzE1IiwKICAgICAgICAgICAgcHJvZHVjdC5pc0hpZGRlbiAmJiAiYm9yZGVyLXdoaXRlLzUiCiAgICAgICAgICApfSAvPgoKICAgICAgICAgIHsvKiBDb250ZW50ICovfQogICAgICAgICAgPGRpdiBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAiZmxleCBmbGV4LWNvbCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgaC1mdWxsIHB4LTggdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIiwKICAgICAgICAgICAgcHJvZHVjdC5pc0hpZGRlbiAmJiAiYmx1ci1zbSIKICAgICAgICAgICl9PgogICAgICAgICAgICB7cHJvZHVjdC5pc0hpZGRlbiA/ICgKICAgICAgICAgICAgICA8PgogICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImgtMjQgdy0yNCBiZy13aGl0ZS8xMCByb3VuZGVkLXhsIG1iLTYiIC8+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iaC02IHctMzIgYmctd2hpdGUvMTAgcm91bmRlZCBtYi00IiAvPgogICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImgtNCB3LTIwIGJnLXdoaXRlLzUgcm91bmRlZCIgLz4KICAgICAgICAgICAgICA8Lz4KICAgICAgICAgICAgKSA6ICgKICAgICAgICAgICAgICA8PgogICAgICAgICAgICAgICAge3Byb2R1Y3QuaWNvblNyYyAmJiAoCiAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJyZWxhdGl2ZSBtYi04Ij4KICAgICAgICAgICAgICAgICAgICA8aW1nCiAgICAgICAgICAgICAgICAgICAgICBzcmM9e3Byb2R1Y3QuaWNvblNyYyB8fCAiL3BsYWNlaG9sZGVyLnN2ZyJ9CiAgICAgICAgICAgICAgICAgICAgICBhbHQ9e2Ake3Byb2R1Y3QubmFtZX0gaWNvbmB9CiAgICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9InctMzIgaC0zMiBvYmplY3QtY29udGFpbiIKICAgICAgICAgICAgICAgICAgICAvPgogICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICl9CiAgICAgICAgICAgICAgICA8aDMgY2xhc3NOYW1lPSJ0ZXh0LTN4bCBmb250LWxpZ2h0IHRyYWNraW5nLVswLjNlbV0gdGV4dC13aGl0ZSBtYi02Ij4KICAgICAgICAgICAgICAgICAge3Byb2R1Y3QubmFtZX0KICAgICAgICAgICAgICAgIDwvaDM+CiAgICAgICAgICAgICAgICB7cHJvZHVjdC5zdGF0dXMgJiYgKAogICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAgICAgICAgICJ0ZXh0LXNtIHRyYWNraW5nLVswLjJlbV0gdXBwZXJjYXNlIHB4LTQgcHktMiByb3VuZGVkLWZ1bGwgYm9yZGVyIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTMwMCIsCiAgICAgICAgICAgICAgICAgICAgcHJvZHVjdC5pc0FjdGl2ZSAKICAgICAgICAgICAgICAgICAgICAgID8gInRleHQtd2hpdGUvODAgYm9yZGVyLXdoaXRlLzI1IGJnLXdoaXRlLzUiIAogICAgICAgICAgICAgICAgICAgICAgOiAidGV4dC13aGl0ZS81MCBib3JkZXItd2hpdGUvMTAiCiAgICAgICAgICAgICAgICAgICl9PgogICAgICAgICAgICAgICAgICAgIHtwcm9kdWN0LnN0YXR1c30KICAgICAgICAgICAgICAgICAgPC9zcGFuPgogICAgICAgICAgICAgICAgKX0KICAgICAgICAgICAgICA8Lz4KICAgICAgICAgICAgKX0KICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgIHsvKiBHbG93IGVmZmVjdCBmb3IgYWN0aXZlIGNhcmQgKi99CiAgICAgICAgICB7cHJvZHVjdC5pc0FjdGl2ZSAmJiAoCiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSBpbnNldC0wIHJvdW5kZWQteGwgYmctZ3JhZGllbnQtdG8tdCBmcm9tLXdoaXRlL1swLjAzXSB0by10cmFuc3BhcmVudCBwb2ludGVyLWV2ZW50cy1ub25lIiAvPgogICAgICAgICAgKX0KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CgogICAgICB7LyogUGFnaW5hdGlvbiBkb3RzICovfQogICAgICA8ZGl2IGNsYXNzTmFtZT0iYWJzb2x1dGUgYm90dG9tLTEyIGZsZXggZ2FwLTMiPgogICAgICAgIHtwcm9kdWN0cy5tYXAoKF8sIGluZGV4KSA9PiAoCiAgICAgICAgICA8YnV0dG9uCiAgICAgICAgICAgIGtleT17aW5kZXh9CiAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHsKICAgICAgICAgICAgICBpZiAoIWlzQW5pbWF0aW5nKSB7CiAgICAgICAgICAgICAgICBzZXRJc0FuaW1hdGluZyh0cnVlKQogICAgICAgICAgICAgICAgc2V0Q3VycmVudEluZGV4KGluZGV4KQogICAgICAgICAgICAgICAgc2V0VGltZW91dCgoKSA9PiBzZXRJc0FuaW1hdGluZyhmYWxzZSksIDUwMCkKICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH19CiAgICAgICAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAgICAgInctMiBoLTIgcm91bmRlZC1mdWxsIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTMwMCIsCiAgICAgICAgICAgICAgaW5kZXggPT09IGN1cnJlbnRJbmRleCAKICAgICAgICAgICAgICAgID8gImJnLXdoaXRlLzgwIHctNiIgCiAgICAgICAgICAgICAgICA6ICJiZy13aGl0ZS8yMCBob3ZlcjpiZy13aGl0ZS80MCIKICAgICAgICAgICAgKX0KICAgICAgICAgICAgYXJpYS1sYWJlbD17YEdvIHRvIHByb2R1Y3QgJHtpbmRleCArIDF9YH0KICAgICAgICAgIC8+CiAgICAgICAgKSl9CiAgICAgIDwvZGl2PgogICAgPC9kaXY+CiAgKQp9Cg=="}
+"use client"
+
+import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
+import { ChevronLeft, ChevronRight, X } from "lucide-react"
+
+interface Product {
+  name?: string
+  status?: string
+  isActive?: boolean
+  isHidden?: boolean
+  iconSrc?: string
+}
+
+interface ProductCarouselProps {
+  products: Product[]
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function ProductCarousel({ products, isOpen, onClose }: ProductCarouselProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(0)
+      setTimeout(() => setIsVisible(true), 50)
+    } else {
+      setIsVisible(false)
+    }
+  }, [isOpen])
+
+  const goToPrevious = () => {
+    if (isAnimating) return
+    setIsAnimating(true)
+    setCurrentIndex((prev) => (prev === 0 ? products.length - 1 : prev - 1))
+    setTimeout(() => setIsAnimating(false), 500)
+  }
+
+  const goToNext = () => {
+    if (isAnimating) return
+    setIsAnimating(true)
+    setCurrentIndex((prev) => (prev === products.length - 1 ? 0 : prev + 1))
+    setTimeout(() => setIsAnimating(false), 500)
+  }
+
+  const handleClose = () => {
+    setIsVisible(false)
+    setTimeout(onClose, 300)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return
+      if (e.key === "ArrowLeft") goToPrevious()
+      if (e.key === "ArrowRight") goToNext()
+      if (e.key === "Escape") handleClose()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isOpen, isAnimating])
+
+  if (!isOpen) return null
+
+  const product = products[currentIndex]
+
+  return (
+    <div 
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center transition-all duration-300",
+        isVisible ? "opacity-100" : "opacity-0"
+      )}
+    >
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-md"
+        onClick={handleClose}
+      />
+
+      {/* Close button */}
+      <button
+        onClick={handleClose}
+        className="absolute top-8 right-8 z-10 p-2 text-white/40 hover:text-white/80 transition-colors duration-300"
+        aria-label="Close gallery"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      {/* Navigation arrows */}
+      <button
+        onClick={goToPrevious}
+        className="absolute left-8 z-10 p-3 text-white/30 hover:text-white/70 transition-all duration-300 hover:scale-110"
+        aria-label="Previous product"
+      >
+        <ChevronLeft className="w-10 h-10" />
+      </button>
+
+      <button
+        onClick={goToNext}
+        className="absolute right-8 z-10 p-3 text-white/30 hover:text-white/70 transition-all duration-300 hover:scale-110"
+        aria-label="Next product"
+      >
+        <ChevronRight className="w-10 h-10" />
+      </button>
+
+      {/* Product card - enlarged */}
+      <div 
+        className={cn(
+          "relative z-10 transition-all duration-500 ease-out",
+          isVisible ? "scale-100 opacity-100" : "scale-90 opacity-0"
+        )}
+      >
+        <div
+          className={cn(
+            "relative group h-[28rem] w-[24rem] rounded-xl border bg-white/[0.03] backdrop-blur-sm transition-all duration-500",
+            product.isActive 
+              ? "border-white/25 shadow-[0_0_80px_rgba(255,255,255,0.08)]" 
+              : "border-white/10",
+            product.isHidden && "select-none"
+          )}
+        >
+          {/* Subtle corner accents */}
+          <div className={cn(
+            "absolute top-0 left-0 w-12 h-12 border-l-2 border-t-2 rounded-tl-xl transition-all duration-500",
+            product.isActive ? "border-white/40" : "border-white/15",
+            product.isHidden && "border-white/5"
+          )} />
+          <div className={cn(
+            "absolute bottom-0 right-0 w-12 h-12 border-r-2 border-b-2 rounded-br-xl transition-all duration-500",
+            product.isActive ? "border-white/40" : "border-white/15",
+            product.isHidden && "border-white/5"
+          )} />
+
+          {/* Content */}
+          <div className={cn(
+            "flex flex-col items-center justify-center h-full px-8 transition-all duration-500",
+            product.isHidden && "blur-sm"
+          )}>
+            {product.isHidden ? (
+              <>
+                <div className="h-24 w-24 bg-white/10 rounded-xl mb-6" />
+                <div className="h-6 w-32 bg-white/10 rounded mb-4" />
+                <div className="h-4 w-20 bg-white/5 rounded" />
+              </>
+            ) : (
+              <>
+                {product.iconSrc && (
+                  <div className="relative mb-8">
+                    <img
+                      src={product.iconSrc || "/placeholder.svg"}
+                      alt={`${product.name} icon`}
+                      className="w-32 h-32 object-contain"
+                    />
+                  </div>
+                )}
+                <h3 className="text-3xl font-light tracking-[0.3em] text-white mb-6">
+                  {product.name}
+                </h3>
+                {product.status && (
+                  <span className={cn(
+                    "text-sm tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-300",
+                    product.isActive 
+                      ? "text-white/80 border-white/25 bg-white/5" 
+                      : "text-white/50 border-white/10"
+                  )}>
+                    {product.status}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Glow effect for active card */}
+          {product.isActive && (
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
+          )}
+        </div>
+      </div>
+
+      {/* Pagination dots */}
+      <div className="absolute bottom-12 flex gap-3">
+        {products.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => {
+              if (!isAnimating) {
+                setIsAnimating(true)
+                setCurrentIndex(index)
+                setTimeout(() => setIsAnimating(false), 500)
+              }
+            }}
+            className={cn(
+              "w-2 h-2 rounded-full transition-all duration-300",
+              index === currentIndex 
+                ? "bg-white/80 w-6" 
+                : "bg-white/20 hover:bg-white/40"
+            )}
+            aria-label={`Go to product ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
