@@ -1,1 +1,36 @@
-{"data":"aW1wb3J0IHsgcmVkaXJlY3QgfSBmcm9tICJuZXh0L25hdmlnYXRpb24iCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gIkAvbGliL3N1cGFiYXNlL3NlcnZlciIKaW1wb3J0IEFjY291bnREYXNoYm9hcmQgZnJvbSAiLi9hY2NvdW50LWRhc2hib2FyZCIKCmV4cG9ydCBkZWZhdWx0IGFzeW5jIGZ1bmN0aW9uIEFjY291bnRQYWdlKCkgewogIGNvbnN0IHN1cGFiYXNlID0gYXdhaXQgY3JlYXRlQ2xpZW50KCkKICAKICBjb25zdCB7IGRhdGE6IHsgdXNlciB9IH0gPSBhd2FpdCBzdXBhYmFzZS5hdXRoLmdldFVzZXIoKQogIAogIGlmICghdXNlcikgewogICAgcmVkaXJlY3QoIi9hdXRoL2xvZ2luIikKICB9CgogIC8vIEdldCBzdWJzY3JpcHRpb24gZGF0YQogIGNvbnN0IHsgZGF0YTogc3Vic2NyaXB0aW9uIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20oInN1YnNjcmlwdGlvbnMiKQogICAgLnNlbGVjdCgiKiIpCiAgICAuZXEoInVzZXJfaWQiLCB1c2VyLmlkKQogICAgLnNpbmdsZSgpCgogIC8vIEdldCBkZXZpY2UgYWN0aXZhdGlvbnMKICBjb25zdCB7IGRhdGE6IGFjdGl2YXRpb25zIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20oImRldmljZV9hY3RpdmF0aW9ucyIpCiAgICAuc2VsZWN0KCIqIikKICAgIC5lcSgidXNlcl9pZCIsIHVzZXIuaWQpCiAgICAuZXEoImlzX2FjdGl2ZSIsIHRydWUpCiAgICAub3JkZXIoImFjdGl2YXRlZF9hdCIsIHsgYXNjZW5kaW5nOiBmYWxzZSB9KQoKICByZXR1cm4gKAogICAgPEFjY291bnREYXNoYm9hcmQgCiAgICAgIHVzZXI9e3VzZXJ9IAogICAgICBzdWJzY3JpcHRpb249e3N1YnNjcmlwdGlvbn0gCiAgICAgIGFjdGl2YXRpb25zPXthY3RpdmF0aW9ucyB8fCBbXX0gCiAgICAvPgogICkKfQo="}
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import AccountDashboard from "./account-dashboard"
+
+export default async function AccountPage() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect("/auth/login")
+  }
+
+  // Get subscription data
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", user.id)
+    .single()
+
+  // Get device activations
+  const { data: activations } = await supabase
+    .from("device_activations")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .order("activated_at", { ascending: false })
+
+  return (
+    <AccountDashboard 
+      user={user} 
+      subscription={subscription} 
+      activations={activations || []} 
+    />
+  )
+}
