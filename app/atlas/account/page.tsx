@@ -8,33 +8,45 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const ADMIN_EMAIL = "titantinstaller@gmail.com"
+
 export default async function AccountPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/auth/login")
 
-  // Subscription details (populated by Stripe webhook)
-  const { data: subscription } = await supabaseAdmin
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .single()
+  const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
-  // Profile (plan + status, used by ATLAS app)
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("plan, subscription_status")
-    .eq("id", user.id)
-    .single()
-
-  // Devices registered by ATLAS app
-  const { data: devices } = await supabaseAdmin
-    .from("devices")
-    .select("id, device_name, hardware_uuid, last_seen, created_at")
-    .eq("user_id", user.id)
-    .order("last_seen", { ascending: false })
+  const [
+    { data: subscription },
+    { data: profile },
+    { data: devices },
+    { data: logs },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single(),
+    supabaseAdmin
+      .from("profiles")
+      .select("plan, subscription_status")
+      .eq("id", user.id)
+      .single(),
+    supabaseAdmin
+      .from("devices")
+      .select("id, device_name, hardware_uuid, last_seen, created_at")
+      .eq("user_id", user.id)
+      .order("last_seen", { ascending: false }),
+    supabaseAdmin
+      .from("atlas_logs")
+      .select("id, log_type, app_name, filename, content, device_name, hardware_uuid, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ])
 
   return (
     <AccountDashboard
@@ -42,6 +54,8 @@ export default async function AccountPage() {
       subscription={subscription ?? null}
       profile={profile ?? null}
       devices={devices ?? []}
+      logs={logs ?? []}
+      isAdmin={isAdmin}
     />
   )
 }
