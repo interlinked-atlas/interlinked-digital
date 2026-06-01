@@ -1,341 +1,400 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Check, Download, X, Menu } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
 
-export default function AtlasPage() {
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
-    setIsMobileMenuOpen(false)
+const PLANS = [
+  {
+    id: 'standard',
+    name: 'Standard',
+    price: '$14.99',
+    period: '/month',
+    color: '#5B8DEF',
+    recommended: false,
+    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
+    excluded: ['Bulk installation', 'Uninstall & Rollback', 'TITAN CORE™', 'Smart Storage'],
+    stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$29.99',
+    period: '/month',
+    color: '#3ECFB2',
+    recommended: true,
+    features: [
+      'Up to 3 devices',
+      'Unlimited installs',
+      'Bulk installation',
+      'Uninstall & Rollback',
+      'TITAN CORE™',
+      'Smart Storage',
+      'Full install history',
+    ],
+    excluded: [],
+    stripeUrl: 'https://buy.stripe.com/aFafZg7TUc4p0Jx7HSdjO01',
+  },
+]
+
+type Plan = typeof PLANS[0]
+type Step = 'plan' | 'account'
+
+export default function AtlasSignupPage() {
+  const [step, setStep] = useState<Step>('plan')
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  function handleSelectPlan(plan: Plan) {
+    setSelectedPlan(plan)
+    setError('')
+    setStep('account')
+  }
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPlan) return
+    setError('')
+
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+
+    setLoading(true)
+    const { error: signUpError } = await supabase.auth.signUp({ email, password })
+    setLoading(false)
+
+    if (signUpError) { setError(signUpError.message); return }
+
+    window.location.href = selectedPlan.stripeUrl
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Image 
-                src="/images/atlas-icon.png" 
-                alt="ATLAS" 
-                width={32} 
-                height={32}
-                className="w-8 h-8"
-              />
-              <span className="text-xl font-semibold tracking-wide">ATLAS</span>
-            </div>
-            
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
-              <button onClick={() => scrollToSection('pricing')} className="text-sm text-white/60 hover:text-white transition-colors">Pricing</button>
-              <button onClick={() => scrollToSection('download')} className="text-sm text-white/60 hover:text-white transition-colors">Download</button>
-            </div>
+    <>
+      <style>{`
+        @font-face {
+          font-family: 'Bezmiar';
+          src: url('/fonts/Bezmiar-Regular.otf') format('opentype');
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #07080F; }
+        input { transition: border-color 0.15s; }
+        input::placeholder { color: #2E3355; }
+        input:focus { border-color: #4A5280 !important; outline: none; }
+        button { transition: opacity 0.15s, transform 0.1s; }
+        button:hover:not(:disabled) { opacity: 0.88; }
+        button:active:not(:disabled) { transform: scale(0.985); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        .plan-card { transition: border-color 0.15s, box-shadow 0.15s; }
+        .plan-card:hover { border-color: var(--plan-color) !important; box-shadow: 0 0 0 1px var(--plan-color)22; }
+      `}</style>
 
-            <div className="hidden md:block">
-              <button 
-                onClick={() => scrollToSection('pricing')}
-                className="px-4 py-2 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Get ATLAS
-              </button>
-            </div>
+      <main style={{
+        minHeight: '100vh',
+        background: '#07080F',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 20px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }}>
+        <div style={{ width: '100%', maxWidth: step === 'plan' ? '580px' : '440px', transition: 'max-width 0.2s' }}>
 
-            {/* Mobile Menu Button */}
-            <button 
-              className="md:hidden p-2"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#0d0d1a] border-t border-white/5">
-            <div className="px-4 py-4 space-y-4">
-              <button onClick={() => scrollToSection('pricing')} className="block w-full text-left text-sm text-white/60 hover:text-white transition-colors">Pricing</button>
-              <button onClick={() => scrollToSection('download')} className="block w-full text-left text-sm text-white/60 hover:text-white transition-colors">Download</button>
-              <button 
-                onClick={() => scrollToSection('pricing')}
-                className="w-full px-4 py-2 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-lg text-sm font-medium"
-              >
-                Get ATLAS
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#7c6fee]/10 via-transparent to-transparent" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-[#7c6fee]/20 to-[#4ecdc4]/20 rounded-full blur-3xl opacity-30" />
-        
-        <div className="relative max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <Image 
-                src="/images/atlas-icon.png" 
-                alt="ATLAS Logo" 
-                width={120} 
-                height={120}
-                className="w-24 h-24 md:w-32 md:h-32"
-              />
-            </div>
-
-            {/* Headline */}
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] bg-clip-text text-transparent">
-              ATLAS
-            </h1>
-            
-            {/* Placeholder for future content */}
-            <div className="mb-10">
-              {/* Content will be added here later */}
-            </div>
+          {/* ATLAS header */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h1 style={{
+              color: '#E8ECFF',
+              fontSize: '48px',
+              fontWeight: 'normal',
+              letterSpacing: '12px',
+              fontFamily: 'Bezmiar, -apple-system, sans-serif',
+              lineHeight: 1,
+              marginBottom: '8px',
+              textIndent: '12px',
+            }}>ATLAS</h1>
+            <p style={{ color: '#353860', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase' }}>
+              by InterLinked
+            </p>
           </div>
 
-          {/* Placeholder for future image */}
-          <div className="relative max-w-4xl mx-auto">
-            {/* Image will be added here later */}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-[#0d0d1a]">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">ATLAS Subscription Plans</h2>
-            <p className="text-white/50 max-w-2xl mx-auto">Choose the plan that works for you</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Basic Plan */}
-            <div className="p-8 bg-[#1a1a2e] rounded-2xl border border-white/10">
-              <h3 className="text-2xl font-semibold mb-2">Basic</h3>
-              <p className="text-white/50 text-sm mb-4">Perfect for casual users</p>
-              <div className="mb-6">
-                <span className="text-5xl font-bold">$14.99</span>
-                <span className="text-white/50">/month</span>
+          {/* ── Step 1: Plan selection ── */}
+          {step === 'plan' && (
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+                <h2 style={{ color: '#C0C8E8', fontSize: '15px', fontWeight: '500', marginBottom: '5px' }}>
+                  Choose your plan
+                </h2>
+                <p style={{ color: '#353860', fontSize: '12px' }}>
+                  Create your account right after — takes 30 seconds
+                </p>
               </div>
-              
-              <div className="mb-6">
-                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Included</p>
-                <ul className="space-y-3">
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Standard installations
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Core ATLAS workflow tools
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Single computer activation
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Up to 3 installs daily
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="mb-8">
-                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Limitations</p>
-                <ul className="space-y-2 text-sm text-white/40">
-                  <li className="flex items-center gap-2">
-                    <X className="w-4 h-4 flex-shrink-0" />
-                    Bulk queue installs disabled
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <X className="w-4 h-4 flex-shrink-0" />
-                    Uninstall Manager unavailable
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <X className="w-4 h-4 flex-shrink-0" />
-                    Recovery System unavailable
-                  </li>
-                </ul>
-              </div>
-              
-              <Link 
-                href="/atlas/checkout?plan=atlas-basic"
-                className="block w-full py-4 text-center border border-white/20 rounded-xl font-medium hover:bg-white/5 transition-colors"
-              >
-                Get Basic
-              </Link>
-            </div>
 
-            {/* Pro Plan */}
-            <div className="relative p-8 bg-gradient-to-b from-[#1a1a2e] to-[#0d0d1a] rounded-2xl border border-[#7c6fee]/30 shadow-lg shadow-[#7c6fee]/10">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-full text-xs font-medium">Most Popular</span>
-              <h3 className="text-2xl font-semibold mb-2">Pro</h3>
-              <p className="text-white/50 text-sm mb-4">For professionals and studios</p>
-              <div className="mb-6">
-                <span className="text-5xl font-bold">$29.99</span>
-                <span className="text-white/50">/month</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                {PLANS.map(plan => (
+                  <div
+                    key={plan.id}
+                    className="plan-card"
+                    style={{
+                      '--plan-color': plan.color,
+                      background: '#0C0E1C',
+                      borderRadius: '12px',
+                      border: `1px solid ${plan.recommended ? plan.color + '55' : '#1E2240'}`,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    } as React.CSSProperties}
+                  >
+                    {/* Recommended banner */}
+                    {plan.recommended && (
+                      <div style={{
+                        background: `linear-gradient(90deg, ${plan.color}25, ${plan.color}10)`,
+                        borderBottom: `1px solid ${plan.color}30`,
+                        padding: '5px 0',
+                        textAlign: 'center',
+                        color: plan.color,
+                        fontSize: '8px',
+                        fontWeight: '800',
+                        letterSpacing: '2px',
+                      }}>
+                        MOST POPULAR
+                      </div>
+                    )}
+
+                    {/* Price header */}
+                    <div style={{
+                      padding: '16px',
+                      background: plan.color + '08',
+                      borderBottom: '1px solid #1E2240',
+                    }}>
+                      <div style={{
+                        color: plan.color,
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        letterSpacing: '1.8px',
+                        marginBottom: '8px',
+                      }}>
+                        {plan.name.toUpperCase()}
+                      </div>
+                      <div>
+                        <span style={{ color: '#E8ECFF', fontSize: '28px', fontWeight: '700', lineHeight: 1 }}>
+                          {plan.price}
+                        </span>
+                        <span style={{ color: '#353860', fontSize: '11px' }}>{plan.period}</span>
+                      </div>
+                    </div>
+
+                    {/* Features */}
+                    <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {plan.features.map(f => (
+                        <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{ color: plan.color, fontSize: '9px', fontWeight: '800', marginTop: '3px', flexShrink: 0 }}>✓</span>
+                          <span style={{ color: '#A8B4D0', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                        </div>
+                      ))}
+                      {plan.excluded.map(f => (
+                        <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span style={{ color: '#252845', fontSize: '9px', fontWeight: '800', marginTop: '3px', flexShrink: 0 }}>✕</span>
+                          <span style={{ color: '#252845', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div style={{ padding: '0 14px 14px' }}>
+                      <button
+                        onClick={() => handleSelectPlan(plan)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          border: plan.recommended ? 'none' : `1px solid ${plan.color}45`,
+                          background: plan.recommended
+                            ? `linear-gradient(135deg, ${plan.color}, ${plan.color}BB)`
+                            : plan.color + '14',
+                          color: plan.recommended ? '#07080F' : plan.color,
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          letterSpacing: '0.3px',
+                        }}
+                      >
+                        Get Started — {plan.name}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              
-              <div className="mb-8">
-                <p className="text-xs uppercase tracking-wider text-white/40 mb-3">Everything in Basic, plus</p>
-                <ul className="space-y-3">
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Unlimited installations
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Bulk queue installation support
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Smart Uninstall Manager
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Recovery System
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Up to 3 computer activations
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Faster workflow management
-                  </li>
-                  <li className="flex items-center gap-3 text-white/70">
-                    <Check className="w-5 h-5 text-[#4ecdc4] flex-shrink-0" />
-                    Future updates included
-                  </li>
-                </ul>
+
+              <div style={{ marginTop: '22px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <p style={{ color: '#252845', fontSize: '11px' }}>
+                  Secure payment via Stripe · Cancel anytime
+                </p>
+                <p style={{ color: '#252845', fontSize: '11px' }}>
+                  Already subscribed?{' '}
+                  <a href="/auth/login" style={{ color: '#3C4A70', textDecoration: 'none' }}>
+                    Sign in →
+                  </a>
+                </p>
               </div>
-              
-              <Link 
-                href="/atlas/checkout?plan=atlas-pro"
-                className="block w-full py-4 text-center bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
-              >
-                Get Pro
-              </Link>
             </div>
-          </div>
-          
-          {/* Enterprise CTA */}
-          <div className="mt-12 text-center">
-            <p className="text-white/50 mb-4">Need a custom solution for your team or studio?</p>
-            <a 
-              href="mailto:interlinked.digital@gmail.com"
-              className="inline-flex items-center gap-2 text-[#4ecdc4] hover:text-[#7c6fee] transition-colors"
-            >
-              Contact us for Enterprise pricing
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </a>
-          </div>
+          )}
+
+          {/* ── Step 2: Create account ── */}
+          {step === 'account' && selectedPlan && (
+            <div>
+              {/* Selected plan summary */}
+              <div style={{
+                background: selectedPlan.color + '0E',
+                border: `1px solid ${selectedPlan.color}35`,
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div>
+                  <div style={{ color: selectedPlan.color, fontSize: '9px', fontWeight: '800', letterSpacing: '1.5px', marginBottom: '3px' }}>
+                    {selectedPlan.name.toUpperCase()} PLAN SELECTED
+                  </div>
+                  <div>
+                    <span style={{ color: '#E8ECFF', fontSize: '14px', fontWeight: '600' }}>
+                      {selectedPlan.price}
+                    </span>
+                    <span style={{ color: '#353860', fontSize: '11px' }}>{selectedPlan.period}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setStep('plan'); setError('') }}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #1E2240',
+                    borderRadius: '6px',
+                    padding: '5px 11px',
+                    color: '#4A5280',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+
+              {/* Signup form */}
+              <div style={{
+                background: '#0C0E1C',
+                borderRadius: '12px',
+                border: '1px solid #1E2240',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  padding: '14px 18px',
+                  borderBottom: '1px solid #1E2240',
+                  background: '#0F1128',
+                }}>
+                  <h2 style={{ color: '#C8D0E8', fontSize: '13px', fontWeight: '600' }}>
+                    Create your account
+                  </h2>
+                  <p style={{ color: '#353860', fontSize: '11px', marginTop: '3px' }}>
+                    You&apos;ll be taken to secure checkout after
+                  </p>
+                </div>
+
+                <form onSubmit={handleSignup} style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {error && (
+                    <div style={{
+                      background: 'rgba(224,85,85,0.07)',
+                      border: '1px solid rgba(224,85,85,0.22)',
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                      color: '#E05555',
+                      fontSize: '12px',
+                    }}>{error}</div>
+                  )}
+
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password (min 8 characters)"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                    style={inputStyle}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '11px',
+                      border: 'none',
+                      borderRadius: '9px',
+                      background: `linear-gradient(135deg, ${selectedPlan.color}, ${selectedPlan.color}BB)`,
+                      color: selectedPlan.recommended ? '#07080F' : '#fff',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      marginTop: '2px',
+                    }}
+                  >
+                    {loading ? 'Creating account…' : 'Continue to Checkout →'}
+                  </button>
+
+                  <p style={{ color: '#252845', fontSize: '11px', textAlign: 'center' }}>
+                    Already have an account?{' '}
+                    <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>
+                      Sign in
+                    </a>
+                  </p>
+                </form>
+              </div>
+            </div>
+          )}
+
+          <p style={{ color: '#181A2A', fontSize: '10px', textAlign: 'center', marginTop: '28px' }}>
+            InterLinked© · All rights reserved
+          </p>
         </div>
-      </section>
-
-      {/* Download Section */}
-      <section id="download" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Download ATLAS</h2>
-            <p className="text-white/50 max-w-2xl mx-auto">Get started in seconds</p>
-          </div>
-
-          <div className="max-w-md mx-auto">
-            <div className="p-8 bg-[#1a1a2e] rounded-2xl border border-white/10 text-center">
-              {/* macOS Icon */}
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-6">
-                <svg viewBox="0 0 24 24" className="w-10 h-10 text-white" fill="currentColor">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                </svg>
-              </div>
-              
-              <h3 className="text-xl font-semibold mb-2">ATLAS for macOS</h3>
-              <p className="text-white/50 text-sm mb-4">Requires macOS 11.0 or later</p>
-              
-              <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6">v1.0.0</span>
-              
-              <a 
-                href="#"
-                className="block w-full py-3 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity mb-4"
-              >
-                <Download className="w-5 h-5 inline-block mr-2" />
-                Download for macOS
-              </a>
-              
-              <p className="text-white/40 text-xs">
-                Already have a license? Download and enter your key to activate.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-2">
-              <Image 
-                src="/images/atlas-icon.png" 
-                alt="ATLAS" 
-                width={24} 
-                height={24}
-                className="w-6 h-6"
-              />
-              <span className="text-lg font-semibold">ATLAS</span>
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/50">
-              <button onClick={() => scrollToSection('hero')} className="hover:text-white transition-colors">Home</button>
-              <button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Pricing</button>
-              <button onClick={() => scrollToSection('download')} className="hover:text-white transition-colors">Download</button>
-              <a href="mailto:atlas.bytitan@gmail.com" className="hover:text-white transition-colors">Contact</a>
-            </div>
-            
-            <div className="flex items-center gap-6 text-sm text-white/50">
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            </div>
-          </div>
-          
-          <div className="mt-8 pt-8 border-t border-white/5 text-center text-sm text-white/40">
-            <p>&copy; 2025 InterLinked. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Video Modal */}
-      {isVideoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-4xl bg-[#1a1a2e] rounded-2xl overflow-hidden">
-            <button 
-              onClick={() => setIsVideoModalOpen(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="aspect-video bg-[#0a0a0f] flex items-center justify-center">
-              <p className="text-white/50">Demo video placeholder</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </main>
+    </>
   )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  background: '#07080F',
+  border: '1px solid #1E2240',
+  borderRadius: '8px',
+  color: '#D0D8F0',
+  fontSize: '13px',
+  outline: 'none',
+  boxSizing: 'border-box',
 }
