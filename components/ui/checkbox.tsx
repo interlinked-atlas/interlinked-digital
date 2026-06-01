@@ -1,1 +1,32 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgQ2hlY2tib3hQcmltaXRpdmUgZnJvbSAnQHJhZGl4LXVpL3JlYWN0LWNoZWNrYm94JwppbXBvcnQgeyBDaGVja0ljb24gfSBmcm9tICdsdWNpZGUtcmVhY3QnCgppbXBvcnQgeyBjbiB9IGZyb20gJ0AvbGliL3V0aWxzJwoKZnVuY3Rpb24gQ2hlY2tib3goewogIGNsYXNzTmFtZSwKICAuLi5wcm9wcwp9OiBSZWFjdC5Db21wb25lbnRQcm9wczx0eXBlb2YgQ2hlY2tib3hQcmltaXRpdmUuUm9vdD4pIHsKICByZXR1cm4gKAogICAgPENoZWNrYm94UHJpbWl0aXZlLlJvb3QKICAgICAgZGF0YS1zbG90PSJjaGVja2JveCIKICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAncGVlciBib3JkZXItaW5wdXQgZGFyazpiZy1pbnB1dC8zMCBkYXRhLVtzdGF0ZT1jaGVja2VkXTpiZy1wcmltYXJ5IGRhdGEtW3N0YXRlPWNoZWNrZWRdOnRleHQtcHJpbWFyeS1mb3JlZ3JvdW5kIGRhcms6ZGF0YS1bc3RhdGU9Y2hlY2tlZF06YmctcHJpbWFyeSBkYXRhLVtzdGF0ZT1jaGVja2VkXTpib3JkZXItcHJpbWFyeSBmb2N1cy12aXNpYmxlOmJvcmRlci1yaW5nIGZvY3VzLXZpc2libGU6cmluZy1yaW5nLzUwIGFyaWEtaW52YWxpZDpyaW5nLWRlc3RydWN0aXZlLzIwIGRhcms6YXJpYS1pbnZhbGlkOnJpbmctZGVzdHJ1Y3RpdmUvNDAgYXJpYS1pbnZhbGlkOmJvcmRlci1kZXN0cnVjdGl2ZSBzaXplLTQgc2hyaW5rLTAgcm91bmRlZC1bNHB4XSBib3JkZXIgc2hhZG93LXhzIHRyYW5zaXRpb24tc2hhZG93IG91dGxpbmUtbm9uZSBmb2N1cy12aXNpYmxlOnJpbmctWzNweF0gZGlzYWJsZWQ6Y3Vyc29yLW5vdC1hbGxvd2VkIGRpc2FibGVkOm9wYWNpdHktNTAnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgPgogICAgICA8Q2hlY2tib3hQcmltaXRpdmUuSW5kaWNhdG9yCiAgICAgICAgZGF0YS1zbG90PSJjaGVja2JveC1pbmRpY2F0b3IiCiAgICAgICAgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciB0ZXh0LWN1cnJlbnQgdHJhbnNpdGlvbi1ub25lIgogICAgICA+CiAgICAgICAgPENoZWNrSWNvbiBjbGFzc05hbWU9InNpemUtMy41IiAvPgogICAgICA8L0NoZWNrYm94UHJpbWl0aXZlLkluZGljYXRvcj4KICAgIDwvQ2hlY2tib3hQcmltaXRpdmUuUm9vdD4KICApCn0KCmV4cG9ydCB7IENoZWNrYm94IH0K"}
+'use client'
+
+import * as React from 'react'
+import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
+import { CheckIcon } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+
+function Checkbox({
+  className,
+  ...props
+}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+  return (
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
+      className={cn(
+        'peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+        className,
+      )}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="flex items-center justify-center text-current transition-none"
+      >
+        <CheckIcon className="size-3.5" />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
+}
+
+export { Checkbox }
