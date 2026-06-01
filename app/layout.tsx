@@ -1,1 +1,33 @@
-{"data":"aW1wb3J0IFJlYWN0IGZyb20gInJlYWN0IgppbXBvcnQgdHlwZSB7IE1ldGFkYXRhIH0gZnJvbSAnbmV4dCcKaW1wb3J0IHsgR2Vpc3QsIEdlaXN0X01vbm8gfSBmcm9tICduZXh0L2ZvbnQvZ29vZ2xlJwppbXBvcnQgeyBBbmFseXRpY3MgfSBmcm9tICdAdmVyY2VsL2FuYWx5dGljcy9uZXh0JwppbXBvcnQgJy4vZ2xvYmFscy5jc3MnCgpjb25zdCBfZ2Vpc3QgPSBHZWlzdCh7IHN1YnNldHM6IFsibGF0aW4iXSB9KTsKY29uc3QgX2dlaXN0TW9ubyA9IEdlaXN0X01vbm8oeyBzdWJzZXRzOiBbImxhdGluIl0gfSk7CgpleHBvcnQgY29uc3QgbWV0YWRhdGE6IE1ldGFkYXRhID0gewogIHRpdGxlOiAnSU5URVJMSU5LRUQgfCBjb25uZWN0aW9uLCBieSBkZXNpZ24uJywKICBkZXNjcmlwdGlvbjogJ0EgbmV4dC1nZW5lcmF0aW9uIHRlY2hub2xvZ3kgY29ycG9yYXRpb24gYnVpbGRpbmcgdGhlIGZ1dHVyZSBvZiBBSSBhbmQgc29mdHdhcmUgc3lzdGVtcy4nLAogIGdlbmVyYXRvcjogJ3YwLmFwcCcsCiAgaWNvbnM6IHsKICAgIGljb246ICcvaW1hZ2VzL2ludGVybGlua2VkLWljb24ucG5nJywKICAgIGFwcGxlOiAnL2ltYWdlcy9pbnRlcmxpbmtlZC1pY29uLnBuZycsCiAgfSwKfQoKZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gUm9vdExheW91dCh7CiAgY2hpbGRyZW4sCn06IFJlYWRvbmx5PHsKICBjaGlsZHJlbjogUmVhY3QuUmVhY3ROb2RlCn0+KSB7CiAgcmV0dXJuICgKICAgIDxodG1sIGxhbmc9ImVuIiBjbGFzc05hbWU9ImRhcmsiPgogICAgICA8Ym9keSBjbGFzc05hbWU9e2Bmb250LXNhbnMgYW50aWFsaWFzZWRgfT4KICAgICAgICB7Y2hpbGRyZW59CiAgICAgICAgPEFuYWx5dGljcyAvPgogICAgICA8L2JvZHk+CiAgICA8L2h0bWw+CiAgKQp9Cg=="}
+import React from "react"
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
+
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: 'INTERLINKED | connection, by design.',
+  description: 'A next-generation technology corporation building the future of AI and software systems.',
+  generator: 'v0.app',
+  icons: {
+    icon: '/images/interlinked-icon.png',
+    apple: '/images/interlinked-icon.png',
+  },
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className="dark">
+      <body className={`font-sans antialiased`}>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  )
+}
