@@ -1,1 +1,31 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgUHJvZ3Jlc3NQcmltaXRpdmUgZnJvbSAnQHJhZGl4LXVpL3JlYWN0LXByb2dyZXNzJwoKaW1wb3J0IHsgY24gfSBmcm9tICdAL2xpYi91dGlscycKCmZ1bmN0aW9uIFByb2dyZXNzKHsKICBjbGFzc05hbWUsCiAgdmFsdWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFByb2dyZXNzUHJpbWl0aXZlLlJvb3Q+KSB7CiAgcmV0dXJuICgKICAgIDxQcm9ncmVzc1ByaW1pdGl2ZS5Sb290CiAgICAgIGRhdGEtc2xvdD0icHJvZ3Jlc3MiCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2JnLXByaW1hcnkvMjAgcmVsYXRpdmUgaC0yIHctZnVsbCBvdmVyZmxvdy1oaWRkZW4gcm91bmRlZC1mdWxsJywKICAgICAgICBjbGFzc05hbWUsCiAgICAgICl9CiAgICAgIHsuLi5wcm9wc30KICAgID4KICAgICAgPFByb2dyZXNzUHJpbWl0aXZlLkluZGljYXRvcgogICAgICAgIGRhdGEtc2xvdD0icHJvZ3Jlc3MtaW5kaWNhdG9yIgogICAgICAgIGNsYXNzTmFtZT0iYmctcHJpbWFyeSBoLWZ1bGwgdy1mdWxsIGZsZXgtMSB0cmFuc2l0aW9uLWFsbCIKICAgICAgICBzdHlsZT17eyB0cmFuc2Zvcm06IGB0cmFuc2xhdGVYKC0kezEwMCAtICh2YWx1ZSB8fCAwKX0lKWAgfX0KICAgICAgLz4KICAgIDwvUHJvZ3Jlc3NQcmltaXRpdmUuUm9vdD4KICApCn0KCmV4cG9ydCB7IFByb2dyZXNzIH0K"}
+'use client'
+
+import * as React from 'react'
+import * as ProgressPrimitive from '@radix-ui/react-progress'
+
+import { cn } from '@/lib/utils'
+
+function Progress({
+  className,
+  value,
+  ...props
+}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+  return (
+    <ProgressPrimitive.Root
+      data-slot="progress"
+      className={cn(
+        'bg-primary/20 relative h-2 w-full overflow-hidden rounded-full',
+        className,
+      )}
+      {...props}
+    >
+      <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
+        className="bg-primary h-full w-full flex-1 transition-all"
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  )
+}
+
+export { Progress }
