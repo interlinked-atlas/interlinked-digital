@@ -1,1 +1,102 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VTdGF0ZSB9IGZyb20gInJlYWN0IgppbXBvcnQgeyBQcm9kdWN0Q2FyZCB9IGZyb20gIkAvY29tcG9uZW50cy9wcm9kdWN0LWNhcmQiCmltcG9ydCB7IExpcXVpZE1ldGFsVGV4dCB9IGZyb20gIkAvY29tcG9uZW50cy9saXF1aWQtbWV0YWwtdGV4dCIKaW1wb3J0IHsgU3BsYXNoU2NyZWVuIH0gZnJvbSAiQC9jb21wb25lbnRzL3NwbGFzaC1zY3JlZW4iCmltcG9ydCB7IFByb2R1Y3RDYXJvdXNlbCB9IGZyb20gIkAvY29tcG9uZW50cy9wcm9kdWN0LWNhcm91c2VsIgoKY29uc3QgcHJvZHVjdHMgPSBbCiAgewogICAgbmFtZTogIkFUTEFTwq4iLAogICAgc3RhdHVzOiAiTm93IEF2YWlsYWJsZSIsCiAgICBpc0FjdGl2ZTogdHJ1ZSwKICAgIGljb25TcmM6ICIvaW1hZ2VzL2F0bGFzLWljb24ucG5nIgogIH0KXQoKZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gSG9tZSgpIHsKICBjb25zdCBbc2hvd1NwbGFzaCwgc2V0U2hvd1NwbGFzaF0gPSB1c2VTdGF0ZSh0cnVlKQogIGNvbnN0IFtzaG93Q29udGVudCwgc2V0U2hvd0NvbnRlbnRdID0gdXNlU3RhdGUoZmFsc2UpCiAgY29uc3QgW2Nhcm91c2VsT3Blbiwgc2V0Q2Fyb3VzZWxPcGVuXSA9IHVzZVN0YXRlKGZhbHNlKQoKICBjb25zdCBoYW5kbGVTcGxhc2hDb21wbGV0ZSA9ICgpID0+IHsKICAgIHNldFNob3dTcGxhc2goZmFsc2UpCiAgICBzZXRTaG93Q29udGVudCh0cnVlKQogIH0KCiAgcmV0dXJuICgKICAgIDw+CiAgICAgIHtzaG93U3BsYXNoICYmIDxTcGxhc2hTY3JlZW4gb25Db21wbGV0ZT17aGFuZGxlU3BsYXNoQ29tcGxldGV9IC8+fQogICAgICAKICAgICAgPGRpdiBjbGFzc05hbWU9e2BtaW4taC1zY3JlZW4gYmctWyMwYTBhMGFdIHRleHQtd2hpdGUgcmVsYXRpdmUgb3ZlcmZsb3ctaGlkZGVuIHRyYW5zaXRpb24tb3BhY2l0eSBkdXJhdGlvbi01MDAgJHtzaG93Q29udGVudCA/ICdvcGFjaXR5LTEwMCcgOiAnb3BhY2l0eS0wJ31gfT4KICAgICAgICB7LyogU3VidGxlIG5vaXNlIHRleHR1cmUgb3ZlcmxheSAqL30KICAgICAgICA8ZGl2IAogICAgICAgICAgY2xhc3NOYW1lPSJmaXhlZCBpbnNldC0wIG9wYWNpdHktWzAuMDE1XSBwb2ludGVyLWV2ZW50cy1ub25lIgogICAgICAgICAgc3R5bGU9e3sKICAgICAgICAgICAgYmFja2dyb3VuZEltYWdlOiBgdXJsKCJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnIHZpZXdCb3g9JzAgMCAyNTYgMjU2JyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnJTNFJTNDZmlsdGVyIGlkPSdub2lzZSclM0UlM0NmZVR1cmJ1bGVuY2UgdHlwZT0nZnJhY3RhbE5vaXNlJyBiYXNlRnJlcXVlbmN5PScwLjknIG51bU9jdGF2ZXM9JzQnIHN0aXRjaFRpbGVzPSdzdGl0Y2gnLyUzRSUzQy9maWx0ZXIlM0UlM0NyZWN0IHdpZHRoPScxMDAlMjUnIGhlaWdodD0nMTAwJTI1JyBmaWx0ZXI9J3VybCglMjNub2lzZSknLyUzRSUzQy9zdmclM0UiKWAsCiAgICAgICAgICB9fQogICAgICAgIC8+CgogICAgICAgIHsvKiBBbWJpZW50IGdyYWRpZW50ICovfQogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJmaXhlZCBpbnNldC0wIGJnLWdyYWRpZW50LXRvLWIgZnJvbS10cmFuc3BhcmVudCB2aWEtdHJhbnNwYXJlbnQgdG8td2hpdGUvWzAuMDJdIHBvaW50ZXItZXZlbnRzLW5vbmUiIC8+CgogICAgICAgIHsvKiBNYWluIGNvbnRlbnQgKi99CiAgICAgICAgPG1haW4gY2xhc3NOYW1lPSJyZWxhdGl2ZSB6LTEwIG1pbi1oLXNjcmVlbiBmbGV4IGZsZXgtY29sIj4KICAgICAgICAgIHsvKiBIZXJvIFNlY3Rpb24gd2l0aCBMb2dvICovfQogICAgICAgICAgPHNlY3Rpb24gY2xhc3NOYW1lPSJmbGV4LTEgZmxleCBmbGV4LWNvbCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcHgtNiBwdC0yNCBwYi0xMiI+CiAgICAgICAgICAgIHsvKiBMb2dvIC8gV29yZG1hcmsgKi99CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ0ZXh0LWNlbnRlciBtYi0xNiI+CiAgICAgICAgICAgICAgPGgxIGNsYXNzTmFtZT0idGV4dC00eGwgbWQ6dGV4dC01eGwgbGc6dGV4dC02eGwgZm9udC1ub3JtYWwgdHJhY2tpbmctWzAuM2VtXSBtYi00IGFuaW1hdGUtZmFkZS1pbi0xIj4KICAgICAgICAgICAgICAgIDxMaXF1aWRNZXRhbFRleHQgdGV4dD0iSU5URVJMSU5LRUQiIC8+CiAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQtc20gbWQ6dGV4dC1iYXNlIGFsaWduLXN1cGVyIHRleHQtd2hpdGUvNTAgbWwtMSI+wq48L3NwYW4+CiAgICAgICAgICAgICAgPC9oMT4KICAgICAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQteHMgbWQ6dGV4dC1zbSB0cmFja2luZy1bMC4zZW1dIHRleHQtd2hpdGUvMzAgdXBwZXJjYXNlIGZvbnQtc2FucyBhbmltYXRlLWZhZGUtaW4tMiI+CiAgICAgICAgICAgICAgICBjb25uZWN0aW9uLCBieSBkZXNpZ24uCiAgICAgICAgICAgICAgPC9wPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgIDwvc2VjdGlvbj4KCiAgICAgICAgICAKCiAgICAgICAgICB7LyogUHJvZHVjdHMgU2VjdGlvbiAqL30KICAgICAgICAgIDxzZWN0aW9uIGlkPSJwcm9kdWN0cyIgY2xhc3NOYW1lPSJ3LWZ1bGwgbWF4LXctbWQgbXgtYXV0byBweC02IHB5LTE2Ij4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFuaW1hdGUtZmFkZS1pbi1ib3gtMSI+CiAgICAgICAgICAgICAgPFByb2R1Y3RDYXJkIAogICAgICAgICAgICAgICAgbmFtZT0iQVRMQVPCriIgCiAgICAgICAgICAgICAgICBzdGF0dXM9Ik5vdyBBdmFpbGFibGUiIAogICAgICAgICAgICAgICAgaXNBY3RpdmU9e3RydWV9CiAgICAgICAgICAgICAgICBpY29uU3JjPSIvaW1hZ2VzL2F0bGFzLWljb24ucG5nIgogICAgICAgICAgICAgICAgaHJlZj0iL2F0bGFzIgogICAgICAgICAgICAgICAgYXZhaWxhYmlsaXR5PXt7IG1hYzogdHJ1ZSwgd2luZG93czogZmFsc2UgfX0KICAgICAgICAgICAgICAvPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgIDwvc2VjdGlvbj4KCiAgICAgICAgICB7LyogU3VidGxlIGRpdmlkZXIgbGluZSAqL30KICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ3LXB4IGgtMjQgYmctZ3JhZGllbnQtdG8tYiBmcm9tLXRyYW5zcGFyZW50IHZpYS13aGl0ZS8xMCB0by10cmFuc3BhcmVudCBteC1hdXRvIiAvPgoKICAgICAgICAgIHsvKiBGb290ZXIgKi99CiAgICAgICAgICA8Zm9vdGVyIGlkPSJjb250YWN0IiBjbGFzc05hbWU9InB5LTEyIHRleHQtY2VudGVyIj4KICAgICAgICAgICAgPGEgCiAgICAgICAgICAgICAgaHJlZj0iL2NvbnRhY3QiIAogICAgICAgICAgICAgIGNsYXNzTmFtZT0idGV4dC14cyB0cmFja2luZy1bMC4yZW1dIHRleHQtd2hpdGUvNDAgaG92ZXI6dGV4dC13aGl0ZS84MCB0cmFuc2l0aW9uLWNvbG9ycyBkdXJhdGlvbi0zMDAgdXBwZXJjYXNlIG1iLTYgaW5saW5lLWJsb2NrIgogICAgICAgICAgICA+CiAgICAgICAgICAgICAgQ29udGFjdAogICAgICAgICAgICA8L2E+CiAgICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC14cyB0cmFja2luZy1bMC4xNWVtXSB0ZXh0LXdoaXRlLzIwIj4KICAgICAgICAgICAgICDCqSBJTlRFUkxJTktFRMKuCiAgICAgICAgICAgIDwvcD4KICAgICAgICAgIDwvZm9vdGVyPgogICAgICAgIDwvbWFpbj4KICAgICAgPC9kaXY+CgogICAgICB7LyogUHJvZHVjdCBDYXJvdXNlbCBNb2RhbCAqL30KICAgICAgPFByb2R1Y3RDYXJvdXNlbCAKICAgICAgICBwcm9kdWN0cz17cHJvZHVjdHN9CiAgICAgICAgaXNPcGVuPXtjYXJvdXNlbE9wZW59CiAgICAgICAgb25DbG9zZT17KCkgPT4gc2V0Q2Fyb3VzZWxPcGVuKGZhbHNlKX0KICAgICAgLz4KICAgIDwvPgogICkKfQo="}
+"use client"
+
+import { useState } from "react"
+import { ProductCard } from "@/components/product-card"
+import { LiquidMetalText } from "@/components/liquid-metal-text"
+import { SplashScreen } from "@/components/splash-screen"
+import { ProductCarousel } from "@/components/product-carousel"
+
+const products = [
+  {
+    name: "ATLAS®",
+    status: "Now Available",
+    isActive: true,
+    iconSrc: "/images/atlas-icon.png"
+  }
+]
+
+export default function Home() {
+  const [showSplash, setShowSplash] = useState(true)
+  const [showContent, setShowContent] = useState(false)
+  const [carouselOpen, setCarouselOpen] = useState(false)
+
+  const handleSplashComplete = () => {
+    setShowSplash(false)
+    setShowContent(true)
+  }
+
+  return (
+    <>
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      
+      <div className={`min-h-screen bg-[#0a0a0a] text-white relative overflow-hidden transition-opacity duration-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Subtle noise texture overlay */}
+        <div 
+          className="fixed inset-0 opacity-[0.015] pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        {/* Ambient gradient */}
+        <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-white/[0.02] pointer-events-none" />
+
+        {/* Main content */}
+        <main className="relative z-10 min-h-screen flex flex-col">
+          {/* Hero Section with Logo */}
+          <section className="flex-1 flex flex-col items-center justify-center px-6 pt-24 pb-12">
+            {/* Logo / Wordmark */}
+            <div className="text-center mb-16">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-normal tracking-[0.3em] mb-4 animate-fade-in-1">
+                <LiquidMetalText text="INTERLINKED" />
+                <span className="text-sm md:text-base align-super text-white/50 ml-1">®</span>
+              </h1>
+              <p className="text-xs md:text-sm tracking-[0.3em] text-white/30 uppercase font-sans animate-fade-in-2">
+                connection, by design.
+              </p>
+            </div>
+          </section>
+
+          
+
+          {/* Products Section */}
+          <section id="products" className="w-full max-w-md mx-auto px-6 py-16">
+            <div className="animate-fade-in-box-1">
+              <ProductCard 
+                name="ATLAS®" 
+                status="Now Available" 
+                isActive={true}
+                iconSrc="/images/atlas-icon.png"
+                href="/atlas"
+                availability={{ mac: true, windows: false }}
+              />
+            </div>
+          </section>
+
+          {/* Subtle divider line */}
+          <div className="w-px h-24 bg-gradient-to-b from-transparent via-white/10 to-transparent mx-auto" />
+
+          {/* Footer */}
+          <footer id="contact" className="py-12 text-center">
+            <a 
+              href="/contact" 
+              className="text-xs tracking-[0.2em] text-white/40 hover:text-white/80 transition-colors duration-300 uppercase mb-6 inline-block"
+            >
+              Contact
+            </a>
+            <p className="text-xs tracking-[0.15em] text-white/20">
+              © INTERLINKED®
+            </p>
+          </footer>
+        </main>
+      </div>
+
+      {/* Product Carousel Modal */}
+      <ProductCarousel 
+        products={products}
+        isOpen={carouselOpen}
+        onClose={() => setCarouselOpen(false)}
+      />
+    </>
+  )
+}
