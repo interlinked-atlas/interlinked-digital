@@ -1,1 +1,49 @@
-{"data":"aW1wb3J0IHsgY3JlYXRlU2VydmVyQ2xpZW50IH0gZnJvbSAnQHN1cGFiYXNlL3NzcicKaW1wb3J0IHsgTmV4dFJlc3BvbnNlLCB0eXBlIE5leHRSZXF1ZXN0IH0gZnJvbSAnbmV4dC9zZXJ2ZXInCgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gdXBkYXRlU2Vzc2lvbihyZXF1ZXN0OiBOZXh0UmVxdWVzdCkgewogIGxldCBzdXBhYmFzZVJlc3BvbnNlID0gTmV4dFJlc3BvbnNlLm5leHQoewogICAgcmVxdWVzdCwKICB9KQoKICBjb25zdCBzdXBhYmFzZSA9IGNyZWF0ZVNlcnZlckNsaWVudCgKICAgIHByb2Nlc3MuZW52Lk5FWFRfUFVCTElDX1NVUEFCQVNFX1VSTCEsCiAgICBwcm9jZXNzLmVudi5ORVhUX1BVQkxJQ19TVVBBQkFTRV9BTk9OX0tFWSEsCiAgICB7CiAgICAgIGNvb2tpZXM6IHsKICAgICAgICBnZXRBbGwoKSB7CiAgICAgICAgICByZXR1cm4gcmVxdWVzdC5jb29raWVzLmdldEFsbCgpCiAgICAgICAgfSwKICAgICAgICBzZXRBbGwoY29va2llc1RvU2V0KSB7CiAgICAgICAgICBjb29raWVzVG9TZXQuZm9yRWFjaCgoeyBuYW1lLCB2YWx1ZSB9KSA9PgogICAgICAgICAgICByZXF1ZXN0LmNvb2tpZXMuc2V0KG5hbWUsIHZhbHVlKSwKICAgICAgICAgICkKICAgICAgICAgIHN1cGFiYXNlUmVzcG9uc2UgPSBOZXh0UmVzcG9uc2UubmV4dCh7CiAgICAgICAgICAgIHJlcXVlc3QsCiAgICAgICAgICB9KQogICAgICAgICAgY29va2llc1RvU2V0LmZvckVhY2goKHsgbmFtZSwgdmFsdWUsIG9wdGlvbnMgfSkgPT4KICAgICAgICAgICAgc3VwYWJhc2VSZXNwb25zZS5jb29raWVzLnNldChuYW1lLCB2YWx1ZSwgb3B0aW9ucyksCiAgICAgICAgICApCiAgICAgICAgfSwKICAgICAgfSwKICAgIH0sCiAgKQoKICBjb25zdCB7CiAgICBkYXRhOiB7IHVzZXIgfSwKICB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC5nZXRVc2VyKCkKCiAgLy8gUHJvdGVjdCBhY2NvdW50IHJvdXRlcwogIGlmICgKICAgIChyZXF1ZXN0Lm5leHRVcmwucGF0aG5hbWUuc3RhcnRzV2l0aCgnL2FjY291bnQnKSB8fAogICAgIHJlcXVlc3QubmV4dFVybC5wYXRobmFtZS5zdGFydHNXaXRoKCcvYXRsYXMvY2hlY2tvdXQnKSkgJiYKICAgICF1c2VyCiAgKSB7CiAgICBjb25zdCB1cmwgPSByZXF1ZXN0Lm5leHRVcmwuY2xvbmUoKQogICAgdXJsLnBhdGhuYW1lID0gJy9hdXRoL2xvZ2luJwogICAgdXJsLnNlYXJjaFBhcmFtcy5zZXQoJ25leHQnLCByZXF1ZXN0Lm5leHRVcmwucGF0aG5hbWUpCiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLnJlZGlyZWN0KHVybCkKICB9CgogIHJldHVybiBzdXBhYmFzZVJlc3BvbnNlCn0K"}
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          )
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          )
+        },
+      },
+    },
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Protect account routes
+  if (
+    (request.nextUrl.pathname.startsWith('/account') ||
+     request.nextUrl.pathname.startsWith('/atlas/checkout')) &&
+    !user
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    url.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(url)
+  }
+
+  return supabaseResponse
+}
