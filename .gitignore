@@ -1,1 +1,27 @@
-{"data":"IyBTZWUgaHR0cHM6Ly9oZWxwLmdpdGh1Yi5jb20vYXJ0aWNsZXMvaWdub3JpbmctZmlsZXMvIGZvciBtb3JlIGFib3V0IGlnbm9yaW5nIGZpbGVzLgoKIyBkZXBlbmRlbmNpZXMKL25vZGVfbW9kdWxlcwoKIyBuZXh0LmpzCi8ubmV4dC8KL291dC8KCiMgcHJvZHVjdGlvbgovYnVpbGQKCiMgZGVidWcKbnBtLWRlYnVnLmxvZyoKeWFybi1kZWJ1Zy5sb2cqCnlhcm4tZXJyb3IubG9nKgoucG5wbS1kZWJ1Zy5sb2cqCgojIGVudiBmaWxlcwouZW52KgoKIyB2ZXJjZWwKLnZlcmNlbAoKIyB0eXBlc2NyaXB0CioudHNidWlsZGluZm8KbmV4dC1lbnYuZC50cw=="}
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
