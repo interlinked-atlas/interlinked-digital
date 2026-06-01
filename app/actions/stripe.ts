@@ -1,1 +1,88 @@
-{"data":"J3VzZSBzZXJ2ZXInCgppbXBvcnQgeyBzdHJpcGUgfSBmcm9tICdAL2xpYi9zdHJpcGUnCmltcG9ydCB7IFBST0RVQ1RTIH0gZnJvbSAnQC9saWIvcHJvZHVjdHMnCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0AvbGliL3N1cGFiYXNlL3NlcnZlcicKaW1wb3J0IHsgaGVhZGVycyB9IGZyb20gJ25leHQvaGVhZGVycycKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBzdGFydENoZWNrb3V0U2Vzc2lvbihwcm9kdWN0SWQ6IHN0cmluZywgZW1haWw/OiBzdHJpbmcpIHsKICBjb25zdCBwcm9kdWN0ID0gUFJPRFVDVFMuZmluZCgocCkgPT4gcC5pZCA9PT0gcHJvZHVjdElkKQogIGlmICghcHJvZHVjdCkgewogICAgdGhyb3cgbmV3IEVycm9yKGBQcm9kdWN0IHdpdGggaWQgIiR7cHJvZHVjdElkfSIgbm90IGZvdW5kYCkKICB9CgogIGNvbnN0IGhlYWRlcnNMaXN0ID0gYXdhaXQgaGVhZGVycygpCiAgY29uc3Qgb3JpZ2luID0gaGVhZGVyc0xpc3QuZ2V0KCdvcmlnaW4nKSB8fCAnaHR0cHM6Ly9pbnRlcmxpbmtlZC5kaWdpdGFsJwoKICAvLyBDaGVjayBpZiB1c2VyIGlzIGFscmVhZHkgbG9nZ2VkIGluCiAgY29uc3Qgc3VwYWJhc2UgPSBhd2FpdCBjcmVhdGVDbGllbnQoKQogIGNvbnN0IHsgZGF0YTogeyB1c2VyIH0gfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguZ2V0VXNlcigpCgogIGNvbnN0IHNlc3Npb25Db25maWc6IFBhcmFtZXRlcnM8dHlwZW9mIHN0cmlwZS5jaGVja291dC5zZXNzaW9ucy5jcmVhdGU+WzBdID0gewogICAgdWlfbW9kZTogJ2VtYmVkZGVkJywKICAgIHJlZGlyZWN0X29uX2NvbXBsZXRpb246ICduZXZlcicsCiAgICBsaW5lX2l0ZW1zOiBbCiAgICAgIHsKICAgICAgICBwcmljZV9kYXRhOiB7CiAgICAgICAgICBjdXJyZW5jeTogJ3VzZCcsCiAgICAgICAgICBwcm9kdWN0X2RhdGE6IHsKICAgICAgICAgICAgbmFtZTogcHJvZHVjdC5uYW1lLAogICAgICAgICAgICBkZXNjcmlwdGlvbjogcHJvZHVjdC5kZXNjcmlwdGlvbiwKICAgICAgICAgIH0sCiAgICAgICAgICB1bml0X2Ftb3VudDogcHJvZHVjdC5wcmljZUluQ2VudHMsCiAgICAgICAgICByZWN1cnJpbmc6IHsKICAgICAgICAgICAgaW50ZXJ2YWw6IHByb2R1Y3QuaW50ZXJ2YWwsCiAgICAgICAgICB9LAogICAgICAgIH0sCiAgICAgICAgcXVhbnRpdHk6IDEsCiAgICAgIH0sCiAgICBdLAogICAgbW9kZTogJ3N1YnNjcmlwdGlvbicsCiAgICBzdWJzY3JpcHRpb25fZGF0YTogewogICAgICBtZXRhZGF0YTogewogICAgICAgIHBsYW46IHByb2R1Y3RJZC5yZXBsYWNlKCdhdGxhcy0nLCAnJyksCiAgICAgIH0sCiAgICB9LAogICAgbWV0YWRhdGE6IHsKICAgICAgcGxhbjogcHJvZHVjdElkLnJlcGxhY2UoJ2F0bGFzLScsICcnKSwKICAgIH0sCiAgfQoKICAvLyBJZiB1c2VyIGlzIGxvZ2dlZCBpbiwgYXR0YWNoIHRoZWlyIGN1c3RvbWVyIElEIG9yIGVtYWlsCiAgaWYgKHVzZXIpIHsKICAgIC8vIENoZWNrIGlmIHRoZXkgYWxyZWFkeSBoYXZlIGEgc3RyaXBlIGN1c3RvbWVyIElECiAgICBjb25zdCB7IGRhdGE6IHN1YnNjcmlwdGlvbiB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgLmZyb20oJ3N1YnNjcmlwdGlvbnMnKQogICAgICAuc2VsZWN0KCdzdHJpcGVfY3VzdG9tZXJfaWQnKQogICAgICAuZXEoJ3VzZXJfaWQnLCB1c2VyLmlkKQogICAgICAuc2luZ2xlKCkKCiAgICBpZiAoc3Vic2NyaXB0aW9uPy5zdHJpcGVfY3VzdG9tZXJfaWQpIHsKICAgICAgc2Vzc2lvbkNvbmZpZy5jdXN0b21lciA9IHN1YnNjcmlwdGlvbi5zdHJpcGVfY3VzdG9tZXJfaWQKICAgIH0gZWxzZSB7CiAgICAgIHNlc3Npb25Db25maWcuY3VzdG9tZXJfZW1haWwgPSB1c2VyLmVtYWlsCiAgICB9CiAgfSBlbHNlIGlmIChlbWFpbCkgewogICAgc2Vzc2lvbkNvbmZpZy5jdXN0b21lcl9lbWFpbCA9IGVtYWlsCiAgfQoKICBjb25zdCBzZXNzaW9uID0gYXdhaXQgc3RyaXBlLmNoZWNrb3V0LnNlc3Npb25zLmNyZWF0ZShzZXNzaW9uQ29uZmlnKQoKICByZXR1cm4gc2Vzc2lvbi5jbGllbnRfc2VjcmV0Cn0KCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBnZXRDaGVja291dFNlc3Npb25TdGF0dXMoc2Vzc2lvbklkOiBzdHJpbmcpIHsKICBjb25zdCBzZXNzaW9uID0gYXdhaXQgc3RyaXBlLmNoZWNrb3V0LnNlc3Npb25zLnJldHJpZXZlKHNlc3Npb25JZCwgewogICAgZXhwYW5kOiBbJ2N1c3RvbWVyJywgJ3N1YnNjcmlwdGlvbiddLAogIH0pCgogIHJldHVybiB7CiAgICBzdGF0dXM6IHNlc3Npb24uc3RhdHVzLAogICAgY3VzdG9tZXJFbWFpbDogdHlwZW9mIHNlc3Npb24uY3VzdG9tZXIgPT09ICdvYmplY3QnICYmIHNlc3Npb24uY3VzdG9tZXIgIT09IG51bGwgCiAgICAgID8gc2Vzc2lvbi5jdXN0b21lci5lbWFpbCAKICAgICAgOiBzZXNzaW9uLmN1c3RvbWVyX2VtYWlsLAogICAgc3Vic2NyaXB0aW9uSWQ6IHR5cGVvZiBzZXNzaW9uLnN1YnNjcmlwdGlvbiA9PT0gJ29iamVjdCcgJiYgc2Vzc2lvbi5zdWJzY3JpcHRpb24gIT09IG51bGwKICAgICAgPyBzZXNzaW9uLnN1YnNjcmlwdGlvbi5pZAogICAgICA6IHNlc3Npb24uc3Vic2NyaXB0aW9uLAogIH0KfQo="}
+'use server'
+
+import { stripe } from '@/lib/stripe'
+import { PRODUCTS } from '@/lib/products'
+import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+
+export async function startCheckoutSession(productId: string, email?: string) {
+  const product = PRODUCTS.find((p) => p.id === productId)
+  if (!product) {
+    throw new Error(`Product with id "${productId}" not found`)
+  }
+
+  const headersList = await headers()
+  const origin = headersList.get('origin') || 'https://interlinked.digital'
+
+  // Check if user is already logged in
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const sessionConfig: Parameters<typeof stripe.checkout.sessions.create>[0] = {
+    ui_mode: 'embedded',
+    redirect_on_completion: 'never',
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: product.name,
+            description: product.description,
+          },
+          unit_amount: product.priceInCents,
+          recurring: {
+            interval: product.interval,
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    subscription_data: {
+      metadata: {
+        plan: productId.replace('atlas-', ''),
+      },
+    },
+    metadata: {
+      plan: productId.replace('atlas-', ''),
+    },
+  }
+
+  // If user is logged in, attach their customer ID or email
+  if (user) {
+    // Check if they already have a stripe customer ID
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (subscription?.stripe_customer_id) {
+      sessionConfig.customer = subscription.stripe_customer_id
+    } else {
+      sessionConfig.customer_email = user.email
+    }
+  } else if (email) {
+    sessionConfig.customer_email = email
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionConfig)
+
+  return session.client_secret
+}
+
+export async function getCheckoutSessionStatus(sessionId: string) {
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['customer', 'subscription'],
+  })
+
+  return {
+    status: session.status,
+    customerEmail: typeof session.customer === 'object' && session.customer !== null 
+      ? session.customer.email 
+      : session.customer_email,
+    subscriptionId: typeof session.subscription === 'object' && session.subscription !== null
+      ? session.subscription.id
+      : session.subscription,
+  }
+}
