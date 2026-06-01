@@ -1,1 +1,66 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VFZmZlY3QsIHVzZVJlZiB9IGZyb20gInJlYWN0IgoKaW50ZXJmYWNlIExpcXVpZE1ldGFsVGV4dFByb3BzIHsKICB0ZXh0OiBzdHJpbmcKICBjbGFzc05hbWU/OiBzdHJpbmcKfQoKZXhwb3J0IGZ1bmN0aW9uIExpcXVpZE1ldGFsVGV4dCh7IHRleHQsIGNsYXNzTmFtZSA9ICIiIH06IExpcXVpZE1ldGFsVGV4dFByb3BzKSB7CiAgY29uc3QgY29udGFpbmVyUmVmID0gdXNlUmVmPEhUTUxEaXZFbGVtZW50PihudWxsKQoKICB1c2VFZmZlY3QoKCkgPT4gewogICAgY29uc3QgY29udGFpbmVyID0gY29udGFpbmVyUmVmLmN1cnJlbnQKICAgIGlmICghY29udGFpbmVyKSByZXR1cm4KCiAgICBjb25zdCBsZXR0ZXJzID0gY29udGFpbmVyLnF1ZXJ5U2VsZWN0b3JBbGw8SFRNTFNwYW5FbGVtZW50PigiLm1ldGFsLWxldHRlciIpCiAgICAKICAgIC8vIEFuaW1hdGUgZWFjaCBsZXR0ZXIgd2l0aCBzdGFnZ2VyZWQgbGlxdWlkIG1ldGFsIHN3ZWVwCiAgICBjb25zdCBhbmltYXRlU3dlZXAgPSAoKSA9PiB7CiAgICAgIGxldHRlcnMuZm9yRWFjaCgobGV0dGVyLCBpbmRleCkgPT4gewogICAgICAgIGNvbnN0IGRlbGF5ID0gaW5kZXggKiAxNTAKICAgICAgICAKICAgICAgICBzZXRUaW1lb3V0KCgpID0+IHsKICAgICAgICAgIGxldHRlci5jbGFzc0xpc3QuYWRkKCJzd2VlcGluZyIpCiAgICAgICAgICBzZXRUaW1lb3V0KCgpID0+IHsKICAgICAgICAgICAgbGV0dGVyLmNsYXNzTGlzdC5yZW1vdmUoInN3ZWVwaW5nIikKICAgICAgICAgIH0sIDgwMCkKICAgICAgICB9LCBkZWxheSkKICAgICAgfSkKICAgIH0KCiAgICAvLyBJbml0aWFsIGFuaW1hdGlvbgogICAgY29uc3QgaW5pdGlhbFRpbWVvdXQgPSBzZXRUaW1lb3V0KGFuaW1hdGVTd2VlcCwgNTAwKQogICAgCiAgICAvLyBSZXBlYXQgYW5pbWF0aW9uIGV2ZXJ5IDUgc2Vjb25kcwogICAgY29uc3QgaW50ZXJ2YWwgPSBzZXRJbnRlcnZhbChhbmltYXRlU3dlZXAsIDUwMDApCgogICAgcmV0dXJuICgpID0+IHsKICAgICAgY2xlYXJUaW1lb3V0KGluaXRpYWxUaW1lb3V0KQogICAgICBjbGVhckludGVydmFsKGludGVydmFsKQogICAgfQogIH0sIFtdKQoKICByZXR1cm4gKAogICAgPGRpdiByZWY9e2NvbnRhaW5lclJlZn0gY2xhc3NOYW1lPXtgaW5saW5lLWZsZXggJHtjbGFzc05hbWV9YH0+CiAgICAgIHt0ZXh0LnNwbGl0KCIiKS5tYXAoKGNoYXIsIGluZGV4KSA9PiAoCiAgICAgICAgPHNwYW4KICAgICAgICAgIGtleT17aW5kZXh9CiAgICAgICAgICBjbGFzc05hbWU9Im1ldGFsLWxldHRlciByZWxhdGl2ZSBpbmxpbmUtYmxvY2siCiAgICAgICAgICBzdHlsZT17ewogICAgICAgICAgICBmb250RmFtaWx5OiAiJ0Flcm9kb21lJywgc2Fucy1zZXJpZiIsCiAgICAgICAgICB9fQogICAgICAgID4KICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0icmVsYXRpdmUgei0xMCB0ZXh0LXdoaXRlLzkwIj57Y2hhcn08L3NwYW4+CiAgICAgICAgICA8c3BhbiAKICAgICAgICAgICAgY2xhc3NOYW1lPSJhYnNvbHV0ZSBpbnNldC0wIHRleHQtdHJhbnNwYXJlbnQgYmctY2xpcC10ZXh0IG1ldGFsLXNoaW5lIHBvaW50ZXItZXZlbnRzLW5vbmUiCiAgICAgICAgICAgIGFyaWEtaGlkZGVuPSJ0cnVlIgogICAgICAgICAgPgogICAgICAgICAgICB7Y2hhcn0KICAgICAgICAgIDwvc3Bhbj4KICAgICAgICA8L3NwYW4+CiAgICAgICkpfQogICAgPC9kaXY+CiAgKQp9Cg=="}
+"use client"
+
+import { useEffect, useRef } from "react"
+
+interface LiquidMetalTextProps {
+  text: string
+  className?: string
+}
+
+export function LiquidMetalText({ text, className = "" }: LiquidMetalTextProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const letters = container.querySelectorAll<HTMLSpanElement>(".metal-letter")
+    
+    // Animate each letter with staggered liquid metal sweep
+    const animateSweep = () => {
+      letters.forEach((letter, index) => {
+        const delay = index * 150
+        
+        setTimeout(() => {
+          letter.classList.add("sweeping")
+          setTimeout(() => {
+            letter.classList.remove("sweeping")
+          }, 800)
+        }, delay)
+      })
+    }
+
+    // Initial animation
+    const initialTimeout = setTimeout(animateSweep, 500)
+    
+    // Repeat animation every 5 seconds
+    const interval = setInterval(animateSweep, 5000)
+
+    return () => {
+      clearTimeout(initialTimeout)
+      clearInterval(interval)
+    }
+  }, [])
+
+  return (
+    <div ref={containerRef} className={`inline-flex ${className}`}>
+      {text.split("").map((char, index) => (
+        <span
+          key={index}
+          className="metal-letter relative inline-block"
+          style={{
+            fontFamily: "'Aerodome', sans-serif",
+          }}
+        >
+          <span className="relative z-10 text-white/90">{char}</span>
+          <span 
+            className="absolute inset-0 text-transparent bg-clip-text metal-shine pointer-events-none"
+            aria-hidden="true"
+          >
+            {char}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
