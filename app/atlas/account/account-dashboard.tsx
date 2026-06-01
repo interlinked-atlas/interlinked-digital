@@ -4,12 +4,11 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import type { User } from "@supabase/supabase-js"
 
 interface Subscription {
   id: string
-  plan: string          // 'basic' | 'pro'
+  plan: string
   status: string
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -17,7 +16,7 @@ interface Subscription {
 }
 
 interface Profile {
-  plan: string              // 'standard' | 'pro'
+  plan: string
   subscription_status: string
 }
 
@@ -83,7 +82,6 @@ export default function AccountDashboard({ user, subscription, profile, devices 
     setCancelError("")
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setLoading(null); return }
-
     try {
       const res = await fetch("/api/atlas/cancel", {
         method: "POST",
@@ -91,11 +89,10 @@ export default function AccountDashboard({ user, subscription, profile, devices 
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to cancel")
-      // Sign out and redirect
       await supabase.auth.signOut()
       router.push("/atlas?cancelled=1")
-    } catch (err: any) {
-      setCancelError(err.message)
+    } catch (err: unknown) {
+      setCancelError(err instanceof Error ? err.message : "Unknown error")
       setLoading(null)
     }
     setShowCancelConfirm(false)
@@ -103,15 +100,11 @@ export default function AccountDashboard({ user, subscription, profile, devices 
 
   async function handleRemoveDevice(deviceId: string) {
     setLoading(deviceId)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setLoading(null); return }
-
     const { error } = await supabase
       .from("devices")
       .delete()
       .eq("id", deviceId)
       .eq("user_id", user.id)
-
     if (!error) router.refresh()
     setLoading(null)
   }
@@ -122,18 +115,15 @@ export default function AccountDashboard({ user, subscription, profile, devices 
       {/* Header */}
       <header className="border-b border-white/[0.06] sticky top-0 z-50 bg-[#07080F]/90 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/atlas" className="flex items-center gap-2.5">
-            <Image src="/images/atlas-icon.png" alt="ATLAS" width={28} height={28} />
-            <span className="text-[15px] font-semibold tracking-[0.08em] text-white/90">ATLAS</span>
+          <Link href="/atlas" className="flex items-center gap-2">
+            <span className="text-[16px] font-semibold tracking-[0.25em] text-white/90"
+              style={{ fontFamily: "'Bezmiar', sans-serif", fontWeight: 'normal' }}>ATLAS</span>
             <span className="text-[11px] text-white/30 ml-1">by InterLinked</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-[12px] text-white/40 hidden sm:block">{user.email}</span>
-            <button
-              onClick={handleSignOut}
-              disabled={loading === "signout"}
-              className="text-[12px] text-white/50 hover:text-white transition-colors"
-            >
+            <button onClick={handleSignOut} disabled={loading === "signout"}
+              className="text-[12px] text-white/50 hover:text-white transition-colors">
               Sign Out
             </button>
           </div>
@@ -144,12 +134,10 @@ export default function AccountDashboard({ user, subscription, profile, devices 
 
         <h1 className="text-[22px] font-bold tracking-tight">Account</h1>
 
-        {/* ── Subscription ──────────────────────────────────────────── */}
+        {/* ── Subscription ── */}
         <section className="bg-[#111220] rounded-2xl border border-white/[0.07] overflow-hidden">
           <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
-            <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-3">
-              Subscription
-            </p>
+            <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-3">Subscription</p>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5 mb-1">
@@ -168,54 +156,39 @@ export default function AccountDashboard({ user, subscription, profile, devices 
                   {isCancelled && " · Access ended"}
                 </p>
               </div>
-              {/* Plan badge */}
               <div className={`shrink-0 px-3 py-1 rounded-lg text-[11px] font-black tracking-[0.15em] border ${
                 isPro
                   ? "border-[#F0A030]/30 bg-[#F0A030]/08 text-[#F0A030]"
                   : "border-[#5B8DEF]/30 bg-[#5B8DEF]/08 text-[#5B8DEF]"
-              }`}>
-                {planName.toUpperCase()}
-              </div>
+              }`}>{planName.toUpperCase()}</div>
             </div>
           </div>
-
-          {/* Actions row */}
           <div className="px-6 py-4 flex flex-wrap items-center gap-3">
             {!isPro && isActive && (
-              <Link
-                href="/atlas/checkout?plan=pro"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#F0A030] to-[#E07820] text-[#07080F] text-[12px] font-bold hover:opacity-90 transition-opacity"
-              >
+              <Link href="/atlas/checkout?plan=pro"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#F0A030] to-[#E07820] text-[#07080F] text-[12px] font-bold hover:opacity-90 transition-opacity">
                 ↑ Upgrade to Pro
               </Link>
             )}
             {isCancelled && (
-              <Link
-                href="/atlas#pricing"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#3ECFB2] to-[#2ABEAA] text-[#07080F] text-[12px] font-bold hover:opacity-90 transition-opacity"
-              >
+              <Link href="/atlas"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#3ECFB2] to-[#2ABEAA] text-[#07080F] text-[12px] font-bold hover:opacity-90 transition-opacity">
                 ↺ Re-subscribe
               </Link>
             )}
             {isActive && !isCancelled && (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="px-4 py-2 rounded-lg border border-red-500/25 text-red-400 text-[12px] hover:bg-red-500/08 transition-colors"
-              >
+              <button onClick={() => setShowCancelConfirm(true)}
+                className="px-4 py-2 rounded-lg border border-red-500/25 text-red-400 text-[12px] hover:bg-red-500/08 transition-colors">
                 Cancel Subscription
               </button>
             )}
-            {cancelError && (
-              <p className="text-[11px] text-red-400">{cancelError}</p>
-            )}
+            {cancelError && <p className="text-[11px] text-red-400">{cancelError}</p>}
           </div>
         </section>
 
-        {/* ── Plan Features ─────────────────────────────────────────── */}
+        {/* ── Plan Features ── */}
         <section className="bg-[#111220] rounded-2xl border border-white/[0.07] p-6">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">
-            Your Plan Features
-          </p>
+          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">Your Plan Features</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <FeatureCell label="Devices" value={isPro ? "Up to 3" : "1 device"} active />
             <FeatureCell label="Daily Installs" value={isPro ? "Unlimited" : "3 per day"} active />
@@ -224,7 +197,7 @@ export default function AccountDashboard({ user, subscription, profile, devices 
             <FeatureCell label="TITAN CORE™" value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
             <FeatureCell label="Smart Storage" value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
           </div>
-          {!isPro && (
+          {!isPro && isActive && (
             <div className="mt-4 p-3 rounded-xl bg-[#F0A030]/06 border border-[#F0A030]/15">
               <p className="text-[12px] text-[#F0A030]/80">
                 Upgrade to <strong>Pro</strong> for unlimited installs, bulk queue, TITAN CORE™, rollback, and up to 3 devices.
@@ -233,56 +206,78 @@ export default function AccountDashboard({ user, subscription, profile, devices 
           )}
         </section>
 
-        {/* ── Activated Devices ─────────────────────────────────────── */}
+        {/* ── Activated Devices ── */}
         <section className="bg-[#111220] rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-white/[0.06] flex items-center justify-between">
-            <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30">
-              Activated Devices
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                {Array.from({ length: maxDevices }).map((_, i) => (
-                  <div key={i} className={`w-2 h-2 rounded-full ${
-                    i < devices.length
-                      ? isPro ? "bg-[#F0A030]" : "bg-[#5B8DEF]"
-                      : "bg-white/10"
-                  }`} />
-                ))}
+          <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30">
+                Activated Devices
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {Array.from({ length: maxDevices }).map((_, i) => (
+                    <div key={i} className={`w-2 h-2 rounded-full ${
+                      i < devices.length
+                        ? isPro ? "bg-[#F0A030]" : "bg-[#5B8DEF]"
+                        : "bg-white/10"
+                    }`} />
+                  ))}
+                </div>
+                <span className="text-[12px] text-white/40 font-semibold">
+                  {devices.length} / {maxDevices}
+                </span>
               </div>
-              <span className="text-[12px] text-white/40">
-                {devices.length} / {maxDevices}
-              </span>
             </div>
+            <p className="text-[11px] text-white/25 mt-1">
+              Each device is identified by its unique Mac hardware ID.
+              {devices.length >= maxDevices && (
+                <span className="text-yellow-400/70"> Limit reached — remove a device to activate a new one.</span>
+              )}
+            </p>
           </div>
 
           <div className="divide-y divide-white/[0.04]">
             {devices.length === 0 ? (
               <div className="px-6 py-8 text-center">
                 <p className="text-[13px] text-white/30">No devices activated yet.</p>
-                <p className="text-[12px] text-white/20 mt-1">
-                  Download ATLAS and sign in to activate this Mac.
-                </p>
+                <p className="text-[12px] text-white/20 mt-1">Download ATLAS and sign in to activate this Mac.</p>
               </div>
             ) : (
-              devices.map((device) => (
-                <div key={device.id} className="px-6 py-4 flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              devices.map((device, idx) => (
+                <div key={device.id} className="px-6 py-4 flex items-start gap-4">
+                  {/* Mac icon */}
+                  <div className="w-9 h-9 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
                     </svg>
                   </div>
+                  {/* Device info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate">{device.device_name || "Unknown Mac"}</p>
-                    <p className="text-[11px] text-white/35 mt-0.5">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-medium truncate">{device.device_name || "Unknown Mac"}</p>
+                      {idx === 0 && devices.length > 0 && (
+                        <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/[0.06] text-white/30 tracking-wide">
+                          MOST RECENT
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-white/30 mt-0.5 font-mono">
+                      ID: {device.hardware_uuid.slice(0, 8).toUpperCase()}···
+                    </p>
+                    <p className="text-[11px] text-white/25 mt-0.5">
                       Last active {new Date(device.last_seen).toLocaleDateString("en-US", {
+                        month: "short", day: "numeric", year: "numeric"
+                      })}
+                      {" · "}Registered {new Date(device.created_at).toLocaleDateString("en-US", {
                         month: "short", day: "numeric", year: "numeric"
                       })}
                     </p>
                   </div>
+                  {/* Remove button */}
                   <button
                     onClick={() => handleRemoveDevice(device.id)}
                     disabled={loading === device.id}
-                    className="shrink-0 text-[12px] text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-40"
+                    className="shrink-0 text-[12px] text-white/20 hover:text-red-400 transition-colors disabled:opacity-40 mt-0.5"
                   >
                     {loading === device.id ? "Removing…" : "Remove"}
                   </button>
@@ -290,40 +285,34 @@ export default function AccountDashboard({ user, subscription, profile, devices 
               ))
             )}
           </div>
-        </section>
 
-        {/* ── Notification Settings ─────────────────────────────────── */}
-        <section className="bg-[#111220] rounded-2xl border border-white/[0.07] p-6">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">
-            Notifications
-          </p>
-          <div className="space-y-3">
-            <NotifRow
-              label="Renewal reminders"
-              description="Email when your subscription renews"
-              enabled={emailNotifs}
-              onChange={setEmailNotifs}
-            />
-            <NotifRow
-              label="Payment alerts"
-              description="Email if a payment fails"
-              enabled={true}
-              onChange={() => {}}
-              locked
-            />
+          {/* How it works note */}
+          <div className="px-6 py-3 border-t border-white/[0.04] bg-white/[0.01]">
+            <p className="text-[10px] text-white/20 leading-relaxed">
+              When you sign in to ATLAS, your Mac&apos;s hardware identifier is registered here.
+              ATLAS will not open on a new Mac if your plan&apos;s device limit is reached.
+              Remove an existing device to free up a slot.
+            </p>
           </div>
         </section>
 
-        {/* ── Download ──────────────────────────────────────────────── */}
+        {/* ── Notifications ── */}
         <section className="bg-[#111220] rounded-2xl border border-white/[0.07] p-6">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">
-            Download ATLAS
-          </p>
+          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">Notifications</p>
+          <div className="space-y-3">
+            <NotifRow label="Renewal reminders" description="Email when your subscription renews"
+              enabled={emailNotifs} onChange={setEmailNotifs} />
+            <NotifRow label="Payment alerts" description="Email if a payment fails"
+              enabled={true} onChange={() => {}} locked />
+          </div>
+        </section>
+
+        {/* ── Download ── */}
+        <section className="bg-[#111220] rounded-2xl border border-white/[0.07] p-6">
+          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-4">Download ATLAS</p>
           {isActive && !isCancelled ? (
-            <a
-              href="/downloads/ATLAS-latest.dmg"
-              className="flex items-center gap-4 p-4 bg-white/[0.03] rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition-colors group"
-            >
+            <a href="/downloads/ATLAS-latest.dmg"
+              className="flex items-center gap-4 p-4 bg-white/[0.03] rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition-colors group">
               <div className="w-10 h-10 rounded-xl bg-[#3ECFB2]/10 flex items-center justify-center">
                 <svg className="w-5 h-5 text-[#3ECFB2]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -331,7 +320,7 @@ export default function AccountDashboard({ user, subscription, profile, devices 
               </div>
               <div>
                 <p className="text-[13px] font-semibold">ATLAS for macOS</p>
-                <p className="text-[11px] text-white/35">Universal · Intel & Apple Silicon</p>
+                <p className="text-[11px] text-white/35">Universal · Intel &amp; Apple Silicon</p>
               </div>
               <svg className="w-4 h-4 text-white/20 group-hover:text-white/50 transition-colors ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -339,28 +328,22 @@ export default function AccountDashboard({ user, subscription, profile, devices 
             </a>
           ) : (
             <p className="text-[13px] text-white/30">
-              {isCancelled
-                ? "Re-subscribe to download ATLAS."
-                : "Subscribe to download ATLAS."}
+              {isCancelled ? "Re-subscribe to download ATLAS." : "Subscribe to download ATLAS."}
             </p>
           )}
         </section>
 
-        {/* ── Footer actions ────────────────────────────────────────── */}
+        {/* Footer */}
         <div className="flex items-center justify-between pt-2 pb-8">
           <p className="text-[11px] text-white/20">InterLinked© · All rights reserved</p>
-          <button
-            onClick={handleSignOut}
-            disabled={loading === "signout"}
-            className="text-[12px] text-white/30 hover:text-red-400 transition-colors"
-          >
+          <button onClick={handleSignOut} disabled={loading === "signout"}
+            className="text-[12px] text-white/30 hover:text-red-400 transition-colors">
             Sign Out
           </button>
         </div>
-
       </main>
 
-      {/* ── Cancel confirmation modal ──────────────────────────────── */}
+      {/* Cancel confirmation modal */}
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#111220] border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
@@ -372,28 +355,21 @@ export default function AccountDashboard({ user, subscription, profile, devices 
             <h2 className="text-[16px] font-bold mb-1">Cancel subscription?</h2>
             <p className="text-[13px] text-white/50 mb-5">
               Your subscription will be cancelled <strong className="text-white/70">immediately</strong>.
-              You will lose access to ATLAS and be signed out.
-              You can re-subscribe at any time.
+              You will lose access to ATLAS. You can re-subscribe at any time.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-white/10 text-[13px] hover:bg-white/05 transition-colors"
-              >
+              <button onClick={() => setShowCancelConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-[13px] hover:bg-white/05 transition-colors">
                 Keep Subscription
               </button>
-              <button
-                onClick={handleCancelSubscription}
-                disabled={loading === "cancel"}
-                className="flex-1 py-2.5 rounded-xl bg-red-500/80 text-white text-[13px] font-semibold hover:bg-red-500 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleCancelSubscription} disabled={loading === "cancel"}
+                className="flex-1 py-2.5 rounded-xl bg-red-500/80 text-white text-[13px] font-semibold hover:bg-red-500 transition-colors disabled:opacity-50">
                 {loading === "cancel" ? "Cancelling…" : "Yes, Cancel"}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   )
 }
@@ -407,14 +383,8 @@ function FeatureCell({ label, value, active }: { label: string; value: string; a
   )
 }
 
-function NotifRow({
-  label, description, enabled, onChange, locked
-}: {
-  label: string
-  description: string
-  enabled: boolean
-  onChange: (v: boolean) => void
-  locked?: boolean
+function NotifRow({ label, description, enabled, onChange, locked }: {
+  label: string; description: string; enabled: boolean; onChange: (v: boolean) => void; locked?: boolean
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-1">
@@ -425,12 +395,10 @@ function NotifRow({
       {locked ? (
         <span className="text-[10px] text-white/25 font-medium">Always on</span>
       ) : (
-        <button
-          onClick={() => onChange(!enabled)}
-          className={`w-10 h-5.5 rounded-full transition-colors relative shrink-0 ${enabled ? "bg-[#3ECFB2]" : "bg-white/10"}`}
-          style={{ minWidth: 40, height: 22 }}
-        >
-          <span className={`absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-[18px]" : "translate-x-0.5"}`}
+        <button onClick={() => onChange(!enabled)}
+          className={`relative shrink-0 rounded-full transition-colors ${enabled ? "bg-[#3ECFB2]" : "bg-white/10"}`}
+          style={{ width: 40, height: 22 }}>
+          <span className={`absolute top-0.5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-[18px]" : "translate-x-0.5"}`}
             style={{ width: 18, height: 18 }} />
         </button>
       )}
