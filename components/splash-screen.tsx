@@ -1,1 +1,155 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VTdGF0ZSwgdXNlRWZmZWN0IH0gZnJvbSAicmVhY3QiCmltcG9ydCB7IGNuIH0gZnJvbSAiQC9saWIvdXRpbHMiCgppbnRlcmZhY2UgU3BsYXNoU2NyZWVuUHJvcHMgewogIG9uQ29tcGxldGU6ICgpID0+IHZvaWQKfQoKZXhwb3J0IGZ1bmN0aW9uIFNwbGFzaFNjcmVlbih7IG9uQ29tcGxldGUgfTogU3BsYXNoU2NyZWVuUHJvcHMpIHsKICBjb25zdCBbcGhhc2UsIHNldFBoYXNlXSA9IHVzZVN0YXRlKDApCiAgCiAgdXNlRWZmZWN0KCgpID0+IHsKICAgIC8vIFBoYXNlIDE6IExvZ28gYXBwZWFycyAoMC41cyBkZWxheSkKICAgIGNvbnN0IHRpbWVyMSA9IHNldFRpbWVvdXQoKCkgPT4gc2V0UGhhc2UoMSksIDUwMCkKICAgIC8vIFBoYXNlIDI6IE9yYml0YWwgbGluZXMgYW5pbWF0ZSAoMS41cykKICAgIGNvbnN0IHRpbWVyMiA9IHNldFRpbWVvdXQoKCkgPT4gc2V0UGhhc2UoMiksIDE1MDApCiAgICAvLyBQaGFzZSAzOiBUZXh0IGFwcGVhcnMgKDIuNXMpCiAgICBjb25zdCB0aW1lcjMgPSBzZXRUaW1lb3V0KCgpID0+IHNldFBoYXNlKDMpLCAyNTAwKQogICAgLy8gUGhhc2UgNDogQmVnaW4gZXhpdCAoNHMpCiAgICBjb25zdCB0aW1lcjQgPSBzZXRUaW1lb3V0KCgpID0+IHNldFBoYXNlKDQpLCA0MDAwKQogICAgLy8gQ29tcGxldGUgKDVzKQogICAgY29uc3QgdGltZXI1ID0gc2V0VGltZW91dCgoKSA9PiBvbkNvbXBsZXRlKCksIDUwMDApCiAgICAKICAgIHJldHVybiAoKSA9PiB7CiAgICAgIGNsZWFyVGltZW91dCh0aW1lcjEpCiAgICAgIGNsZWFyVGltZW91dCh0aW1lcjIpCiAgICAgIGNsZWFyVGltZW91dCh0aW1lcjMpCiAgICAgIGNsZWFyVGltZW91dCh0aW1lcjQpCiAgICAgIGNsZWFyVGltZW91dCh0aW1lcjUpCiAgICB9CiAgfSwgW29uQ29tcGxldGVdKQoKICByZXR1cm4gKAogICAgPGRpdiAKICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAiZml4ZWQgaW5zZXQtMCB6LTUwIGJnLVsjMGEwYTBhXSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciB0cmFuc2l0aW9uLW9wYWNpdHkgZHVyYXRpb24tMTAwMCIsCiAgICAgICAgcGhhc2UgPj0gNCA/ICJvcGFjaXR5LTAgcG9pbnRlci1ldmVudHMtbm9uZSIgOiAib3BhY2l0eS0xMDAiCiAgICAgICl9CiAgICA+CiAgICAgIHsvKiBTY2FubmluZyBsaW5lcyBlZmZlY3QgKi99CiAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSBpbnNldC0wIG92ZXJmbG93LWhpZGRlbiBwb2ludGVyLWV2ZW50cy1ub25lIj4KICAgICAgICA8ZGl2IAogICAgICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgImFic29sdXRlIGluc2V0LTAgdHJhbnNpdGlvbi1vcGFjaXR5IGR1cmF0aW9uLTUwMCIsCiAgICAgICAgICAgIHBoYXNlID49IDEgPyAib3BhY2l0eS0xMDAiIDogIm9wYWNpdHktMCIKICAgICAgICAgICl9CiAgICAgICAgICBzdHlsZT17ewogICAgICAgICAgICBiYWNrZ3JvdW5kOiBgcmVwZWF0aW5nLWxpbmVhci1ncmFkaWVudCgKICAgICAgICAgICAgICAwZGVnLAogICAgICAgICAgICAgIHRyYW5zcGFyZW50LAogICAgICAgICAgICAgIHRyYW5zcGFyZW50IDJweCwKICAgICAgICAgICAgICByZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMDEpIDJweCwKICAgICAgICAgICAgICByZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMDEpIDRweAogICAgICAgICAgICApYAogICAgICAgICAgfX0KICAgICAgICAvPgogICAgICA8L2Rpdj4KCiAgICAgIHsvKiBDZW50ZXIgY29udGVudCAqL30KICAgICAgPGRpdiBjbGFzc05hbWU9InJlbGF0aXZlIGZsZXggZmxleC1jb2wgaXRlbXMtY2VudGVyIj4KICAgICAgICB7LyogSU5URVJMSU5LRUQgTG9nbyBJY29uICovfQogICAgICAgIDxkaXYgCiAgICAgICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAicmVsYXRpdmUgdy0zMiBoLTMyIG1iLTEyIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTEwMDAiLAogICAgICAgICAgICBwaGFzZSA+PSAxID8gIm9wYWNpdHktMTAwIHNjYWxlLTEwMCIgOiAib3BhY2l0eS0wIHNjYWxlLTkwIgogICAgICAgICAgKX0KICAgICAgICA+CiAgICAgICAgICA8aW1nIAogICAgICAgICAgICBzcmM9Ii9pbWFnZXMvaW50ZXJsaW5rZWQtaWNvbi5wbmciIAogICAgICAgICAgICBhbHQ9IklOVEVSTElOS0VEIgogICAgICAgICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAgICJ3LWZ1bGwgaC1mdWxsIG9iamVjdC1jb250YWluIGludmVydCB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi03MDAiLAogICAgICAgICAgICAgIHBoYXNlID49IDIgPyAiYW5pbWF0ZS1wdWxzZS1zbG93IiA6ICIiCiAgICAgICAgICAgICl9CiAgICAgICAgICAvPgogICAgICAgICAgCiAgICAgICAgICB7LyogT3JiaXRhbCByaW5nIGFuaW1hdGlvbiAqL30KICAgICAgICAgIDxkaXYgCiAgICAgICAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAgICAgImFic29sdXRlIGluc2V0LVstMjBweF0gYm9yZGVyIGJvcmRlci13aGl0ZS8xMCByb3VuZGVkLWZ1bGwgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tMTAwMCIsCiAgICAgICAgICAgICAgcGhhc2UgPj0gMiA/ICJvcGFjaXR5LTEwMCBzY2FsZS0xMDAgYW5pbWF0ZS1zcGluLXNsb3ciIDogIm9wYWNpdHktMCBzY2FsZS03NSIKICAgICAgICAgICAgKX0KICAgICAgICAgIC8+CiAgICAgICAgICA8ZGl2IAogICAgICAgICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAgICJhYnNvbHV0ZSBpbnNldC1bLTQwcHhdIGJvcmRlciBib3JkZXItd2hpdGUvNSByb3VuZGVkLWZ1bGwgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tMTAwMCBkZWxheS0yMDAiLAogICAgICAgICAgICAgIHBoYXNlID49IDIgPyAib3BhY2l0eS0xMDAgc2NhbGUtMTAwIGFuaW1hdGUtc3Bpbi1zbG93ZXIiIDogIm9wYWNpdHktMCBzY2FsZS03NSIKICAgICAgICAgICAgKX0KICAgICAgICAgIC8+CiAgICAgICAgPC9kaXY+CgogICAgICAgIHsvKiBMb2FkaW5nIGJhciAqL30KICAgICAgICA8ZGl2IAogICAgICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgInctNDggaC1weCBiZy13aGl0ZS8xMCBtYi04IG92ZXJmbG93LWhpZGRlbiB0cmFuc2l0aW9uLW9wYWNpdHkgZHVyYXRpb24tNTAwIiwKICAgICAgICAgICAgcGhhc2UgPj0gMiA/ICJvcGFjaXR5LTEwMCIgOiAib3BhY2l0eS0wIgogICAgICAgICAgKX0KICAgICAgICA+CiAgICAgICAgICA8ZGl2IAogICAgICAgICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICAgICAgICJoLWZ1bGwgYmctZ3JhZGllbnQtdG8tciBmcm9tLXRyYW5zcGFyZW50IHZpYS13aGl0ZS82MCB0by10cmFuc3BhcmVudCB0cmFuc2l0aW9uLXRyYW5zZm9ybSBkdXJhdGlvbi1bMjAwMG1zXSBlYXNlLW91dCIsCiAgICAgICAgICAgICAgcGhhc2UgPj0gMiA/ICJ0cmFuc2xhdGUteC00OCIgOiAiLXRyYW5zbGF0ZS14LTQ4IgogICAgICAgICAgICApfQogICAgICAgICAgLz4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgey8qIFRleHQgKi99CiAgICAgICAgPGRpdiAKICAgICAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAgICJ0ZXh0LWNlbnRlciB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi03MDAiLAogICAgICAgICAgICBwaGFzZSA+PSAzID8gIm9wYWNpdHktMTAwIHRyYW5zbGF0ZS15LTAiIDogIm9wYWNpdHktMCB0cmFuc2xhdGUteS00IgogICAgICAgICAgKX0KICAgICAgICA+CiAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtWzEwcHhdIHRyYWNraW5nLVswLjVlbV0gdGV4dC13aGl0ZS8zMCB1cHBlcmNhc2UgbWItMiI+CiAgICAgICAgICAgIEluaXRpYWxpemluZwogICAgICAgICAgPC9wPgogICAgICAgICAgPGgxIGNsYXNzTmFtZT0idGV4dC0yeGwgdHJhY2tpbmctWzAuNGVtXSB0ZXh0LXdoaXRlLzgwIGZvbnQtbGlnaHQiPgogICAgICAgICAgICBJTlRFUkxJTktFRDxzcGFuIGNsYXNzTmFtZT0idGV4dC14cyBhbGlnbi1zdXBlciB0ZXh0LXdoaXRlLzQwIG1sLTEiPsKuPC9zcGFuPgogICAgICAgICAgPC9oMT4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgey8qIENvcm5lciBhY2NlbnRzICovfQogICAgICAgIDxkaXYgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICJhYnNvbHV0ZSAtdG9wLTIwIC1sZWZ0LTIwIHctOCBoLTggYm9yZGVyLWwgYm9yZGVyLXQgYm9yZGVyLXdoaXRlLzEwIHRyYW5zaXRpb24tb3BhY2l0eSBkdXJhdGlvbi01MDAiLAogICAgICAgICAgcGhhc2UgPj0gMiA/ICJvcGFjaXR5LTEwMCIgOiAib3BhY2l0eS0wIgogICAgICAgICl9IC8+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9e2NuKAogICAgICAgICAgImFic29sdXRlIC10b3AtMjAgLXJpZ2h0LTIwIHctOCBoLTggYm9yZGVyLXIgYm9yZGVyLXQgYm9yZGVyLXdoaXRlLzEwIHRyYW5zaXRpb24tb3BhY2l0eSBkdXJhdGlvbi01MDAiLAogICAgICAgICAgcGhhc2UgPj0gMiA/ICJvcGFjaXR5LTEwMCIgOiAib3BhY2l0eS0wIgogICAgICAgICl9IC8+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9e2NuKAogICAgICAgICAgImFic29sdXRlIC1ib3R0b20tMjAgLWxlZnQtMjAgdy04IGgtOCBib3JkZXItbCBib3JkZXItYiBib3JkZXItd2hpdGUvMTAgdHJhbnNpdGlvbi1vcGFjaXR5IGR1cmF0aW9uLTUwMCIsCiAgICAgICAgICBwaGFzZSA+PSAyID8gIm9wYWNpdHktMTAwIiA6ICJvcGFjaXR5LTAiCiAgICAgICAgKX0gLz4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAiYWJzb2x1dGUgLWJvdHRvbS0yMCAtcmlnaHQtMjAgdy04IGgtOCBib3JkZXItciBib3JkZXItYiBib3JkZXItd2hpdGUvMTAgdHJhbnNpdGlvbi1vcGFjaXR5IGR1cmF0aW9uLTUwMCIsCiAgICAgICAgICBwaGFzZSA+PSAyID8gIm9wYWNpdHktMTAwIiA6ICJvcGFjaXR5LTAiCiAgICAgICAgKX0gLz4KICAgICAgPC9kaXY+CgogICAgICB7LyogQm90dG9tIHN0YXR1cyB0ZXh0ICovfQogICAgICA8ZGl2IAogICAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgICAiYWJzb2x1dGUgYm90dG9tLTEyIGxlZnQtMS8yIC10cmFuc2xhdGUteC0xLzIgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIiwKICAgICAgICAgIHBoYXNlID49IDMgPyAib3BhY2l0eS0xMDAiIDogIm9wYWNpdHktMCIKICAgICAgICApfQogICAgICA+CiAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LVs5cHhdIHRyYWNraW5nLVswLjNlbV0gdGV4dC13aGl0ZS8yMCB1cHBlcmNhc2UiPgogICAgICAgICAgU3lzdGVtcyBPbmxpbmUKICAgICAgICA8L3A+CiAgICAgIDwvZGl2PgogICAgPC9kaXY+CiAgKQp9Cg=="}
+"use client"
+
+import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
+
+interface SplashScreenProps {
+  onComplete: () => void
+}
+
+export function SplashScreen({ onComplete }: SplashScreenProps) {
+  const [phase, setPhase] = useState(0)
+  
+  useEffect(() => {
+    // Phase 1: Logo appears (0.5s delay)
+    const timer1 = setTimeout(() => setPhase(1), 500)
+    // Phase 2: Orbital lines animate (1.5s)
+    const timer2 = setTimeout(() => setPhase(2), 1500)
+    // Phase 3: Text appears (2.5s)
+    const timer3 = setTimeout(() => setPhase(3), 2500)
+    // Phase 4: Begin exit (4s)
+    const timer4 = setTimeout(() => setPhase(4), 4000)
+    // Complete (5s)
+    const timer5 = setTimeout(() => onComplete(), 5000)
+    
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
+      clearTimeout(timer4)
+      clearTimeout(timer5)
+    }
+  }, [onComplete])
+
+  return (
+    <div 
+      className={cn(
+        "fixed inset-0 z-50 bg-[#0a0a0a] flex items-center justify-center transition-opacity duration-1000",
+        phase >= 4 ? "opacity-0 pointer-events-none" : "opacity-100"
+      )}
+    >
+      {/* Scanning lines effect */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div 
+          className={cn(
+            "absolute inset-0 transition-opacity duration-500",
+            phase >= 1 ? "opacity-100" : "opacity-0"
+          )}
+          style={{
+            background: `repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 2px,
+              rgba(255, 255, 255, 0.01) 2px,
+              rgba(255, 255, 255, 0.01) 4px
+            )`
+          }}
+        />
+      </div>
+
+      {/* Center content */}
+      <div className="relative flex flex-col items-center">
+        {/* INTERLINKED Logo Icon */}
+        <div 
+          className={cn(
+            "relative w-32 h-32 mb-12 transition-all duration-1000",
+            phase >= 1 ? "opacity-100 scale-100" : "opacity-0 scale-90"
+          )}
+        >
+          <img 
+            src="/images/interlinked-icon.png" 
+            alt="INTERLINKED"
+            className={cn(
+              "w-full h-full object-contain invert transition-all duration-700",
+              phase >= 2 ? "animate-pulse-slow" : ""
+            )}
+          />
+          
+          {/* Orbital ring animation */}
+          <div 
+            className={cn(
+              "absolute inset-[-20px] border border-white/10 rounded-full transition-all duration-1000",
+              phase >= 2 ? "opacity-100 scale-100 animate-spin-slow" : "opacity-0 scale-75"
+            )}
+          />
+          <div 
+            className={cn(
+              "absolute inset-[-40px] border border-white/5 rounded-full transition-all duration-1000 delay-200",
+              phase >= 2 ? "opacity-100 scale-100 animate-spin-slower" : "opacity-0 scale-75"
+            )}
+          />
+        </div>
+
+        {/* Loading bar */}
+        <div 
+          className={cn(
+            "w-48 h-px bg-white/10 mb-8 overflow-hidden transition-opacity duration-500",
+            phase >= 2 ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <div 
+            className={cn(
+              "h-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-[2000ms] ease-out",
+              phase >= 2 ? "translate-x-48" : "-translate-x-48"
+            )}
+          />
+        </div>
+
+        {/* Text */}
+        <div 
+          className={cn(
+            "text-center transition-all duration-700",
+            phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          )}
+        >
+          <p className="text-[10px] tracking-[0.5em] text-white/30 uppercase mb-2">
+            Initializing
+          </p>
+          <h1 className="text-2xl tracking-[0.4em] text-white/80 font-light">
+            INTERLINKED<span className="text-xs align-super text-white/40 ml-1">®</span>
+          </h1>
+        </div>
+
+        {/* Corner accents */}
+        <div className={cn(
+          "absolute -top-20 -left-20 w-8 h-8 border-l border-t border-white/10 transition-opacity duration-500",
+          phase >= 2 ? "opacity-100" : "opacity-0"
+        )} />
+        <div className={cn(
+          "absolute -top-20 -right-20 w-8 h-8 border-r border-t border-white/10 transition-opacity duration-500",
+          phase >= 2 ? "opacity-100" : "opacity-0"
+        )} />
+        <div className={cn(
+          "absolute -bottom-20 -left-20 w-8 h-8 border-l border-b border-white/10 transition-opacity duration-500",
+          phase >= 2 ? "opacity-100" : "opacity-0"
+        )} />
+        <div className={cn(
+          "absolute -bottom-20 -right-20 w-8 h-8 border-r border-b border-white/10 transition-opacity duration-500",
+          phase >= 2 ? "opacity-100" : "opacity-0"
+        )} />
+      </div>
+
+      {/* Bottom status text */}
+      <div 
+        className={cn(
+          "absolute bottom-12 left-1/2 -translate-x-1/2 transition-all duration-500",
+          phase >= 3 ? "opacity-100" : "opacity-0"
+        )}
+      >
+        <p className="text-[9px] tracking-[0.3em] text-white/20 uppercase">
+          Systems Online
+        </p>
+      </div>
+    </div>
+  )
+}
