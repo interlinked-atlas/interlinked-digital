@@ -1,1 +1,5 @@
-{"data":"aW1wb3J0ICdzZXJ2ZXItb25seScKCmltcG9ydCBTdHJpcGUgZnJvbSAnc3RyaXBlJwoKZXhwb3J0IGNvbnN0IHN0cmlwZSA9IG5ldyBTdHJpcGUocHJvY2Vzcy5lbnYuU1RSSVBFX1NFQ1JFVF9LRVkhKQo="}
+import 'server-only'
+
+import Stripe from 'stripe'
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
