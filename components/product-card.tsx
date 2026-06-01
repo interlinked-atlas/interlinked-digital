@@ -1,1 +1,118 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyBjbiB9IGZyb20gIkAvbGliL3V0aWxzIgppbXBvcnQgTGluayBmcm9tICJuZXh0L2xpbmsiCgppbnRlcmZhY2UgUHJvZHVjdENhcmRQcm9wcyB7CiAgbmFtZT86IHN0cmluZwogIHN0YXR1cz86IHN0cmluZwogIGlzQWN0aXZlPzogYm9vbGVhbgogIGlzSGlkZGVuPzogYm9vbGVhbgogIGljb25TcmM/OiBzdHJpbmcKICBocmVmPzogc3RyaW5nCiAgYXZhaWxhYmlsaXR5PzogewogICAgbWFjPzogYm9vbGVhbgogICAgd2luZG93cz86IGJvb2xlYW4KICB9Cn0KCmV4cG9ydCBmdW5jdGlvbiBQcm9kdWN0Q2FyZCh7IG5hbWUsIHN0YXR1cywgaXNBY3RpdmUgPSBmYWxzZSwgaXNIaWRkZW4gPSBmYWxzZSwgaWNvblNyYywgaHJlZiwgYXZhaWxhYmlsaXR5IH06IFByb2R1Y3RDYXJkUHJvcHMpIHsKICBjb25zdCBDYXJkV3JhcHBlciA9IGhyZWYgPyBMaW5rIDogImRpdiIKICBjb25zdCB3cmFwcGVyUHJvcHMgPSBocmVmID8geyBocmVmIH0gOiB7fQogIAogIHJldHVybiAoCiAgICA8Q2FyZFdyYXBwZXIKICAgICAgey4uLndyYXBwZXJQcm9wcyBhcyBhbnl9CiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgInJlbGF0aXZlIGdyb3VwIGgtNzIgdy1mdWxsIHJvdW5kZWQtbGcgYm9yZGVyIGJvcmRlci13aGl0ZS8xMCBiZy13aGl0ZS9bMC4wMl0gYmFja2Ryb3AtYmx1ci1zbSB0cmFuc2l0aW9uLWFsbCBkdXJhdGlvbi01MDAgYmxvY2siLAogICAgICAgIGhyZWYgJiYgImN1cnNvci1wb2ludGVyIiwKICAgICAgICBpc0FjdGl2ZSAmJiAiYm9yZGVyLXdoaXRlLzIwIGJnLXdoaXRlL1swLjA0XSBzaGFkb3ctWzBfMF80MHB4X3JnYmEoMjU1LDI1NSwyNTUsMC4wNSldIiwKICAgICAgICBpc0hpZGRlbiAmJiAic2VsZWN0LW5vbmUiLAogICAgICAgICFpc0hpZGRlbiAmJiAiaG92ZXI6Ym9yZGVyLXdoaXRlLzMwIGhvdmVyOmJnLXdoaXRlL1swLjA1XSBob3ZlcjpzaGFkb3ctWzBfMF82MHB4X3JnYmEoMjU1LDI1NSwyNTUsMC4wOCldIgogICAgICApfQogICAgPgogICAgICB7LyogU3VidGxlIGNvcm5lciBhY2NlbnRzICovfQogICAgICA8ZGl2IGNsYXNzTmFtZT17Y24oCiAgICAgICAgImFic29sdXRlIHRvcC0wIGxlZnQtMCB3LTggaC04IGJvcmRlci1sIGJvcmRlci10IHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTUwMCIsCiAgICAgICAgaXNBY3RpdmUgPyAiYm9yZGVyLXdoaXRlLzMwIiA6ICJib3JkZXItd2hpdGUvMTAiLAogICAgICAgIGlzSGlkZGVuICYmICJib3JkZXItd2hpdGUvNSIKICAgICAgKX0gLz4KICAgICAgPGRpdiBjbGFzc05hbWU9e2NuKAogICAgICAgICJhYnNvbHV0ZSBib3R0b20tMCByaWdodC0wIHctOCBoLTggYm9yZGVyLXIgYm9yZGVyLWIgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIiwKICAgICAgICBpc0FjdGl2ZSA/ICJib3JkZXItd2hpdGUvMzAiIDogImJvcmRlci13aGl0ZS8xMCIsCiAgICAgICAgaXNIaWRkZW4gJiYgImJvcmRlci13aGl0ZS81IgogICAgICApfSAvPgoKICAgICAgey8qIENvbnRlbnQgKi99CiAgICAgIDxkaXYgY2xhc3NOYW1lPXtjbigKICAgICAgICAiZmxleCBmbGV4LWNvbCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgaC1mdWxsIHB4LTYgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNTAwIiwKICAgICAgICBpc0hpZGRlbiAmJiAiYmx1ci1zbSIKICAgICAgKX0+CiAgICAgICAge2lzSGlkZGVuID8gKAogICAgICAgICAgPD4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImgtMTYgdy0xNiBiZy13aGl0ZS8xMCByb3VuZGVkLWxnIG1iLTQiIC8+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJoLTQgdy0yNCBiZy13aGl0ZS8xMCByb3VuZGVkIG1iLTMiIC8+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJoLTMgdy0xNiBiZy13aGl0ZS81IHJvdW5kZWQiIC8+CiAgICAgICAgICA8Lz4KICAgICAgICApIDogKAogICAgICAgICAgPD4KICAgICAgICAgICAge2ljb25TcmMgJiYgKAogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJyZWxhdGl2ZSBtYi02Ij4KICAgICAgICAgICAgICAgIDxpbWcKICAgICAgICAgICAgICAgICAgc3JjPXtpY29uU3JjIHx8ICIvcGxhY2Vob2xkZXIuc3ZnIn0KICAgICAgICAgICAgICAgICAgYWx0PXtgJHtuYW1lfSBpY29uYH0KICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgICAgICAgICAidy0yMCBoLTIwIG9iamVjdC1jb250YWluIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTcwMCBlYXNlLW91dCIsCiAgICAgICAgICAgICAgICAgICAgaXNBY3RpdmUgCiAgICAgICAgICAgICAgICAgICAgICA/ICJibHVyLW1kIG9wYWNpdHktNjAgZ3JvdXAtaG92ZXI6Ymx1ci1ub25lIGdyb3VwLWhvdmVyOm9wYWNpdHktMTAwIiAKICAgICAgICAgICAgICAgICAgICAgIDogImJsdXItWzJweF0gb3BhY2l0eS04MCBncm91cC1ob3ZlcjpibHVyLVsxcHhdIGdyb3VwLWhvdmVyOm9wYWNpdHktOTAiCiAgICAgICAgICAgICAgICAgICl9CiAgICAgICAgICAgICAgICAvPgogICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICApfQogICAgICAgICAgICA8aDMgY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgICAidGV4dC0yeGwgZm9udC1saWdodCB0cmFja2luZy1bMC4zZW1dIG1iLTQgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tNzAwIGVhc2Utb3V0IiwKICAgICAgICAgICAgICBpc0FjdGl2ZSAKICAgICAgICAgICAgICAgID8gInRleHQtd2hpdGUgYmx1ci1tZCBncm91cC1ob3ZlcjpibHVyLW5vbmUiIAogICAgICAgICAgICAgICAgOiAidGV4dC13aGl0ZS85MCIKICAgICAgICAgICAgKX0+CiAgICAgICAgICAgICAge25hbWV9CiAgICAgICAgICAgIDwvaDM+CiAgICAgICAgICAgIHtzdGF0dXMgJiYgIWF2YWlsYWJpbGl0eSAmJiAoCiAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPXtjbigKICAgICAgICAgICAgICAgICJ0ZXh0LXhzIHRyYWNraW5nLVswLjJlbV0gdXBwZXJjYXNlIHB4LTMgcHktMSByb3VuZGVkLWZ1bGwgYm9yZGVyIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTMwMCIsCiAgICAgICAgICAgICAgICBpc0FjdGl2ZSAKICAgICAgICAgICAgICAgICAgPyAidGV4dC13aGl0ZS84MCBib3JkZXItd2hpdGUvMjAgYmctd2hpdGUvNSIgCiAgICAgICAgICAgICAgICAgIDogInRleHQtd2hpdGUvNTAgYm9yZGVyLXdoaXRlLzEwIgogICAgICAgICAgICAgICl9PgogICAgICAgICAgICAgICAge3N0YXR1c30KICAgICAgICAgICAgICA8L3NwYW4+CiAgICAgICAgICAgICl9CiAgICAgICAgICAgIHthdmFpbGFiaWxpdHkgJiYgKAogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJmbGV4IGZsZXgtY29sIGl0ZW1zLWNlbnRlciBnYXAtMiI+CiAgICAgICAgICAgICAgICB7YXZhaWxhYmlsaXR5Lm1hYyAmJiAoCiAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgdGV4dC14cyB0cmFja2luZy1bMC4xNWVtXSB0ZXh0LXdoaXRlLzcwIj4KICAgICAgICAgICAgICAgICAgICA8c3ZnIHZpZXdCb3g9IjAgMCAyNCAyNCIgY2xhc3NOYW1lPSJ3LTQgaC00IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogICAgICAgICAgICAgICAgICAgICAgPHBhdGggZD0iTTE4LjcxIDE5LjVjLS44MyAxLjI0LTEuNzEgMi40NS0zLjA1IDIuNDctMS4zNC4wMy0xLjc3LS43OS0zLjI5LS43OS0xLjUzIDAtMiAuNzctMy4yNy44Mi0xLjMxLjA1LTIuMy0xLjMyLTMuMTQtMi41M0M0LjI1IDE3IDIuOTQgMTIuNDUgNC43IDkuMzljLjg3LTEuNTIgMi40My0yLjQ4IDQuMTItMi41MSAxLjI4LS4wMiAyLjUuODcgMy4yOS44Ny43OCAwIDIuMjYtMS4wNyAzLjgxLS45MS42NS4wMyAyLjQ3LjI2IDMuNjQgMS45OC0uMDkuMDYtMi4xNyAxLjI4LTIuMTUgMy44MS4wMyAzLjAyIDIuNjUgNC4wMyAyLjY4IDQuMDQtLjAzLjA3LS40MiAxLjQ0LTEuMzggMi44M00xMyAzLjVjLjczLS44MyAxLjk0LTEuNDYgMi45NC0xLjUuMTMgMS4xNy0uMzQgMi4zNS0xLjA0IDMuMTktLjY5Ljg1LTEuODMgMS41MS0yLjk1IDEuNDItLjE1LTEuMTUuNDEtMi4zNSAxLjA1LTMuMTF6Ii8+CiAgICAgICAgICAgICAgICAgICAgPC9zdmc+CiAgICAgICAgICAgICAgICAgICAgTm93IEF2YWlsYWJsZSBmb3IgTWFjCiAgICAgICAgICAgICAgICAgIDwvc3Bhbj4KICAgICAgICAgICAgICAgICl9CiAgICAgICAgICAgICAgICB7YXZhaWxhYmlsaXR5LndpbmRvd3MgPT09IGZhbHNlICYmICgKICAgICAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPSJ0ZXh0LXhzIHRyYWNraW5nLVswLjE1ZW1dIHRleHQtd2hpdGUvNDAiPgogICAgICAgICAgICAgICAgICAgIFdpbmRvd3MgQ29taW5nIFNvb24KICAgICAgICAgICAgICAgICAgPC9zcGFuPgogICAgICAgICAgICAgICAgKX0KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgKX0KICAgICAgICAgIDwvPgogICAgICAgICl9CiAgICAgIDwvZGl2PgoKICAgICAgey8qIEdsb3cgZWZmZWN0IGZvciBhY3RpdmUgY2FyZCAqL30KICAgICAge2lzQWN0aXZlICYmICgKICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iYWJzb2x1dGUgaW5zZXQtMCByb3VuZGVkLWxnIGJnLWdyYWRpZW50LXRvLXQgZnJvbS13aGl0ZS9bMC4wMl0gdG8tdHJhbnNwYXJlbnQgcG9pbnRlci1ldmVudHMtbm9uZSIgLz4KICAgICAgKX0KICAgIDwvQ2FyZFdyYXBwZXI+CiAgKQp9Cg=="}
+"use client"
+
+import { cn } from "@/lib/utils"
+import Link from "next/link"
+
+interface ProductCardProps {
+  name?: string
+  status?: string
+  isActive?: boolean
+  isHidden?: boolean
+  iconSrc?: string
+  href?: string
+  availability?: {
+    mac?: boolean
+    windows?: boolean
+  }
+}
+
+export function ProductCard({ name, status, isActive = false, isHidden = false, iconSrc, href, availability }: ProductCardProps) {
+  const CardWrapper = href ? Link : "div"
+  const wrapperProps = href ? { href } : {}
+  
+  return (
+    <CardWrapper
+      {...wrapperProps as any}
+      className={cn(
+        "relative group h-72 w-full rounded-lg border border-white/10 bg-white/[0.02] backdrop-blur-sm transition-all duration-500 block",
+        href && "cursor-pointer",
+        isActive && "border-white/20 bg-white/[0.04] shadow-[0_0_40px_rgba(255,255,255,0.05)]",
+        isHidden && "select-none",
+        !isHidden && "hover:border-white/30 hover:bg-white/[0.05] hover:shadow-[0_0_60px_rgba(255,255,255,0.08)]"
+      )}
+    >
+      {/* Subtle corner accents */}
+      <div className={cn(
+        "absolute top-0 left-0 w-8 h-8 border-l border-t transition-all duration-500",
+        isActive ? "border-white/30" : "border-white/10",
+        isHidden && "border-white/5"
+      )} />
+      <div className={cn(
+        "absolute bottom-0 right-0 w-8 h-8 border-r border-b transition-all duration-500",
+        isActive ? "border-white/30" : "border-white/10",
+        isHidden && "border-white/5"
+      )} />
+
+      {/* Content */}
+      <div className={cn(
+        "flex flex-col items-center justify-center h-full px-6 transition-all duration-500",
+        isHidden && "blur-sm"
+      )}>
+        {isHidden ? (
+          <>
+            <div className="h-16 w-16 bg-white/10 rounded-lg mb-4" />
+            <div className="h-4 w-24 bg-white/10 rounded mb-3" />
+            <div className="h-3 w-16 bg-white/5 rounded" />
+          </>
+        ) : (
+          <>
+            {iconSrc && (
+              <div className="relative mb-6">
+                <img
+                  src={iconSrc || "/placeholder.svg"}
+                  alt={`${name} icon`}
+                  className={cn(
+                    "w-20 h-20 object-contain transition-all duration-700 ease-out",
+                    isActive 
+                      ? "blur-md opacity-60 group-hover:blur-none group-hover:opacity-100" 
+                      : "blur-[2px] opacity-80 group-hover:blur-[1px] group-hover:opacity-90"
+                  )}
+                />
+              </div>
+            )}
+            <h3 className={cn(
+              "text-2xl font-light tracking-[0.3em] mb-4 transition-all duration-700 ease-out",
+              isActive 
+                ? "text-white blur-md group-hover:blur-none" 
+                : "text-white/90"
+            )}>
+              {name}
+            </h3>
+            {status && !availability && (
+              <span className={cn(
+                "text-xs tracking-[0.2em] uppercase px-3 py-1 rounded-full border transition-all duration-300",
+                isActive 
+                  ? "text-white/80 border-white/20 bg-white/5" 
+                  : "text-white/50 border-white/10"
+              )}>
+                {status}
+              </span>
+            )}
+            {availability && (
+              <div className="flex flex-col items-center gap-2">
+                {availability.mac && (
+                  <span className="flex items-center gap-2 text-xs tracking-[0.15em] text-white/70">
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                    </svg>
+                    Now Available for Mac
+                  </span>
+                )}
+                {availability.windows === false && (
+                  <span className="text-xs tracking-[0.15em] text-white/40">
+                    Windows Coming Soon
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Glow effect for active card */}
+      {isActive && (
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-white/[0.02] to-transparent pointer-events-none" />
+      )}
+    </CardWrapper>
+  )
+}
