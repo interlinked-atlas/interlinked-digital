@@ -1,1 +1,28 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgU2VwYXJhdG9yUHJpbWl0aXZlIGZyb20gJ0ByYWRpeC11aS9yZWFjdC1zZXBhcmF0b3InCgppbXBvcnQgeyBjbiB9IGZyb20gJ0AvbGliL3V0aWxzJwoKZnVuY3Rpb24gU2VwYXJhdG9yKHsKICBjbGFzc05hbWUsCiAgb3JpZW50YXRpb24gPSAnaG9yaXpvbnRhbCcsCiAgZGVjb3JhdGl2ZSA9IHRydWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFNlcGFyYXRvclByaW1pdGl2ZS5Sb290PikgewogIHJldHVybiAoCiAgICA8U2VwYXJhdG9yUHJpbWl0aXZlLlJvb3QKICAgICAgZGF0YS1zbG90PSJzZXBhcmF0b3IiCiAgICAgIGRlY29yYXRpdmU9e2RlY29yYXRpdmV9CiAgICAgIG9yaWVudGF0aW9uPXtvcmllbnRhdGlvbn0KICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAnYmctYm9yZGVyIHNocmluay0wIGRhdGEtW29yaWVudGF0aW9uPWhvcml6b250YWxdOmgtcHggZGF0YS1bb3JpZW50YXRpb249aG9yaXpvbnRhbF06dy1mdWxsIGRhdGEtW29yaWVudGF0aW9uPXZlcnRpY2FsXTpoLWZ1bGwgZGF0YS1bb3JpZW50YXRpb249dmVydGljYWxdOnctcHgnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmV4cG9ydCB7IFNlcGFyYXRvciB9Cg=="}
+'use client'
+
+import * as React from 'react'
+import * as SeparatorPrimitive from '@radix-ui/react-separator'
+
+import { cn } from '@/lib/utils'
+
+function Separator({
+  className,
+  orientation = 'horizontal',
+  decorative = true,
+  ...props
+}: React.ComponentProps<typeof SeparatorPrimitive.Root>) {
+  return (
+    <SeparatorPrimitive.Root
+      data-slot="separator"
+      decorative={decorative}
+      orientation={orientation}
+      className={cn(
+        'bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Separator }
