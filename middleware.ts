@@ -1,1 +1,12 @@
-{"data":"aW1wb3J0IHsgdXBkYXRlU2Vzc2lvbiB9IGZyb20gJ0AvbGliL3N1cGFiYXNlL21pZGRsZXdhcmUnCmltcG9ydCB7IHR5cGUgTmV4dFJlcXVlc3QgfSBmcm9tICduZXh0L3NlcnZlcicKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBtaWRkbGV3YXJlKHJlcXVlc3Q6IE5leHRSZXF1ZXN0KSB7CiAgcmV0dXJuIGF3YWl0IHVwZGF0ZVNlc3Npb24ocmVxdWVzdCkKfQoKZXhwb3J0IGNvbnN0IGNvbmZpZyA9IHsKICBtYXRjaGVyOiBbCiAgICAnLygoPyFfbmV4dC9zdGF0aWN8X25leHQvaW1hZ2V8ZmF2aWNvbi5pY298LipcXC4oPzpzdmd8cG5nfGpwZ3xqcGVnfGdpZnx3ZWJwKSQpLiopJywKICBdLAp9Cg=="}
+import { updateSession } from '@/lib/supabase/middleware'
+import { type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  return await updateSession(request)
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
