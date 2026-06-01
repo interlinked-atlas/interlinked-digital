@@ -1,1 +1,8 @@
-{"data":"LyoqIEB0eXBlIHtpbXBvcnQoJ3Bvc3Rjc3MtbG9hZC1jb25maWcnKS5Db25maWd9ICovCmNvbnN0IGNvbmZpZyA9IHsKICBwbHVnaW5zOiB7CiAgICAnQHRhaWx3aW5kY3NzL3Bvc3Rjc3MnOiB7fSwKICB9LAp9CgpleHBvcnQgZGVmYXVsdCBjb25maWcK"}
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+
+export default config
