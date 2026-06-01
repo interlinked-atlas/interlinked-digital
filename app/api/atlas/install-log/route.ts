@@ -1,1 +1,146 @@
-{"data":"aW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0BzdXBhYmFzZS9zdXBhYmFzZS1qcycKCmNvbnN0IHN1cGFiYXNlQWRtaW4gPSBjcmVhdGVDbGllbnQoCiAgcHJvY2Vzcy5lbnYuTkVYVF9QVUJMSUNfU1VQQUJBU0VfVVJMISwKICBwcm9jZXNzLmVudi5TVVBBQkFTRV9TRVJWSUNFX1JPTEVfS0VZIQopCgovLyBQT1NUIC9hcGkvYXRsYXMvaW5zdGFsbC1sb2cKLy8gTG9nIGFuIGluc3RhbGxhdGlvbiAoZm9yIEJhc2ljIHBsYW4gcmF0ZSBsaW1pdGluZykKZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIFBPU1QocmVxdWVzdDogUmVxdWVzdCkgewogIHRyeSB7CiAgICBjb25zdCBhdXRoSGVhZGVyID0gcmVxdWVzdC5oZWFkZXJzLmdldCgnYXV0aG9yaXphdGlvbicpCiAgICBpZiAoIWF1dGhIZWFkZXI/LnN0YXJ0c1dpdGgoJ0JlYXJlciAnKSkgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBlcnJvcjogJ1VuYXV0aG9yaXplZCcgfSwgeyBzdGF0dXM6IDQwMSB9KQogICAgfQoKICAgIGNvbnN0IHRva2VuID0gYXV0aEhlYWRlci5zdWJzdHJpbmcoNykKICAgIGNvbnN0IHsgZGF0YTogeyB1c2VyIH0sIGVycm9yOiBhdXRoRXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4uYXV0aC5nZXRVc2VyKHRva2VuKQogICAgCiAgICBpZiAoYXV0aEVycm9yIHx8ICF1c2VyKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7IGVycm9yOiAnSW52YWxpZCB0b2tlbicgfSwgeyBzdGF0dXM6IDQwMSB9KQogICAgfQoKICAgIGNvbnN0IHsgYXBwX25hbWUsIGRldmljZV9pZCB9ID0gYXdhaXQgcmVxdWVzdC5qc29uKCkKCiAgICAvLyBHZXQgc3Vic2NyaXB0aW9uIHRvIGNoZWNrIHBsYW4KICAgIGNvbnN0IHsgZGF0YTogc3Vic2NyaXB0aW9uIH0gPSBhd2FpdCBzdXBhYmFzZUFkbWluCiAgICAgIC5mcm9tKCdzdWJzY3JpcHRpb25zJykKICAgICAgLnNlbGVjdCgncGxhbicpCiAgICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAgIC5lcSgnc3RhdHVzJywgJ2FjdGl2ZScpCiAgICAgIC5zaW5nbGUoKQoKICAgIGlmICghc3Vic2NyaXB0aW9uKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnTm8gYWN0aXZlIHN1YnNjcmlwdGlvbicgfSwKICAgICAgICB7IHN0YXR1czogNDAzIH0KICAgICAgKQogICAgfQoKICAgIC8vIEZvciBCYXNpYyBwbGFuLCBjaGVjayBkYWlseSBsaW1pdAogICAgaWYgKHN1YnNjcmlwdGlvbi5wbGFuID09PSAnYmFzaWMnKSB7CiAgICAgIGNvbnN0IHRvZGF5ID0gbmV3IERhdGUoKQogICAgICB0b2RheS5zZXRIb3VycygwLCAwLCAwLCAwKQogICAgICAKICAgICAgY29uc3QgeyBjb3VudCB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAgIC5mcm9tKCdpbnN0YWxsX2xvZ3MnKQogICAgICAgIC5zZWxlY3QoJyonLCB7IGNvdW50OiAnZXhhY3QnLCBoZWFkOiB0cnVlIH0pCiAgICAgICAgLmVxKCd1c2VyX2lkJywgdXNlci5pZCkKICAgICAgICAuZ3RlKCdpbnN0YWxsZWRfYXQnLCB0b2RheS50b0lTT1N0cmluZygpKQoKICAgICAgaWYgKGNvdW50ICYmIGNvdW50ID49IDMpIHsKICAgICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oewogICAgICAgICAgYWxsb3dlZDogZmFsc2UsCiAgICAgICAgICByZWFzb246ICdkYWlseV9saW1pdF9yZWFjaGVkJywKICAgICAgICAgIGxpbWl0OiAzLAogICAgICAgICAgdXNlZDogY291bnQsCiAgICAgICAgICByZXNldHNfYXQ6IG5ldyBEYXRlKHRvZGF5LmdldFRpbWUoKSArIDI0ICogNjAgKiA2MCAqIDEwMDApLnRvSVNPU3RyaW5nKCksCiAgICAgICAgfSwgeyBzdGF0dXM6IDQyOSB9KQogICAgICB9CiAgICB9CgogICAgLy8gTG9nIHRoZSBpbnN0YWxsYXRpb24KICAgIGF3YWl0IHN1cGFiYXNlQWRtaW4KICAgICAgLmZyb20oJ2luc3RhbGxfbG9ncycpCiAgICAgIC5pbnNlcnQoewogICAgICAgIHVzZXJfaWQ6IHVzZXIuaWQsCiAgICAgICAgZGV2aWNlX2lkLAogICAgICAgIGFwcF9uYW1lLAogICAgICAgIGluc3RhbGxlZF9hdDogbmV3IERhdGUoKS50b0lTT1N0cmluZygpLAogICAgICB9KQoKICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7CiAgICAgIGFsbG93ZWQ6IHRydWUsCiAgICAgIGxvZ2dlZDogdHJ1ZSwKICAgIH0pCiAgfSBjYXRjaCB7CiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oCiAgICAgIHsgZXJyb3I6ICdJbnRlcm5hbCBzZXJ2ZXIgZXJyb3InIH0sCiAgICAgIHsgc3RhdHVzOiA1MDAgfQogICAgKQogIH0KfQoKLy8gR0VUIC9hcGkvYXRsYXMvaW5zdGFsbC1sb2cKLy8gR2V0IGluc3RhbGwgY291bnQgZm9yIHJhdGUgbGltaXRpbmcgZGlzcGxheQpleHBvcnQgYXN5bmMgZnVuY3Rpb24gR0VUKHJlcXVlc3Q6IFJlcXVlc3QpIHsKICB0cnkgewogICAgY29uc3QgYXV0aEhlYWRlciA9IHJlcXVlc3QuaGVhZGVycy5nZXQoJ2F1dGhvcml6YXRpb24nKQogICAgaWYgKCFhdXRoSGVhZGVyPy5zdGFydHNXaXRoKCdCZWFyZXIgJykpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgZXJyb3I6ICdVbmF1dGhvcml6ZWQnIH0sIHsgc3RhdHVzOiA0MDEgfSkKICAgIH0KCiAgICBjb25zdCB0b2tlbiA9IGF1dGhIZWFkZXIuc3Vic3RyaW5nKDcpCiAgICBjb25zdCB7IGRhdGE6IHsgdXNlciB9LCBlcnJvcjogYXV0aEVycm9yIH0gPSBhd2FpdCBzdXBhYmFzZUFkbWluLmF1dGguZ2V0VXNlcih0b2tlbikKICAgIAogICAgaWYgKGF1dGhFcnJvciB8fCAhdXNlcikgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBlcnJvcjogJ0ludmFsaWQgdG9rZW4nIH0sIHsgc3RhdHVzOiA0MDEgfSkKICAgIH0KCiAgICAvLyBHZXQgc3Vic2NyaXB0aW9uCiAgICBjb25zdCB7IGRhdGE6IHN1YnNjcmlwdGlvbiB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAuZnJvbSgnc3Vic2NyaXB0aW9ucycpCiAgICAgIC5zZWxlY3QoJ3BsYW4nKQogICAgICAuZXEoJ3VzZXJfaWQnLCB1c2VyLmlkKQogICAgICAuZXEoJ3N0YXR1cycsICdhY3RpdmUnKQogICAgICAuc2luZ2xlKCkKCiAgICBpZiAoIXN1YnNjcmlwdGlvbikgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBlcnJvcjogJ05vIGFjdGl2ZSBzdWJzY3JpcHRpb24nIH0sIHsgc3RhdHVzOiA0MDMgfSkKICAgIH0KCiAgICAvLyBQcm8gaGFzIHVubGltaXRlZAogICAgaWYgKHN1YnNjcmlwdGlvbi5wbGFuID09PSAncHJvJykgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oewogICAgICAgIHBsYW46ICdwcm8nLAogICAgICAgIHVubGltaXRlZDogdHJ1ZSwKICAgICAgfSkKICAgIH0KCiAgICAvLyBGb3IgQmFzaWMsIHJldHVybiB0b2RheSdzIGNvdW50CiAgICBjb25zdCB0b2RheSA9IG5ldyBEYXRlKCkKICAgIHRvZGF5LnNldEhvdXJzKDAsIDAsIDAsIDApCiAgICAKICAgIGNvbnN0IHsgY291bnQgfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4KICAgICAgLmZyb20oJ2luc3RhbGxfbG9ncycpCiAgICAgIC5zZWxlY3QoJyonLCB7IGNvdW50OiAnZXhhY3QnLCBoZWFkOiB0cnVlIH0pCiAgICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAgIC5ndGUoJ2luc3RhbGxlZF9hdCcsIHRvZGF5LnRvSVNPU3RyaW5nKCkpCgogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgcGxhbjogJ2Jhc2ljJywKICAgICAgdW5saW1pdGVkOiBmYWxzZSwKICAgICAgZGFpbHlfbGltaXQ6IDMsCiAgICAgIHVzZWRfdG9kYXk6IGNvdW50IHx8IDAsCiAgICAgIHJlbWFpbmluZzogTWF0aC5tYXgoMCwgMyAtIChjb3VudCB8fCAwKSksCiAgICAgIHJlc2V0c19hdDogbmV3IERhdGUodG9kYXkuZ2V0VGltZSgpICsgMjQgKiA2MCAqIDYwICogMTAwMCkudG9JU09TdHJpbmcoKSwKICAgIH0pCiAgfSBjYXRjaCB7CiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oCiAgICAgIHsgZXJyb3I6ICdJbnRlcm5hbCBzZXJ2ZXIgZXJyb3InIH0sCiAgICAgIHsgc3RhdHVzOiA1MDAgfQogICAgKQogIH0KfQo="}
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// POST /api/atlas/install-log
+// Log an installation (for Basic plan rate limiting)
+export async function POST(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const { app_name, device_id } = await request.json()
+
+    // Get subscription to check plan
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'No active subscription' },
+        { status: 403 }
+      )
+    }
+
+    // For Basic plan, check daily limit
+    if (subscription.plan === 'basic') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const { count } = await supabaseAdmin
+        .from('install_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('installed_at', today.toISOString())
+
+      if (count && count >= 3) {
+        return NextResponse.json({
+          allowed: false,
+          reason: 'daily_limit_reached',
+          limit: 3,
+          used: count,
+          resets_at: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        }, { status: 429 })
+      }
+    }
+
+    // Log the installation
+    await supabaseAdmin
+      .from('install_logs')
+      .insert({
+        user_id: user.id,
+        device_id,
+        app_name,
+        installed_at: new Date().toISOString(),
+      })
+
+    return NextResponse.json({
+      allowed: true,
+      logged: true,
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// GET /api/atlas/install-log
+// Get install count for rate limiting display
+export async function GET(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Get subscription
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (!subscription) {
+      return NextResponse.json({ error: 'No active subscription' }, { status: 403 })
+    }
+
+    // Pro has unlimited
+    if (subscription.plan === 'pro') {
+      return NextResponse.json({
+        plan: 'pro',
+        unlimited: true,
+      })
+    }
+
+    // For Basic, return today's count
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const { count } = await supabaseAdmin
+      .from('install_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('installed_at', today.toISOString())
+
+    return NextResponse.json({
+      plan: 'basic',
+      unlimited: false,
+      daily_limit: 3,
+      used_today: count || 0,
+      remaining: Math.max(0, 3 - (count || 0)),
+      resets_at: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
