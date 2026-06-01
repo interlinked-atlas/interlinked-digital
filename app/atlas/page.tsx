@@ -177,6 +177,9 @@ export default function AtlasPage() {
               >
                 Get Standard
               </Link>
+            </div>
+
+            {/* Pro Plan */}
             <div className="relative p-8 bg-gradient-to-b from-[#1a1a2e] to-[#0d0d1a] rounded-2xl border border-[#7c6fee]/30 shadow-lg shadow-[#7c6fee]/10">
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-full text-xs font-medium">Most Popular</span>
               <h3 className="text-2xl font-semibold mb-2">Pro</h3>
