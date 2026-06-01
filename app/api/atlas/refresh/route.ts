@@ -1,1 +1,48 @@
-{"data":"aW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0AvbGliL3N1cGFiYXNlL3NlcnZlcicKCi8vIFBPU1QgL2FwaS9hdGxhcy9yZWZyZXNoCi8vIG1hY09TIGFwcCBzZW5kcyByZWZyZXNoX3Rva2VuLCByZWNlaXZlcyBuZXcgSldUIHNlc3Npb24KZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIFBPU1QocmVxdWVzdDogUmVxdWVzdCkgewogIHRyeSB7CiAgICBjb25zdCB7IHJlZnJlc2hfdG9rZW4gfSA9IGF3YWl0IHJlcXVlc3QuanNvbigpCgogICAgaWYgKCFyZWZyZXNoX3Rva2VuKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnUmVmcmVzaCB0b2tlbiBpcyByZXF1aXJlZCcgfSwKICAgICAgICB7IHN0YXR1czogNDAwIH0KICAgICAgKQogICAgfQoKICAgIGNvbnN0IHN1cGFiYXNlID0gYXdhaXQgY3JlYXRlQ2xpZW50KCkKICAgIAogICAgY29uc3QgeyBkYXRhLCBlcnJvciB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC5yZWZyZXNoU2Vzc2lvbih7CiAgICAgIHJlZnJlc2hfdG9rZW4sCiAgICB9KQoKICAgIGlmIChlcnJvcikgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oCiAgICAgICAgeyBlcnJvcjogZXJyb3IubWVzc2FnZSB9LAogICAgICAgIHsgc3RhdHVzOiA0MDEgfQogICAgICApCiAgICB9CgogICAgaWYgKCFkYXRhLnNlc3Npb24pIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICAgIHsgZXJyb3I6ICdGYWlsZWQgdG8gcmVmcmVzaCBzZXNzaW9uJyB9LAogICAgICAgIHsgc3RhdHVzOiA1MDAgfQogICAgICApCiAgICB9CgogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgYWNjZXNzX3Rva2VuOiBkYXRhLnNlc3Npb24uYWNjZXNzX3Rva2VuLAogICAgICByZWZyZXNoX3Rva2VuOiBkYXRhLnNlc3Npb24ucmVmcmVzaF90b2tlbiwKICAgICAgZXhwaXJlc19hdDogZGF0YS5zZXNzaW9uLmV4cGlyZXNfYXQsCiAgICB9KQogIH0gY2F0Y2ggewogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICB7IGVycm9yOiAnSW50ZXJuYWwgc2VydmVyIGVycm9yJyB9LAogICAgICB7IHN0YXR1czogNTAwIH0KICAgICkKICB9Cn0K"}
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+// POST /api/atlas/refresh
+// macOS app sends refresh_token, receives new JWT session
+export async function POST(request: Request) {
+  try {
+    const { refresh_token } = await request.json()
+
+    if (!refresh_token) {
+      return NextResponse.json(
+        { error: 'Refresh token is required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token,
+    })
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 401 }
+      )
+    }
+
+    if (!data.session) {
+      return NextResponse.json(
+        { error: 'Failed to refresh session' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
