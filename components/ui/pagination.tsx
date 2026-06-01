@@ -1,1 +1,127 @@
-{"data":"aW1wb3J0ICogYXMgUmVhY3QgZnJvbSAncmVhY3QnCmltcG9ydCB7CiAgQ2hldnJvbkxlZnRJY29uLAogIENoZXZyb25SaWdodEljb24sCiAgTW9yZUhvcml6b250YWxJY29uLAp9IGZyb20gJ2x1Y2lkZS1yZWFjdCcKCmltcG9ydCB7IGNuIH0gZnJvbSAnQC9saWIvdXRpbHMnCmltcG9ydCB7IEJ1dHRvbiwgYnV0dG9uVmFyaWFudHMgfSBmcm9tICdAL2NvbXBvbmVudHMvdWkvYnV0dG9uJwoKZnVuY3Rpb24gUGFnaW5hdGlvbih7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J25hdic+KSB7CiAgcmV0dXJuICgKICAgIDxuYXYKICAgICAgcm9sZT0ibmF2aWdhdGlvbiIKICAgICAgYXJpYS1sYWJlbD0icGFnaW5hdGlvbiIKICAgICAgZGF0YS1zbG90PSJwYWdpbmF0aW9uIgogICAgICBjbGFzc05hbWU9e2NuKCdteC1hdXRvIGZsZXggdy1mdWxsIGp1c3RpZnktY2VudGVyJywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFBhZ2luYXRpb25Db250ZW50KHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J3VsJz4pIHsKICByZXR1cm4gKAogICAgPHVsCiAgICAgIGRhdGEtc2xvdD0icGFnaW5hdGlvbi1jb250ZW50IgogICAgICBjbGFzc05hbWU9e2NuKCdmbGV4IGZsZXgtcm93IGl0ZW1zLWNlbnRlciBnYXAtMScsIGNsYXNzTmFtZSl9CiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpmdW5jdGlvbiBQYWdpbmF0aW9uSXRlbSh7IC4uLnByb3BzIH06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdsaSc+KSB7CiAgcmV0dXJuIDxsaSBkYXRhLXNsb3Q9InBhZ2luYXRpb24taXRlbSIgey4uLnByb3BzfSAvPgp9Cgp0eXBlIFBhZ2luYXRpb25MaW5rUHJvcHMgPSB7CiAgaXNBY3RpdmU/OiBib29sZWFuCn0gJiBQaWNrPFJlYWN0LkNvbXBvbmVudFByb3BzPHR5cGVvZiBCdXR0b24+LCAnc2l6ZSc+ICYKICBSZWFjdC5Db21wb25lbnRQcm9wczwnYSc+CgpmdW5jdGlvbiBQYWdpbmF0aW9uTGluayh7CiAgY2xhc3NOYW1lLAogIGlzQWN0aXZlLAogIHNpemUgPSAnaWNvbicsCiAgLi4ucHJvcHMKfTogUGFnaW5hdGlvbkxpbmtQcm9wcykgewogIHJldHVybiAoCiAgICA8YQogICAgICBhcmlhLWN1cnJlbnQ9e2lzQWN0aXZlID8gJ3BhZ2UnIDogdW5kZWZpbmVkfQogICAgICBkYXRhLXNsb3Q9InBhZ2luYXRpb24tbGluayIKICAgICAgZGF0YS1hY3RpdmU9e2lzQWN0aXZlfQogICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgIGJ1dHRvblZhcmlhbnRzKHsKICAgICAgICAgIHZhcmlhbnQ6IGlzQWN0aXZlID8gJ291dGxpbmUnIDogJ2dob3N0JywKICAgICAgICAgIHNpemUsCiAgICAgICAgfSksCiAgICAgICAgY2xhc3NOYW1lLAogICAgICApfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gUGFnaW5hdGlvblByZXZpb3VzKHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFBhZ2luYXRpb25MaW5rPikgewogIHJldHVybiAoCiAgICA8UGFnaW5hdGlvbkxpbmsKICAgICAgYXJpYS1sYWJlbD0iR28gdG8gcHJldmlvdXMgcGFnZSIKICAgICAgc2l6ZT0iZGVmYXVsdCIKICAgICAgY2xhc3NOYW1lPXtjbignZ2FwLTEgcHgtMi41IHNtOnBsLTIuNScsIGNsYXNzTmFtZSl9CiAgICAgIHsuLi5wcm9wc30KICAgID4KICAgICAgPENoZXZyb25MZWZ0SWNvbiAvPgogICAgICA8c3BhbiBjbGFzc05hbWU9ImhpZGRlbiBzbTpibG9jayI+UHJldmlvdXM8L3NwYW4+CiAgICA8L1BhZ2luYXRpb25MaW5rPgogICkKfQoKZnVuY3Rpb24gUGFnaW5hdGlvbk5leHQoewogIGNsYXNzTmFtZSwKICAuLi5wcm9wcwp9OiBSZWFjdC5Db21wb25lbnRQcm9wczx0eXBlb2YgUGFnaW5hdGlvbkxpbms+KSB7CiAgcmV0dXJuICgKICAgIDxQYWdpbmF0aW9uTGluawogICAgICBhcmlhLWxhYmVsPSJHbyB0byBuZXh0IHBhZ2UiCiAgICAgIHNpemU9ImRlZmF1bHQiCiAgICAgIGNsYXNzTmFtZT17Y24oJ2dhcC0xIHB4LTIuNSBzbTpwci0yLjUnLCBjbGFzc05hbWUpfQogICAgICB7Li4ucHJvcHN9CiAgICA+CiAgICAgIDxzcGFuIGNsYXNzTmFtZT0iaGlkZGVuIHNtOmJsb2NrIj5OZXh0PC9zcGFuPgogICAgICA8Q2hldnJvblJpZ2h0SWNvbiAvPgogICAgPC9QYWdpbmF0aW9uTGluaz4KICApCn0KCmZ1bmN0aW9uIFBhZ2luYXRpb25FbGxpcHNpcyh7CiAgY2xhc3NOYW1lLAogIC4uLnByb3BzCn06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdzcGFuJz4pIHsKICByZXR1cm4gKAogICAgPHNwYW4KICAgICAgYXJpYS1oaWRkZW4KICAgICAgZGF0YS1zbG90PSJwYWdpbmF0aW9uLWVsbGlwc2lzIgogICAgICBjbGFzc05hbWU9e2NuKCdmbGV4IHNpemUtOSBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXInLCBjbGFzc05hbWUpfQogICAgICB7Li4ucHJvcHN9CiAgICA+CiAgICAgIDxNb3JlSG9yaXpvbnRhbEljb24gY2xhc3NOYW1lPSJzaXplLTQiIC8+CiAgICAgIDxzcGFuIGNsYXNzTmFtZT0ic3Itb25seSI+TW9yZSBwYWdlczwvc3Bhbj4KICAgIDwvc3Bhbj4KICApCn0KCmV4cG9ydCB7CiAgUGFnaW5hdGlvbiwKICBQYWdpbmF0aW9uQ29udGVudCwKICBQYWdpbmF0aW9uTGluaywKICBQYWdpbmF0aW9uSXRlbSwKICBQYWdpbmF0aW9uUHJldmlvdXMsCiAgUGFnaW5hdGlvbk5leHQsCiAgUGFnaW5hdGlvbkVsbGlwc2lzLAp9Cg=="}
+import * as React from 'react'
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoreHorizontalIcon,
+} from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+import { Button, buttonVariants } from '@/components/ui/button'
+
+function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
+  return (
+    <nav
+      role="navigation"
+      aria-label="pagination"
+      data-slot="pagination"
+      className={cn('mx-auto flex w-full justify-center', className)}
+      {...props}
+    />
+  )
+}
+
+function PaginationContent({
+  className,
+  ...props
+}: React.ComponentProps<'ul'>) {
+  return (
+    <ul
+      data-slot="pagination-content"
+      className={cn('flex flex-row items-center gap-1', className)}
+      {...props}
+    />
+  )
+}
+
+function PaginationItem({ ...props }: React.ComponentProps<'li'>) {
+  return <li data-slot="pagination-item" {...props} />
+}
+
+type PaginationLinkProps = {
+  isActive?: boolean
+} & Pick<React.ComponentProps<typeof Button>, 'size'> &
+  React.ComponentProps<'a'>
+
+function PaginationLink({
+  className,
+  isActive,
+  size = 'icon',
+  ...props
+}: PaginationLinkProps) {
+  return (
+    <a
+      aria-current={isActive ? 'page' : undefined}
+      data-slot="pagination-link"
+      data-active={isActive}
+      className={cn(
+        buttonVariants({
+          variant: isActive ? 'outline' : 'ghost',
+          size,
+        }),
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function PaginationPrevious({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to previous page"
+      size="default"
+      className={cn('gap-1 px-2.5 sm:pl-2.5', className)}
+      {...props}
+    >
+      <ChevronLeftIcon />
+      <span className="hidden sm:block">Previous</span>
+    </PaginationLink>
+  )
+}
+
+function PaginationNext({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to next page"
+      size="default"
+      className={cn('gap-1 px-2.5 sm:pr-2.5', className)}
+      {...props}
+    >
+      <span className="hidden sm:block">Next</span>
+      <ChevronRightIcon />
+    </PaginationLink>
+  )
+}
+
+function PaginationEllipsis({
+  className,
+  ...props
+}: React.ComponentProps<'span'>) {
+  return (
+    <span
+      aria-hidden
+      data-slot="pagination-ellipsis"
+      className={cn('flex size-9 items-center justify-center', className)}
+      {...props}
+    >
+      <MoreHorizontalIcon className="size-4" />
+      <span className="sr-only">More pages</span>
+    </span>
+  )
+}
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationLink,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+}
