@@ -1,1 +1,66 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgVGFic1ByaW1pdGl2ZSBmcm9tICdAcmFkaXgtdWkvcmVhY3QtdGFicycKCmltcG9ydCB7IGNuIH0gZnJvbSAnQC9saWIvdXRpbHMnCgpmdW5jdGlvbiBUYWJzKHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFRhYnNQcmltaXRpdmUuUm9vdD4pIHsKICByZXR1cm4gKAogICAgPFRhYnNQcmltaXRpdmUuUm9vdAogICAgICBkYXRhLXNsb3Q9InRhYnMiCiAgICAgIGNsYXNzTmFtZT17Y24oJ2ZsZXggZmxleC1jb2wgZ2FwLTInLCBjbGFzc05hbWUpfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gVGFic0xpc3QoewogIGNsYXNzTmFtZSwKICAuLi5wcm9wcwp9OiBSZWFjdC5Db21wb25lbnRQcm9wczx0eXBlb2YgVGFic1ByaW1pdGl2ZS5MaXN0PikgewogIHJldHVybiAoCiAgICA8VGFic1ByaW1pdGl2ZS5MaXN0CiAgICAgIGRhdGEtc2xvdD0idGFicy1saXN0IgogICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICdiZy1tdXRlZCB0ZXh0LW11dGVkLWZvcmVncm91bmQgaW5saW5lLWZsZXggaC05IHctZml0IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciByb3VuZGVkLWxnIHAtWzNweF0nLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFRhYnNUcmlnZ2VyKHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFRhYnNQcmltaXRpdmUuVHJpZ2dlcj4pIHsKICByZXR1cm4gKAogICAgPFRhYnNQcmltaXRpdmUuVHJpZ2dlcgogICAgICBkYXRhLXNsb3Q9InRhYnMtdHJpZ2dlciIKICAgICAgY2xhc3NOYW1lPXtjbigKICAgICAgICAiZGF0YS1bc3RhdGU9YWN0aXZlXTpiZy1iYWNrZ3JvdW5kIGRhcms6ZGF0YS1bc3RhdGU9YWN0aXZlXTp0ZXh0LWZvcmVncm91bmQgZm9jdXMtdmlzaWJsZTpib3JkZXItcmluZyBmb2N1cy12aXNpYmxlOnJpbmctcmluZy81MCBmb2N1cy12aXNpYmxlOm91dGxpbmUtcmluZyBkYXJrOmRhdGEtW3N0YXRlPWFjdGl2ZV06Ym9yZGVyLWlucHV0IGRhcms6ZGF0YS1bc3RhdGU9YWN0aXZlXTpiZy1pbnB1dC8zMCB0ZXh0LWZvcmVncm91bmQgZGFyazp0ZXh0LW11dGVkLWZvcmVncm91bmQgaW5saW5lLWZsZXggaC1bY2FsYygxMDAlLTFweCldIGZsZXgtMSBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZ2FwLTEuNSByb3VuZGVkLW1kIGJvcmRlciBib3JkZXItdHJhbnNwYXJlbnQgcHgtMiBweS0xIHRleHQtc20gZm9udC1tZWRpdW0gd2hpdGVzcGFjZS1ub3dyYXAgdHJhbnNpdGlvbi1bY29sb3IsYm94LXNoYWRvd10gZm9jdXMtdmlzaWJsZTpyaW5nLVszcHhdIGZvY3VzLXZpc2libGU6b3V0bGluZS0xIGRpc2FibGVkOnBvaW50ZXItZXZlbnRzLW5vbmUgZGlzYWJsZWQ6b3BhY2l0eS01MCBkYXRhLVtzdGF0ZT1hY3RpdmVdOnNoYWRvdy1zbSBbJl9zdmddOnBvaW50ZXItZXZlbnRzLW5vbmUgWyZfc3ZnXTpzaHJpbmstMCBbJl9zdmc6bm90KFtjbGFzcyo9J3NpemUtJ10pXTpzaXplLTQiLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFRhYnNDb250ZW50KHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIFRhYnNQcmltaXRpdmUuQ29udGVudD4pIHsKICByZXR1cm4gKAogICAgPFRhYnNQcmltaXRpdmUuQ29udGVudAogICAgICBkYXRhLXNsb3Q9InRhYnMtY29udGVudCIKICAgICAgY2xhc3NOYW1lPXtjbignZmxleC0xIG91dGxpbmUtbm9uZScsIGNsYXNzTmFtZSl9CiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpleHBvcnQgeyBUYWJzLCBUYWJzTGlzdCwgVGFic1RyaWdnZXIsIFRhYnNDb250ZW50IH0K"}
+'use client'
+
+import * as React from 'react'
+import * as TabsPrimitive from '@radix-ui/react-tabs'
+
+import { cn } from '@/lib/utils'
+
+function Tabs({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Root>) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      className={cn('flex flex-col gap-2', className)}
+      {...props}
+    />
+  )
+}
+
+function TabsList({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.List>) {
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      className={cn(
+        'bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TabsTrigger({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+  return (
+    <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
+      className={cn(
+        "data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TabsContent({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Content>) {
+  return (
+    <TabsPrimitive.Content
+      data-slot="tabs-content"
+      className={cn('flex-1 outline-none', className)}
+      {...props}
+    />
+  )
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent }
