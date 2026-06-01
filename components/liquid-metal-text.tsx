@@ -13,33 +13,20 @@ export function LiquidMetalText({ text, className = "" }: LiquidMetalTextProps) 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-
     const letters = container.querySelectorAll<HTMLSpanElement>(".metal-letter")
-    
-    // Animate each letter with staggered liquid metal sweep
+
     const animateSweep = () => {
       letters.forEach((letter, index) => {
-        const delay = index * 150
-        
         setTimeout(() => {
           letter.classList.add("sweeping")
-          setTimeout(() => {
-            letter.classList.remove("sweeping")
-          }, 800)
-        }, delay)
+          setTimeout(() => letter.classList.remove("sweeping"), 900)
+        }, index * 130)
       })
     }
 
-    // Initial animation
-    const initialTimeout = setTimeout(animateSweep, 500)
-    
-    // Repeat animation every 5 seconds
-    const interval = setInterval(animateSweep, 5000)
-
-    return () => {
-      clearTimeout(initialTimeout)
-      clearInterval(interval)
-    }
+    const t0 = setTimeout(animateSweep, 400)
+    const iv = setInterval(animateSweep, 5500)
+    return () => { clearTimeout(t0); clearInterval(iv) }
   }, [])
 
   return (
@@ -48,12 +35,10 @@ export function LiquidMetalText({ text, className = "" }: LiquidMetalTextProps) 
         <span
           key={index}
           className="metal-letter relative inline-block"
-          style={{
-            fontFamily: "'Aerodome', sans-serif",
-          }}
+          style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif" }}
         >
-          <span className="relative z-10 text-white/90">{char}</span>
-          <span 
+          <span className="relative z-10" style={{ color: "rgba(232,236,255,0.88)" }}>{char}</span>
+          <span
             className="absolute inset-0 text-transparent bg-clip-text metal-shine pointer-events-none"
             aria-hidden="true"
           >
