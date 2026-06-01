@@ -1,1 +1,32 @@
-{"data":"aW1wb3J0IExpbmsgZnJvbSAibmV4dC9saW5rIgoKZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gQ29udGFjdFBhZ2UoKSB7CiAgcmV0dXJuICgKICAgIDxkaXYgY2xhc3NOYW1lPSJtaW4taC1zY3JlZW4gYmctWyMwYTBhMGFdIHRleHQtd2hpdGUgcmVsYXRpdmUgb3ZlcmZsb3ctaGlkZGVuIj4KICAgICAgey8qIFN1YnRsZSBub2lzZSB0ZXh0dXJlIG92ZXJsYXkgKi99CiAgICAgIDxkaXYgCiAgICAgICAgY2xhc3NOYW1lPSJmaXhlZCBpbnNldC0wIG9wYWNpdHktWzAuMDE1XSBwb2ludGVyLWV2ZW50cy1ub25lIgogICAgICAgIHN0eWxlPXt7CiAgICAgICAgICBiYWNrZ3JvdW5kSW1hZ2U6IGB1cmwoImRhdGE6aW1hZ2Uvc3ZnK3htbCwlM0Nzdmcgdmlld0JveD0nMCAwIDI1NiAyNTYnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyclM0UlM0NmaWx0ZXIgaWQ9J25vaXNlJyUzRSUzQ2ZlVHVyYnVsZW5jZSB0eXBlPSdmcmFjdGFsTm9pc2UnIGJhc2VGcmVxdWVuY3k9JzAuOScgbnVtT2N0YXZlcz0nNCcgc3RpdGNoVGlsZXM9J3N0aXRjaCcvJTNFJTNDL2ZpbHRlciUzRSUzQ3JlY3Qgd2lkdGg9JzEwMCUyNScgaGVpZ2h0PScxMDAlMjUnIGZpbHRlcj0ndXJsKCUyM25vaXNlKScvJTNFJTNDL3N2ZyUzRSIpYCwKICAgICAgICB9fQogICAgICAvPgoKICAgICAgey8qIE1haW4gY29udGVudCAqL30KICAgICAgPG1haW4gY2xhc3NOYW1lPSJyZWxhdGl2ZSB6LTEwIG1pbi1oLXNjcmVlbiBmbGV4IGZsZXgtY29sIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBweC02Ij4KICAgICAgICA8TGluayAKICAgICAgICAgIGhyZWY9Ii8iCiAgICAgICAgICBjbGFzc05hbWU9ImFic29sdXRlIHRvcC04IGxlZnQtOCB0ZXh0LXhzIHRyYWNraW5nLVswLjJlbV0gdGV4dC13aGl0ZS80MCBob3Zlcjp0ZXh0LXdoaXRlLzgwIHRyYW5zaXRpb24tY29sb3JzIGR1cmF0aW9uLTMwMCB1cHBlcmNhc2UiCiAgICAgICAgPgogICAgICAgICAgQmFjawogICAgICAgIDwvTGluaz4KICAgICAgICAKICAgICAgICA8YSAKICAgICAgICAgIGhyZWY9Im1haWx0bzppbnRlcmxpbmtlZC5kaWdpdGFsQGdtYWlsLmNvbSIKICAgICAgICAgIGNsYXNzTmFtZT0idGV4dC1sZyBtZDp0ZXh0LXhsIHRyYWNraW5nLVswLjE1ZW1dIHRleHQtd2hpdGUvNjAgaG92ZXI6dGV4dC13aGl0ZSB0cmFuc2l0aW9uLWNvbG9ycyBkdXJhdGlvbi0zMDAiCiAgICAgICAgPgogICAgICAgICAgaW50ZXJsaW5rZWQuZGlnaXRhbEBnbWFpbC5jb20KICAgICAgICA8L2E+CiAgICAgIDwvbWFpbj4KICAgIDwvZGl2PgogICkKfQo="}
+import Link from "next/link"
+
+export default function ContactPage() {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white relative overflow-hidden">
+      {/* Subtle noise texture overlay */}
+      <div 
+        className="fixed inset-0 opacity-[0.015] pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Main content */}
+      <main className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
+        <Link 
+          href="/"
+          className="absolute top-8 left-8 text-xs tracking-[0.2em] text-white/40 hover:text-white/80 transition-colors duration-300 uppercase"
+        >
+          Back
+        </Link>
+        
+        <a 
+          href="mailto:interlinked.digital@gmail.com"
+          className="text-lg md:text-xl tracking-[0.15em] text-white/60 hover:text-white transition-colors duration-300"
+        >
+          interlinked.digital@gmail.com
+        </a>
+      </main>
+    </div>
+  )
+}
