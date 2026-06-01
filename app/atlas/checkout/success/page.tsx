@@ -1,1 +1,118 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VFZmZlY3QsIHVzZVN0YXRlIH0gZnJvbSAicmVhY3QiCmltcG9ydCB7IHVzZVNlYXJjaFBhcmFtcyB9IGZyb20gIm5leHQvbmF2aWdhdGlvbiIKaW1wb3J0IExpbmsgZnJvbSAibmV4dC9saW5rIgppbXBvcnQgeyBTdXNwZW5zZSB9IGZyb20gInJlYWN0IgppbXBvcnQgeyBnZXRDaGVja291dFNlc3Npb25TdGF0dXMgfSBmcm9tICJAL2FwcC9hY3Rpb25zL3N0cmlwZSIKCmZ1bmN0aW9uIFN1Y2Nlc3NDb250ZW50KCkgewogIGNvbnN0IHNlYXJjaFBhcmFtcyA9IHVzZVNlYXJjaFBhcmFtcygpCiAgY29uc3Qgc2Vzc2lvbklkID0gc2VhcmNoUGFyYW1zLmdldCgic2Vzc2lvbl9pZCIpCiAgY29uc3QgW3N0YXR1cywgc2V0U3RhdHVzXSA9IHVzZVN0YXRlPCJsb2FkaW5nIiB8ICJzdWNjZXNzIiB8ICJlcnJvciI+KCJsb2FkaW5nIikKICBjb25zdCBbZW1haWwsIHNldEVtYWlsXSA9IHVzZVN0YXRlPHN0cmluZyB8IG51bGw+KG51bGwpCgogIHVzZUVmZmVjdCgoKSA9PiB7CiAgICBpZiAoc2Vzc2lvbklkKSB7CiAgICAgIGdldENoZWNrb3V0U2Vzc2lvblN0YXR1cyhzZXNzaW9uSWQpCiAgICAgICAgLnRoZW4oKGRhdGEpID0+IHsKICAgICAgICAgIGlmIChkYXRhLnN0YXR1cyA9PT0gImNvbXBsZXRlIikgewogICAgICAgICAgICBzZXRTdGF0dXMoInN1Y2Nlc3MiKQogICAgICAgICAgICBzZXRFbWFpbChkYXRhLmN1c3RvbWVyRW1haWwgfHwgbnVsbCkKICAgICAgICAgIH0gZWxzZSB7CiAgICAgICAgICAgIHNldFN0YXR1cygiZXJyb3IiKQogICAgICAgICAgfQogICAgICAgIH0pCiAgICAgICAgLmNhdGNoKCgpID0+IHNldFN0YXR1cygiZXJyb3IiKSkKICAgIH0gZWxzZSB7CiAgICAgIHNldFN0YXR1cygiZXJyb3IiKQogICAgfQogIH0sIFtzZXNzaW9uSWRdKQoKICBpZiAoc3RhdHVzID09PSAibG9hZGluZyIpIHsKICAgIHJldHVybiAoCiAgICAgIDxkaXYgY2xhc3NOYW1lPSJ0ZXh0LWNlbnRlciI+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9InctMTIgaC0xMiBib3JkZXItMiBib3JkZXItd2hpdGUvMjAgYm9yZGVyLXQtWyM0ZWNkYzRdIHJvdW5kZWQtZnVsbCBhbmltYXRlLXNwaW4gbXgtYXV0byBtYi02IiAvPgogICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCI+Q29uZmlybWluZyB5b3VyIHN1YnNjcmlwdGlvbi4uLjwvcD4KICAgICAgPC9kaXY+CiAgICApCiAgfQoKICBpZiAoc3RhdHVzID09PSAiZXJyb3IiKSB7CiAgICByZXR1cm4gKAogICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIiPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ3LTIwIGgtMjAgbXgtYXV0byBtYi02IHJvdW5kZWQtZnVsbCBiZy1yZWQtNTAwLzIwIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIj4KICAgICAgICAgIDxzdmcgY2xhc3NOYW1lPSJ3LTEwIGgtMTAgdGV4dC1yZWQtNDAwIiBmaWxsPSJub25lIiB2aWV3Qm94PSIwIDAgMjQgMjQiIHN0cm9rZT0iY3VycmVudENvbG9yIj4KICAgICAgICAgICAgPHBhdGggc3Ryb2tlTGluZWNhcD0icm91bmQiIHN0cm9rZUxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlV2lkdGg9ezJ9IGQ9Ik02IDE4TDE4IDZNNiA2bDEyIDEyIiAvPgogICAgICAgICAgPC9zdmc+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPGgxIGNsYXNzTmFtZT0idGV4dC0zeGwgZm9udC1ib2xkIG1iLTQiPlNvbWV0aGluZyB3ZW50IHdyb25nPC9oMT4KICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtd2hpdGUvNTAgbWItOCBtYXgtdy1tZCBteC1hdXRvIj4KICAgICAgICAgIFdlIGNvdWxkbiZhcG9zO3QgY29uZmlybSB5b3VyIHN1YnNjcmlwdGlvbi4gUGxlYXNlIGNvbnRhY3Qgc3VwcG9ydCBpZiB5b3Ugd2VyZSBjaGFyZ2VkLgogICAgICAgIDwvcD4KICAgICAgICA8TGluawogICAgICAgICAgaHJlZj0iL2F0bGFzIgogICAgICAgICAgY2xhc3NOYW1lPSJpbmxpbmUtYmxvY2sgcHgtOCBweS00IGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQteGwgZm9udC1tZWRpdW0gaG92ZXI6b3BhY2l0eS05MCB0cmFuc2l0aW9uLW9wYWNpdHkiCiAgICAgICAgPgogICAgICAgICAgQmFjayB0byBBVExBUwogICAgICAgIDwvTGluaz4KICAgICAgPC9kaXY+CiAgICApCiAgfQoKICByZXR1cm4gKAogICAgPGRpdiBjbGFzc05hbWU9InRleHQtY2VudGVyIj4KICAgICAgPGRpdiBjbGFzc05hbWU9InctMjAgaC0yMCBteC1hdXRvIG1iLTYgcm91bmRlZC1mdWxsIGJnLVsjNGVjZGM0XS8yMCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciI+CiAgICAgICAgPHN2ZyBjbGFzc05hbWU9InctMTAgaC0xMCB0ZXh0LVsjNGVjZGM0XSIgZmlsbD0ibm9uZSIgdmlld0JveD0iMCAwIDI0IDI0IiBzdHJva2U9ImN1cnJlbnRDb2xvciI+CiAgICAgICAgICA8cGF0aCBzdHJva2VMaW5lY2FwPSJyb3VuZCIgc3Ryb2tlTGluZWpvaW49InJvdW5kIiBzdHJva2VXaWR0aD17Mn0gZD0iTTUgMTNsNCA0TDE5IDciIC8+CiAgICAgICAgPC9zdmc+CiAgICAgIDwvZGl2PgogICAgICA8aDEgY2xhc3NOYW1lPSJ0ZXh0LTN4bCBmb250LWJvbGQgbWItNCI+V2VsY29tZSB0byBBVExBUyE8L2gxPgogICAgICA8cCBjbGFzc05hbWU9InRleHQtd2hpdGUvNTAgbWItMiBtYXgtdy1tZCBteC1hdXRvIj4KICAgICAgICBZb3VyIHN1YnNjcmlwdGlvbiBpcyBub3cgYWN0aXZlLgogICAgICA8L3A+CiAgICAgIHtlbWFpbCAmJiAoCiAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIG1iLTggbWF4LXctbWQgbXgtYXV0byI+CiAgICAgICAgICBDaGVjayA8c3BhbiBjbGFzc05hbWU9InRleHQtd2hpdGUiPntlbWFpbH08L3NwYW4+IGZvciB5b3VyIGxvZ2luIGRldGFpbHMgYW5kIHBhc3N3b3JkIHNldHVwIGxpbmsuCiAgICAgICAgPC9wPgogICAgICApfQogICAgICAKICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXggZmxleC1jb2wgc206ZmxleC1yb3cgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIGdhcC00Ij4KICAgICAgICA8TGluawogICAgICAgICAgaHJlZj0iL2F1dGgvbG9naW4iCiAgICAgICAgICBjbGFzc05hbWU9InctZnVsbCBzbTp3LWF1dG8gcHgtOCBweS00IGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQteGwgZm9udC1tZWRpdW0gaG92ZXI6b3BhY2l0eS05MCB0cmFuc2l0aW9uLW9wYWNpdHkiCiAgICAgICAgPgogICAgICAgICAgU2lnbiBJbiB0byBZb3VyIEFjY291bnQKICAgICAgICA8L0xpbms+CiAgICAgICAgPExpbmsKICAgICAgICAgIGhyZWY9Ii9hdGxhcyNkb3dubG9hZCIKICAgICAgICAgIGNsYXNzTmFtZT0idy1mdWxsIHNtOnctYXV0byBweC04IHB5LTQgYm9yZGVyIGJvcmRlci13aGl0ZS8yMCByb3VuZGVkLXhsIGZvbnQtbWVkaXVtIGhvdmVyOmJnLXdoaXRlLzUgdHJhbnNpdGlvbi1jb2xvcnMiCiAgICAgICAgPgogICAgICAgICAgRG93bmxvYWQgQVRMQVMKICAgICAgICA8L0xpbms+CiAgICAgIDwvZGl2PgogICAgPC9kaXY+CiAgKQp9CgpleHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBTdWNjZXNzUGFnZSgpIHsKICByZXR1cm4gKAogICAgPGRpdiBjbGFzc05hbWU9Im1pbi1oLXNjcmVlbiBiZy1bIzBhMGEwZl0gdGV4dC13aGl0ZSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBweC00Ij4KICAgICAgPGRpdiBjbGFzc05hbWU9ImZpeGVkIGluc2V0LTAgb3ZlcmZsb3ctaGlkZGVuIHBvaW50ZXItZXZlbnRzLW5vbmUiPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSB0b3AtMS80IGxlZnQtMS80IHctOTYgaC05NiBiZy1bIzdjNmZlZV0vNSByb3VuZGVkLWZ1bGwgYmx1ci0zeGwiIC8+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFic29sdXRlIGJvdHRvbS0xLzQgcmlnaHQtMS80IHctOTYgaC05NiBiZy1bIzRlY2RjNF0vNSByb3VuZGVkLWZ1bGwgYmx1ci0zeGwiIC8+CiAgICAgIDwvZGl2PgoKICAgICAgPGRpdiBjbGFzc05hbWU9InJlbGF0aXZlIHctZnVsbCBtYXgtdy1sZyI+CiAgICAgICAgPFN1c3BlbnNlIGZhbGxiYWNrPXsKICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ0ZXh0LWNlbnRlciI+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ3LTEyIGgtMTIgYm9yZGVyLTIgYm9yZGVyLXdoaXRlLzIwIGJvcmRlci10LVsjNGVjZGM0XSByb3VuZGVkLWZ1bGwgYW5pbWF0ZS1zcGluIG14LWF1dG8gbWItNiIgLz4KICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIj5Mb2FkaW5nLi4uPC9wPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgfT4KICAgICAgICAgIDxTdWNjZXNzQ29udGVudCAvPgogICAgICAgIDwvU3VzcGVuc2U+CiAgICAgIDwvZGl2PgogICAgPC9kaXY+CiAgKQp9Cg=="}
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { Suspense } from "react"
+import { getCheckoutSessionStatus } from "@/app/actions/stripe"
+
+function SuccessContent() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get("session_id")
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [email, setEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (sessionId) {
+      getCheckoutSessionStatus(sessionId)
+        .then((data) => {
+          if (data.status === "complete") {
+            setStatus("success")
+            setEmail(data.customerEmail || null)
+          } else {
+            setStatus("error")
+          }
+        })
+        .catch(() => setStatus("error"))
+    } else {
+      setStatus("error")
+    }
+  }, [sessionId])
+
+  if (status === "loading") {
+    return (
+      <div className="text-center">
+        <div className="w-12 h-12 border-2 border-white/20 border-t-[#4ecdc4] rounded-full animate-spin mx-auto mb-6" />
+        <p className="text-white/50">Confirming your subscription...</p>
+      </div>
+    )
+  }
+
+  if (status === "error") {
+    return (
+      <div className="text-center">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+          <svg className="w-10 h-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <h1 className="text-3xl font-bold mb-4">Something went wrong</h1>
+        <p className="text-white/50 mb-8 max-w-md mx-auto">
+          We couldn&apos;t confirm your subscription. Please contact support if you were charged.
+        </p>
+        <Link
+          href="/atlas"
+          className="inline-block px-8 py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
+        >
+          Back to ATLAS
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="text-center">
+      <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#4ecdc4]/20 flex items-center justify-center">
+        <svg className="w-10 h-10 text-[#4ecdc4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h1 className="text-3xl font-bold mb-4">Welcome to ATLAS!</h1>
+      <p className="text-white/50 mb-2 max-w-md mx-auto">
+        Your subscription is now active.
+      </p>
+      {email && (
+        <p className="text-white/50 mb-8 max-w-md mx-auto">
+          Check <span className="text-white">{email}</span> for your login details and password setup link.
+        </p>
+      )}
+      
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <Link
+          href="/auth/login"
+          className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
+        >
+          Sign In to Your Account
+        </Link>
+        <Link
+          href="/atlas#download"
+          className="w-full sm:w-auto px-8 py-4 border border-white/20 rounded-xl font-medium hover:bg-white/5 transition-colors"
+        >
+          Download ATLAS
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+export default function SuccessPage() {
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center px-4">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#7c6fee]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4ecdc4]/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-lg">
+        <Suspense fallback={
+          <div className="text-center">
+            <div className="w-12 h-12 border-2 border-white/20 border-t-[#4ecdc4] rounded-full animate-spin mx-auto mb-6" />
+            <p className="text-white/50">Loading...</p>
+          </div>
+        }>
+          <SuccessContent />
+        </Suspense>
+      </div>
+    </div>
+  )
+}
