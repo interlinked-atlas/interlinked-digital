@@ -1,1 +1,116 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKCmltcG9ydCB7IGNuIH0gZnJvbSAnQC9saWIvdXRpbHMnCgpmdW5jdGlvbiBUYWJsZSh7IGNsYXNzTmFtZSwgLi4ucHJvcHMgfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8J3RhYmxlJz4pIHsKICByZXR1cm4gKAogICAgPGRpdgogICAgICBkYXRhLXNsb3Q9InRhYmxlLWNvbnRhaW5lciIKICAgICAgY2xhc3NOYW1lPSJyZWxhdGl2ZSB3LWZ1bGwgb3ZlcmZsb3cteC1hdXRvIgogICAgPgogICAgICA8dGFibGUKICAgICAgICBkYXRhLXNsb3Q9InRhYmxlIgogICAgICAgIGNsYXNzTmFtZT17Y24oJ3ctZnVsbCBjYXB0aW9uLWJvdHRvbSB0ZXh0LXNtJywgY2xhc3NOYW1lKX0KICAgICAgICB7Li4ucHJvcHN9CiAgICAgIC8+CiAgICA8L2Rpdj4KICApCn0KCmZ1bmN0aW9uIFRhYmxlSGVhZGVyKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwndGhlYWQnPikgewogIHJldHVybiAoCiAgICA8dGhlYWQKICAgICAgZGF0YS1zbG90PSJ0YWJsZS1oZWFkZXIiCiAgICAgIGNsYXNzTmFtZT17Y24oJ1smX3RyXTpib3JkZXItYicsIGNsYXNzTmFtZSl9CiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpmdW5jdGlvbiBUYWJsZUJvZHkoeyBjbGFzc05hbWUsIC4uLnByb3BzIH06IFJlYWN0LkNvbXBvbmVudFByb3BzPCd0Ym9keSc+KSB7CiAgcmV0dXJuICgKICAgIDx0Ym9keQogICAgICBkYXRhLXNsb3Q9InRhYmxlLWJvZHkiCiAgICAgIGNsYXNzTmFtZT17Y24oJ1smX3RyOmxhc3QtY2hpbGRdOmJvcmRlci0wJywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFRhYmxlRm9vdGVyKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwndGZvb3QnPikgewogIHJldHVybiAoCiAgICA8dGZvb3QKICAgICAgZGF0YS1zbG90PSJ0YWJsZS1mb290ZXIiCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2JnLW11dGVkLzUwIGJvcmRlci10IGZvbnQtbWVkaXVtIFsmPnRyXTpsYXN0OmJvcmRlci1iLTAnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFRhYmxlUm93KHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwndHInPikgewogIHJldHVybiAoCiAgICA8dHIKICAgICAgZGF0YS1zbG90PSJ0YWJsZS1yb3ciCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2hvdmVyOmJnLW11dGVkLzUwIGRhdGEtW3N0YXRlPXNlbGVjdGVkXTpiZy1tdXRlZCBib3JkZXItYiB0cmFuc2l0aW9uLWNvbG9ycycsCiAgICAgICAgY2xhc3NOYW1lLAogICAgICApfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gVGFibGVIZWFkKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwndGgnPikgewogIHJldHVybiAoCiAgICA8dGgKICAgICAgZGF0YS1zbG90PSJ0YWJsZS1oZWFkIgogICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICd0ZXh0LWZvcmVncm91bmQgaC0xMCBweC0yIHRleHQtbGVmdCBhbGlnbi1taWRkbGUgZm9udC1tZWRpdW0gd2hpdGVzcGFjZS1ub3dyYXAgWyY6aGFzKFtyb2xlPWNoZWNrYm94XSldOnByLTAgWyY+W3JvbGU9Y2hlY2tib3hdXTp0cmFuc2xhdGUteS1bMnB4XScsCiAgICAgICAgY2xhc3NOYW1lLAogICAgICApfQogICAgICB7Li4ucHJvcHN9CiAgICAvPgogICkKfQoKZnVuY3Rpb24gVGFibGVDZWxsKHsgY2xhc3NOYW1lLCAuLi5wcm9wcyB9OiBSZWFjdC5Db21wb25lbnRQcm9wczwndGQnPikgewogIHJldHVybiAoCiAgICA8dGQKICAgICAgZGF0YS1zbG90PSJ0YWJsZS1jZWxsIgogICAgICBjbGFzc05hbWU9e2NuKAogICAgICAgICdwLTIgYWxpZ24tbWlkZGxlIHdoaXRlc3BhY2Utbm93cmFwIFsmOmhhcyhbcm9sZT1jaGVja2JveF0pXTpwci0wIFsmPltyb2xlPWNoZWNrYm94XV06dHJhbnNsYXRlLXktWzJweF0nLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIFRhYmxlQ2FwdGlvbih7CiAgY2xhc3NOYW1lLAogIC4uLnByb3BzCn06IFJlYWN0LkNvbXBvbmVudFByb3BzPCdjYXB0aW9uJz4pIHsKICByZXR1cm4gKAogICAgPGNhcHRpb24KICAgICAgZGF0YS1zbG90PSJ0YWJsZS1jYXB0aW9uIgogICAgICBjbGFzc05hbWU9e2NuKCd0ZXh0LW11dGVkLWZvcmVncm91bmQgbXQtNCB0ZXh0LXNtJywgY2xhc3NOYW1lKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmV4cG9ydCB7CiAgVGFibGUsCiAgVGFibGVIZWFkZXIsCiAgVGFibGVCb2R5LAogIFRhYmxlRm9vdGVyLAogIFRhYmxlSGVhZCwKICBUYWJsZVJvdywKICBUYWJsZUNlbGwsCiAgVGFibGVDYXB0aW9uLAp9Cg=="}
+'use client'
+
+import * as React from 'react'
+
+import { cn } from '@/lib/utils'
+
+function Table({ className, ...props }: React.ComponentProps<'table'>) {
+  return (
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto"
+    >
+      <table
+        data-slot="table"
+        className={cn('w-full caption-bottom text-sm', className)}
+        {...props}
+      />
+    </div>
+  )
+}
+
+function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
+  return (
+    <thead
+      data-slot="table-header"
+      className={cn('[&_tr]:border-b', className)}
+      {...props}
+    />
+  )
+}
+
+function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
+  return (
+    <tbody
+      data-slot="table-body"
+      className={cn('[&_tr:last-child]:border-0', className)}
+      {...props}
+    />
+  )
+}
+
+function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
+  return (
+    <tfoot
+      data-slot="table-footer"
+      className={cn(
+        'bg-muted/50 border-t font-medium [&>tr]:last:border-b-0',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
+  return (
+    <tr
+      data-slot="table-row"
+      className={cn(
+        'hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
+  return (
+    <th
+      data-slot="table-head"
+      className={cn(
+        'text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
+  return (
+    <td
+      data-slot="table-cell"
+      className={cn(
+        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableCaption({
+  className,
+  ...props
+}: React.ComponentProps<'caption'>) {
+  return (
+    <caption
+      data-slot="table-caption"
+      className={cn('text-muted-foreground mt-4 text-sm', className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+}
