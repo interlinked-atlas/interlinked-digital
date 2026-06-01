@@ -221,6 +221,13 @@ export default function AtlasSignupPage() {
           font-style: normal;
           font-display: swap;
         }
+        @font-face {
+          font-family: 'SF-Intellivised';
+          src: url('/fonts/SF-Intellivised.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #07080F; }
         input { transition: border-color 0.15s; }
@@ -257,7 +264,7 @@ export default function AtlasSignupPage() {
               fontSize: '48px',
               fontWeight: 'normal',
               letterSpacing: '12px',
-              fontFamily: 'Bezmiar, -apple-system, sans-serif',
+              fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
               lineHeight: 1,
               marginBottom: '8px',
               textIndent: '12px',
