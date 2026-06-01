@@ -1,1 +1,18 @@
-{"data":"aW1wb3J0IHsgY3JlYXRlQ2xpZW50IH0gZnJvbSAnQC9saWIvc3VwYWJhc2Uvc2VydmVyJwppbXBvcnQgeyBOZXh0UmVxdWVzdCwgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gR0VUKHJlcXVlc3Q6IE5leHRSZXF1ZXN0KSB7CiAgY29uc3QgeyBzZWFyY2hQYXJhbXMsIG9yaWdpbiB9ID0gcmVxdWVzdC5uZXh0VXJsCiAgY29uc3QgY29kZSA9IHNlYXJjaFBhcmFtcy5nZXQoJ2NvZGUnKQogIGNvbnN0IG5leHQgPSBzZWFyY2hQYXJhbXMuZ2V0KCduZXh0JykgPz8gJy9hY2NvdW50JwoKICBpZiAoY29kZSkgewogICAgY29uc3Qgc3VwYWJhc2UgPSBhd2FpdCBjcmVhdGVDbGllbnQoKQogICAgY29uc3QgeyBlcnJvciB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC5leGNoYW5nZUNvZGVGb3JTZXNzaW9uKGNvZGUpCiAgICBpZiAoIWVycm9yKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UucmVkaXJlY3QoYCR7b3JpZ2lufSR7bmV4dH1gKQogICAgfQogIH0KCiAgcmV0dXJuIE5leHRSZXNwb25zZS5yZWRpcmVjdChgJHtvcmlnaW59L2F1dGgvZXJyb3JgKQp9Cg=="}
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  const { searchParams, origin } = request.nextUrl
+  const code = searchParams.get('code')
+  const next = searchParams.get('next') ?? '/account'
+
+  if (code) {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+  }
+
+  return NextResponse.redirect(`${origin}/auth/error`)
+}
