@@ -1,1 +1,93 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgeyBTdXNwZW5zZSB9IGZyb20gJ3JlYWN0JwppbXBvcnQgeyB1c2VTZWFyY2hQYXJhbXMgfSBmcm9tICduZXh0L25hdmlnYXRpb24nCmltcG9ydCBMaW5rIGZyb20gJ25leHQvbGluaycKaW1wb3J0IEltYWdlIGZyb20gJ25leHQvaW1hZ2UnCmltcG9ydCBDaGVja291dCBmcm9tICdAL2NvbXBvbmVudHMvY2hlY2tvdXQnCmltcG9ydCB7IFBST0RVQ1RTIH0gZnJvbSAnQC9saWIvcHJvZHVjdHMnCgpmdW5jdGlvbiBDaGVja291dENvbnRlbnQoKSB7CiAgY29uc3Qgc2VhcmNoUGFyYW1zID0gdXNlU2VhcmNoUGFyYW1zKCkKICBjb25zdCBwbGFuSWQgPSBzZWFyY2hQYXJhbXMuZ2V0KCdwbGFuJykKICAKICBjb25zdCBwcm9kdWN0ID0gUFJPRFVDVFMuZmluZChwID0+IHAuaWQgPT09IHBsYW5JZCkKICAKICBpZiAoIXBsYW5JZCB8fCAhcHJvZHVjdCkgewogICAgcmV0dXJuICgKICAgICAgPGRpdiBjbGFzc05hbWU9Im1pbi1oLXNjcmVlbiBiZy1bIzBhMGEwZl0gdGV4dC13aGl0ZSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciI+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9InRleHQtY2VudGVyIj4KICAgICAgICAgIDxoMSBjbGFzc05hbWU9InRleHQtMnhsIGZvbnQtYm9sZCBtYi00Ij5ObyBwbGFuIHNlbGVjdGVkPC9oMT4KICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCBtYi04Ij5QbGVhc2Ugc2VsZWN0IGEgc3Vic2NyaXB0aW9uIHBsYW4gZmlyc3QuPC9wPgogICAgICAgICAgPExpbmsgCiAgICAgICAgICAgIGhyZWY9Ii9hdGxhcyNwcmljaW5nIgogICAgICAgICAgICBjbGFzc05hbWU9InB4LTYgcHktMyBiZy1ncmFkaWVudC10by1yIGZyb20tWyM3YzZmZWVdIHRvLVsjNGVjZGM0XSByb3VuZGVkLXhsIGZvbnQtbWVkaXVtIGhvdmVyOm9wYWNpdHktOTAgdHJhbnNpdGlvbi1vcGFjaXR5IgogICAgICAgICAgPgogICAgICAgICAgICBWaWV3IFBsYW5zCiAgICAgICAgICA8L0xpbms+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZGl2PgogICAgKQogIH0KICAKICByZXR1cm4gKAogICAgPGRpdiBjbGFzc05hbWU9Im1pbi1oLXNjcmVlbiBiZy1bIzBhMGEwZl0gdGV4dC13aGl0ZSI+CiAgICAgIHsvKiBIZWFkZXIgKi99CiAgICAgIDxoZWFkZXIgY2xhc3NOYW1lPSJib3JkZXItYiBib3JkZXItd2hpdGUvNSBiZy1bIzBhMGEwZl0vODAgYmFja2Ryb3AtYmx1ci14bCI+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9Im1heC13LTd4bCBteC1hdXRvIHB4LTQgc206cHgtNiBsZzpweC04IHB5LTQiPgogICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiI+CiAgICAgICAgICAgIDxMaW5rIGhyZWY9Ii9hdGxhcyIgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiI+CiAgICAgICAgICAgICAgPEltYWdlIAogICAgICAgICAgICAgICAgc3JjPSIvaW1hZ2VzL2F0bGFzLWljb24ucG5nIiAKICAgICAgICAgICAgICAgIGFsdD0iQVRMQVMiIAogICAgICAgICAgICAgICAgd2lkdGg9ezMyfSAKICAgICAgICAgICAgICAgIGhlaWdodD17MzJ9CiAgICAgICAgICAgICAgICBjbGFzc05hbWU9InctOCBoLTgiCiAgICAgICAgICAgICAgLz4KICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQteGwgZm9udC1zZW1pYm9sZCB0cmFja2luZy13aWRlIj5BVExBUzwvc3Bhbj4KICAgICAgICAgICAgPC9MaW5rPgogICAgICAgICAgICA8TGluayAKICAgICAgICAgICAgICBocmVmPSIvYXRsYXMjcHJpY2luZyIKICAgICAgICAgICAgICBjbGFzc05hbWU9InRleHQtc20gdGV4dC13aGl0ZS82MCBob3Zlcjp0ZXh0LXdoaXRlIHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICA+CiAgICAgICAgICAgICAgQmFjayB0byBQbGFucwogICAgICAgICAgICA8L0xpbms+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9oZWFkZXI+CgogICAgICA8bWFpbiBjbGFzc05hbWU9Im1heC13LTR4bCBteC1hdXRvIHB4LTQgc206cHgtNiBsZzpweC04IHB5LTEyIj4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC1jZW50ZXIgbWItOCI+CiAgICAgICAgICA8aDEgY2xhc3NOYW1lPSJ0ZXh0LTN4bCBmb250LWJvbGQgbWItMiI+Q29tcGxldGUgWW91ciBTdWJzY3JpcHRpb248L2gxPgogICAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlLzUwIj4KICAgICAgICAgICAgWW91JmFwb3M7cmUgc3Vic2NyaWJpbmcgdG8gPHNwYW4gY2xhc3NOYW1lPSJ0ZXh0LXdoaXRlIGZvbnQtbWVkaXVtIj57cHJvZHVjdC5uYW1lfTwvc3Bhbj4gYXR7JyAnfQogICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRleHQtd2hpdGUgZm9udC1tZWRpdW0iPiR7KHByb2R1Y3QucHJpY2VJbkNlbnRzIC8gMTAwKS50b0ZpeGVkKDIpfS9tb250aDwvc3Bhbj4KICAgICAgICAgIDwvcD4KICAgICAgICA8L2Rpdj4KICAgICAgICAKICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iYmctWyMxYTFhMmVdIHJvdW5kZWQtMnhsIGJvcmRlciBib3JkZXItd2hpdGUvMTAgb3ZlcmZsb3ctaGlkZGVuIj4KICAgICAgICAgIDxDaGVja291dCBwcm9kdWN0SWQ9e3BsYW5JZH0gLz4KICAgICAgICA8L2Rpdj4KICAgICAgICAKICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtY2VudGVyIHRleHQtd2hpdGUvNDAgdGV4dC1zbSBtdC02Ij4KICAgICAgICAgIFNlY3VyZSBjaGVja291dCBwb3dlcmVkIGJ5IFN0cmlwZS4gQ2FuY2VsIGFueXRpbWUuCiAgICAgICAgPC9wPgogICAgICA8L21haW4+CiAgICA8L2Rpdj4KICApCn0KCmV4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIENoZWNrb3V0UGFnZSgpIHsKICByZXR1cm4gKAogICAgPFN1c3BlbnNlIGZhbGxiYWNrPXsKICAgICAgPGRpdiBjbGFzc05hbWU9Im1pbi1oLXNjcmVlbiBiZy1bIzBhMGEwZl0gdGV4dC13aGl0ZSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciI+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9InRleHQtY2VudGVyIj4KICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJ3LTggaC04IGJvcmRlci0yIGJvcmRlci13aGl0ZS8yMCBib3JkZXItdC13aGl0ZSByb3VuZGVkLWZ1bGwgYW5pbWF0ZS1zcGluIG14LWF1dG8gbWItNCIgLz4KICAgICAgICAgIDxwIGNsYXNzTmFtZT0idGV4dC13aGl0ZS81MCI+TG9hZGluZyBjaGVja291dC4uLjwvcD4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICB9PgogICAgICA8Q2hlY2tvdXRDb250ZW50IC8+CiAgICA8L1N1c3BlbnNlPgogICkKfQo="}
+'use client'
+
+import { Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import Checkout from '@/components/checkout'
+import { PRODUCTS } from '@/lib/products'
+
+function CheckoutContent() {
+  const searchParams = useSearchParams()
+  const planId = searchParams.get('plan')
+  
+  const product = PRODUCTS.find(p => p.id === planId)
+  
+  if (!planId || !product) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">No plan selected</h1>
+          <p className="text-white/50 mb-8">Please select a subscription plan first.</p>
+          <Link 
+            href="/atlas#pricing"
+            className="px-6 py-3 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
+          >
+            View Plans
+          </Link>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
+      {/* Header */}
+      <header className="border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/atlas" className="flex items-center gap-2">
+              <Image 
+                src="/images/atlas-icon.png" 
+                alt="ATLAS" 
+                width={32} 
+                height={32}
+                className="w-8 h-8"
+              />
+              <span className="text-xl font-semibold tracking-wide">ATLAS</span>
+            </Link>
+            <Link 
+              href="/atlas#pricing"
+              className="text-sm text-white/60 hover:text-white transition-colors"
+            >
+              Back to Plans
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Complete Your Subscription</h1>
+          <p className="text-white/50">
+            You&apos;re subscribing to <span className="text-white font-medium">{product.name}</span> at{' '}
+            <span className="text-white font-medium">${(product.priceInCents / 100).toFixed(2)}/month</span>
+          </p>
+        </div>
+        
+        <div className="bg-[#1a1a2e] rounded-2xl border border-white/10 overflow-hidden">
+          <Checkout productId={planId} />
+        </div>
+        
+        <p className="text-center text-white/40 text-sm mt-6">
+          Secure checkout powered by Stripe. Cancel anytime.
+        </p>
+      </main>
+    </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/50">Loading checkout...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
+  )
+}
