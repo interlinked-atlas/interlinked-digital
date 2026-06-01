@@ -1,1 +1,117 @@
-{"data":"InVzZSBjbGllbnQiCgppbXBvcnQgeyB1c2VTdGF0ZSB9IGZyb20gInJlYWN0IgppbXBvcnQgeyBjcmVhdGVDbGllbnQgfSBmcm9tICJAL2xpYi9zdXBhYmFzZS9jbGllbnQiCmltcG9ydCBMaW5rIGZyb20gIm5leHQvbGluayIKaW1wb3J0IHsgdXNlUm91dGVyIH0gZnJvbSAibmV4dC9uYXZpZ2F0aW9uIgoKZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gTG9naW5QYWdlKCkgewogIGNvbnN0IFtlbWFpbCwgc2V0RW1haWxdID0gdXNlU3RhdGUoIiIpCiAgY29uc3QgW3Bhc3N3b3JkLCBzZXRQYXNzd29yZF0gPSB1c2VTdGF0ZSgiIikKICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlPHN0cmluZyB8IG51bGw+KG51bGwpCiAgY29uc3QgW2xvYWRpbmcsIHNldExvYWRpbmddID0gdXNlU3RhdGUoZmFsc2UpCiAgY29uc3Qgcm91dGVyID0gdXNlUm91dGVyKCkKICBjb25zdCBzdXBhYmFzZSA9IGNyZWF0ZUNsaWVudCgpCgogIGNvbnN0IGhhbmRsZUxvZ2luID0gYXN5bmMgKGU6IFJlYWN0LkZvcm1FdmVudCkgPT4gewogICAgZS5wcmV2ZW50RGVmYXVsdCgpCiAgICBzZXRMb2FkaW5nKHRydWUpCiAgICBzZXRFcnJvcihudWxsKQoKICAgIGNvbnN0IHsgZXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguc2lnbkluV2l0aFBhc3N3b3JkKHsKICAgICAgZW1haWwsCiAgICAgIHBhc3N3b3JkLAogICAgfSkKCiAgICBpZiAoZXJyb3IpIHsKICAgICAgc2V0RXJyb3IoZXJyb3IubWVzc2FnZSkKICAgICAgc2V0TG9hZGluZyhmYWxzZSkKICAgICAgcmV0dXJuCiAgICB9CgogICAgcm91dGVyLnB1c2goIi9hdGxhcy9hY2NvdW50IikKICAgIHJvdXRlci5yZWZyZXNoKCkKICB9CgogIHJldHVybiAoCiAgICA8ZGl2IGNsYXNzTmFtZT0ibWluLWgtc2NyZWVuIGJnLVsjMGEwYTBmXSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBweC00Ij4KICAgICAgey8qIEJhY2tncm91bmQgZWZmZWN0cyAqL30KICAgICAgPGRpdiBjbGFzc05hbWU9ImZpeGVkIGluc2V0LTAgb3ZlcmZsb3ctaGlkZGVuIHBvaW50ZXItZXZlbnRzLW5vbmUiPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJhYnNvbHV0ZSB0b3AtMS80IGxlZnQtMS80IHctOTYgaC05NiBiZy1bIzdjNmZlZV0vNSByb3VuZGVkLWZ1bGwgYmx1ci0zeGwiIC8+CiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFic29sdXRlIGJvdHRvbS0xLzQgcmlnaHQtMS80IHctOTYgaC05NiBiZy1bIzRlY2RjNF0vNSByb3VuZGVkLWZ1bGwgYmx1ci0zeGwiIC8+CiAgICAgIDwvZGl2PgoKICAgICAgPGRpdiBjbGFzc05hbWU9InJlbGF0aXZlIHctZnVsbCBtYXgtdy1tZCI+CiAgICAgICAgey8qIExvZ28gKi99CiAgICAgICAgPGRpdiBjbGFzc05hbWU9InRleHQtY2VudGVyIG1iLTgiPgogICAgICAgICAgPExpbmsgaHJlZj0iLyIgY2xhc3NOYW1lPSJpbmxpbmUtYmxvY2siPgogICAgICAgICAgICA8aDEgY2xhc3NOYW1lPSJ0ZXh0LTJ4bCBmb250LWJvbGQgdHJhY2tpbmctWzAuMmVtXSB0ZXh0LXdoaXRlLzkwIj5JTlRFUkxJTktFRDwvaDE+CiAgICAgICAgICA8L0xpbms+CiAgICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtd2hpdGUvNDAgdGV4dC1zbSBtdC0yIj5TaWduIGluIHRvIHlvdXIgQVRMQVMgYWNjb3VudDwvcD4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgey8qIExvZ2luIEZvcm0gKi99CiAgICAgICAgPGZvcm0gb25TdWJtaXQ9e2hhbmRsZUxvZ2lufSBjbGFzc05hbWU9ImJnLVsjMWExYTJlXS81MCBiYWNrZHJvcC1ibHVyLXNtIGJvcmRlciBib3JkZXItd2hpdGUvMTAgcm91bmRlZC0yeGwgcC04Ij4KICAgICAgICAgIHtlcnJvciAmJiAoCiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtYi02IHAtNCBiZy1yZWQtNTAwLzEwIGJvcmRlciBib3JkZXItcmVkLTUwMC8yMCByb3VuZGVkLXhsIHRleHQtcmVkLTQwMCB0ZXh0LXNtIj4KICAgICAgICAgICAgICB7ZXJyb3J9CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgKX0KCiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ic3BhY2UteS02Ij4KICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICA8bGFiZWwgaHRtbEZvcj0iZW1haWwiIGNsYXNzTmFtZT0iYmxvY2sgdGV4dC1zbSBmb250LW1lZGl1bSB0ZXh0LXdoaXRlLzcwIG1iLTIiPgogICAgICAgICAgICAgICAgRW1haWwKICAgICAgICAgICAgICA8L2xhYmVsPgogICAgICAgICAgICAgIDxpbnB1dAogICAgICAgICAgICAgICAgaWQ9ImVtYWlsIgogICAgICAgICAgICAgICAgdHlwZT0iZW1haWwiCiAgICAgICAgICAgICAgICB2YWx1ZT17ZW1haWx9CiAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldEVtYWlsKGUudGFyZ2V0LnZhbHVlKX0KICAgICAgICAgICAgICAgIHJlcXVpcmVkCiAgICAgICAgICAgICAgICBjbGFzc05hbWU9InctZnVsbCBweC00IHB5LTMgYmctWyMwYTBhMGZdIGJvcmRlciBib3JkZXItd2hpdGUvMTAgcm91bmRlZC14bCB0ZXh0LXdoaXRlIHBsYWNlaG9sZGVyLXdoaXRlLzMwIGZvY3VzOm91dGxpbmUtbm9uZSBmb2N1czpib3JkZXItWyM3YzZmZWVdLzUwIHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICAgICAgcGxhY2Vob2xkZXI9InlvdUBleGFtcGxlLmNvbSIKICAgICAgICAgICAgICAvPgogICAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICAgIDxkaXY+CiAgICAgICAgICAgICAgPGxhYmVsIGh0bWxGb3I9InBhc3N3b3JkIiBjbGFzc05hbWU9ImJsb2NrIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC13aGl0ZS83MCBtYi0yIj4KICAgICAgICAgICAgICAgIFBhc3N3b3JkCiAgICAgICAgICAgICAgPC9sYWJlbD4KICAgICAgICAgICAgICA8aW5wdXQKICAgICAgICAgICAgICAgIGlkPSJwYXNzd29yZCIKICAgICAgICAgICAgICAgIHR5cGU9InBhc3N3b3JkIgogICAgICAgICAgICAgICAgdmFsdWU9e3Bhc3N3b3JkfQogICAgICAgICAgICAgICAgb25DaGFuZ2U9eyhlKSA9PiBzZXRQYXNzd29yZChlLnRhcmdldC52YWx1ZSl9CiAgICAgICAgICAgICAgICByZXF1aXJlZAogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJ3LWZ1bGwgcHgtNCBweS0zIGJnLVsjMGEwYTBmXSBib3JkZXIgYm9yZGVyLXdoaXRlLzEwIHJvdW5kZWQteGwgdGV4dC13aGl0ZSBwbGFjZWhvbGRlci13aGl0ZS8zMCBmb2N1czpvdXRsaW5lLW5vbmUgZm9jdXM6Ym9yZGVyLVsjN2M2ZmVlXS81MCB0cmFuc2l0aW9uLWNvbG9ycyIKICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPSJFbnRlciB5b3VyIHBhc3N3b3JkIgogICAgICAgICAgICAgIC8+CiAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgPGJ1dHRvbgogICAgICAgICAgICAgIHR5cGU9InN1Ym1pdCIKICAgICAgICAgICAgICBkaXNhYmxlZD17bG9hZGluZ30KICAgICAgICAgICAgICBjbGFzc05hbWU9InctZnVsbCBweS00IGJnLWdyYWRpZW50LXRvLXIgZnJvbS1bIzdjNmZlZV0gdG8tWyM0ZWNkYzRdIHJvdW5kZWQteGwgZm9udC1tZWRpdW0gaG92ZXI6b3BhY2l0eS05MCB0cmFuc2l0aW9uLW9wYWNpdHkgZGlzYWJsZWQ6b3BhY2l0eS01MCBkaXNhYmxlZDpjdXJzb3Itbm90LWFsbG93ZWQiCiAgICAgICAgICAgID4KICAgICAgICAgICAgICB7bG9hZGluZyA/ICJTaWduaW5nIGluLi4uIiA6ICJTaWduIEluIn0KICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ibXQtNiB0ZXh0LWNlbnRlciI+CiAgICAgICAgICAgIDxMaW5rIGhyZWY9Ii9hdXRoL2ZvcmdvdC1wYXNzd29yZCIgY2xhc3NOYW1lPSJ0ZXh0LXNtIHRleHQtWyM0ZWNkYzRdIGhvdmVyOnRleHQtWyM3YzZmZWVdIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgICBGb3Jnb3QgeW91ciBwYXNzd29yZD8KICAgICAgICAgICAgPC9MaW5rPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9mb3JtPgoKICAgICAgICA8cCBjbGFzc05hbWU9InRleHQtY2VudGVyIG10LTYgdGV4dC13aGl0ZS81MCB0ZXh0LXNtIj4KICAgICAgICAgIHsiRG9uJ3QgaGF2ZSBhbiBhY2NvdW50PyAifQogICAgICAgICAgPExpbmsgaHJlZj0iL2F0bGFzIiBjbGFzc05hbWU9InRleHQtWyM0ZWNkYzRdIGhvdmVyOnRleHQtWyM3YzZmZWVdIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgR2V0IEFUTEFTCiAgICAgICAgICA8L0xpbms+CiAgICAgICAgPC9wPgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogICkKfQo="}
+"use client"
+
+import { useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    router.push("/atlas/account")
+    router.refresh()
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
+      {/* Background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#7c6fee]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4ecdc4]/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">INTERLINKED</h1>
+          </Link>
+          <p className="text-white/40 text-sm mt-2">Sign in to your ATLAS account</p>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="bg-[#1a1a2e]/50 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-2">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-white/70 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </div>
+
+          <div className="mt-6 text-center">
+            <Link href="/auth/forgot-password" className="text-sm text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
+              Forgot your password?
+            </Link>
+          </div>
+        </form>
+
+        <p className="text-center mt-6 text-white/50 text-sm">
+          {"Don't have an account? "}
+          <Link href="/atlas" className="text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
+            Get ATLAS
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
