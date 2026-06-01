@@ -1,1 +1,237 @@
-{"data":"aW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0BzdXBhYmFzZS9zdXBhYmFzZS1qcycKaW1wb3J0IHsgU2lnbkpXVCB9IGZyb20gJ2pvc2UnCgovLyBTZXJ2aWNlIHJvbGUgY2xpZW50IGZvciBzZXJ2ZXItc2lkZSBvcGVyYXRpb25zCmNvbnN0IHN1cGFiYXNlQWRtaW4gPSBjcmVhdGVDbGllbnQoCiAgcHJvY2Vzcy5lbnYuTkVYVF9QVUJMSUNfU1VQQUJBU0VfVVJMISwKICBwcm9jZXNzLmVudi5TVVBBQkFTRV9TRVJWSUNFX1JPTEVfS0VZIQopCgovLyBTZWNyZXQgZm9yIHNpZ25pbmcgZW50aXRsZW1lbnQgdG9rZW5zIChzaG91bGQgYmUgaW4gZW52IHZhcnMpCmNvbnN0IEVOVElUTEVNRU5UX1NFQ1JFVCA9IG5ldyBUZXh0RW5jb2RlcigpLmVuY29kZSgKICBwcm9jZXNzLmVudi5FTlRJVExFTUVOVF9TRUNSRVQgfHwgJ2F0bGFzLWVudGl0bGVtZW50LXNlY3JldC1rZXktY2hhbmdlLW1lJwopCgovLyBQT1NUIC9hcGkvYXRsYXMvYWN0aXZhdGUKLy8gQWN0aXZhdGUgYSBkZXZpY2UgZm9yIHRoZSB1c2VyJ3Mgc3Vic2NyaXB0aW9uCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBQT1NUKHJlcXVlc3Q6IFJlcXVlc3QpIHsKICB0cnkgewogICAgY29uc3QgYXV0aEhlYWRlciA9IHJlcXVlc3QuaGVhZGVycy5nZXQoJ2F1dGhvcml6YXRpb24nKQogICAgaWYgKCFhdXRoSGVhZGVyPy5zdGFydHNXaXRoKCdCZWFyZXIgJykpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgZXJyb3I6ICdVbmF1dGhvcml6ZWQnIH0sIHsgc3RhdHVzOiA0MDEgfSkKICAgIH0KCiAgICBjb25zdCB0b2tlbiA9IGF1dGhIZWFkZXIuc3Vic3RyaW5nKDcpCiAgICAKICAgIC8vIFZlcmlmeSB0aGUgSldUIGFuZCBnZXQgdXNlcgogICAgY29uc3QgeyBkYXRhOiB7IHVzZXIgfSwgZXJyb3I6IGF1dGhFcnJvciB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbi5hdXRoLmdldFVzZXIodG9rZW4pCiAgICAKICAgIGlmIChhdXRoRXJyb3IgfHwgIXVzZXIpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgZXJyb3I6ICdJbnZhbGlkIHRva2VuJyB9LCB7IHN0YXR1czogNDAxIH0pCiAgICB9CgogICAgY29uc3QgeyBtYWNoaW5lX3V1aWQsIGRldmljZV9uYW1lLCBoYXJkd2FyZV9oYXNoIH0gPSBhd2FpdCByZXF1ZXN0Lmpzb24oKQoKICAgIGlmICghbWFjaGluZV91dWlkKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnbWFjaGluZV91dWlkIGlzIHJlcXVpcmVkJyB9LAogICAgICAgIHsgc3RhdHVzOiA0MDAgfQogICAgICApCiAgICB9CgogICAgLy8gR2V0IHVzZXIncyBzdWJzY3JpcHRpb24KICAgIGNvbnN0IHsgZGF0YTogc3Vic2NyaXB0aW9uLCBlcnJvcjogc3ViRXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4KICAgICAgLmZyb20oJ3N1YnNjcmlwdGlvbnMnKQogICAgICAuc2VsZWN0KCcqJykKICAgICAgLmVxKCd1c2VyX2lkJywgdXNlci5pZCkKICAgICAgLmVxKCdzdGF0dXMnLCAnYWN0aXZlJykKICAgICAgLnNpbmdsZSgpCgogICAgaWYgKHN1YkVycm9yIHx8ICFzdWJzY3JpcHRpb24pIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICAgIHsgZXJyb3I6ICdObyBhY3RpdmUgc3Vic2NyaXB0aW9uIGZvdW5kJyB9LAogICAgICAgIHsgc3RhdHVzOiA0MDMgfQogICAgICApCiAgICB9CgogICAgLy8gQ2hlY2sgYWN0aXZhdGlvbiBsaW1pdHMKICAgIGNvbnN0IG1heEFjdGl2YXRpb25zID0gc3Vic2NyaXB0aW9uLnBsYW4gPT09ICdwcm8nID8gMyA6IDEKICAgIAogICAgY29uc3QgeyBkYXRhOiBleGlzdGluZ0FjdGl2YXRpb25zLCBlcnJvcjogYWN0aXZhdGlvbnNFcnJvciB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAuZnJvbSgnZGV2aWNlX2FjdGl2YXRpb25zJykKICAgICAgLnNlbGVjdCgnKicpCiAgICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAgIC5lcSgnaXNfYWN0aXZlJywgdHJ1ZSkKCiAgICBpZiAoYWN0aXZhdGlvbnNFcnJvcikgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oCiAgICAgICAgeyBlcnJvcjogJ0ZhaWxlZCB0byBjaGVjayBhY3RpdmF0aW9ucycgfSwKICAgICAgICB7IHN0YXR1czogNTAwIH0KICAgICAgKQogICAgfQoKICAgIC8vIENoZWNrIGlmIHRoaXMgZGV2aWNlIGlzIGFscmVhZHkgYWN0aXZhdGVkCiAgICBjb25zdCBleGlzdGluZ0RldmljZSA9IGV4aXN0aW5nQWN0aXZhdGlvbnM/LmZpbmQoYSA9PiBhLm1hY2hpbmVfdXVpZCA9PT0gbWFjaGluZV91dWlkKQogICAgCiAgICBpZiAoZXhpc3RpbmdEZXZpY2UpIHsKICAgICAgLy8gVXBkYXRlIGxhc3Qgc2VlbiBhbmQgcmV0dXJuIHN1Y2Nlc3MKICAgICAgYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAgIC5mcm9tKCdkZXZpY2VfYWN0aXZhdGlvbnMnKQogICAgICAgIC51cGRhdGUoeyBsYXN0X3NlZW5fYXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSB9KQogICAgICAgIC5lcSgnaWQnLCBleGlzdGluZ0RldmljZS5pZCkKCiAgICAgIC8vIEdlbmVyYXRlIGVudGl0bGVtZW50IHRva2VuCiAgICAgIGNvbnN0IGVudGl0bGVtZW50VG9rZW4gPSBhd2FpdCBnZW5lcmF0ZUVudGl0bGVtZW50VG9rZW4odXNlci5pZCwgc3Vic2NyaXB0aW9uLnBsYW4sIG1hY2hpbmVfdXVpZCkKCiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7CiAgICAgICAgc3VjY2VzczogdHJ1ZSwKICAgICAgICBtZXNzYWdlOiAnRGV2aWNlIGFscmVhZHkgYWN0aXZhdGVkJywKICAgICAgICBhY3RpdmF0aW9uX2lkOiBleGlzdGluZ0RldmljZS5pZCwKICAgICAgICBlbnRpdGxlbWVudF90b2tlbjogZW50aXRsZW1lbnRUb2tlbiwKICAgICAgICBwbGFuOiBzdWJzY3JpcHRpb24ucGxhbiwKICAgICAgICBmZWF0dXJlczogZ2V0UGxhbkZlYXR1cmVzKHN1YnNjcmlwdGlvbi5wbGFuKSwKICAgICAgfSkKICAgIH0KCiAgICAvLyBDaGVjayBpZiBhdCBsaW1pdAogICAgaWYgKGV4aXN0aW5nQWN0aXZhdGlvbnMgJiYgZXhpc3RpbmdBY3RpdmF0aW9ucy5sZW5ndGggPj0gbWF4QWN0aXZhdGlvbnMpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICAgIHsgCiAgICAgICAgICBlcnJvcjogJ0FjdGl2YXRpb24gbGltaXQgcmVhY2hlZCcsCiAgICAgICAgICBjdXJyZW50X2FjdGl2YXRpb25zOiBleGlzdGluZ0FjdGl2YXRpb25zLmxlbmd0aCwKICAgICAgICAgIG1heF9hY3RpdmF0aW9uczogbWF4QWN0aXZhdGlvbnMsCiAgICAgICAgfSwKICAgICAgICB7IHN0YXR1czogNDAzIH0KICAgICAgKQogICAgfQoKICAgIC8vIENyZWF0ZSBuZXcgYWN0aXZhdGlvbgogICAgY29uc3QgeyBkYXRhOiBuZXdBY3RpdmF0aW9uLCBlcnJvcjogaW5zZXJ0RXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4KICAgICAgLmZyb20oJ2RldmljZV9hY3RpdmF0aW9ucycpCiAgICAgIC5pbnNlcnQoewogICAgICAgIHVzZXJfaWQ6IHVzZXIuaWQsCiAgICAgICAgbWFjaGluZV91dWlkLAogICAgICAgIGRldmljZV9uYW1lOiBkZXZpY2VfbmFtZSB8fCAnVW5rbm93biBEZXZpY2UnLAogICAgICAgIGhhcmR3YXJlX2hhc2gsCiAgICAgICAgYWN0aXZhdGVkX2F0OiBuZXcgRGF0ZSgpLnRvSVNPU3RyaW5nKCksCiAgICAgICAgbGFzdF9zZWVuX2F0OiBuZXcgRGF0ZSgpLnRvSVNPU3RyaW5nKCksCiAgICAgICAgaXNfYWN0aXZlOiB0cnVlLAogICAgICB9KQogICAgICAuc2VsZWN0KCkKICAgICAgLnNpbmdsZSgpCgogICAgaWYgKGluc2VydEVycm9yKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnRmFpbGVkIHRvIGFjdGl2YXRlIGRldmljZScgfSwKICAgICAgICB7IHN0YXR1czogNTAwIH0KICAgICAgKQogICAgfQoKICAgIC8vIEdlbmVyYXRlIGVudGl0bGVtZW50IHRva2VuCiAgICBjb25zdCBlbnRpdGxlbWVudFRva2VuID0gYXdhaXQgZ2VuZXJhdGVFbnRpdGxlbWVudFRva2VuKHVzZXIuaWQsIHN1YnNjcmlwdGlvbi5wbGFuLCBtYWNoaW5lX3V1aWQpCgogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgc3VjY2VzczogdHJ1ZSwKICAgICAgbWVzc2FnZTogJ0RldmljZSBhY3RpdmF0ZWQgc3VjY2Vzc2Z1bGx5JywKICAgICAgYWN0aXZhdGlvbl9pZDogbmV3QWN0aXZhdGlvbi5pZCwKICAgICAgZW50aXRsZW1lbnRfdG9rZW46IGVudGl0bGVtZW50VG9rZW4sCiAgICAgIHBsYW46IHN1YnNjcmlwdGlvbi5wbGFuLAogICAgICBmZWF0dXJlczogZ2V0UGxhbkZlYXR1cmVzKHN1YnNjcmlwdGlvbi5wbGFuKSwKICAgICAgYWN0aXZhdGlvbnNfcmVtYWluaW5nOiBtYXhBY3RpdmF0aW9ucyAtIChleGlzdGluZ0FjdGl2YXRpb25zPy5sZW5ndGggfHwgMCkgLSAxLAogICAgfSkKICB9IGNhdGNoIHsKICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgeyBlcnJvcjogJ0ludGVybmFsIHNlcnZlciBlcnJvcicgfSwKICAgICAgeyBzdGF0dXM6IDUwMCB9CiAgICApCiAgfQp9CgovLyBERUxFVEUgL2FwaS9hdGxhcy9hY3RpdmF0ZQovLyBEZWFjdGl2YXRlIGEgZGV2aWNlCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBERUxFVEUocmVxdWVzdDogUmVxdWVzdCkgewogIHRyeSB7CiAgICBjb25zdCBhdXRoSGVhZGVyID0gcmVxdWVzdC5oZWFkZXJzLmdldCgnYXV0aG9yaXphdGlvbicpCiAgICBpZiAoIWF1dGhIZWFkZXI/LnN0YXJ0c1dpdGgoJ0JlYXJlciAnKSkgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBlcnJvcjogJ1VuYXV0aG9yaXplZCcgfSwgeyBzdGF0dXM6IDQwMSB9KQogICAgfQoKICAgIGNvbnN0IHRva2VuID0gYXV0aEhlYWRlci5zdWJzdHJpbmcoNykKICAgIGNvbnN0IHsgZGF0YTogeyB1c2VyIH0sIGVycm9yOiBhdXRoRXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlQWRtaW4uYXV0aC5nZXRVc2VyKHRva2VuKQogICAgCiAgICBpZiAoYXV0aEVycm9yIHx8ICF1c2VyKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7IGVycm9yOiAnSW52YWxpZCB0b2tlbicgfSwgeyBzdGF0dXM6IDQwMSB9KQogICAgfQoKICAgIGNvbnN0IHsgbWFjaGluZV91dWlkIH0gPSBhd2FpdCByZXF1ZXN0Lmpzb24oKQoKICAgIGlmICghbWFjaGluZV91dWlkKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnbWFjaGluZV91dWlkIGlzIHJlcXVpcmVkJyB9LAogICAgICAgIHsgc3RhdHVzOiA0MDAgfQogICAgICApCiAgICB9CgogICAgY29uc3QgeyBlcnJvciB9ID0gYXdhaXQgc3VwYWJhc2VBZG1pbgogICAgICAuZnJvbSgnZGV2aWNlX2FjdGl2YXRpb25zJykKICAgICAgLnVwZGF0ZSh7IGlzX2FjdGl2ZTogZmFsc2UgfSkKICAgICAgLmVxKCd1c2VyX2lkJywgdXNlci5pZCkKICAgICAgLmVxKCdtYWNoaW5lX3V1aWQnLCBtYWNoaW5lX3V1aWQpCgogICAgaWYgKGVycm9yKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnRmFpbGVkIHRvIGRlYWN0aXZhdGUgZGV2aWNlJyB9LAogICAgICAgIHsgc3RhdHVzOiA1MDAgfQogICAgICApCiAgICB9CgogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsKICAgICAgc3VjY2VzczogdHJ1ZSwKICAgICAgbWVzc2FnZTogJ0RldmljZSBkZWFjdGl2YXRlZCBzdWNjZXNzZnVsbHknLAogICAgfSkKICB9IGNhdGNoIHsKICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgeyBlcnJvcjogJ0ludGVybmFsIHNlcnZlciBlcnJvcicgfSwKICAgICAgeyBzdGF0dXM6IDUwMCB9CiAgICApCiAgfQp9Cgphc3luYyBmdW5jdGlvbiBnZW5lcmF0ZUVudGl0bGVtZW50VG9rZW4odXNlcklkOiBzdHJpbmcsIHBsYW46IHN0cmluZywgbWFjaGluZVV1aWQ6IHN0cmluZykgewogIC8vIFNob3J0LWxpdmVkIHRva2VuICgxNSBtaW51dGVzKSBmb3Igb2ZmbGluZSB2ZXJpZmljYXRpb24KICBjb25zdCB0b2tlbiA9IGF3YWl0IG5ldyBTaWduSldUKHsKICAgIHN1YjogdXNlcklkLAogICAgcGxhbiwKICAgIG1hY2hpbmU6IG1hY2hpbmVVdWlkLAogIH0pCiAgICAuc2V0UHJvdGVjdGVkSGVhZGVyKHsgYWxnOiAnSFMyNTYnIH0pCiAgICAuc2V0SXNzdWVkQXQoKQogICAgLnNldEV4cGlyYXRpb25UaW1lKCcxNW0nKQogICAgLnNpZ24oRU5USVRMRU1FTlRfU0VDUkVUKQoKICByZXR1cm4gdG9rZW4KfQoKZnVuY3Rpb24gZ2V0UGxhbkZlYXR1cmVzKHBsYW46IHN0cmluZykgewogIGNvbnN0IGZlYXR1cmVzID0gewogICAgYmFzaWM6IHsKICAgICAgdW5saW1pdGVkX2luc3RhbGxzOiBmYWxzZSwKICAgICAgZGFpbHlfaW5zdGFsbF9saW1pdDogMywKICAgICAgYnVsa19xdWV1ZTogZmFsc2UsCiAgICAgIHVuaW5zdGFsbF9tYW5hZ2VyOiBmYWxzZSwKICAgICAgcmVjb3Zlcnlfc3lzdGVtOiBmYWxzZSwKICAgICAgbWF4X2RldmljZXM6IDEsCiAgICB9LAogICAgcHJvOiB7CiAgICAgIHVubGltaXRlZF9pbnN0YWxsczogdHJ1ZSwKICAgICAgZGFpbHlfaW5zdGFsbF9saW1pdDogbnVsbCwKICAgICAgYnVsa19xdWV1ZTogdHJ1ZSwKICAgICAgdW5pbnN0YWxsX21hbmFnZXI6IHRydWUsCiAgICAgIHJlY292ZXJ5X3N5c3RlbTogdHJ1ZSwKICAgICAgbWF4X2RldmljZXM6IDMsCiAgICB9LAogIH0KICAKICByZXR1cm4gZmVhdHVyZXNbcGxhbiBhcyBrZXlvZiB0eXBlb2YgZmVhdHVyZXNdIHx8IGZlYXR1cmVzLmJhc2ljCn0K"}
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { SignJWT } from 'jose'
+
+// Service role client for server-side operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// Secret for signing entitlement tokens (should be in env vars)
+const ENTITLEMENT_SECRET = new TextEncoder().encode(
+  process.env.ENTITLEMENT_SECRET || 'atlas-entitlement-secret-key-change-me'
+)
+
+// POST /api/atlas/activate
+// Activate a device for the user's subscription
+export async function POST(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    
+    // Verify the JWT and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const { machine_uuid, device_name, hardware_hash } = await request.json()
+
+    if (!machine_uuid) {
+      return NextResponse.json(
+        { error: 'machine_uuid is required' },
+        { status: 400 }
+      )
+    }
+
+    // Get user's subscription
+    const { data: subscription, error: subError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (subError || !subscription) {
+      return NextResponse.json(
+        { error: 'No active subscription found' },
+        { status: 403 }
+      )
+    }
+
+    // Check activation limits
+    const maxActivations = subscription.plan === 'pro' ? 3 : 1
+    
+    const { data: existingActivations, error: activationsError } = await supabaseAdmin
+      .from('device_activations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+
+    if (activationsError) {
+      return NextResponse.json(
+        { error: 'Failed to check activations' },
+        { status: 500 }
+      )
+    }
+
+    // Check if this device is already activated
+    const existingDevice = existingActivations?.find(a => a.machine_uuid === machine_uuid)
+    
+    if (existingDevice) {
+      // Update last seen and return success
+      await supabaseAdmin
+        .from('device_activations')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', existingDevice.id)
+
+      // Generate entitlement token
+      const entitlementToken = await generateEntitlementToken(user.id, subscription.plan, machine_uuid)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Device already activated',
+        activation_id: existingDevice.id,
+        entitlement_token: entitlementToken,
+        plan: subscription.plan,
+        features: getPlanFeatures(subscription.plan),
+      })
+    }
+
+    // Check if at limit
+    if (existingActivations && existingActivations.length >= maxActivations) {
+      return NextResponse.json(
+        { 
+          error: 'Activation limit reached',
+          current_activations: existingActivations.length,
+          max_activations: maxActivations,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Create new activation
+    const { data: newActivation, error: insertError } = await supabaseAdmin
+      .from('device_activations')
+      .insert({
+        user_id: user.id,
+        machine_uuid,
+        device_name: device_name || 'Unknown Device',
+        hardware_hash,
+        activated_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+        is_active: true,
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      return NextResponse.json(
+        { error: 'Failed to activate device' },
+        { status: 500 }
+      )
+    }
+
+    // Generate entitlement token
+    const entitlementToken = await generateEntitlementToken(user.id, subscription.plan, machine_uuid)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Device activated successfully',
+      activation_id: newActivation.id,
+      entitlement_token: entitlementToken,
+      plan: subscription.plan,
+      features: getPlanFeatures(subscription.plan),
+      activations_remaining: maxActivations - (existingActivations?.length || 0) - 1,
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/atlas/activate
+// Deactivate a device
+export async function DELETE(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const { machine_uuid } = await request.json()
+
+    if (!machine_uuid) {
+      return NextResponse.json(
+        { error: 'machine_uuid is required' },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabaseAdmin
+      .from('device_activations')
+      .update({ is_active: false })
+      .eq('user_id', user.id)
+      .eq('machine_uuid', machine_uuid)
+
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to deactivate device' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Device deactivated successfully',
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+async function generateEntitlementToken(userId: string, plan: string, machineUuid: string) {
+  // Short-lived token (15 minutes) for offline verification
+  const token = await new SignJWT({
+    sub: userId,
+    plan,
+    machine: machineUuid,
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('15m')
+    .sign(ENTITLEMENT_SECRET)
+
+  return token
+}
+
+function getPlanFeatures(plan: string) {
+  const features = {
+    basic: {
+      unlimited_installs: false,
+      daily_install_limit: 3,
+      bulk_queue: false,
+      uninstall_manager: false,
+      recovery_system: false,
+      max_devices: 1,
+    },
+    pro: {
+      unlimited_installs: true,
+      daily_install_limit: null,
+      bulk_queue: true,
+      uninstall_manager: true,
+      recovery_system: true,
+      max_devices: 3,
+    },
+  }
+  
+  return features[plan as keyof typeof features] || features.basic
+}
