@@ -1,1 +1,66 @@
-{"data":"aW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInCmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gJ0AvbGliL3N1cGFiYXNlL3NlcnZlcicKCi8vIFBPU1QgL2FwaS9hdGxhcy9sb2dpbgovLyBtYWNPUyBhcHAgc2VuZHMgZW1haWwgKyBwYXNzd29yZCwgcmVjZWl2ZXMgSldUIHNlc3Npb24KZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIFBPU1QocmVxdWVzdDogUmVxdWVzdCkgewogIHRyeSB7CiAgICBjb25zdCB7IGVtYWlsLCBwYXNzd29yZCB9ID0gYXdhaXQgcmVxdWVzdC5qc29uKCkKCiAgICBpZiAoIWVtYWlsIHx8ICFwYXNzd29yZCkgewogICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oCiAgICAgICAgeyBlcnJvcjogJ0VtYWlsIGFuZCBwYXNzd29yZCBhcmUgcmVxdWlyZWQnIH0sCiAgICAgICAgeyBzdGF0dXM6IDQwMCB9CiAgICAgICkKICAgIH0KCiAgICBjb25zdCBzdXBhYmFzZSA9IGF3YWl0IGNyZWF0ZUNsaWVudCgpCiAgICAKICAgIGNvbnN0IHsgZGF0YSwgZXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguc2lnbkluV2l0aFBhc3N3b3JkKHsKICAgICAgZW1haWwsCiAgICAgIHBhc3N3b3JkLAogICAgfSkKCiAgICBpZiAoZXJyb3IpIHsKICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICAgIHsgZXJyb3I6IGVycm9yLm1lc3NhZ2UgfSwKICAgICAgICB7IHN0YXR1czogNDAxIH0KICAgICAgKQogICAgfQoKICAgIGlmICghZGF0YS5zZXNzaW9uKSB7CiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbigKICAgICAgICB7IGVycm9yOiAnRmFpbGVkIHRvIGNyZWF0ZSBzZXNzaW9uJyB9LAogICAgICAgIHsgc3RhdHVzOiA1MDAgfQogICAgICApCiAgICB9CgogICAgLy8gR2V0IHN1YnNjcmlwdGlvbiBkZXRhaWxzCiAgICBjb25zdCB7IGRhdGE6IHN1YnNjcmlwdGlvbiB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgLmZyb20oJ3N1YnNjcmlwdGlvbnMnKQogICAgICAuc2VsZWN0KCcqJykKICAgICAgLmVxKCd1c2VyX2lkJywgZGF0YS51c2VyLmlkKQogICAgICAuZXEoJ3N0YXR1cycsICdhY3RpdmUnKQogICAgICAuc2luZ2xlKCkKCiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oewogICAgICBhY2Nlc3NfdG9rZW46IGRhdGEuc2Vzc2lvbi5hY2Nlc3NfdG9rZW4sCiAgICAgIHJlZnJlc2hfdG9rZW46IGRhdGEuc2Vzc2lvbi5yZWZyZXNoX3Rva2VuLAogICAgICBleHBpcmVzX2F0OiBkYXRhLnNlc3Npb24uZXhwaXJlc19hdCwKICAgICAgdXNlcjogewogICAgICAgIGlkOiBkYXRhLnVzZXIuaWQsCiAgICAgICAgZW1haWw6IGRhdGEudXNlci5lbWFpbCwKICAgICAgfSwKICAgICAgc3Vic2NyaXB0aW9uOiBzdWJzY3JpcHRpb24gPyB7CiAgICAgICAgcGxhbjogc3Vic2NyaXB0aW9uLnBsYW4sCiAgICAgICAgc3RhdHVzOiBzdWJzY3JpcHRpb24uc3RhdHVzLAogICAgICAgIGN1cnJlbnRfcGVyaW9kX2VuZDogc3Vic2NyaXB0aW9uLmN1cnJlbnRfcGVyaW9kX2VuZCwKICAgICAgfSA6IG51bGwsCiAgICB9KQogIH0gY2F0Y2ggewogICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKAogICAgICB7IGVycm9yOiAnSW50ZXJuYWwgc2VydmVyIGVycm9yJyB9LAogICAgICB7IHN0YXR1czogNTAwIH0KICAgICkKICB9Cn0K"}
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+// POST /api/atlas/login
+// macOS app sends email + password, receives JWT session
+export async function POST(request: Request) {
+  try {
+    const { email, password } = await request.json()
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 401 }
+      )
+    }
+
+    if (!data.session) {
+      return NextResponse.json(
+        { error: 'Failed to create session' },
+        { status: 500 }
+      )
+    }
+
+    // Get subscription details
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', data.user.id)
+      .eq('status', 'active')
+      .single()
+
+    return NextResponse.json({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+      subscription: subscription ? {
+        plan: subscription.plan,
+        status: subscription.status,
+        current_period_end: subscription.current_period_end,
+      } : null,
+    })
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
