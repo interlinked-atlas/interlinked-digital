@@ -1,1 +1,24 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBSZWFjdCBmcm9tICdyZWFjdCcKaW1wb3J0ICogYXMgTGFiZWxQcmltaXRpdmUgZnJvbSAnQHJhZGl4LXVpL3JlYWN0LWxhYmVsJwoKaW1wb3J0IHsgY24gfSBmcm9tICdAL2xpYi91dGlscycKCmZ1bmN0aW9uIExhYmVsKHsKICBjbGFzc05hbWUsCiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIExhYmVsUHJpbWl0aXZlLlJvb3Q+KSB7CiAgcmV0dXJuICgKICAgIDxMYWJlbFByaW1pdGl2ZS5Sb290CiAgICAgIGRhdGEtc2xvdD0ibGFiZWwiCiAgICAgIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2ZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHRleHQtc20gbGVhZGluZy1ub25lIGZvbnQtbWVkaXVtIHNlbGVjdC1ub25lIGdyb3VwLWRhdGEtW2Rpc2FibGVkPXRydWVdOnBvaW50ZXItZXZlbnRzLW5vbmUgZ3JvdXAtZGF0YS1bZGlzYWJsZWQ9dHJ1ZV06b3BhY2l0eS01MCBwZWVyLWRpc2FibGVkOmN1cnNvci1ub3QtYWxsb3dlZCBwZWVyLWRpc2FibGVkOm9wYWNpdHktNTAnLAogICAgICAgIGNsYXNzTmFtZSwKICAgICAgKX0KICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmV4cG9ydCB7IExhYmVsIH0K"}
+'use client'
+
+import * as React from 'react'
+import * as LabelPrimitive from '@radix-ui/react-label'
+
+import { cn } from '@/lib/utils'
+
+function Label({
+  className,
+  ...props
+}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+  return (
+    <LabelPrimitive.Root
+      data-slot="label"
+      className={cn(
+        'flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Label }
