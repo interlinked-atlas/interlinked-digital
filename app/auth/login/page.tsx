@@ -1,117 +1,135 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setError(null)
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
-    }
-
-    router.push("/atlas/account")
+    setError('')
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (authError) { setError(authError.message); return }
+    router.push('/atlas/account')
     router.refresh()
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
-      {/* Background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#7c6fee]/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4ecdc4]/5 rounded-full blur-3xl" />
-      </div>
+    <>
+      <style>{`
+        @font-face {
+          font-family: 'Bezmiar';
+          src: url('/fonts/Bezmiar-Regular.otf') format('opentype');
+          font-weight: normal; font-style: normal; font-display: swap;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #07080F; }
+        input { transition: border-color 0.15s; }
+        input::placeholder { color: #2A2D50; }
+        input:focus { border-color: #4A5280 !important; outline: none; }
+        button { transition: opacity 0.15s, transform 0.1s; }
+        button:hover:not(:disabled) { opacity: 0.88; }
+        button:active:not(:disabled) { transform: scale(0.985); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        a { text-decoration: none; }
+      `}</style>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">INTERLINKED</h1>
-          </Link>
-          <p className="text-white/40 text-sm mt-2">Sign in to your ATLAS account</p>
+      <main style={{
+        minHeight: '100vh', background: '#07080F', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '32px 20px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+
+          {/* ATLAS heading */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <a href="/atlas" style={{ display: 'inline-block' }}>
+              <h1 style={{
+                color: '#E8ECFF', fontSize: '48px', fontWeight: 'normal',
+                letterSpacing: '12px', fontFamily: 'Bezmiar, -apple-system, sans-serif',
+                lineHeight: 1, marginBottom: '8px', textIndent: '12px',
+              }}>ATLAS</h1>
+            </a>
+            <p style={{ color: '#303460', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase' }}>
+              by InterLinked
+            </p>
+          </div>
+
+          {/* Login card */}
+          <div style={{
+            background: '#0C0E1C', borderRadius: '12px',
+            border: '1px solid #1A1D38', overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '14px 18px', borderBottom: '1px solid #1A1D38',
+              background: '#0F1128',
+            }}>
+              <h2 style={{ color: '#C8D0E8', fontSize: '14px', fontWeight: '600' }}>
+                Sign in to your account
+              </h2>
+              <p style={{ color: '#2A2E55', fontSize: '11px', marginTop: '3px' }}>
+                Access your subscription, devices, and downloads
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {error && (
+                <div style={{
+                  background: 'rgba(224,85,85,0.07)', border: '1px solid rgba(224,85,85,0.22)',
+                  borderRadius: '8px', padding: '9px 12px', color: '#E05555', fontSize: '12px',
+                }}>{error}</div>
+              )}
+
+              <input type="email" placeholder="Email address" value={email}
+                onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+              <input type="password" placeholder="Password" value={password}
+                onChange={e => setPassword(e.target.value)} required style={inputStyle} />
+
+              <button type="submit" disabled={loading} style={{
+                width: '100%', padding: '11px', border: 'none', borderRadius: '9px',
+                background: 'linear-gradient(135deg, #3ECFB2, #2ABEAA)',
+                color: '#07080F', fontSize: '13px', fontWeight: '600',
+                cursor: 'pointer', marginTop: '2px',
+              }}>
+                {loading ? 'Signing in…' : 'Sign In →'}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                <a href="/auth/forgot-password" style={{ color: '#3A4070', fontSize: '11px' }}>
+                  Forgot password?
+                </a>
+                <p style={{ color: '#202340', fontSize: '11px' }}>
+                  New to ATLAS?{' '}
+                  <a href="/atlas" style={{ color: '#3ECFB2', fontWeight: '600' }}>
+                    Get Started →
+                  </a>
+                </p>
+              </div>
+            </form>
+          </div>
+
+          <p style={{ color: '#141628', fontSize: '10px', textAlign: 'center', marginTop: '28px' }}>
+            InterLinked© · All rights reserved
+          </p>
         </div>
-
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="bg-[#1a1a2e]/50 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-2">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white/70 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-[#0a0a0f] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#7c6fee]/50 transition-colors"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </div>
-
-          <div className="mt-6 text-center">
-            <Link href="/auth/forgot-password" className="text-sm text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
-              Forgot your password?
-            </Link>
-          </div>
-        </form>
-
-        <p className="text-center mt-6 text-white/50 text-sm">
-          {"Don't have an account? "}
-          <Link href="/atlas" className="text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
-            Get ATLAS
-          </Link>
-        </p>
-      </div>
-    </div>
+      </main>
+    </>
   )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 12px',
+  background: '#07080F', border: '1px solid #1A1D38',
+  borderRadius: '8px', color: '#D0D8F0', fontSize: '13px',
+  outline: 'none', boxSizing: 'border-box',
 }
