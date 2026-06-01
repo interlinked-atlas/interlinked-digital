@@ -1,1 +1,33 @@
-{"data":"J3VzZSBjbGllbnQnCgppbXBvcnQgKiBhcyBDb2xsYXBzaWJsZVByaW1pdGl2ZSBmcm9tICdAcmFkaXgtdWkvcmVhY3QtY29sbGFwc2libGUnCgpmdW5jdGlvbiBDb2xsYXBzaWJsZSh7CiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIENvbGxhcHNpYmxlUHJpbWl0aXZlLlJvb3Q+KSB7CiAgcmV0dXJuIDxDb2xsYXBzaWJsZVByaW1pdGl2ZS5Sb290IGRhdGEtc2xvdD0iY29sbGFwc2libGUiIHsuLi5wcm9wc30gLz4KfQoKZnVuY3Rpb24gQ29sbGFwc2libGVUcmlnZ2VyKHsKICAuLi5wcm9wcwp9OiBSZWFjdC5Db21wb25lbnRQcm9wczx0eXBlb2YgQ29sbGFwc2libGVQcmltaXRpdmUuQ29sbGFwc2libGVUcmlnZ2VyPikgewogIHJldHVybiAoCiAgICA8Q29sbGFwc2libGVQcmltaXRpdmUuQ29sbGFwc2libGVUcmlnZ2VyCiAgICAgIGRhdGEtc2xvdD0iY29sbGFwc2libGUtdHJpZ2dlciIKICAgICAgey4uLnByb3BzfQogICAgLz4KICApCn0KCmZ1bmN0aW9uIENvbGxhcHNpYmxlQ29udGVudCh7CiAgLi4ucHJvcHMKfTogUmVhY3QuQ29tcG9uZW50UHJvcHM8dHlwZW9mIENvbGxhcHNpYmxlUHJpbWl0aXZlLkNvbGxhcHNpYmxlQ29udGVudD4pIHsKICByZXR1cm4gKAogICAgPENvbGxhcHNpYmxlUHJpbWl0aXZlLkNvbGxhcHNpYmxlQ29udGVudAogICAgICBkYXRhLXNsb3Q9ImNvbGxhcHNpYmxlLWNvbnRlbnQiCiAgICAgIHsuLi5wcm9wc30KICAgIC8+CiAgKQp9CgpleHBvcnQgeyBDb2xsYXBzaWJsZSwgQ29sbGFwc2libGVUcmlnZ2VyLCBDb2xsYXBzaWJsZUNvbnRlbnQgfQo="}
+'use client'
+
+import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
+
+function Collapsible({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {
+  return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
+}
+
+function CollapsibleTrigger({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleTrigger>) {
+  return (
+    <CollapsiblePrimitive.CollapsibleTrigger
+      data-slot="collapsible-trigger"
+      {...props}
+    />
+  )
+}
+
+function CollapsibleContent({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) {
+  return (
+    <CollapsiblePrimitive.CollapsibleContent
+      data-slot="collapsible-content"
+      {...props}
+    />
+  )
+}
+
+export { Collapsible, CollapsibleTrigger, CollapsibleContent }
