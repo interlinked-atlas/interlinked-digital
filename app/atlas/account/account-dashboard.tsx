@@ -35,6 +35,8 @@ interface Props {
 export default function AccountDashboard({ user, subscription, profile, devices, logs, isAdmin }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState("")
   const [cancelError, setCancelError] = useState("")
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
@@ -75,6 +77,24 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       setLoading(null)
     }
     setShowCancelConfirm(false)
+  }
+
+  async function handleBillingPortal() {
+    setPortalLoading(true); setPortalError("")
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setPortalLoading(false); return }
+    try {
+      const res = await fetch("/api/atlas/billing-portal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to open billing portal")
+      window.open(json.url, "_blank")
+    } catch (err: unknown) {
+      setPortalError(err instanceof Error ? err.message : "Unknown error")
+    }
+    setPortalLoading(false)
   }
 
   async function handleRemoveDevice(deviceId: string) {
@@ -171,6 +191,38 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}
           </div>
         </section>
+
+        {/* ── Payment & Billing ── */}
+        {subscription && !subscription.stripe_customer_id?.startsWith("admin") && (
+          <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Payment & Billing</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <p style={{ fontSize: "12px", color: "#6B7399", lineHeight: 1.6 }}>
+                Manage your payment method, view invoices, and update billing information through the Stripe customer portal.
+              </p>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  onClick={handleBillingPortal}
+                  disabled={portalLoading}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    padding: "8px 16px", borderRadius: "8px",
+                    background: "rgba(91,141,239,0.1)",
+                    border: "1px solid rgba(91,141,239,0.3)",
+                    color: "#5B8DEF", fontSize: "11px", fontWeight: 600,
+                    cursor: portalLoading ? "not-allowed" : "pointer",
+                    opacity: portalLoading ? 0.6 : 1,
+                  }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                  {portalLoading ? "Opening…" : "Manage Payment Method"}
+                </button>
+              </div>
+              {portalError && <p style={{ fontSize: "11px", color: "#E05555" }}>{portalError}</p>}
+            </div>
+          </section>
+        )}
 
         {/* ── Plan Features ── */}
         <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
