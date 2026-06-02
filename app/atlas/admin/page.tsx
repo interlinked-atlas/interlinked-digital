@@ -17,14 +17,14 @@ export default async function AdminPage() {
     redirect("/atlas/account")
   }
 
-  // Fetch all logs joined with user email
+  // Fetch all install logs with user info
   const { data: allLogs } = await supabaseAdmin
-    .from("atlas_logs")
-    .select("id, user_id, log_type, app_name, filename, content, device_name, hardware_uuid, created_at")
-    .order("created_at", { ascending: false })
+    .from("install_logs")
+    .select("id, user_id, app_name, installed_at, device_id")
+    .order("installed_at", { ascending: false })
     .limit(500)
 
-  // Fetch all profiles for user info
+  // Fetch all profiles
   const { data: profiles } = await supabaseAdmin
     .from("profiles")
     .select("id, email, plan, subscription_status")
@@ -48,7 +48,6 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#07080F", color: "#E8ECFF" }}>
-      {/* Nav */}
       <header style={{
         borderBottom: "1px solid #1E2240",
         position: "sticky", top: 0, zIndex: 50,
@@ -65,18 +64,17 @@ export default async function AdminPage() {
           <span style={{
             fontFamily: "'SF-Intellivised', sans-serif",
             fontSize: "18px", letterSpacing: "6px", color: "#E8ECFF",
-            animation: "atlasGlow 3s ease-in-out infinite",
           }}>ATLAS</span>
           <span style={{ fontSize: "9px", color: "#252845", letterSpacing: "3px" }}>ADMIN</span>
         </div>
         <span style={{ fontSize: "11px", color: "#3ECFB2" }}>
-          {users.length} user{users.length !== 1 ? "s" : ""} · {allLogs?.length ?? 0} logs total
+          {users.length} user{users.length !== 1 ? "s" : ""} · {allLogs?.length ?? 0} installs total
         </span>
       </header>
 
       <main style={{ maxWidth: "900px", margin: "0 auto", padding: "32px 24px" }}>
         <h1 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "24px", color: "#C0C8E8" }}>
-          User Logs
+          User Activity
         </h1>
 
         {users.length === 0 && (
@@ -85,7 +83,7 @@ export default async function AdminPage() {
             background: "#0C0E1C", borderRadius: "12px", border: "1px solid #1E2240",
             color: "#353860", fontSize: "13px",
           }}>
-            No logs synced yet. Logs appear here after users run installations in ATLAS.
+            No installs logged yet. Logs appear here after users run installations in ATLAS.
           </div>
         )}
 
@@ -119,53 +117,32 @@ export default async function AdminPage() {
                   fontSize: "10px", color: "#4A5280", padding: "3px 8px",
                   borderRadius: "5px", border: "1px solid #1E2240", background: "#07080F",
                 }}>
-                  {data.logs?.length ?? 0} log{(data.logs?.length ?? 0) !== 1 ? "s" : ""}
+                  {data.logs?.length ?? 0} install{(data.logs?.length ?? 0) !== 1 ? "s" : ""}
                 </span>
               </summary>
 
               <div style={{ borderTop: "1px solid #1A1D30" }}>
                 {(data.logs ?? []).map((log: any) => (
-                  <details key={log.id} style={{ borderBottom: "1px solid #13151F" }}>
-                    <summary style={{
-                      padding: "10px 18px", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: "10px",
-                      listStyle: "none",
-                    }}>
-                      <span style={{
-                        fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px",
-                        borderRadius: "3px",
-                        background: log.log_type === "install" ? "rgba(62,207,178,0.1)"
-                          : log.log_type === "failed" ? "rgba(224,85,85,0.1)"
-                          : log.log_type === "uninstall" ? "rgba(91,141,239,0.1)"
-                          : "rgba(240,160,48,0.1)",
-                        color: log.log_type === "install" ? "#3ECFB2"
-                          : log.log_type === "failed" ? "#E05555"
-                          : log.log_type === "uninstall" ? "#5B8DEF"
-                          : "#F0A030",
-                      }}>
-                        {log.log_type?.toUpperCase()}
-                      </span>
-                      <span style={{ fontSize: "12px", color: "#A8B4D0", flex: 1 }}>
-                        {log.app_name || log.filename}
-                      </span>
-                      <span style={{ fontSize: "10px", color: "#353860" }}>
-                        {new Date(log.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      {log.device_name && (
-                        <span style={{ fontSize: "10px", color: "#252845" }}>{log.device_name}</span>
-                      )}
-                    </summary>
-                    <pre style={{
-                      margin: "0", padding: "16px 20px",
-                      background: "#07080F", color: "#6B7399",
-                      fontSize: "10px", lineHeight: 1.6,
-                      overflowX: "auto", whiteSpace: "pre-wrap",
-                      wordBreak: "break-word", maxHeight: "400px",
-                      overflowY: "auto",
-                    }}>
-                      {log.content}
-                    </pre>
-                  </details>
+                  <div key={log.id} style={{
+                    padding: "10px 18px", borderBottom: "1px solid #13151F",
+                    display: "flex", alignItems: "center", gap: "10px",
+                  }}>
+                    <span style={{
+                      fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px",
+                      borderRadius: "3px",
+                      background: "rgba(62,207,178,0.1)",
+                      color: "#3ECFB2",
+                    }}>INSTALL</span>
+                    <span style={{ fontSize: "12px", color: "#A8B4D0", flex: 1 }}>
+                      {log.app_name ?? "Unknown"}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "#353860" }}>
+                      {new Date(log.installed_at).toLocaleString("en-US", {
+                        month: "short", day: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
                 ))}
               </div>
             </details>
