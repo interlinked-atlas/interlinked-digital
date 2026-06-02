@@ -3,8 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// POST /api/atlas/logs — called by ATLAS app after each install/uninstall/failure
+// POST /api/atlas/logs — called by ATLAS app after each install/uninstall/failure/crash
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
@@ -12,17 +13,12 @@ export async function POST(request: Request) {
   }
   const accessToken = authHeader.substring(7)
 
-  // Validate user with anon key (no service role needed for getUser)
+  // Validate user token
   const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON)
   const { data: { user }, error: authError } = await anonClient.auth.getUser(accessToken)
   if (authError || !user) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
-
-  // User-scoped client — uses the user's JWT, works via RLS INSERT policy
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  })
 
   let body: {
     log_type?: string; app_name?: string; filename?: string
@@ -37,32 +33,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Write to install_logs (user-scoped, works via RLS)
-  if (log_type === 'install' || log_type === 'failed' || log_type === 'uninstall') {
-    const { error } = await userClient
-      .from('install_logs')
-      .insert({
-        user_id: user.id,
-        app_name: app_name ?? filename,
-        installed_at: new Date().toISOString(),
-      })
-    if (error) console.error('[logs] install_logs insert:', error.message)
-  }
+  // Use service role to bypass RLS — user identity already verified above
+  const adminClient = createClient(SUPABASE_URL, SERVICE_KEY)
 
-  // Also store full log content in Storage for detailed log view
-  if (content) {
-    const ts = Date.now()
-    const safeName = filename.replace(/[^a-z0-9._-]/gi, '_').slice(0, 80)
-    const filePath = `${user.id}/${ts}_${log_type}_${safeName}.txt`
-    const logPayload = JSON.stringify({
-      log_type, app_name: app_name ?? null, filename, content,
-      device_name: device_name ?? null, hardware_uuid: hardware_uuid ?? null,
-      created_at: new Date().toISOString(),
+  const { error: insertError } = await adminClient
+    .from('install_logs')
+    .insert({
+      user_id: user.id,
+      log_type,
+      app_name: app_name ?? filename,
+      filename,
+      content: content ?? null,
+      device_name: device_name ?? null,
+      hardware_uuid: hardware_uuid ?? null,
+      installed_at: new Date().toISOString(),
     })
-    const { error: storageError } = await userClient.storage
-      .from('atlas-logs')
-      .upload(filePath, logPayload, { contentType: 'application/json', upsert: false })
-    if (storageError) console.error('[logs] storage upload:', storageError.message)
+
+  if (insertError) {
+    console.error('[logs] insert error:', insertError.message)
+    // Fallback: if new columns don't exist yet, store with minimal fields
+    if (insertError.message.includes('column') || insertError.code === '42703') {
+      await adminClient
+        .from('install_logs')
+        .insert({
+          user_id: user.id,
+          app_name: `[${log_type.toUpperCase()}] ${app_name ?? filename}`,
+          installed_at: new Date().toISOString(),
+        })
+    }
   }
 
   return NextResponse.json({ success: true })
