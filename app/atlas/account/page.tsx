@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import AccountDashboard from "./account-dashboard"
 
+export const dynamic = 'force-dynamic'
+
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -17,24 +19,20 @@ export default async function AccountPage() {
 
   const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
-  const [
-    { data: subscription },
-    { data: profile },
-    { data: devices },
-    { data: rawLogs },
-  ] = await Promise.all([
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [subResult, profileResult, devicesResult, logsResult] = await Promise.all([
     supabaseAdmin
       .from("subscriptions")
-      .select("*")
+      .select("id, plan, status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .limit(1)
-      .single(),
+      .maybeSingle(),
     supabaseAdmin
       .from("profiles")
       .select("plan, subscription_status")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
     supabaseAdmin
       .from("devices")
       .select("id, device_name, hardware_uuid, last_seen, created_at")
@@ -48,7 +46,14 @@ export default async function AccountPage() {
       .limit(50),
   ])
 
-  const logs = (rawLogs ?? []).map(l => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subscription = (subResult.data as any) ?? null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profile = (profileResult.data as any) ?? null
+  const devices = (devicesResult.data ?? []) as any[]
+  const rawLogs = (logsResult.data ?? []) as any[]
+
+  const logs = rawLogs.map((l: any) => ({
     id: l.id,
     log_type: "install",
     app_name: l.app_name,
@@ -62,9 +67,9 @@ export default async function AccountPage() {
   return (
     <AccountDashboard
       user={user}
-      subscription={subscription ?? null}
-      profile={profile ?? null}
-      devices={devices ?? []}
+      subscription={subscription}
+      profile={profile}
+      devices={devices}
       logs={logs}
       isAdmin={isAdmin}
     />
