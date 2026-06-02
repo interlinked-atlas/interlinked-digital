@@ -55,6 +55,7 @@ export default function Home() {
               <h1
                 className="animate-fade-in-1"
                 style={{
+                  fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
                   fontSize: "clamp(38px, 6vw, 64px)",
                   fontWeight: "normal",
                   letterSpacing: "0.28em",
