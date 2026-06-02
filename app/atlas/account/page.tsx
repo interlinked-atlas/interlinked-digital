@@ -5,7 +5,6 @@ import AccountDashboard from "./account-dashboard"
 
 export const dynamic = 'force-dynamic'
 
-// Admin client only for tables without user-level RLS (devices, install_logs)
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -14,15 +13,12 @@ const supabaseAdmin = createAdminClient(
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
 export default async function AccountPage() {
-  // User's own authenticated client — uses session cookie, works with RLS
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/auth/login")
 
   const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
-  // Use the user's own client for profile + subscription (RLS ensures they see only their data)
-  // Use supabaseAdmin only where service role is actually needed
   const [subResult, profileResult, devicesResult, logsResult] = await Promise.all([
     supabase
       .from("subscriptions")
@@ -41,12 +37,13 @@ export default async function AccountPage() {
       .select("id, device_name, hardware_uuid, last_seen, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    supabase
+    // Use admin client to read logs (bypasses RLS in case user policy is restrictive)
+    supabaseAdmin
       .from("install_logs")
-      .select("id, app_name, installed_at, device_id")
+      .select("id, log_type, app_name, filename, content, device_name, hardware_uuid, installed_at")
       .eq("user_id", user.id)
       .order("installed_at", { ascending: false })
-      .limit(50),
+      .limit(100),
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,12 +55,12 @@ export default async function AccountPage() {
 
   const logs = rawLogs.map((l: any) => ({
     id: l.id,
-    log_type: "install",
-    app_name: l.app_name,
-    filename: l.app_name ?? "install",
-    content: null,
-    device_name: null,
-    hardware_uuid: null,
+    log_type: l.log_type ?? "install",
+    app_name: l.app_name ?? null,
+    filename: l.filename ?? l.app_name ?? "log",
+    content: l.content ?? null,
+    device_name: l.device_name ?? null,
+    hardware_uuid: l.hardware_uuid ?? null,
     created_at: l.installed_at,
   }))
 
