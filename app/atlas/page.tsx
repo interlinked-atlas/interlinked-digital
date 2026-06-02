@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -13,8 +13,9 @@ const PLANS = [
     id: 'standard',
     name: 'Standard',
     price: '$14.99',
-    period: '/month',
-    color: '#5B8DEF',
+    period: '/mo',
+    color: '#8A8A96',
+    accentColor: '#5E6AD2',
     recommended: false,
     features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
     excluded: ['Bulk installation', 'Uninstall & Rollback', 'TITAN CORE™', 'Smart Storage'],
@@ -24,8 +25,9 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     price: '$29.99',
-    period: '/month',
+    period: '/mo',
     color: '#3ECFB2',
+    accentColor: '#3ECFB2',
     recommended: true,
     features: [
       'Up to 3 devices',
@@ -38,6 +40,24 @@ const PLANS = [
     ],
     excluded: [],
     stripeUrl: 'https://buy.stripe.com/aFafZg7TUc4p0Jx7HSdjO01',
+  },
+]
+
+const FEATURES = [
+  {
+    icon: '⚡',
+    title: 'Automated installs',
+    desc: 'Drop any DMG, ZIP, PKG, or plugin — ATLAS handles the rest autonomously.',
+  },
+  {
+    icon: '↩',
+    title: 'Uninstall & rollback',
+    desc: 'Track every file placed. Undo any install cleanly, with full recovery support.',
+  },
+  {
+    icon: '◈',
+    title: 'TITAN CORE™',
+    desc: 'Pre-flight checks, smart recovery, signature validation, and install verification.',
   },
 ]
 
@@ -77,7 +97,7 @@ Piracy, license circumvention, keygen use, or any unlicensed use of software thr
 ATLAS requests Full Disk Access, Accessibility, and Automation permissions solely to perform installations you initiate. Your admin password, if provided, is stored securely in the macOS Keychain and is never transmitted externally.
 
 8. SUBSCRIPTION & BILLING
-ATLAS is available on Standard (free) and Pro (paid) plans. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
+ATLAS is available on Standard and Pro plans. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
 
 9. CHANGES
 InterLinked® reserves the right to update these terms at any time. Continued use of ATLAS constitutes acceptance of the current terms.
@@ -87,14 +107,61 @@ interlinked.digital@gmail.com
 interlinked.digital`
 
 type Plan = typeof PLANS[0]
-type Step = 'plan' | 'account'
+type Step = 'landing' | 'plan' | 'account'
 
+// ─── Scroll-animate hook ────────────────────────────────────────────────────
+function useInView(ref: React.RefObject<Element | null>, once = true) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          if (once) obs.disconnect()
+        } else if (!once) {
+          setVisible(false)
+        }
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
+    )
+    obs.observe(ref.current)
+    return () => obs.disconnect()
+  }, [ref, once])
+  return visible
+}
+
+// ─── Animated section wrapper ───────────────────────────────────────────────
+function FadeUp({
+  children,
+  delay = 0,
+  style = {},
+}: {
+  children: React.ReactNode
+  delay?: number
+  style?: React.CSSProperties
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const visible = useInView(ref)
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(28px)',
+        transition: `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// ─── ToS modal ──────────────────────────────────────────────────────────────
 function TosModal({ onClose }: { onClose: () => void }) {
   const [opacity, setOpacity] = useState(0)
-
-  useEffect(() => {
-    requestAnimationFrame(() => setOpacity(1))
-  }, [])
+  useEffect(() => { requestAnimationFrame(() => setOpacity(1)) }, [])
 
   function close() {
     setOpacity(0)
@@ -106,66 +173,71 @@ function TosModal({ onClose }: { onClose: () => void }) {
       onClick={close}
       style={{
         position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.65)',
+        background: 'rgba(0,0,0,0.75)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '24px',
+        backdropFilter: 'blur(8px)',
         opacity, transition: 'opacity 0.17s ease',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#0A0D1C',
-          border: '1px solid #1E2240',
-          borderRadius: '14px',
+          background: '#111113',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '16px',
           width: '100%', maxWidth: '520px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+          boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
           overflow: 'hidden',
-          opacity, transform: `scale(${0.97 + 0.03 * opacity})`,
+          opacity,
+          transform: `scale(${0.96 + 0.04 * opacity})`,
           transition: 'opacity 0.17s ease, transform 0.17s ease',
         }}
       >
-        {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: '1px solid #1E2240',
+          padding: '14px 18px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#3ECFB2', fontSize: '13px' }}>📄</span>
-            <span style={{ color: '#F0F2FF', fontSize: '13px', fontWeight: 600 }}>
-              Terms of Service — ATLAS by InterLinked®
-            </span>
-          </div>
+          <span style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 600, letterSpacing: '-0.01em' }}>
+            Terms of Service — ATLAS
+          </span>
           <button
             onClick={close}
             style={{
-              background: '#1E2240', border: 'none', borderRadius: '6px',
-              width: '24px', height: '24px', cursor: 'pointer',
-              color: '#6B7399', fontSize: '11px', fontWeight: 700,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '6px',
+              width: '26px', height: '26px',
+              cursor: 'pointer', color: '#8A8A96',
+              fontSize: '11px', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background 0.12s',
             }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
           >✕</button>
         </div>
-
-        {/* Content */}
-        <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '16px' }}>
+        <div style={{ maxHeight: '380px', overflowY: 'auto', padding: '18px' }}>
           <pre style={{
-            color: '#A0A8C8', fontSize: '11.5px', lineHeight: '1.75',
+            color: '#8A8A96', fontSize: '11.5px', lineHeight: '1.8',
             whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
           }}>
             {TOS_TEXT}
           </pre>
         </div>
-
-        <div style={{ borderTop: '1px solid #1E2240' }}>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             onClick={close}
             style={{
-              width: '100%', padding: '11px', border: 'none',
-              background: '#0F1327', color: '#F0F2FF',
-              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              width: '100%', padding: '12px',
+              border: 'none', background: 'transparent',
+              color: '#8A8A96', fontSize: '12px',
+              fontWeight: 500, cursor: 'pointer',
+              transition: 'color 0.12s',
             }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
           >
             Close
           </button>
@@ -175,8 +247,9 @@ function TosModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ─── Main page ──────────────────────────────────────────────────────────────
 export default function AtlasSignupPage() {
-  const [step, setStep] = useState<Step>('plan')
+  const [step, setStep] = useState<Step>('landing')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -186,28 +259,32 @@ export default function AtlasSignupPage() {
   const [tosAgreed, setTosAgreed] = useState(false)
   const [showTosModal, setShowTosModal] = useState(false)
 
+  // Kick off hero text animation on mount
+  const [heroIn, setHeroIn] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setHeroIn(true), 80)
+    return () => clearTimeout(t)
+  }, [])
+
   function handleSelectPlan(plan: Plan) {
     setSelectedPlan(plan)
     setError('')
     setTosAgreed(false)
     setStep('account')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedPlan) return
     if (!tosAgreed) { setError('Please agree to the Terms of Service to continue.'); return }
-    setError('')
-
     if (password !== confirmPassword) { setError('Passwords do not match.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-
+    setError('')
     setLoading(true)
     const { error: signUpError } = await supabase.auth.signUp({ email, password })
     setLoading(false)
-
     if (signUpError) { setError(signUpError.message); return }
-
     window.location.href = selectedPlan.stripeUrl
   }
 
@@ -215,298 +292,509 @@ export default function AtlasSignupPage() {
     <>
       <style>{`
         @font-face {
-          font-family: 'Bezmiar';
-          src: url('/fonts/Bezmiar-Regular.otf') format('opentype');
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
-        }
-        @font-face {
           font-family: 'SF-Intellivised';
           src: url('/fonts/SF-Intellivised.ttf') format('truetype');
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
+          font-weight: normal; font-style: normal; font-display: swap;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #07080F; }
-        input { transition: border-color 0.15s; }
-        input::placeholder { color: #2E3355; }
-        input:focus { border-color: #4A5280 !important; outline: none; }
-        button { transition: opacity 0.15s, transform 0.1s; }
-        button:hover:not(:disabled) { opacity: 0.88; }
-        button:active:not(:disabled) { transform: scale(0.985); }
-        button:disabled { opacity: 0.45; cursor: not-allowed; }
-        .plan-card { transition: border-color 0.15s, box-shadow 0.15s; }
-        .plan-card:hover { border-color: var(--plan-color) !important; box-shadow: 0 0 0 1px var(--plan-color)22; }
-        .tos-checkbox { transition: background 0.15s, border-color 0.15s; }
-        .tos-link { transition: opacity 0.12s; }
-        .tos-link:hover { opacity: 0.75; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: #080809; color: #FFFFFF; }
+        ::selection { background: rgba(62,207,178,0.25); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
+        input::placeholder { color: rgba(255,255,255,0.20); }
+        input:focus { outline: none; border-color: rgba(62,207,178,0.5) !important; box-shadow: 0 0 0 3px rgba(62,207,178,0.08) !important; }
+        .plan-card { transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease; }
+        .plan-card:hover { transform: translateY(-3px); }
+        .feature-card { transition: background 0.18s ease, border-color 0.18s ease; }
+        .feature-card:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.08) !important; }
+        .cta-btn { transition: opacity 0.15s, transform 0.15s cubic-bezier(0.16,1,0.3,1), box-shadow 0.15s; }
+        .cta-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .cta-btn:active:not(:disabled) { transform: scale(0.98); }
+        .cta-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .nav-back { transition: color 0.12s; }
+        .nav-back:hover { color: #FFFFFF !important; }
+        .tos-link:hover { opacity: 0.75 !important; }
       `}</style>
 
       {showTosModal && <TosModal onClose={() => setShowTosModal(false)} />}
 
       <main style={{
         minHeight: '100vh',
-        background: '#07080F',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px 20px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        background: '#080809',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        WebkitFontSmoothing: 'antialiased',
       }}>
-        <div style={{ width: '100%', maxWidth: step === 'plan' ? '580px' : '440px', transition: 'max-width 0.2s' }}>
 
-          {/* ATLAS header */}
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h1 style={{
-              color: '#E8ECFF',
-              fontSize: '48px',
-              fontWeight: 'normal',
-              letterSpacing: '12px',
-              fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
-              lineHeight: 1,
-              marginBottom: '8px',
-              textIndent: '12px',
-            }}>ATLAS</h1>
-            <p style={{ color: '#353860', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase' }}>
-              by InterLinked
-            </p>
+        {/* ── Top nav bar ── */}
+        <nav style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: 'rgba(8,8,9,0.85)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '0 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          height: '52px',
+        }}>
+          <span style={{
+            fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
+            fontSize: '16px', letterSpacing: '5px', color: '#FFFFFF',
+            opacity: 0.9,
+          }}>ATLAS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {step !== 'landing' && (
+              <button
+                className="nav-back"
+                onClick={() => { setStep('landing'); setSelectedPlan(null) }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#8A8A96', fontSize: '13px', fontWeight: 500,
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                ← Back
+              </button>
+            )}
+            <a
+              href="/auth/login"
+              style={{
+                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
+                textDecoration: 'none', transition: 'color 0.12s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
+            >
+              Sign in
+            </a>
           </div>
+        </nav>
 
-          {/* ── Step 1: Plan selection ── */}
-          {step === 'plan' && (
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-                <h2 style={{ color: '#C0C8E8', fontSize: '15px', fontWeight: '500', marginBottom: '5px' }}>
+        {/* ── Landing / hero ── */}
+        {step === 'landing' && (
+          <div>
+
+            {/* Hero */}
+            <section style={{
+              maxWidth: '860px', margin: '0 auto',
+              padding: '100px 24px 80px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                opacity: heroIn ? 1 : 0,
+                transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
+                transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
+              }}>
+                <h1 style={{
+                  fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
+                  fontSize: 'clamp(64px, 12vw, 110px)',
+                  fontWeight: 'normal',
+                  letterSpacing: 'clamp(14px, 2.5vw, 28px)',
+                  textIndent: 'clamp(14px, 2.5vw, 28px)',
+                  lineHeight: 1,
+                  marginBottom: '28px',
+                  background: 'linear-gradient(160deg, #FFFFFF 30%, rgba(255,255,255,0.55) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>
+                  ATLAS
+                </h1>
+
+                <p style={{
+                  fontSize: '18px', fontWeight: 400,
+                  color: 'rgba(255,255,255,0.55)',
+                  letterSpacing: '-0.01em', lineHeight: 1.5,
+                  maxWidth: '480px', margin: '0 auto 14px',
+                  opacity: heroIn ? 1 : 0,
+                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 180ms',
+                }}>
+                  The future of macOS installation.
+                </p>
+
+                <p style={{
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.25)',
+                  letterSpacing: '3px',
+                  textTransform: 'uppercase',
+                  marginBottom: '48px',
+                  opacity: heroIn ? 1 : 0,
+                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 260ms',
+                }}>
+                  by InterLinked®
+                </p>
+
+                <div style={{
+                  display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap',
+                  opacity: heroIn ? 1 : 0,
+                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 340ms',
+                }}>
+                  <button
+                    className="cta-btn"
+                    onClick={() => setStep('plan')}
+                    style={{
+                      background: '#3ECFB2',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '12px 28px',
+                      color: '#080809',
+                      fontSize: '14px', fontWeight: 700,
+                      cursor: 'pointer',
+                      letterSpacing: '-0.01em',
+                      boxShadow: '0 0 32px rgba(62,207,178,0.25)',
+                    }}
+                  >
+                    Get started →
+                  </button>
+                  <a
+                    href="/auth/login"
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '10px',
+                      padding: '12px 24px',
+                      color: '#FFFFFF',
+                      fontSize: '14px', fontWeight: 500,
+                      cursor: 'pointer',
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                    }}
+                  >
+                    Sign in
+                  </a>
+                </div>
+              </div>
+            </section>
+
+            {/* Divider */}
+            <div style={{
+              width: '100%', height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
+            }} />
+
+            {/* Features */}
+            <section style={{
+              maxWidth: '860px', margin: '0 auto',
+              padding: '80px 24px',
+            }}>
+              <FadeUp>
+                <p style={{
+                  textAlign: 'center',
+                  fontSize: '11px', fontWeight: 600,
+                  letterSpacing: '3px', textTransform: 'uppercase',
+                  color: '#3ECFB2', marginBottom: '40px',
+                }}>
+                  What ATLAS does
+                </p>
+              </FadeUp>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '14px',
+              }}>
+                {FEATURES.map((f, i) => (
+                  <FadeUp key={f.title} delay={i * 90}>
+                    <div
+                      className="feature-card"
+                      style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '14px',
+                        padding: '24px',
+                        height: '100%',
+                      }}
+                    >
+                      <div style={{ fontSize: '22px', marginBottom: '14px', lineHeight: 1 }}>{f.icon}</div>
+                      <h3 style={{
+                        fontSize: '14px', fontWeight: 600,
+                        color: '#FFFFFF', marginBottom: '8px',
+                        letterSpacing: '-0.01em',
+                      }}>{f.title}</h3>
+                      <p style={{
+                        fontSize: '13px', color: '#525260',
+                        lineHeight: 1.6, letterSpacing: '-0.005em',
+                      }}>{f.desc}</p>
+                    </div>
+                  </FadeUp>
+                ))}
+              </div>
+            </section>
+
+            {/* Divider */}
+            <div style={{
+              width: '100%', height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
+            }} />
+
+            {/* Plans teaser */}
+            <section style={{
+              maxWidth: '560px', margin: '0 auto',
+              padding: '80px 24px 100px',
+              textAlign: 'center',
+            }}>
+              <FadeUp>
+                <p style={{
+                  fontSize: '11px', fontWeight: 600,
+                  letterSpacing: '3px', textTransform: 'uppercase',
+                  color: '#44444E', marginBottom: '18px',
+                }}>
+                  Pricing
+                </p>
+                <h2 style={{
+                  fontSize: '32px', fontWeight: 700,
+                  color: '#FFFFFF', marginBottom: '14px',
+                  letterSpacing: '-0.03em', lineHeight: 1.15,
+                }}>
+                  Pick a plan. Start installing.
+                </h2>
+                <p style={{
+                  fontSize: '14px', color: '#525260',
+                  lineHeight: 1.6, marginBottom: '36px',
+                }}>
+                  Standard or Pro — both include the core ATLAS engine.
+                  Upgrade for unlimited installs, bulk mode, and TITAN CORE™.
+                </p>
+                <button
+                  className="cta-btn"
+                  onClick={() => setStep('plan')}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    borderRadius: '10px',
+                    padding: '12px 28px',
+                    color: '#FFFFFF',
+                    fontSize: '14px', fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  See plans →
+                </button>
+              </FadeUp>
+            </section>
+          </div>
+        )}
+
+        {/* ── Plan selection ── */}
+        {step === 'plan' && (
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px 80px' }}>
+            <FadeUp>
+              <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <h2 style={{
+                  fontSize: '28px', fontWeight: 700,
+                  color: '#FFFFFF', letterSpacing: '-0.03em', marginBottom: '10px',
+                }}>
                   Choose your plan
                 </h2>
-                <p style={{ color: '#353860', fontSize: '12px' }}>
-                  Create your account right after — takes 30 seconds
+                <p style={{ fontSize: '14px', color: '#525260' }}>
+                  Subscribe and create your account — takes 60 seconds
                 </p>
               </div>
+            </FadeUp>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                {PLANS.map(plan => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '24px' }}>
+              {PLANS.map((plan, i) => (
+                <FadeUp key={plan.id} delay={i * 80}>
                   <div
-                    key={plan.id}
                     className="plan-card"
                     style={{
-                      '--plan-color': plan.color,
-                      background: '#0C0E1C',
-                      borderRadius: '12px',
-                      border: `1px solid ${plan.recommended ? plan.color + '55' : '#1E2240'}`,
+                      background: '#0E0E10',
+                      borderRadius: '16px',
+                      border: plan.recommended
+                        ? `1px solid ${plan.accentColor}40`
+                        : '1px solid rgba(255,255,255,0.07)',
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'column',
-                    } as React.CSSProperties}
+                      boxShadow: plan.recommended
+                        ? `0 0 40px ${plan.accentColor}14`
+                        : 'none',
+                    }}
                   >
                     {plan.recommended && (
                       <div style={{
-                        background: `linear-gradient(90deg, ${plan.color}25, ${plan.color}10)`,
-                        borderBottom: `1px solid ${plan.color}30`,
-                        padding: '5px 0',
+                        background: `${plan.accentColor}18`,
+                        borderBottom: `1px solid ${plan.accentColor}28`,
+                        padding: '6px 0',
                         textAlign: 'center',
-                        color: plan.color,
-                        fontSize: '8px',
-                        fontWeight: '800',
-                        letterSpacing: '2px',
+                        color: plan.accentColor,
+                        fontSize: '9px', fontWeight: 800,
+                        letterSpacing: '2.5px',
                       }}>
                         MOST POPULAR
                       </div>
                     )}
 
                     <div style={{
-                      padding: '16px',
-                      background: plan.color + '08',
-                      borderBottom: '1px solid #1E2240',
+                      padding: '20px 20px 16px',
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
                     }}>
                       <div style={{
-                        color: plan.color,
-                        fontSize: '10px',
-                        fontWeight: '800',
-                        letterSpacing: '1.8px',
-                        marginBottom: '8px',
+                        color: plan.accentColor,
+                        fontSize: '9px', fontWeight: 800,
+                        letterSpacing: '2px', marginBottom: '12px',
+                        textTransform: 'uppercase',
                       }}>
-                        {plan.name.toUpperCase()}
+                        {plan.name}
                       </div>
-                      <div>
-                        <span style={{ color: '#E8ECFF', fontSize: '28px', fontWeight: '700', lineHeight: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                        <span style={{ color: '#FFFFFF', fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>
                           {plan.price}
                         </span>
-                        <span style={{ color: '#353860', fontSize: '11px' }}>{plan.period}</span>
+                        <span style={{ color: '#525260', fontSize: '12px' }}>{plan.period}</span>
                       </div>
                     </div>
 
-                    <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '9px' }}>
                       {plan.features.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                          <span style={{ color: plan.color, fontSize: '9px', fontWeight: '800', marginTop: '3px', flexShrink: 0 }}>✓</span>
-                          <span style={{ color: '#A8B4D0', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span style={{ color: plan.accentColor, fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
+                          <span style={{ color: '#CCCCCC', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
                         </div>
                       ))}
                       {plan.excluded.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                          <span style={{ color: '#252845', fontSize: '9px', fontWeight: '800', marginTop: '3px', flexShrink: 0 }}>✕</span>
-                          <span style={{ color: '#252845', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
+                          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div style={{ padding: '0 14px 14px' }}>
+                    <div style={{ padding: '0 16px 16px' }}>
                       <button
+                        className="cta-btn"
                         onClick={() => handleSelectPlan(plan)}
                         style={{
-                          width: '100%',
-                          padding: '10px',
-                          borderRadius: '8px',
-                          border: plan.recommended ? 'none' : `1px solid ${plan.color}45`,
+                          width: '100%', padding: '10px',
+                          borderRadius: '10px',
+                          border: plan.recommended ? 'none' : `1px solid ${plan.accentColor}35`,
                           background: plan.recommended
-                            ? `linear-gradient(135deg, ${plan.color}, ${plan.color}BB)`
-                            : plan.color + '14',
-                          color: plan.recommended ? '#07080F' : plan.color,
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          letterSpacing: '0.3px',
+                            ? plan.accentColor
+                            : `${plan.accentColor}12`,
+                          color: plan.recommended ? '#080809' : plan.accentColor,
+                          fontSize: '12px', fontWeight: 700,
+                          cursor: 'pointer', letterSpacing: '-0.01em',
                         }}
                       >
-                        Get Started — {plan.name}
+                        Get started — {plan.name}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </FadeUp>
+              ))}
+            </div>
 
-              <div style={{ marginTop: '22px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <p style={{ color: '#252845', fontSize: '11px' }}>
+            <FadeUp delay={200}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px', marginBottom: '6px' }}>
                   Secure payment via Stripe · Cancel anytime
                 </p>
-                <p style={{ color: '#252845', fontSize: '11px' }}>
+                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px' }}>
                   Already subscribed?{' '}
-                  <a href="/auth/login" style={{ color: '#3C4A70', textDecoration: 'none' }}>
-                    Sign in →
-                  </a>
+                  <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in →</a>
                 </p>
               </div>
-            </div>
-          )}
+            </FadeUp>
+          </div>
+        )}
 
-          {/* ── Step 2: Create account ── */}
-          {step === 'account' && selectedPlan && (
-            <div>
+        {/* ── Account creation ── */}
+        {step === 'account' && selectedPlan && (
+          <div style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 24px 80px' }}>
+            <FadeUp>
+              {/* Plan badge */}
               <div style={{
-                background: selectedPlan.color + '0E',
-                border: `1px solid ${selectedPlan.color}35`,
-                borderRadius: '10px',
+                background: `${selectedPlan.accentColor}0C`,
+                border: `1px solid ${selectedPlan.accentColor}28`,
+                borderRadius: '12px',
                 padding: '12px 16px',
-                marginBottom: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                marginBottom: '16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}>
                 <div>
-                  <div style={{ color: selectedPlan.color, fontSize: '9px', fontWeight: '800', letterSpacing: '1.5px', marginBottom: '3px' }}>
-                    {selectedPlan.name.toUpperCase()} PLAN SELECTED
+                  <div style={{
+                    color: selectedPlan.accentColor, fontSize: '9px',
+                    fontWeight: 800, letterSpacing: '2px',
+                    textTransform: 'uppercase', marginBottom: '4px',
+                  }}>
+                    {selectedPlan.name} Plan
                   </div>
-                  <div>
-                    <span style={{ color: '#E8ECFF', fontSize: '14px', fontWeight: '600' }}>
-                      {selectedPlan.price}
-                    </span>
-                    <span style={{ color: '#353860', fontSize: '11px' }}>{selectedPlan.period}</span>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+                    <span style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: 700 }}>{selectedPlan.price}</span>
+                    <span style={{ color: '#525260', fontSize: '11px' }}>{selectedPlan.period}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => { setStep('plan'); setError(''); setTosAgreed(false) }}
                   style={{
-                    background: 'none',
-                    border: '1px solid #1E2240',
-                    borderRadius: '6px',
-                    padding: '5px 11px',
-                    color: '#4A5280',
-                    fontSize: '10px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '7px', padding: '5px 12px',
+                    color: '#8A8A96', fontSize: '11px', fontWeight: 500,
+                    cursor: 'pointer', transition: 'color 0.12s',
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
                 >
                   Change
                 </button>
               </div>
 
+              {/* Form card */}
               <div style={{
-                background: '#0C0E1C',
-                borderRadius: '12px',
-                border: '1px solid #1E2240',
+                background: '#0E0E10',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.07)',
                 overflow: 'hidden',
               }}>
                 <div style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid #1E2240',
-                  background: '#0F1128',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
                 }}>
-                  <h2 style={{ color: '#C8D0E8', fontSize: '13px', fontWeight: '600' }}>
-                    Create your account
-                  </h2>
-                  <p style={{ color: '#353860', fontSize: '11px', marginTop: '3px' }}>
-                    You&apos;ll be taken to secure checkout after
+                  <h2 style={{
+                    color: '#FFFFFF', fontSize: '14px', fontWeight: 600,
+                    letterSpacing: '-0.01em', marginBottom: '4px',
+                  }}>Create your account</h2>
+                  <p style={{ color: '#525260', fontSize: '12px' }}>
+                    You&apos;ll complete payment right after
                   </p>
                 </div>
 
-                <form onSubmit={handleSignup} style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <form onSubmit={handleSignup} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {error && (
                     <div style={{
-                      background: 'rgba(224,85,85,0.07)',
-                      border: '1px solid rgba(224,85,85,0.22)',
-                      borderRadius: '8px',
-                      padding: '9px 12px',
-                      color: '#E05555',
-                      fontSize: '12px',
+                      background: 'rgba(224,85,85,0.08)',
+                      border: '1px solid rgba(224,85,85,0.20)',
+                      borderRadius: '9px', padding: '10px 14px',
+                      color: '#E05555', fontSize: '12px', lineHeight: 1.5,
                     }}>{error}</div>
                   )}
 
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    style={inputStyle}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password (min 8 characters)"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    style={inputStyle}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Confirm password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    required
-                    style={inputStyle}
-                  />
+                  <input type="email" placeholder="Email address" value={email}
+                    onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+                  <input type="password" placeholder="Password (min 8 chars)" value={password}
+                    onChange={e => setPassword(e.target.value)} required style={inputStyle} />
+                  <input type="password" placeholder="Confirm password" value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)} required style={inputStyle} />
 
-                  {/* ToS checkbox */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+                  {/* ToS */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                     <div
-                      className="tos-checkbox"
                       onClick={() => setTosAgreed(a => !a)}
                       style={{
                         width: '18px', height: '18px', flexShrink: 0,
-                        borderRadius: '4px', cursor: 'pointer',
-                        border: `1.5px solid ${tosAgreed ? '#3ECFB2' : '#2E3355'}`,
-                        background: tosAgreed ? 'rgba(62,207,178,0.12)' : '#07080F',
+                        borderRadius: '5px', cursor: 'pointer',
+                        border: `1.5px solid ${tosAgreed ? '#3ECFB2' : 'rgba(255,255,255,0.15)'}`,
+                        background: tosAgreed ? 'rgba(62,207,178,0.14)' : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'border-color 0.15s, background 0.15s',
                       }}
                     >
                       {tosAgreed && (
                         <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 800, lineHeight: 1 }}>✓</span>
                       )}
                     </div>
-                    <span style={{ fontSize: '11px', color: '#7080A0' }}>
+                    <span style={{ fontSize: '12px', color: '#525260' }}>
                       I agree to the{' '}
                       <button
                         type="button"
@@ -514,8 +802,10 @@ export default function AtlasSignupPage() {
                         onClick={() => setShowTosModal(true)}
                         style={{
                           background: 'none', border: 'none', padding: 0,
-                          color: '#3ECFB2', fontSize: '11px', cursor: 'pointer',
-                          textDecoration: 'underline', fontFamily: 'inherit',
+                          color: '#3ECFB2', fontSize: '12px',
+                          cursor: 'pointer', textDecoration: 'underline',
+                          fontFamily: 'inherit', opacity: 1,
+                          transition: 'opacity 0.12s',
                         }}
                       >
                         Terms of Service
@@ -526,37 +816,44 @@ export default function AtlasSignupPage() {
                   <button
                     type="submit"
                     disabled={loading || !tosAgreed}
+                    className="cta-btn"
                     style={{
-                      width: '100%',
-                      padding: '11px',
-                      border: 'none',
-                      borderRadius: '9px',
-                      background: `linear-gradient(135deg, ${selectedPlan.color}, ${selectedPlan.color}BB)`,
-                      color: selectedPlan.recommended ? '#07080F' : '#fff',
-                      fontSize: '13px',
-                      fontWeight: '600',
+                      width: '100%', padding: '12px',
+                      border: 'none', borderRadius: '10px',
+                      background: `linear-gradient(135deg, ${selectedPlan.accentColor}, ${selectedPlan.accentColor}CC)`,
+                      color: selectedPlan.recommended ? '#080809' : '#fff',
+                      fontSize: '13px', fontWeight: 700,
                       cursor: tosAgreed && !loading ? 'pointer' : 'not-allowed',
-                      marginTop: '2px',
+                      marginTop: '4px',
+                      letterSpacing: '-0.01em',
+                      boxShadow: tosAgreed ? `0 0 24px ${selectedPlan.accentColor}22` : 'none',
+                      transition: 'box-shadow 0.2s',
                     }}
                   >
-                    {loading ? 'Creating account…' : 'Continue to Checkout →'}
+                    {loading ? 'Creating account…' : 'Continue to checkout →'}
                   </button>
 
-                  <p style={{ color: '#252845', fontSize: '11px', textAlign: 'center' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '11px', textAlign: 'center' }}>
                     Already have an account?{' '}
-                    <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>
-                      Sign in
-                    </a>
+                    <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in</a>
                   </p>
                 </form>
               </div>
-            </div>
-          )}
+            </FadeUp>
+          </div>
+        )}
 
-          <p style={{ color: '#181A2A', fontSize: '10px', textAlign: 'center', marginTop: '28px' }}>
-            InterLinked© · All rights reserved
+        {/* Footer */}
+        <footer style={{
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          padding: '24px',
+          textAlign: 'center',
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', letterSpacing: '0.02em' }}>
+            InterLinked® · All rights reserved
           </p>
-        </div>
+        </footer>
+
       </main>
     </>
   )
@@ -564,12 +861,14 @@ export default function AtlasSignupPage() {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '10px 12px',
-  background: '#07080F',
-  border: '1px solid #1E2240',
-  borderRadius: '8px',
-  color: '#D0D8F0',
+  padding: '11px 14px',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: '9px',
+  color: '#FFFFFF',
   fontSize: '13px',
   outline: 'none',
   boxSizing: 'border-box',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+  letterSpacing: '-0.005em',
 }
