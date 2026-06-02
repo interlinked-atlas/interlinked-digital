@@ -2,50 +2,83 @@
 
 import { useEffect, useRef } from "react"
 
-interface LiquidMetalTextProps {
-  text: string
-  className?: string
-}
-
-export function LiquidMetalText({ text, className = "" }: LiquidMetalTextProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+export function InterLinkedWordmark() {
+  const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const letters = container.querySelectorAll<HTMLSpanElement>(".metal-letter")
+    const el = ref.current
+    if (!el) return
+    const letters = el.querySelectorAll<HTMLSpanElement>(".il-letter")
 
-    const animateSweep = () => {
-      letters.forEach((letter, index) => {
+    const sweep = () => {
+      letters.forEach((l, i) => {
         setTimeout(() => {
-          letter.classList.add("sweeping")
-          setTimeout(() => letter.classList.remove("sweeping"), 900)
-        }, index * 130)
+          l.style.color = "rgba(255,255,255,0.95)"
+          l.style.textShadow = "0 0 18px rgba(62,207,178,0.55)"
+          setTimeout(() => {
+            l.style.color = ""
+            l.style.textShadow = ""
+          }, 600)
+        }, i * 80)
       })
     }
 
-    const t0 = setTimeout(animateSweep, 400)
-    const iv = setInterval(animateSweep, 5500)
-    return () => { clearTimeout(t0); clearInterval(iv) }
+    const t = setTimeout(sweep, 600)
+    const iv = setInterval(sweep, 5000)
+    return () => { clearTimeout(t); clearInterval(iv) }
   }, [])
 
+  const word = "InterLinked"
+
   return (
-    <div ref={containerRef} className={`inline-flex ${className}`}>
-      {text.split("").map((char, index) => (
-        <span
-          key={index}
-          className="metal-letter relative inline-block"
-          style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif" }}
-        >
-          <span className="relative z-10" style={{ color: "rgba(232,236,255,0.88)" }}>{char}</span>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "baseline",
+        fontFamily: "'SF-Intellivised', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize: "clamp(36px, 5.5vw, 60px)",
+        fontWeight: "normal",
+        letterSpacing: "0.12em",
+        color: "rgba(220,228,255,0.82)",
+        lineHeight: 1,
+      }}
+    >
+      <span ref={ref} style={{ display: "inline-flex", alignItems: "baseline" }}>
+        {word.split("").map((char, i) => (
           <span
-            className="absolute inset-0 text-transparent bg-clip-text metal-shine pointer-events-none"
-            aria-hidden="true"
+            key={i}
+            className="il-letter"
+            style={{
+              display: "inline-block",
+              transition: "color 0.3s ease, text-shadow 0.3s ease",
+              color: "inherit",
+            }}
           >
             {char}
           </span>
-        </span>
-      ))}
-    </div>
+        ))}
+      </span>
+      <sup
+        style={{
+          fontSize: "0.28em",
+          color: "rgba(62,207,178,0.45)",
+          marginLeft: "3px",
+          verticalAlign: "super",
+          letterSpacing: 0,
+          fontFamily: "-apple-system, sans-serif",
+        }}
+      >
+        ©
+      </sup>
+    </span>
+  )
+}
+
+// Legacy export kept for any other usage
+export function LiquidMetalText({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <span className={className} style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif" }}>
+      {text}
+    </span>
   )
 }
