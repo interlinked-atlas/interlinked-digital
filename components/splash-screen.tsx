@@ -47,11 +47,10 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         >
           <img
             src="/images/interlinked-icon.png"
-            alt="INTERLINKED"
+            alt="InterLinked"
             className={cn("w-full h-full object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
             style={{ filter: "drop-shadow(0 0 14px rgba(62,207,178,0.3))" }}
           />
-          {/* Orbital rings */}
           {["-16px", "-28px"].map((inset, i) => (
             <div
               key={i}
@@ -68,7 +67,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           ))}
         </div>
 
-        {/* INTERLINKED wordmark */}
+        {/* Wordmark */}
         <div
           className={cn("text-center transition-all duration-700", phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}
         >
@@ -76,21 +75,21 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             fontFamily: "'SF-Intellivised', -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: "28px",
             fontWeight: "normal",
-            letterSpacing: "10px",
-            textIndent: "10px",
-            color: "rgba(232,236,255,0.88)",
-            marginBottom: "8px",
+            letterSpacing: "0.12em",
+            color: "rgba(220,228,255,0.82)",
             lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "baseline",
           }}>
-            INTERLINKED
-          </p>
-          <p style={{
-            fontSize: "9px",
-            letterSpacing: "3.5px",
-            color: "#353860",
-            textTransform: "uppercase",
-          }}>
-            connection, by design.
+            InterLinked
+            <sup style={{
+              fontSize: "0.28em",
+              color: "rgba(62,207,178,0.45)",
+              marginLeft: "3px",
+              verticalAlign: "super",
+              letterSpacing: 0,
+              fontFamily: "-apple-system, sans-serif",
+            }}>©</sup>
           </p>
         </div>
 
