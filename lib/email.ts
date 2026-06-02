@@ -60,6 +60,7 @@ function base(title: string, body: string) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${title}</title>
+  <style>@font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");font-weight:normal;font-style:normal;}</style>
 </head>
 <body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};">
@@ -74,7 +75,7 @@ function base(title: string, body: string) {
               <img src="${LOGO_URL}" width="36" height="36" alt="ATLAS" style="display:block;border:0;width:36px;height:36px;object-fit:contain;">
             </td>
             <td align="left" valign="middle">
-              <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:300;letter-spacing:10px;color:${WHITE};text-transform:uppercase;display:inline-block;padding-left:2px;">ATLAS</span>
+              <span style="font-family:'SF-Intellivised',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:normal;letter-spacing:10px;color:${WHITE};text-transform:uppercase;display:inline-block;padding-left:2px;">ATLAS</span>
             </td>
           </tr>
         </table>
