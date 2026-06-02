@@ -258,6 +258,8 @@ export default function AtlasSignupPage() {
   const [error, setError] = useState('')
   const [tosAgreed, setTosAgreed] = useState(false)
   const [showTosModal, setShowTosModal] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Kick off hero text animation on mount
   const [heroIn, setHeroIn] = useState(false)
@@ -797,10 +799,64 @@ export default function AtlasSignupPage() {
 
                   <input type="email" placeholder="Email address" value={email}
                     onChange={e => setEmail(e.target.value)} required style={inputStyle} />
-                  <input type="password" placeholder="Password (min 8 chars)" value={password}
-                    onChange={e => setPassword(e.target.value)} required style={inputStyle} />
-                  <input type="password" placeholder="Confirm password" value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)} required style={inputStyle} />
+
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Password (min 8 chars)"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      style={{ ...inputStyle, paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      style={{
+                        position: 'absolute', right: '12px', top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#525260', padding: '2px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'color 0.12s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
+
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirm password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      style={{ ...inputStyle, paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(v => !v)}
+                      style={{
+                        position: 'absolute', right: '12px', top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#525260', padding: '2px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'color 0.12s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
+                      tabIndex={-1}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
 
                   {/* ToS */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
@@ -881,6 +937,29 @@ export default function AtlasSignupPage() {
 
       </main>
     </>
+  )
+}
+
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 8C1 8 3.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 12.5 12.5 8 12.5C3.5 12.5 1 8 1 8Z"
+        stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 2L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M6.5 4C7 3.8 7.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 14.3 9.3 13.2 10.4"
+        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M4 5.5C2.6 6.5 1.5 7.7 1 8C1 8 3.5 12.5 8 12.5C9.2 12.5 10.3 12.1 11.2 11.5"
+        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M5.8 5.8A2 2 0 0 0 10.2 10.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
   )
 }
 
