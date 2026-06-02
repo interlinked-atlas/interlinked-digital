@@ -43,6 +43,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
   const [lastSync, setLastSync] = useState<Date>(new Date())
   const [syncing, setSyncing] = useState(false)
+  const [logSearch, setLogSearch] = useState("")
+  const [logTypeFilter, setLogTypeFilter] = useState("all")
+  const [supportIssue, setSupportIssue] = useState("Install Failed")
+  const [supportMsg, setSupportMsg] = useState("")
+  const [supportAttachId, setSupportAttachId] = useState<string | null>(null)
+  const [supportSubmitting, setSupportSubmitting] = useState(false)
+  const [supportDone, setSupportDone] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -151,6 +158,29 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   const logTypeColor = (t: string) => t === "install" ? "#3ECFB2" : t === "failed" ? "#E05555" : t === "uninstall" ? "#5B8DEF" : "#F0A030"
   const logTypeBg   = (t: string) => t === "install" ? "rgba(62,207,178,0.08)" : t === "failed" ? "rgba(224,85,85,0.08)" : t === "uninstall" ? "rgba(91,141,239,0.08)" : "rgba(240,160,48,0.08)"
+
+  const filteredLogs = logs.filter(l => {
+    const matchType = logTypeFilter === "all" || l.log_type === logTypeFilter
+    const matchSearch = !logSearch.trim() || (l.app_name ?? l.filename ?? "").toLowerCase().includes(logSearch.toLowerCase())
+    return matchType && matchSearch
+  })
+
+  async function handleSupportSubmit() {
+    if (!supportMsg.trim() || supportSubmitting) return
+    setSupportSubmitting(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setSupportSubmitting(false); return }
+    const attached = supportAttachId ? logs.find(l => l.id === supportAttachId) : null
+    const body: Record<string, string> = { issue_type: supportIssue, message: supportMsg }
+    if (attached) { body.attached_log_id = attached.id; body.attached_log_content = attached.content ?? "" }
+    await fetch("/api/atlas/support", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    setSupportSubmitting(false)
+    setSupportDone(true)
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "#07080F", color: "#E8ECFF" }}>
@@ -364,10 +394,28 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         {/* ── Installation Logs ── */}
         <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
           <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "4px" }}>Installation Logs</p>
-            <p style={{ fontSize: "11px", color: "#252845" }}>
-              Synced automatically from ATLAS · Most recent first
-            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", margin: 0 }}>Installation Logs</p>
+              {logs.length > 0 && <span style={{ fontSize: "10px", color: "#252845" }}>{filteredLogs.length !== logs.length ? `${filteredLogs.length} of ${logs.length}` : `${logs.length} total`}</span>}
+            </div>
+            {logs.length > 0 && (<>
+              <input
+                type="text" placeholder="Search by app name…" value={logSearch}
+                onChange={e => setLogSearch(e.target.value)}
+                style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "7px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none", boxSizing: "border-box", marginBottom: "10px" }}
+              />
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {["all","install","uninstall","failed","crashed"].map(t => (
+                  <button key={t} onClick={() => setLogTypeFilter(t)} style={{
+                    fontSize: "9px", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase",
+                    padding: "3px 9px", borderRadius: "5px", border: "none", cursor: "pointer",
+                    background: logTypeFilter === t ? (t === "all" ? "#1E2240" : logTypeBg(t)) : "transparent",
+                    color: logTypeFilter === t ? (t === "all" ? "#E8ECFF" : logTypeColor(t)) : "#353860",
+                    outline: logTypeFilter === t ? `1px solid ${t === "all" ? "#3E4270" : logTypeColor(t)}44` : "none",
+                  }}>{t === "all" ? "ALL" : t.toUpperCase()}</button>
+                ))}
+              </div>
+            </>)}
           </div>
           {logs.length === 0 ? (
             <div style={{ padding: "32px 22px", textAlign: "center" }}>
@@ -376,9 +424,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 ATLAS syncs your installation logs automatically when you&apos;re connected.
               </p>
             </div>
+          ) : filteredLogs.length === 0 ? (
+            <div style={{ padding: "24px 22px", textAlign: "center" }}>
+              <p style={{ fontSize: "12px", color: "#353860" }}>No logs match your filter.</p>
+            </div>
           ) : (
             <div>
-              {logs.map(log => (
+              {filteredLogs.map(log => (
                 <div key={log.id} style={{ borderBottom: "1px solid #0F1020" }}>
                   {/* Log header row */}
                   <button
@@ -425,6 +477,57 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               ))}
             </div>
           )}
+        </section>
+
+        {/* ── Get Help ── */}
+        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
+          <div style={{ padding: "18px 22px 16px", borderBottom: "1px solid #1A1D30" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "4px" }}>Get Help</p>
+            <p style={{ fontSize: "11px", color: "#252845" }}>We&apos;ll reply to {user.email} within 24 hours</p>
+          </div>
+          <div style={{ padding: "18px 22px" }}>
+            {supportDone ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", background: "rgba(62,207,178,0.06)", borderRadius: "10px", border: "1px solid rgba(62,207,178,0.2)" }}>
+                <span style={{ color: "#3ECFB2", fontSize: "16px" }}>✓</span>
+                <p style={{ margin: 0, fontSize: "13px", color: "#3ECFB2" }}>Message sent — we&apos;ll reply within 24 hours</p>
+              </div>
+            ) : (<>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Issue Type</p>
+                  <select value={supportIssue} onChange={e => setSupportIssue(e.target.value)} style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "8px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none" }}>
+                    {["Install Failed","Uninstall Issue","App Not Opening","Subscription Issue","Performance Issue","Feature Request","Other"].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Message</p>
+                  <textarea value={supportMsg} onChange={e => setSupportMsg(e.target.value)} placeholder="Describe your issue in detail…" rows={4} style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "10px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none", resize: "vertical", boxSizing: "border-box" }} />
+                </div>
+                {logs.filter(l => l.log_type === "failed" || l.log_type === "crashed").length > 0 && (
+                  <div>
+                    <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Attach a Log (optional)</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {logs.filter(l => l.log_type === "failed" || l.log_type === "crashed").slice(0,5).map(log => (
+                        <label key={log.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", background: supportAttachId === log.id ? "rgba(62,207,178,0.06)" : "#07080F", borderRadius: "8px", border: `1px solid ${supportAttachId === log.id ? "rgba(62,207,178,0.3)" : "#1E2240"}`, cursor: "pointer" }}>
+                          <input type="radio" name="attachLog" checked={supportAttachId === log.id} onChange={() => setSupportAttachId(supportAttachId === log.id ? null : log.id)} style={{ accentColor: "#3ECFB2" }} />
+                          <span style={{ fontSize: "8px", fontWeight: 800, padding: "2px 6px", borderRadius: "3px", background: logTypeBg(log.log_type), color: logTypeColor(log.log_type) }}>{log.log_type.toUpperCase()}</span>
+                          <span style={{ fontSize: "11px", color: "#A8B4D0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.app_name ?? log.filename}</span>
+                          <span style={{ fontSize: "10px", color: "#252845", flexShrink: 0 }}>{new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={handleSupportSubmit} disabled={!supportMsg.trim() || supportSubmitting} style={{
+                  padding: "11px", borderRadius: "9px", border: "none", cursor: supportMsg.trim() ? "pointer" : "default",
+                  background: supportMsg.trim() ? "#3ECFB2" : "#141A30", color: supportMsg.trim() ? "#08090E" : "#6B7399",
+                  fontSize: "13px", fontWeight: 700, transition: "all 0.2s",
+                }}>
+                  {supportSubmitting ? "Sending…" : "Send Support Request"}
+                </button>
+              </div>
+            </>)}
+          </div>
         </section>
 
         {/* ── Notifications ── */}
