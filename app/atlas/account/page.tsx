@@ -20,7 +20,7 @@ export default async function AccountPage() {
   const [
     { data: subscription },
     { data: profile },
-    { data: rawDevices },
+    { data: devices },
     { data: rawLogs },
   ] = await Promise.all([
     supabaseAdmin
@@ -35,14 +35,11 @@ export default async function AccountPage() {
       .select("plan, subscription_status")
       .eq("id", user.id)
       .single(),
-    // device_activations is where the ATLAS app actually writes
     supabaseAdmin
-      .from("device_activations")
-      .select("id, device_name, machine_uuid, last_seen_at, activated_at, is_active")
+      .from("devices")
+      .select("id, device_name, hardware_uuid, last_seen, created_at")
       .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order("last_seen_at", { ascending: false }),
-    // install_logs for install history
+      .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("install_logs")
       .select("id, app_name, installed_at, device_id")
@@ -51,16 +48,6 @@ export default async function AccountPage() {
       .limit(50),
   ])
 
-  // Normalize device_activations → devices shape expected by dashboard
-  const devices = (rawDevices ?? []).map(d => ({
-    id: d.id,
-    device_name: d.device_name,
-    hardware_uuid: d.machine_uuid,
-    last_seen: d.last_seen_at,
-    created_at: d.activated_at,
-  }))
-
-  // Normalize install_logs → log shape expected by dashboard
   const logs = (rawLogs ?? []).map(l => ({
     id: l.id,
     log_type: "install",
@@ -77,7 +64,7 @@ export default async function AccountPage() {
       user={user}
       subscription={subscription ?? null}
       profile={profile ?? null}
-      devices={devices}
+      devices={devices ?? []}
       logs={logs}
       isAdmin={isAdmin}
     />
