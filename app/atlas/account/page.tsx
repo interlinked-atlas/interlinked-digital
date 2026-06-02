@@ -5,6 +5,7 @@ import AccountDashboard from "./account-dashboard"
 
 export const dynamic = 'force-dynamic'
 
+// Admin client only for tables without user-level RLS (devices, install_logs)
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,32 +14,34 @@ const supabaseAdmin = createAdminClient(
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
 export default async function AccountPage() {
+  // User's own authenticated client — uses session cookie, works with RLS
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/auth/login")
 
   const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Use the user's own client for profile + subscription (RLS ensures they see only their data)
+  // Use supabaseAdmin only where service role is actually needed
   const [subResult, profileResult, devicesResult, logsResult] = await Promise.all([
-    supabaseAdmin
+    supabase
       .from("subscriptions")
       .select("id, plan, status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabaseAdmin
+    supabase
       .from("profiles")
       .select("plan, subscription_status")
       .eq("id", user.id)
       .maybeSingle(),
-    supabaseAdmin
+    supabase
       .from("devices")
       .select("id, device_name, hardware_uuid, last_seen, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    supabaseAdmin
+    supabase
       .from("install_logs")
       .select("id, app_name, installed_at, device_id")
       .eq("user_id", user.id)
