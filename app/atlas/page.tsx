@@ -337,11 +337,22 @@ export default function AtlasSignupPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '52px',
         }}>
-          <span style={{
-            fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
-            fontSize: '16px', letterSpacing: '5px', color: '#FFFFFF',
-            opacity: 0.9,
-          }}>ATLAS</span>
+          <a
+            href="https://www.interlinked.digital/"
+            className="nav-back"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              color: '#8A8A96', fontSize: '13px', fontWeight: 500,
+              textDecoration: 'none', transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back to InterLinked©
+          </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {step !== 'landing' && (
               <button
@@ -385,6 +396,20 @@ export default function AtlasSignupPage() {
                 transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
                 transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
               }}>
+                {/* ATLAS star logo */}
+                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+                  <img
+                    src="/atlas-logo.png"
+                    alt="ATLAS"
+                    style={{
+                      width: 'clamp(64px, 10vw, 88px)',
+                      height: 'clamp(64px, 10vw, 88px)',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 0 28px rgba(62,207,178,0.22))',
+                    }}
+                  />
+                </div>
+
                 <h1 style={{
                   fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
                   fontSize: 'clamp(64px, 12vw, 110px)',
