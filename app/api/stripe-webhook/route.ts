@@ -6,109 +6,191 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 })
 
-// Service-role client — bypasses RLS, server-side only, never expose to browser
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Map Stripe price IDs → ATLAS plan names
-const PRICE_PLAN: Record<string, string> = {
-  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': 'standard', // $14.99/mo
-  'price_1TdIbOA1Bm2dPCGcpLFkuAea': 'pro',       // $29.99/mo
+// Map Stripe price IDs to plan identifiers
+// sub_plan: used in subscriptions table (schema allows 'basic' | 'pro')
+// profile_plan: used in profiles table ('standard' | 'pro')
+const PRICE_MAP: Record<string, { sub_plan: 'basic' | 'pro'; profile_plan: string }> = {
+  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { sub_plan: 'basic', profile_plan: 'standard' },
+  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { sub_plan: 'pro',   profile_plan: 'pro'      },
 }
 
-// Disable Next.js body parsing — Stripe needs the raw body to verify the signature
 export const config = { api: { bodyParser: false } }
 
-async function updatePlan(email: string, plan: string, status: string) {
+async function getUserIdByEmail(email: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .single()
+  return data?.id ?? null
+}
+
+async function updateProfile(email: string, profilePlan: string, status: string) {
   const { error } = await supabase
     .from('profiles')
-    .update({ plan, subscription_status: status })
+    .update({ plan: profilePlan, subscription_status: status })
     .eq('email', email)
-
   if (error) {
-    console.error(`[ATLAS] Failed to update plan for ${email}:`, error.message)
+    console.error(`[webhook] profiles update failed for ${email}:`, error.message)
     throw error
   }
-  console.log(`[ATLAS] Updated ${email} → plan: ${plan}, status: ${status}`)
+}
+
+async function upsertSubscription(
+  userId: string,
+  stripeCustomerId: string,
+  stripeSubscriptionId: string,
+  subPlan: 'basic' | 'pro',
+  status: string,
+  periodStart: number | null,
+  periodEnd: number | null,
+  cancelAtPeriodEnd: boolean,
+) {
+  const { error } = await supabase
+    .from('subscriptions')
+    .upsert(
+      {
+        user_id: userId,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: stripeSubscriptionId,
+        plan: subPlan,
+        status,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end:   periodEnd   ? new Date(periodEnd   * 1000).toISOString() : null,
+        cancel_at_period_end: cancelAtPeriodEnd,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_subscription_id' }
+    )
+  if (error) {
+    console.error(`[webhook] subscriptions upsert failed for user ${userId}:`, error.message)
+    throw error
+  }
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
 
-  // 1. Verify the request actually came from Stripe
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err: any) {
-    console.error('[ATLAS] Webhook signature failed:', err.message)
+    console.error('[webhook] signature failed:', err.message)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // 2. Handle events
   try {
     switch (event.type) {
 
-      // ── Payment completed (subscription starts) ──────────────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         const email = session.customer_details?.email ?? session.customer_email
+        if (!email || session.mode !== 'subscription' || !session.subscription) break
+
+        const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string)
+        const priceId = stripeSub.items.data[0]?.price.id ?? ''
+        const map = PRICE_MAP[priceId] ?? { sub_plan: 'basic' as const, profile_plan: 'standard' }
+
+        await updateProfile(email, map.profile_plan, 'active')
+
+        const userId = await getUserIdByEmail(email)
+        if (userId) {
+          await upsertSubscription(
+            userId,
+            session.customer as string,
+            stripeSub.id,
+            map.sub_plan,
+            'active',
+            stripeSub.current_period_start,
+            stripeSub.current_period_end,
+            stripeSub.cancel_at_period_end,
+          )
+        } else {
+          console.error(`[webhook] no user found for email: ${email}`)
+        }
+        console.log(`[webhook] checkout.session.completed -> ${email} ${map.profile_plan}`)
+        break
+      }
+
+      case 'customer.subscription.updated': {
+        const stripeSub = event.data.object as Stripe.Subscription
+        const priceId = stripeSub.items.data[0]?.price.id ?? ''
+        const map = PRICE_MAP[priceId] ?? { sub_plan: 'basic' as const, profile_plan: 'standard' }
+        const status = stripeSub.status === 'active' ? 'active' : stripeSub.status
+
+        const customer = await stripe.customers.retrieve(stripeSub.customer as string)
+        if (customer.deleted) break
+        const email = (customer as Stripe.Customer).email
         if (!email) break
 
-        if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(
-            session.subscription as string
+        await updateProfile(email, map.profile_plan, status)
+
+        const userId = await getUserIdByEmail(email)
+        if (userId) {
+          await upsertSubscription(
+            userId,
+            stripeSub.customer as string,
+            stripeSub.id,
+            map.sub_plan,
+            status,
+            stripeSub.current_period_start,
+            stripeSub.current_period_end,
+            stripeSub.cancel_at_period_end,
           )
-          const priceId = sub.items.data[0]?.price.id ?? ''
-          const plan = PRICE_PLAN[priceId] ?? 'standard'
-          await updatePlan(email, plan, 'active')
         }
+        console.log(`[webhook] subscription.updated -> ${email} ${map.profile_plan} (${status})`)
         break
       }
 
-      // ── Subscription cancelled ────────────────────────────────────────────
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription
-        const customer = await stripe.customers.retrieve(sub.customer as string)
+        const stripeSub = event.data.object as Stripe.Subscription
+
+        const customer = await stripe.customers.retrieve(stripeSub.customer as string)
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
-        if (email) await updatePlan(email, 'standard', 'cancelled')
+        if (!email) break
+
+        await updateProfile(email, 'standard', 'cancelled')
+
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({ status: 'canceled', updated_at: new Date().toISOString() })
+          .eq('stripe_subscription_id', stripeSub.id)
+        if (error) console.error('[webhook] cancel update failed:', error.message)
+
+        console.log(`[webhook] subscription.deleted -> ${email} cancelled`)
         break
       }
 
-      // ── Subscription changed (upgrade / downgrade / reactivation) ─────────
-      case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription
-        const priceId = sub.items.data[0]?.price.id ?? ''
-        const plan = PRICE_PLAN[priceId] ?? 'standard'
-        const status = sub.status === 'active' ? 'active' : sub.status
-        const customer = await stripe.customers.retrieve(sub.customer as string)
-        if (customer.deleted) break
-        const email = (customer as Stripe.Customer).email
-        if (email) await updatePlan(email, plan, status)
-        break
-      }
-
-      // ── Payment failed (card declined, expired, etc.) ─────────────────────
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const email = invoice.customer_email
-        if (email) await updatePlan(email, 'standard', 'payment_failed')
+        if (!email) break
+
+        await updateProfile(email, 'standard', 'payment_failed')
+
+        if (invoice.subscription) {
+          const { error } = await supabase
+            .from('subscriptions')
+            .update({ status: 'past_due', updated_at: new Date().toISOString() })
+            .eq('stripe_subscription_id', invoice.subscription as string)
+          if (error) console.error('[webhook] past_due update failed:', error.message)
+        }
+        console.log(`[webhook] invoice.payment_failed -> ${email}`)
         break
       }
 
       default:
-        // Unhandled event — ignore silently
         break
     }
   } catch (err: any) {
-    console.error('[ATLAS] Webhook handler error:', err.message)
+    console.error('[webhook] handler error:', err.message)
     return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
   }
 
