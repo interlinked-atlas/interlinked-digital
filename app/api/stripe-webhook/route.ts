@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sendEmail } from '@/lib/email'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
