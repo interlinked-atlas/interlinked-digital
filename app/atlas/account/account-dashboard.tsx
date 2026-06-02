@@ -79,7 +79,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   async function handleRemoveDevice(deviceId: string) {
     setLoading(deviceId)
-    const { error } = await supabase.from("device_activations").update({ is_active: false }).eq("id", deviceId).eq("user_id", user.id)
+    const { error } = await supabase.from("devices").delete().eq("id", deviceId).eq("user_id", user.id)
     if (!error) router.refresh()
     setLoading(null)
   }
