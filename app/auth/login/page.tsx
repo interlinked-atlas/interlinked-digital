@@ -4,9 +4,28 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  )
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -35,6 +54,8 @@ export default function LoginPage() {
         .login-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
         .login-btn:active:not(:disabled) { transform: scale(0.985); }
         .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .eye-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.25); padding: 0; display: flex; align-items: center; transition: color 0.15s; }
+        .eye-btn:hover { color: rgba(255,255,255,0.55); }
         a { text-decoration: none; }
       `}</style>
 
@@ -106,8 +127,33 @@ export default function LoginPage() {
 
               <input type="email" placeholder="Email address" value={email}
                 onChange={e => setEmail(e.target.value)} required style={inputStyle} />
-              <input type="password" placeholder="Password" value={password}
-                onChange={e => setPassword(e.target.value)} required style={inputStyle} />
+
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  style={{ ...inputStyle, paddingRight: '44px' }}
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={() => setShowPassword(v => !v)}
+                  style={{
+                    position: 'absolute', right: '14px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: showPassword ? 'rgba(62,207,178,0.7)' : 'rgba(255,255,255,0.25)',
+                    display: 'flex', alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
 
               <button type="submit" disabled={loading} className="login-btn" style={{
                 width: '100%', padding: '12px', border: 'none', borderRadius: '10px',
