@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -11,6 +11,7 @@ interface Subscription {
   current_period_end: string | null
   cancel_at_period_end: boolean
   stripe_subscription_id: string | null
+  stripe_customer_id?: string | null
 }
 interface Profile { plan: string; subscription_status: string }
 interface Device {
@@ -40,8 +41,52 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [cancelError, setCancelError] = useState("")
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
+  const [lastSync, setLastSync] = useState<Date>(new Date())
+  const [syncing, setSyncing] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Auto-refresh every 8s when tab is visible
+  const doRefresh = useCallback(() => {
+    setSyncing(true)
+    router.refresh()
+    setLastSync(new Date())
+    setTimeout(() => setSyncing(false), 800)
+  }, [router])
+
+  useEffect(() => {
+    const interval = setInterval(doRefresh, 8000)
+    const handleVisibility = () => { if (document.visibilityState === "visible") doRefresh() }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [doRefresh])
+
+  // Supabase Realtime — instant push when tables are in the realtime publication
+  useEffect(() => {
+    const ch = supabase
+      .channel(`acct-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` }, () => doRefresh())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` }, () => doRefresh())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [user.id])
+
+  // Supabase Realtime — instant updates when tables are in the realtime publication
+  useEffect(() => {
+    const channel = supabase
+      .channel(`account:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
+        () => doRefresh()
+      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` },
+        () => doRefresh()
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user.id, supabase, doRefresh])
 
   const isPro = profile?.plan === "pro" || subscription?.plan === "pro"
   const isActive = profile?.subscription_status === "active" || subscription?.status === "active" || subscription?.status === "trialing"
@@ -129,6 +174,17 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               }}>ADMIN</Link>
             )}
             <span style={{ fontSize: "11px", color: "#4A5280" }}>{user.email}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <div style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: syncing ? "#F0A030" : "#3ECFB2",
+                boxShadow: syncing ? "0 0 6px #F0A030" : "0 0 6px rgba(62,207,178,0.8)",
+                transition: "all 0.3s",
+              }} />
+              <span style={{ fontSize: "9px", color: syncing ? "#F0A030" : "#3ECFB2", letterSpacing: "0.5px" }}>
+                {syncing ? "SYNCING" : "LIVE"}
+              </span>
+            </div>
             <button onClick={handleSignOut} disabled={loading === "signout"}
               style={{ fontSize: "11px", color: "#353860", background: "none", border: "none", cursor: "pointer" }}>
               Sign Out
