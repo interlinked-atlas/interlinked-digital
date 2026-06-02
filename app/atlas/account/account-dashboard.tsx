@@ -50,6 +50,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [supportAttachId, setSupportAttachId] = useState<string | null>(null)
   const [supportSubmitting, setSupportSubmitting] = useState(false)
   const [supportDone, setSupportDone] = useState(false)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState("")
   const router = useRouter()
   const supabase = createClient()
 
@@ -107,6 +109,23 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     : null
   const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
   const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isActive ? "Active" : "Inactive"
+
+  async function handleUpgradeToPro() {
+    setUpgradeLoading(true); setUpgradeError("")
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setUpgradeLoading(false); return }
+    try {
+      const res = await fetch("/api/atlas/upgrade", {
+        method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Upgrade failed")
+      router.refresh()
+    } catch (err: unknown) {
+      setUpgradeError(err instanceof Error ? err.message : "Upgrade failed")
+    }
+    setUpgradeLoading(false)
+  }
 
   async function handleSignOut() {
     setLoading("signout")
