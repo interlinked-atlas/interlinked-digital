@@ -339,48 +339,54 @@ export default function AtlasSignupPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '52px',
         }}>
-          <a
-            href="https://www.interlinked.digital/"
-            className="nav-back"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '7px',
-              color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-              textDecoration: 'none', transition: 'color 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back to InterLinked©
-          </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {step !== 'landing' && (
-              <button
-                className="nav-back"
-                onClick={() => { setStep('landing'); setSelectedPlan(null) }}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}
-              >
-                ← Back
-              </button>
-            )}
+          {/* Left slot: "Back to InterLinked" on landing, "← Back" on inner steps */}
+          {step === 'landing' ? (
             <a
-              href="/auth/login"
+              href="https://www.interlinked.digital/"
+              className="nav-back"
               style={{
+                display: 'flex', alignItems: 'center', gap: '7px',
                 color: '#8A8A96', fontSize: '13px', fontWeight: 500,
                 textDecoration: 'none', transition: 'color 0.12s',
               }}
               onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
               onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
             >
-              Sign in
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Back to InterLinked©
             </a>
-          </div>
+          ) : (
+            <button
+              className="nav-back"
+              onClick={() => { setStep('landing'); setSelectedPlan(null) }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Back
+            </button>
+          )}
+          {/* Right slot: Sign in */}
+          <a
+            href="/auth/login"
+            style={{
+              color: '#8A8A96', fontSize: '13px', fontWeight: 500,
+              textDecoration: 'none', transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
+          >
+            Sign in
+          </a>
         </nav>
 
         {/* ── Landing / hero ── */}
