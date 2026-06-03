@@ -562,7 +562,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Download ATLAS</p>
           {isActive && !isCancelled ? (
-            <a href="/downloads/ATLAS-latest.dmg" style={{
+            <a href="/downloads/ATLAS-latest.dmg" download="ATLAS.dmg" style={{
               display: "flex", alignItems: "center", gap: "14px",
               padding: "14px 16px", background: "#07080F", borderRadius: "10px",
               border: "1px solid #1E2240", textDecoration: "none",
@@ -577,7 +577,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               </div>
               <div>
                 <p style={{ fontSize: "13px", fontWeight: 600, color: "#D0D8F0" }}>ATLAS for macOS</p>
-                <p style={{ fontSize: "11px", color: "#353860", marginTop: "2px" }}>Universal · Intel &amp; Apple Silicon</p>
+                <p style={{ fontSize: "11px", color: "#353860", marginTop: "2px" }}>Version 3.0 · Universal · Intel &amp; Apple Silicon</p>
+              </div>
+              <div style={{ marginLeft: "auto", fontSize: "10px", color: "#252845", fontWeight: 600, letterSpacing: "1px" }}>
+                ↓ DMG
               </div>
             </a>
           ) : (
