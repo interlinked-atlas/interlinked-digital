@@ -10,39 +10,28 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  const token = authHeader.slice(7)
+  const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()
+  if (!token) return NextResponse.json({ error: 'Missing authorization' }, { status: 401 })
 
-  // Validate user
-  const userClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  const { data: { user }, error: authError } = await userClient.auth.getUser(token)
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles').select('email').eq('id', user.id).single()
+
+  if (!profile?.email) {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   }
 
-  // Get stripe_customer_id from subscriptions
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('stripe_customer_id')
-    .eq('user_id', user.id)
-    .single()
-
-  const customerId = sub?.stripe_customer_id
-
-  if (!customerId || customerId.startsWith('admin')) {
-    return NextResponse.json({ error: 'No active Stripe subscription found. Manage your plan from the ATLAS website.' }, { status: 400 })
+  const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
+  const customer = customers.data[0]
+  if (!customer) {
+    return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
   }
 
-  const origin = req.headers.get('origin') || 'https://www.interlinked.digital'
   const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${origin}/atlas/account`,
+    customer: customer.id,
+    return_url: 'https://interlinked.digital/atlas/account',
   })
 
   return NextResponse.json({ url: session.url })
