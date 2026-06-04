@@ -1,67 +1,50 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-// POST /api/atlas/logs — called by ATLAS app after each install/uninstall/failure/crash
-export async function POST(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()
+  if (!token) {
+    return NextResponse.json({ error: 'Missing authorization' }, { status: 401 })
   }
-  const accessToken = authHeader.substring(7)
 
-  // Validate user token
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON)
-  const { data: { user }, error: authError } = await anonClient.auth.getUser(accessToken)
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
 
-  let body: {
-    log_type?: string; app_name?: string; filename?: string
-    content?: string; device_name?: string; hardware_uuid?: string
-  }
-  try { body = await request.json() } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  let body: Record<string, string>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
   const { log_type, app_name, filename, content, device_name, hardware_uuid } = body
-  if (!log_type || !filename) {
+
+  if (!log_type || !filename || !content) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Use service role to bypass RLS — user identity already verified above
-  const adminClient = createClient(SUPABASE_URL, SERVICE_KEY)
-
-  const { error: insertError } = await adminClient
-    .from('install_logs')
-    .insert({
-      user_id: user.id,
-      log_type,
-      app_name: app_name ?? filename,
-      filename,
-      content: content ?? null,
-      device_name: device_name ?? null,
-      hardware_uuid: hardware_uuid ?? null,
-      installed_at: new Date().toISOString(),
-    })
+  const { error: insertError } = await supabase.from('install_logs').insert({
+    user_id:      user.id,
+    app_name:     app_name     ?? filename,
+    log_type:     log_type,
+    filename:     filename,
+    content:      content,
+    device_name:  device_name  ?? 'Unknown device',
+    hardware_uuid: hardware_uuid ?? '',
+    installed_at: new Date().toISOString(),
+  })
 
   if (insertError) {
-    console.error('[logs] insert error:', insertError.message)
-    // Fallback: if new columns don't exist yet, store with minimal fields
-    if (insertError.message.includes('column') || insertError.code === '42703') {
-      await adminClient
-        .from('install_logs')
-        .insert({
-          user_id: user.id,
-          app_name: `[${log_type.toUpperCase()}] ${app_name ?? filename}`,
-          installed_at: new Date().toISOString(),
-        })
-    }
+    console.error('[ATLAS] install_logs insert failed:', insertError.message)
+    return NextResponse.json({ error: 'Failed to save log' }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ ok: true })
 }

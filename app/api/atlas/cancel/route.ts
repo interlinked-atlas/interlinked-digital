@@ -1,58 +1,59 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/email'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' })
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+})
 
-export async function POST(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const token = authHeader.substring(7)
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-  try {
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('stripe_subscription_id, stripe_customer_id')
-      .eq('user_id', user.id)
-      .in('status', ['active', 'past_due', 'trialing'])
-      .order('updated_at', { ascending: false })
-      .limit(1).single()
-
-    let subscriptionId = sub?.stripe_subscription_id ?? null
-    if (!subscriptionId && user.email) {
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 })
-      const customer = customers.data[0]
-      if (customer) {
-        const subs = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 1 })
-        subscriptionId = subs.data[0]?.id ?? null
-      }
-    }
-    if (!subscriptionId) return NextResponse.json({ error: 'No active subscription found' }, { status: 404 })
-
-    // Immediate cancellation — no grace period
-    await stripe.subscriptions.cancel(subscriptionId)
-
-    // Revoke access immediately — downgrade plan + mark cancelled
-    await supabase.from('profiles')
-      .update({ subscription_status: 'cancelled', plan: 'standard' })
-      .eq('id', user.id)
-    await supabase.from('subscriptions')
-      .update({ status: 'canceled', cancel_at_period_end: false, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-
-    // Send cancellation email
-    if (user.email) {
-      await sendEmail({ to: user.email, template: 'subscription-cancelled', data: {} })
-    }
-
-    console.log(`[ATLAS] Subscription immediately cancelled for ${user.email}`)
-    return NextResponse.json({ success: true, action: 'sign_out' })
-  } catch (err: any) {
-    console.error('[ATLAS] Cancel error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()
+  if (!token) {
+    return NextResponse.json({ error: 'Missing authorization' }, { status: 401 })
   }
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.email) {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+  }
+
+  const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
+  const customer = customers.data[0]
+  if (!customer) {
+    return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
+  }
+
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customer.id,
+    status: 'active',
+    limit: 1,
+  })
+  const sub = subscriptions.data[0]
+  if (!sub) {
+    return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
+  }
+
+  await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true })
+
+  await supabase
+    .from('profiles')
+    .update({ subscription_status: 'cancelled' })
+    .eq('id', user.id)
+
+  return NextResponse.json({ ok: true })
 }
