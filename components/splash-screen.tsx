@@ -72,7 +72,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           className={cn("text-center transition-all duration-700", phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}
         >
           <p style={{
-            fontFamily: "'SF-Intellivised', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "'BomberEscort', -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: "28px",
             fontWeight: "normal",
             letterSpacing: "0.12em",
