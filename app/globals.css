@@ -12,6 +12,11 @@
   src: url('/fonts/Bezmiar-Regular.otf') format('opentype');
   font-weight: normal; font-style: normal; font-display: swap;
 }
+@font-face {
+  font-family: 'BomberEscort';
+  src: url('/fonts/BomberEscort.otf') format('opentype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
 
 /* ── ATLAS glow — matches the pulsing teal title glow in the desktop app ── */
 @keyframes atlasGlow {
