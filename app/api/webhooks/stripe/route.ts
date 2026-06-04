@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         if (session.mode === 'subscription' && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string)
           const priceId = sub.items.data[0]?.price.id ?? ''
-          const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'basic' }
+          const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
           const userId = await getUserByEmail(email)
           if (!userId) break
 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
         const priceId = sub.items.data[0]?.price.id ?? ''
-        const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'basic' }
+        const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
         const customer = await stripe.customers.retrieve(sub.customer as string)
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
