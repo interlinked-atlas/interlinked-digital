@@ -17,8 +17,8 @@ const PLANS = [
     color: '#8A8A96',
     accentColor: '#5E6AD2',
     recommended: false,
-    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
-    excluded: ['Bulk installation', 'Uninstall & Rollback', 'TITAN CORE™', 'Smart Storage'],
+    features: ['1 device', '3 installs per day', 'TITAN CORE™ engine', 'Install history', 'Notifications'],
+    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Smart Storage'],
     stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
   },
   {
@@ -34,7 +34,6 @@ const PLANS = [
       'Unlimited installs',
       'Bulk installation',
       'Uninstall & Rollback',
-      'TITAN CORE™',
       'Smart Storage',
       'Full install history',
     ],
@@ -57,7 +56,7 @@ const FEATURES = [
   {
     icon: '◈',
     title: 'TITAN CORE™',
-    desc: 'Pre-flight checks, smart recovery, signature validation, and install verification.',
+    desc: 'Reads installation instructions and performs every step automatically — on every plan.',
   },
 ]
 
@@ -585,8 +584,8 @@ export default function AtlasSignupPage() {
                   fontSize: '14px', color: '#525260',
                   lineHeight: 1.6, marginBottom: '36px',
                 }}>
-                  Standard or Pro — both include the core ATLAS engine.
-                  Upgrade for unlimited installs, bulk mode, and TITAN CORE™.
+                  Both plans include TITAN CORE™ — our installation intelligence engine.
+                  Upgrade to Pro for unlimited installs, bulk mode, and Smart Storage.
                 </p>
                 <button
                   className="cta-btn"

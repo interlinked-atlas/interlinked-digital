@@ -337,13 +337,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <FeatureCell label="Daily Installs"     value={isPro ? "Unlimited" : "3 per day"} active />
             <FeatureCell label="Bulk Queue"         value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
             <FeatureCell label="Uninstall & Rollback" value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
-            <FeatureCell label="TITAN CORE™"        value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
+            <FeatureCell label="TITAN CORE™"        value="Enabled" active />
             <FeatureCell label="Smart Storage"      value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
           </div>
           {!isPro && isActive && (
             <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "10px", background: "rgba(240,160,48,0.05)", border: "1px solid rgba(240,160,48,0.15)" }}>
               <p style={{ fontSize: "12px", color: "rgba(240,160,48,0.8)" }}>
-                Upgrade to <strong>Pro</strong> for unlimited installs, bulk queue, TITAN CORE™, rollback, and up to 3 devices.
+                Upgrade to <strong>Pro</strong> for unlimited installs, bulk queue, rollback, Smart Storage, and up to 3 devices.
               </p>
             </div>
           )}
