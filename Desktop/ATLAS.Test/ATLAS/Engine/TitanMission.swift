@@ -489,26 +489,32 @@ final class TitanMission: ObservableObject {
         return nil
     }
 
-    // Runs a .app patch bundle's primary executable in-place with sudo.
-    // InstallBuilder apps need to run from their own Contents/MacOS/ directory
-    // so they can locate the payload files in the bundle beside the binary.
+    // Runs a .app patch bundle in-place from its own Contents/MacOS/ directory.
+    // InstallBuilder apps use installbuilder.sh as the proper entry point — it
+    // auto-selects the right arch binary and handles the runtime argument routing.
     private func runAppBundle(_ appURL: URL, adminPassword: String) async -> StepResult {
-        let macosDir   = appURL.appendingPathComponent("Contents/MacOS")
-        let appName    = appURL.deletingPathExtension().lastPathComponent
+        let macosDir = appURL.appendingPathComponent("Contents/MacOS")
+        let appName  = appURL.deletingPathExtension().lastPathComponent
 
-        // Find the primary executable: prefer one named after the bundle, then first binary
         let candidates = (try? FileManager.default.contentsOfDirectory(
-            at: macosDir, includingPropertiesForKeys: [.isExecutableKey], options: [])) ?? []
-        let primaryExec = candidates.first(where: { $0.lastPathComponent == appName })
-                       ?? candidates.first(where: { $0.pathExtension.isEmpty })
-                       ?? candidates.first
+            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
 
-        guard let execURL = primaryExec else {
+        // installbuilder.sh is the correct entry point: it selects the right arch
+        // binary and handles the runtime-name argument that KOMPLETE FX Bundle needs.
+        // Fall back to a binary named after the bundle, then any binary without extension.
+        let execURL: URL
+        if let sh = candidates.first(where: { $0.lastPathComponent == "installbuilder.sh" }) {
+            execURL = sh
+        } else if let named = candidates.first(where: { $0.deletingPathExtension().lastPathComponent == appName }) {
+            execURL = named
+        } else if let any = candidates.first(where: { $0.pathExtension.isEmpty }) {
+            execURL = any
+        } else {
             return StepResult(success: false,
                               note: "No executable found in \(appName).app/Contents/MacOS")
         }
 
-        // Strip quarantine from the entire bundle in-place — do NOT copy to temp
+        // Strip quarantine from the entire bundle — must stay in-place
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
         _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", execURL.path])
 
@@ -516,13 +522,9 @@ final class TitanMission: ObservableObject {
         let exec = execURL.lastPathComponent.replacingOccurrences(of: "'", with: "'\\''")
         let pwd  = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
 
-        // Pipe the admin password to sudo -S so no interactive prompt appears
-        let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
-        let prefix     = archPrefix(for: execURL)
-
-        // Try InstallBuilder headless mode first
+        // Try without sudo first — installbuilder.sh works as regular user for many patches
         let r1 = InstallEngine.runShellWithEnv(
-            "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exec)' --mode unattended 2>&1",
+            "cd '\(dir)' && '\(exec)' --mode unattended 2>&1",
             env: ["ATLAS_PASSWORD": adminPassword],
             adminPassword: adminPassword
         )
@@ -535,9 +537,10 @@ final class TitanMission: ObservableObject {
                               note: r1.output.isEmpty ? "Patch applied" : r1.output.prefix(200).description)
         }
 
-        // Fallback: run bare (some patch apps open their own GUI/terminal flow)
+        // Retry with sudo — some patches write to system directories
+        let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
         let r2 = InstallEngine.runShellWithEnv(
-            "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exec)' 2>&1",
+            "cd '\(dir)' && \(sudoPrefix)'\(exec)' --mode unattended 2>&1",
             env: ["ATLAS_PASSWORD": adminPassword],
             adminPassword: adminPassword
         )
