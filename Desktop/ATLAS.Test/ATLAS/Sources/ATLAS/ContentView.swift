@@ -1808,7 +1808,13 @@ struct ContentView: View {
     // the History panel. PRO-only feature.
     private func saveTitanRecord(mission: TitanMission) {
         let sourceName = mission.sourceURL.lastPathComponent
-        let hasFailed  = mission.steps.contains(where: { $0.status == .failed })
+        // Only PKG installs are critical — script/binary failures don't mean the
+        // software wasn't installed (all receipts may still be present).
+        let hasFailed  = mission.steps.contains(where: {
+            guard $0.status == .failed else { return false }
+            if case .installPkg = $0.action { return true }
+            return false
+        })
 
         // Build detailed log entries — include resultNote so failures are diagnosable
         let entries: [String] = mission.steps.map { step in
@@ -1816,9 +1822,13 @@ struct ContentView: View {
             return "[\(step.status)] \(step.title)\(note)"
         }
 
-        // First failure reason for the log header
+        // First critical (PKG) failure reason for the log header
         let failureReason: String = mission.steps
-            .first(where: { $0.status == .failed })
+            .first(where: { step in
+                guard step.status == .failed else { return false }
+                if case .installPkg = step.action { return true }
+                return false
+            })
             .map { "\($0.title): \($0.resultNote.isEmpty ? "Step failed" : $0.resultNote)" }
             ?? "One or more steps failed"
 

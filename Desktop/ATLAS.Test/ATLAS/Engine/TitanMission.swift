@@ -214,6 +214,11 @@ final class TitanMission: ObservableObject {
                 continue
             }
 
+            // Skip bare InstallBuilder launcher scripts at the mount root — they require
+            // their sibling payload data files and must be run via the .app bundle instead.
+            let name = script.lastPathComponent.lowercased()
+            if name == "installbuilder.sh" { continue }
+
             newSteps.append(TitanMissionStep(
                 icon: "terminal.fill",
                 title: "\(L(.titanStepRunScript)): \(script.lastPathComponent)",
@@ -223,6 +228,9 @@ final class TitanMission: ObservableObject {
         }
 
         // ── Remaining scan-detected binaries (not already added) ──────────
+        // Known InstallBuilder arch-launcher names that live alongside .app bundles
+        // at the DMG root — they cannot run standalone without their payload data.
+        let installBuilderLaunchers: Set<String> = ["osx-arm64", "osx-x86_64", "osx-x86", "installbuilder"]
         for binary in scan.binaries where !handledPaths.contains(binary.path) {
             handledPaths.insert(binary.path)
 
@@ -239,6 +247,10 @@ final class TitanMission: ObservableObject {
                 ))
                 continue
             }
+
+            // Skip bare InstallBuilder arch-launcher binaries at the mount root.
+            let bname = binary.deletingPathExtension().lastPathComponent.lowercased()
+            if installBuilderLaunchers.contains(bname) { continue }
 
             newSteps.append(TitanMissionStep(
                 icon: "gearshape.2.fill",
