@@ -1835,7 +1835,9 @@ struct ContentView: View {
         // Always write the log — every plan gets a record of what happened
         let record = InstallLogger.writeLog(
             fileURL:      mission.sourceURL,
-            fileType:     "TITAN Mission",
+            fileType:     mission.sourceURL.pathExtension.uppercased().isEmpty
+                              ? "Install"
+                              : mission.sourceURL.pathExtension.uppercased(),
             entries:      entries,
             result:       hasFailed
                             ? .failure(reason: failureReason)
