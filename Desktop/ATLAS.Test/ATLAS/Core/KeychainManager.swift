@@ -20,21 +20,20 @@ struct KeychainManager {
     static func savePassword(_ password: String) -> Bool {
         let data = password.data(using: .utf8)!
 
+        // Delete any existing entry from either keychain before adding
         let deleteQuery: [String: Any] = [
-            kSecClass as String:                    kSecClassGenericPassword,
-            kSecAttrService as String:              service,
-            kSecAttrAccount as String:              account,
-            kSecUseDataProtectionKeychain as String: true
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
         let addQuery: [String: Any] = [
-            kSecClass as String:                    kSecClassGenericPassword,
-            kSecAttrService as String:              service,
-            kSecAttrAccount as String:              account,
-            kSecValueData as String:                data,
-            kSecAttrAccessible as String:           kSecAttrAccessibleWhenUnlocked,
-            kSecUseDataProtectionKeychain as String: true
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    account,
+            kSecValueData as String:      data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
@@ -45,17 +44,17 @@ struct KeychainManager {
         return false
     }
 
-    // Returns the cached password — only reads Keychain on the first call.
+    // Returns the cached password — only reads Keychain on the first call per session.
+    // Caching prevents repeated macOS "allow Keychain access" prompts on ad-hoc builds.
     static func loadPassword() -> String? {
         if let cached = _cachedPassword { return cached }
 
         let query: [String: Any] = [
-            kSecClass as String:                    kSecClassGenericPassword,
-            kSecAttrService as String:              service,
-            kSecAttrAccount as String:              account,
-            kSecReturnData as String:               true,
-            kSecMatchLimit as String:               kSecMatchLimitOne,
-            kSecUseDataProtectionKeychain as String: true
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -79,10 +78,9 @@ struct KeychainManager {
     static func clearPassword() {
         _cachedPassword = nil
         let query: [String: Any] = [
-            kSecClass as String:                    kSecClassGenericPassword,
-            kSecAttrService as String:              service,
-            kSecAttrAccount as String:              account,
-            kSecUseDataProtectionKeychain as String: true
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
         ]
         SecItemDelete(query as CFDictionary)
     }
@@ -101,7 +99,7 @@ struct KeychainManager {
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: sessionAccount,
                                    kSecValueData as String: data,
-                                   kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked]
+                                   kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
         SecItemAdd(add as CFDictionary, nil)
     }
 
@@ -180,7 +178,7 @@ struct KeychainManager {
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: account,
                                    kSecValueData as String: data,
-                                   kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked]
+                                   kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
         SecItemAdd(add as CFDictionary, nil)
     }
 
