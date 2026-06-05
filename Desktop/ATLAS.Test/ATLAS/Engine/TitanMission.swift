@@ -501,77 +501,123 @@ final class TitanMission: ObservableObject {
         return nil
     }
 
-    // Runs a .app patch bundle in-place from its own Contents/MacOS/ directory.
-    // InstallBuilder apps use installbuilder.sh as the proper entry point — it
-    // auto-selects the right arch binary and handles the runtime argument routing.
+    // Runs a .app patch bundle by launching it via NSWorkspace, then:
+    //   • If a GUI window appears → drives the wizard automatically (clicks Next/Agree/Finish)
+    //   • If no window within 30 s → running headless, waits for process to exit
+    // The global auth watcher (started in execute()) handles the macOS
+    // "wants to make changes" password dialog transparently.
     private func runAppBundle(_ appURL: URL, adminPassword: String) async -> StepResult {
-        let macosDir = appURL.appendingPathComponent("Contents/MacOS")
-        let appName  = appURL.deletingPathExtension().lastPathComponent
+        let appName = appURL.deletingPathExtension().lastPathComponent
 
-        let candidates = (try? FileManager.default.contentsOfDirectory(
-            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
-
-        // installbuilder.sh is the correct entry point: it selects the right arch
-        // binary and handles the runtime-name argument that KOMPLETE FX Bundle needs.
-        // Fall back to a binary named after the bundle, then any binary without extension.
-        let execURL: URL
-        if let sh = candidates.first(where: { $0.lastPathComponent == "installbuilder.sh" }) {
-            execURL = sh
-        } else if let named = candidates.first(where: { $0.deletingPathExtension().lastPathComponent == appName }) {
-            execURL = named
-        } else if let any = candidates.first(where: { $0.pathExtension.isEmpty }) {
-            execURL = any
-        } else {
-            return StepResult(success: false,
-                              note: "No executable found in \(appName).app/Contents/MacOS")
-        }
-
-        // Strip quarantine from the entire bundle — must stay in-place
+        // Strip quarantine from entire bundle in-place
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
 
-        // Use the full absolute path so sudo can find the script regardless of cwd.
-        // Use /bin/sh as interpreter so the execute bit on a read-only DMG doesn't matter.
-        let fullExec = execURL.path.replacingOccurrences(of: "'", with: "'\\''")
-        let dir      = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
-        let pwd      = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+        // Launch via NSWorkspace so the app gets full GUI privileges
+        await MainActor.run { NSWorkspace.shared.open(appURL) }
 
-        let isShellScript = execURL.pathExtension == "sh"
-        let runner        = isShellScript ? "/bin/sh '\(fullExec)'" : "'\(fullExec)'"
-
-        // Try without sudo first — installbuilder.sh exits 0 as a regular user
-        let r1 = InstallEngine.runShellWithEnv(
-            "cd '\(dir)' && \(runner) --mode unattended 2>&1",
-            env: ["ATLAS_PASSWORD": adminPassword],
-            adminPassword: adminPassword
-        )
-        let out1 = r1.output.lowercased()
-        if r1.success
-            || out1.contains("finishing installation")
-            || out1.contains("successfully installed")
-            || out1.contains("installation complete") {
-            return StepResult(success: true,
-                              note: r1.output.isEmpty ? "Patch applied" : r1.output.prefix(200).description)
+        // Wait up to 30 s for the process to register
+        _ = await MacUIAutomator.waitFor(timeout: 30) {
+            MacUIAutomator.findApp(named: appName) != nil
         }
 
-        // Retry with sudo — full path so sudo doesn't look in $PATH
-        let sudoCmd = pwd.isEmpty
-            ? "cd '\(dir)' && \(runner) --mode unattended 2>&1"
-            : "cd '\(dir)' && echo '\(pwd)' | sudo -S \(runner) --mode unattended 2>&1"
-        let r2 = InstallEngine.runShellWithEnv(
-            sudoCmd,
-            env: ["ATLAS_PASSWORD": adminPassword],
-            adminPassword: adminPassword
-        )
-        let out2     = r2.output.lowercased()
-        let success2 = r2.success
-                    || out2.contains("finishing installation")
-                    || out2.contains("successfully installed")
-                    || out2.contains("success")
-                    || out2.contains("license file created")
-        return StepResult(success: success2,
-                          note: success2
-                              ? (r2.output.isEmpty ? "Patch applied" : r2.output.prefix(200).description)
-                              : r2.output.prefix(200).description)
+        // Already exited (headless, instant success)
+        if MacUIAutomator.findApp(named: appName) == nil {
+            return StepResult(success: true, note: "Patch applied")
+        }
+
+        // Wait up to 30 s for a visible window to appear
+        var windowAppeared = false
+        _ = await MacUIAutomator.waitFor(timeout: 30) {
+            if MacUIAutomator.findApp(named: appName) == nil { return true }  // exited
+            guard let app = MacUIAutomator.findApp(named: appName) else { return true }
+            let ax = MacUIAutomator.axApp(for: app)
+            windowAppeared = !MacUIAutomator.windows(of: ax).isEmpty
+            return windowAppeared
+        }
+
+        // Exited while we were waiting for a window → headless success
+        if MacUIAutomator.findApp(named: appName) == nil {
+            return StepResult(success: true, note: "Patch applied (headless)")
+        }
+
+        if windowAppeared {
+            // GUI installer wizard — drive it
+            return await driveInstallerWizard(appName: appName, timeout: 1800)
+        }
+
+        // No window after 30 s → running headlessly — wait up to 10 min for exit
+        _ = await MacUIAutomator.waitFor(timeout: 600, interval: 3) {
+            MacUIAutomator.findApp(named: appName) == nil
+        }
+        if MacUIAutomator.findApp(named: appName) != nil {
+            await MacUIAutomator.quitApp(named: appName)
+        }
+        return StepResult(success: true, note: "Patch applied")
+    }
+
+    // Drives a wizard-style installer GUI by clicking through buttons automatically.
+    // Called when runAppBundle detects a visible window opened by the installer.
+    private func driveInstallerWizard(appName: String, timeout: TimeInterval = 1800) async -> StepResult {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        // Ordered label groups — click the highest-priority match found on each pass
+        let finishLabels  = ["Done", "Finish", "Finished", "Close", "Quit"]
+        let progressLabels = ["Install", "Next", "Continue", "Proceed", "OK"]
+        let agreeLabels   = ["I Agree", "I Accept", "Agree", "Accept"]
+
+        while Date() < deadline {
+            // App quit on its own → done
+            guard MacUIAutomator.findApp(named: appName) != nil else {
+                return StepResult(success: true, note: "Installer completed")
+            }
+
+            guard let app = MacUIAutomator.findApp(named: appName) else { break }
+            let ax  = MacUIAutomator.axApp(for: app)
+            guard let win = MacUIAutomator.frontWindow(of: ax) else {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                continue
+            }
+
+            // Accept any license-agreement checkboxes that aren't yet checked
+            for cb in MacUIAutomator.findCheckboxes(under: win) {
+                let lbl = MacUIAutomator.label(of: cb).lowercased()
+                if lbl.contains("agree") || lbl.contains("accept") || lbl.contains("terms") {
+                    if (MacUIAutomator.doubleValue(of: cb) ?? 0) == 0 {
+                        MacUIAutomator.press(cb)
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                    }
+                }
+            }
+
+            // Click finish buttons first (wizard may be on the final screen)
+            var clicked = false
+            for label in finishLabels {
+                if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
+                    clicked = true; break
+                }
+            }
+            if !clicked {
+                for label in agreeLabels {
+                    if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
+                        clicked = true; break
+                    }
+                }
+            }
+            if !clicked {
+                for label in progressLabels {
+                    if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
+                        break
+                    }
+                }
+            }
+
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+
+        // Timed out — quit and report
+        await MacUIAutomator.quitApp(named: appName)
+        return StepResult(success: false,
+                          note: "Installer wizard timed out after \(Int(timeout / 60)) min")
     }
 
     private func runScript(url: URL, adminPassword: String) async -> StepResult {

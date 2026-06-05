@@ -1854,11 +1854,9 @@ struct ContentView: View {
             content: entries.joined(separator: "\n")
         )
 
-        // History + rollback are Pro-only
-        guard Features.rollback else { return }
-
+        // All users see history. Pro users also get hosts-entries rollback data.
         var fullRecord = record
-        if !mission.addedHostsEntries.isEmpty {
+        if Features.rollback && !mission.addedHostsEntries.isEmpty {
             fullRecord = InstallRecord(
                 id:                record.id,
                 date:              record.date,
@@ -1874,7 +1872,7 @@ struct ContentView: View {
         }
 
         historyStore.add(fullRecord)
-        logger.log("📋 TITAN mission saved to history — rollback available")
+        logger.log(Features.rollback ? "📋 TITAN mission saved to history — rollback available" : "📋 TITAN mission saved to history")
     }
 
     private func installOneFromMultiple(step: TitanMissionStep) {
