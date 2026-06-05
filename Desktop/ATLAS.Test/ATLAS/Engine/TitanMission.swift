@@ -516,15 +516,19 @@ final class TitanMission: ObservableObject {
 
         // Strip quarantine from the entire bundle — must stay in-place
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
-        _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", execURL.path])
 
-        let dir  = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
-        let exec = execURL.lastPathComponent.replacingOccurrences(of: "'", with: "'\\''")
-        let pwd  = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+        // Use the full absolute path so sudo can find the script regardless of cwd.
+        // Use /bin/sh as interpreter so the execute bit on a read-only DMG doesn't matter.
+        let fullExec = execURL.path.replacingOccurrences(of: "'", with: "'\\''")
+        let dir      = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
+        let pwd      = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
 
-        // Try without sudo first — installbuilder.sh works as regular user for many patches
+        let isShellScript = execURL.pathExtension == "sh"
+        let runner        = isShellScript ? "/bin/sh '\(fullExec)'" : "'\(fullExec)'"
+
+        // Try without sudo first — installbuilder.sh exits 0 as a regular user
         let r1 = InstallEngine.runShellWithEnv(
-            "cd '\(dir)' && '\(exec)' --mode unattended 2>&1",
+            "cd '\(dir)' && \(runner) --mode unattended 2>&1",
             env: ["ATLAS_PASSWORD": adminPassword],
             adminPassword: adminPassword
         )
@@ -537,10 +541,12 @@ final class TitanMission: ObservableObject {
                               note: r1.output.isEmpty ? "Patch applied" : r1.output.prefix(200).description)
         }
 
-        // Retry with sudo — some patches write to system directories
-        let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
+        // Retry with sudo — full path so sudo doesn't look in $PATH
+        let sudoCmd = pwd.isEmpty
+            ? "cd '\(dir)' && \(runner) --mode unattended 2>&1"
+            : "cd '\(dir)' && echo '\(pwd)' | sudo -S \(runner) --mode unattended 2>&1"
         let r2 = InstallEngine.runShellWithEnv(
-            "cd '\(dir)' && \(sudoPrefix)'\(exec)' --mode unattended 2>&1",
+            sudoCmd,
             env: ["ATLAS_PASSWORD": adminPassword],
             adminPassword: adminPassword
         )
