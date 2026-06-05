@@ -489,87 +489,68 @@ final class TitanMission: ObservableObject {
         return nil
     }
 
-    // Launches a .app patch installer as a GUI app and clicks through it automatically.
-    // Mirrors what the user does manually: open the app, click Agree/Continue/Next/Install/Done.
-    // The auth watcher (already running) handles any password popup that appears.
+    // Runs a .app patch bundle's primary executable in-place with sudo.
+    // InstallBuilder apps need to run from their own Contents/MacOS/ directory
+    // so they can locate the payload files in the bundle beside the binary.
     private func runAppBundle(_ appURL: URL, adminPassword: String) async -> StepResult {
-        let appName = appURL.deletingPathExtension().lastPathComponent
+        let macosDir   = appURL.appendingPathComponent("Contents/MacOS")
+        let appName    = appURL.deletingPathExtension().lastPathComponent
 
-        // Strip quarantine from the whole bundle in-place before launching
+        // Find the primary executable: prefer one named after the bundle, then first binary
+        let candidates = (try? FileManager.default.contentsOfDirectory(
+            at: macosDir, includingPropertiesForKeys: [.isExecutableKey], options: [])) ?? []
+        let primaryExec = candidates.first(where: { $0.lastPathComponent == appName })
+                       ?? candidates.first(where: { $0.pathExtension.isEmpty })
+                       ?? candidates.first
+
+        guard let execURL = primaryExec else {
+            return StepResult(success: false,
+                              note: "No executable found in \(appName).app/Contents/MacOS")
+        }
+
+        // Strip quarantine from the entire bundle in-place — do NOT copy to temp
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
+        _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", execURL.path])
 
-        // Launch the app the same way the user would — opens its GUI installer window
-        guard let runningApp = await MacUIAutomator.launch(url: appURL, timeout: 30) else {
-            return StepResult(success: false, note: "Could not launch \(appName) — check it exists")
+        let dir  = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
+        let exec = execURL.lastPathComponent.replacingOccurrences(of: "'", with: "'\\''")
+        let pwd  = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+
+        // Pipe the admin password to sudo -S so no interactive prompt appears
+        let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
+        let prefix     = archPrefix(for: execURL)
+
+        // Try InstallBuilder headless mode first
+        let r1 = InstallEngine.runShellWithEnv(
+            "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exec)' --mode unattended 2>&1",
+            env: ["ATLAS_PASSWORD": adminPassword],
+            adminPassword: adminPassword
+        )
+        let out1 = r1.output.lowercased()
+        if r1.success
+            || out1.contains("finishing installation")
+            || out1.contains("successfully installed")
+            || out1.contains("installation complete") {
+            return StepResult(success: true,
+                              note: r1.output.isEmpty ? "Patch applied" : r1.output.prefix(200).description)
         }
 
-        // Wait for the first installer window to appear (up to 30s)
-        let firstWindow = await MacUIAutomator.waitForWindow(
-            appName: appName, titleContaining: nil, timeout: 30)
-        if firstWindow == nil {
-            runningApp.terminate()
-            return StepResult(success: false, note: "\(appName) launched but no window appeared")
-        }
-
-        // Button labels that advance an InstallBuilder/generic installer, in click priority.
-        // We cycle through these on a 2-second poll until the installer is done.
-        let advanceLabels = [
-            "Agree", "Accept", "I Accept", "I Agree",
-            "Continue", "Next", "Install", "OK", "Yes",
-        ]
-        let doneLabels = ["Done", "Finish", "Finished", "Close", "Quit", "Exit"]
-
-        // Click-through loop: keep pressing Advance buttons until a Done button appears
-        // or the window disappears (max 30 minutes for large installs)
-        var completed = false
-        let deadline = Date().addingTimeInterval(1800)
-        while Date() < deadline {
-            let ax = MacUIAutomator.axApp(for: runningApp)
-
-            // If no window exists the installer finished and auto-closed — success
-            if MacUIAutomator.windows(of: ax).isEmpty {
-                completed = true
-                break
-            }
-
-            guard let win = MacUIAutomator.frontWindow(of: ax) else {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                continue
-            }
-
-            // If a terminal Done/Close button is visible, click it and we're done
-            var hitDone = false
-            for lbl in doneLabels {
-                if MacUIAutomator.clickButton(labeled: lbl, under: win, partial: false) {
-                    hitDone = true
-                    break
-                }
-            }
-            if hitDone {
-                // Give the app a moment to close
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                completed = true
-                break
-            }
-
-            // Otherwise click the next Advance button
-            for lbl in advanceLabels {
-                if MacUIAutomator.clickButton(labeled: lbl, under: win, partial: false) {
-                    break
-                }
-            }
-
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-        }
-
-        // Terminate in case it's still open after the loop
-        if !runningApp.isTerminated { runningApp.terminate() }
-
-        if completed {
-            return StepResult(success: true, note: "\(appName) installed successfully")
-        } else {
-            return StepResult(success: false, note: "\(appName) installer timed out after 30 minutes")
-        }
+        // Fallback: run bare (some patch apps open their own GUI/terminal flow)
+        let r2 = InstallEngine.runShellWithEnv(
+            "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exec)' 2>&1",
+            env: ["ATLAS_PASSWORD": adminPassword],
+            adminPassword: adminPassword
+        )
+        let out2     = r2.output.lowercased()
+        let success2 = r2.success
+                    || out2.contains("finishing installation")
+                    || out2.contains("successfully installed")
+                    || out2.contains("success")
+                    || out2.contains("license file created")
+        return StepResult(success: success2,
+                          note: success2
+                              ? (r2.output.isEmpty ? "Patch applied" : r2.output.prefix(200).description)
+                              : r2.output.prefix(200).description)
     }
 
     private func runScript(url: URL, adminPassword: String) async -> StepResult {
