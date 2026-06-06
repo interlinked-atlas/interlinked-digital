@@ -92,111 +92,6 @@ struct ContentView: View {
         .sheet(isPresented: $showUpgrade) {
             UpgradeView(feature: upgradeFeature) { showUpgrade = false }
         }
-        // Standard plan — multiple products gate
-        .sheet(isPresented: $showMultipleProductsGate) {
-            if let mission = activeTitanMission {
-                let installable = mission.steps.filter {
-                    if case .installPkg = $0.action { return true }
-                    return false
-                }
-                StandardMultipleProductsView(
-                    installableSteps: installable,
-                    onInstallOne: { step in installOneFromMultiple(step: step) },
-                    onCancel: {
-                        showMultipleProductsGate = false
-                        activeTitanMission = nil
-                        detachTitanPreScanMount()
-                        appState.reset()
-                        withAnimation { showDropZone = true }
-                    }
-                )
-            }
-        }
-        // Complex install gate — shown when blind TITAN scan finds scripts/binaries
-        .sheet(isPresented: $showComplexInstallGate) {
-            if let mission = activeTitanMission {
-                let pkgSteps = mission.steps.filter {
-                    if case .installPkg = $0.action { return true }
-                    return false
-                }
-                ComplexInstallGateView(
-                    pkgSteps: pkgSteps,
-                    onInstallPKGOnly: pkgSteps.isEmpty ? nil : {
-                        // Build a PKG-only mission and hand off to TitanMissionView
-                        let pkgMission = TitanMission(
-                            mountPoint: mission.mountPoint,
-                            sourceURL:  mission.sourceURL)
-                        pkgMission.steps = pkgSteps
-                        activeTitanMission = pkgMission
-                        showComplexInstallGate = false
-                        showTitanMission = true
-                    },
-                    onDismiss: {
-                        showComplexInstallGate = false
-                        activeTitanMission = nil
-                        detachTitanPreScanMount()
-                        appState.reset()
-                        withAnimation { showDropZone = true }
-                    }
-                )
-            }
-        }
-        // TITAN CORE™ No Instructions dialog
-        .sheet(isPresented: $showTitanNoInstructions) {
-            TitanNoInstructionsView(
-                detectedFiles: titanNoInstrFiles,
-                onProvide: {
-                    showTitanNoInstructions = false
-                    // Open file picker for instruction file
-                    let panel = NSOpenPanel()
-                    panel.title = "Select Installation Instructions"
-                    panel.allowedContentTypes = [.html, .text, .rtf, .pdf]
-                    panel.canChooseFiles = true
-                    panel.canChooseDirectories = false
-                    if panel.runModal() == .OK, let url = panel.url,
-                       let mission = activeTitanMission {
-                        // Copy instruction file to mount point and rebuild mission
-                        let capturedMountPoint = titanMountPoint
-                        let dest = URL(fileURLWithPath: capturedMountPoint)
-                            .appendingPathComponent(url.lastPathComponent)
-                        try? FileManager.default.copyItem(at: url, to: dest)
-                        Task.detached(priority: .userInitiated) {
-                            let plan = await InstallIntelligence.analyze(
-                                directory: capturedMountPoint, files: [])
-                            let scan = InstallIntelligence.titanScan(directory: capturedMountPoint)
-                            await MainActor.run {
-                                mission.buildMission(plan: plan, scan: scan)
-                                showTitanMission = true
-                            }
-                        }
-                    }
-                },
-                onAttempt: {
-                    showTitanNoInstructions = false
-                    guard let mission = activeTitanMission else { return }
-                    // Check if mission contains scripts or binaries — these
-                    // require instruction-guided automation ATLAS hasn't fully
-                    // validated yet. Gate them with a graceful "coming soon" screen.
-                    let hasComplexSteps = mission.steps.contains {
-                        if case .runScript = $0.action { return true }
-                        if case .runBinary = $0.action { return true }
-                        return false
-                    }
-                    if hasComplexSteps {
-                        showComplexInstallGate = true
-                    } else {
-                        showTitanMission = true
-                    }
-                },
-                onCancel: {
-                    showTitanNoInstructions = false
-                    activeTitanMission = nil
-                    detachTitanPreScanMount()
-                    withAnimation { showDropZone = true }
-                }
-            )
-            .background(Color(hex: "#07080F"))
-        }
         .sheet(isPresented: $showStorageSelection) {
             if let scanResult = pendingScanResult, let url = pendingInstallURL {
                 StorageSelectionView(
@@ -1302,13 +1197,10 @@ struct ContentView: View {
                     }.count
 
                     if !auth.isPro && installableCount > 1 {
-                        // Standard plan: gate multi-product installs
-                        showMultipleProductsGate = true
-                    } else if scan.hasInstructions {
+                        // Standard plan: proceed but mission only runs PKG steps
                         showTitanMission = true
                     } else {
-                        titanNoInstrFiles = fileNames
-                        showTitanNoInstructions = true
+                        showTitanMission = true
                     }
                 }
             }
@@ -1886,11 +1778,9 @@ struct ContentView: View {
 
     private func installOneFromMultiple(step: TitanMissionStep) {
         guard let mission = activeTitanMission else { return }
-        // Build a new single-step mission so the user installs only the chosen item
         let single = TitanMission(mountPoint: mission.mountPoint, sourceURL: mission.sourceURL)
         single.steps = [step]
         activeTitanMission = single
-        showMultipleProductsGate = false
         showTitanMission = true
     }
 
