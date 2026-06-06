@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var appState = AppState()
+    @StateObject private var appState = AppState.shared
     @StateObject private var logger = Logger()
     @StateObject private var historyStore = HistoryStore()
     @StateObject private var queue = InstallQueue()
@@ -139,29 +139,6 @@ struct ContentView: View {
                         withAnimation { showDropZone = true }
                     }
                 )
-            }
-        }
-        // TITAN CORE™ Mission Panel
-        .sheet(isPresented: $showTitanMission) {
-            if let mission = activeTitanMission {
-                TitanMissionView(
-                    mission: mission,
-                    onBegin: {
-                        let pw = KeychainManager.loadPassword() ?? ""
-                        Task { await mission.execute(adminPassword: pw) }
-                    },
-                    onCancel: {
-                        if let m = activeTitanMission, m.isComplete {
-                            saveTitanRecord(mission: m)
-                        }
-                        showTitanMission = false
-                        activeTitanMission = nil
-                        appState.reset()   // clears the "Scanning…" phase leftover
-                        detachTitanPreScanMount()
-                        withAnimation { showDropZone = true }
-                    }
-                )
-                .background(Color(hex: "#07080F"))
             }
         }
         // TITAN CORE™ No Instructions dialog
@@ -362,6 +339,14 @@ struct ContentView: View {
             // Only collapse if the app is truly idle (no install, no queue, drop zone visible)
             if isIdle { enterWidgetMode() }
         }
+        .onChange(of: appState.pendingOpenURLs) { urls in
+            guard !urls.isEmpty else { return }
+            appState.pendingOpenURLs = []
+            handleFilesDrop(urls: urls)
+        }
+        .onOpenURL { url in
+            handleFilesDrop(urls: [url])
+        }
         .onAppear {
             widgetState.startIdleMonitoring()
         }
@@ -382,6 +367,26 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
                 .padding(.bottom, 16)
+
+            // Inline mission view replaces the scroll area during TITAN installs
+            if showTitanMission, let mission = activeTitanMission {
+                TitanMissionView(
+                    mission: mission,
+                    adminPassword: KeychainManager.loadPassword() ?? "",
+                    onDone: {
+                        if let m = activeTitanMission, m.isComplete {
+                            saveTitanRecord(mission: m)
+                        }
+                        showTitanMission = false
+                        activeTitanMission = nil
+                        appState.reset()
+                        detachTitanPreScanMount()
+                        withAnimation { showDropZone = true }
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity)
+            } else {
 
             ScrollView {
                 VStack(spacing: 16) {
@@ -436,6 +441,8 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
             }
+
+            } // end else (not showTitanMission)
 
             bottomBar
         }

@@ -1,16 +1,16 @@
 import SwiftUI
 
+// Inline installation view — embedded in the main ATLAS window.
+// Auto-starts the mission on appear, shows a progress bar, and a
+// collapsible step-detail section (collapsed by default).
 struct TitanMissionView: View {
     @ObservedObject var mission: TitanMission
-    let onBegin:  () -> Void
-    let onCancel: () -> Void
+    let adminPassword: String
+    let onDone: () -> Void
 
-    @State private var phraseIndex = 0
-    @State private var showSteps   = false
-    @State private var barAnim     = false
+    @State private var showDetails = false
 
-    var allDone:   Bool { mission.steps.allSatisfy { $0.status == .done || $0.status == .skipped } }
-    var anyFailed: Bool { mission.steps.contains { $0.status == .failed } }
+    // MARK: - Derived state
 
     private var progress: Double {
         guard !mission.steps.isEmpty else { return 0 }
@@ -20,155 +20,149 @@ struct TitanMissionView: View {
         return Double(done) / Double(mission.steps.count)
     }
 
-    private let activePhrases = [
-        "Unpacking files…",
-        "Writing to disk…",
-        "Registering software…",
-        "Configuring the installation…",
-        "Verifying components…",
-        "Applying patch…",
-        "Finalizing changes…",
-        "Almost there…",
-    ]
-
-    private var displayPhrase: String {
-        if mission.isComplete {
-            return anyFailed ? "Some steps need attention." : "All done."
-        }
-        if mission.isRunning {
-            if !mission.currentNote.isEmpty && mission.currentNote.count < 52 {
-                return mission.currentNote
-            }
-            return activePhrases[phraseIndex % activePhrases.count]
-        }
-        return "Ready to begin."
+    private var anyFailed: Bool {
+        mission.steps.contains { $0.status == .failed }
     }
 
     private var accentColor: Color {
         if anyFailed          { return Color(hex: "#E05555") }
         if mission.isComplete { return Color(hex: "#3ECFB2") }
-        if mission.isRunning  { return Color(hex: "#5B8DEF") }
-        return Color(hex: "#3ECFB2")
+        return Color(hex: "#5B8DEF")
     }
+
+    private var statusText: String {
+        if mission.isComplete {
+            return anyFailed ? "Finished with errors" : "Installation complete"
+        }
+        if mission.isRunning {
+            if let running = mission.steps.first(where: { $0.status == .running }) {
+                return running.title
+            }
+            return "Working…"
+        }
+        return "Preparing…"
+    }
+
+    private var fileName: String {
+        mission.sourceURL.deletingPathExtension().lastPathComponent
+    }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
 
-            // ── Progress + status ─────────────────────────────────────────
-            VStack(spacing: 14) {
+            // ── Centre area: icon + name + bar + status ───────────────────
+            Spacer(minLength: 0)
 
-                // Title row
-                HStack {
-                    AtlasStarView(size: 14, isAnimating: mission.isRunning)
-                    Text("Installing…")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(hex: "#8A92BC"))
-                    Spacer()
-                    if mission.isRunning {
-                        let done = mission.steps.filter {
-                            $0.status == .done || $0.status == .skipped
-                        }.count
-                        Text("\(done) / \(mission.steps.count)")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(Color(hex: "#353860"))
-                    }
-                }
+            VStack(spacing: 18) {
+                AtlasStarView(size: 38, isAnimating: mission.isRunning && !mission.isComplete)
+                    .animation(.easeInOut(duration: 0.3), value: mission.isRunning)
+
+                Text(fileName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color(hex: "#C8D0F0"))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
 
                 // Progress bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(Color(hex: "#0F1120"))
-                            .frame(height: 6)
+                            .frame(height: 7)
 
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [accentColor.opacity(0.9), accentColor],
-                                    startPoint: .leading,
-                                    endPoint: .trailing)
-                            )
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(LinearGradient(
+                                colors: [accentColor.opacity(0.85), accentColor],
+                                startPoint: .leading, endPoint: .trailing))
                             .frame(
-                                width: mission.isComplete
-                                    ? geo.size.width
-                                    : max(12, geo.size.width * (mission.isRunning ? progress : 0)),
-                                height: 6)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.82), value: progress)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.82), value: mission.isComplete)
-
-                        // Shimmer while running
-                        if mission.isRunning {
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.clear, .white.opacity(0.14), .clear],
-                                        startPoint: .leading,
-                                        endPoint: .trailing)
-                                )
-                                .frame(
-                                    width: max(12, geo.size.width * progress),
-                                    height: 6)
-                                .animation(
-                                    .easeInOut(duration: 1.4).repeatForever(autoreverses: true),
-                                    value: barAnim)
-                        }
+                                width: max(14, geo.size.width * (mission.isComplete ? 1.0 : progress)),
+                                height: 7)
+                            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: progress)
+                            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: mission.isComplete)
                     }
                 }
-                .frame(height: 6)
+                .frame(height: 7)
+                .padding(.horizontal, 32)
 
-                // Status phrase + percentage
+                // Status + percentage
                 HStack {
-                    Text(displayPhrase)
+                    Text(statusText)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(hex: "#C0C8E8"))
+                        .foregroundColor(Color(hex: "#8A92BC"))
                         .lineLimit(1)
-                        .animation(.easeInOut(duration: 0.28), value: displayPhrase)
+                        .animation(.easeInOut(duration: 0.2), value: statusText)
+
                     Spacer()
+
                     if mission.isComplete {
                         Text(anyFailed ? "Failed" : "Done")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(accentColor)
                     } else {
-                        Text(mission.isRunning
-                             ? "\(Int(progress * 100))%"
-                             : "\(mission.steps.count) steps")
-                            .font(.system(size: 10, design: .monospaced))
+                        Text("\(Int(progress * 100))%")
+                            .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(Color(hex: "#353860"))
                     }
                 }
+                .padding(.horizontal, 32)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 22)
-            .padding(.bottom, 16)
+            .padding(.vertical, 32)
 
-            // ── Collapsible step list ─────────────────────────────────────
+            // ── Done button ───────────────────────────────────────────────
+            if mission.isComplete {
+                Button(anyFailed ? "Close" : "Done") { onDone() }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(hex: "#08090E"))
+                    .padding(.horizontal, 36)
+                    .padding(.vertical, 10)
+                    .background(accentColor)
+                    .cornerRadius(9)
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 28)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
+            Spacer(minLength: 0)
+
+            // ── Collapsible details ───────────────────────────────────────
             VStack(spacing: 0) {
+                // Divider
+                Color(hex: "#131628").frame(height: 1)
+
+                // Toggle row
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { showSteps.toggle() }
+                    withAnimation(.easeInOut(duration: 0.22)) { showDetails.toggle() }
                 } label: {
                     HStack(spacing: 6) {
-                        Text(showSteps ? "Hide Steps" : "Steps")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(Color(hex: "#353860"))
-                        Image(systemName: showSteps ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(Color(hex: "#353860"))
-                        Spacer()
+                        Text("Details")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#444870"))
+
+                        // Mini dot indicators
                         HStack(spacing: 3) {
-                            ForEach(mission.steps.prefix(16)) { step in
-                                Circle()
-                                    .fill(stepDotColor(step.status))
+                            ForEach(mission.steps.prefix(20)) { step in
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(dotColor(step.status))
                                     .frame(width: 5, height: 5)
                             }
                         }
+
+                        Spacer()
+
+                        Image(systemName: showDetails ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(Color(hex: "#333558"))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
                 }
                 .buttonStyle(.plain)
 
-                if showSteps {
-                    Rectangle().fill(Color(hex: "#13151F")).frame(height: 1)
+                if showDetails {
+                    Color(hex: "#0D0F1E").frame(height: 1)
                     ScrollViewReader { proxy in
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(spacing: 0) {
@@ -176,103 +170,38 @@ struct TitanMissionView: View {
                                     StepRow(step: step, index: idx + 1)
                                         .id(step.id)
                                     if idx < mission.steps.count - 1 {
-                                        Rectangle()
-                                            .fill(Color(hex: "#0F1020"))
-                                            .frame(height: 1)
+                                        Color(hex: "#0D0F1E").frame(height: 1)
                                             .padding(.leading, 44)
                                     }
                                 }
                             }
                         }
-                        .frame(maxHeight: 180)
+                        .frame(maxHeight: 200)
                         .onChange(of: mission.currentNote) { _ in
-                            if let running = mission.steps.first(where: { $0.status == .running }) {
-                                withAnimation { proxy.scrollTo(running.id, anchor: .center) }
+                            if let r = mission.steps.first(where: { $0.status == .running }) {
+                                withAnimation { proxy.scrollTo(r.id, anchor: .center) }
                             }
                         }
                     }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
-            .background(Color(hex: "#0A0C18"))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color(hex: "#1A1D30"), lineWidth: 0.75))
-            .padding(.horizontal, 16)
-
-            // ── Action buttons ────────────────────────────────────────────
-            HStack(spacing: 10) {
-                if !mission.isComplete {
-                    Button(L(.titanCancel)) { onCancel() }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(hex: "#6B7399"))
-                        .padding(.horizontal, 18).padding(.vertical, 9)
-                        .background(Color(hex: "#0A0D1C"))
-                        .cornerRadius(8)
-                        .overlay(RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(Color(hex: "#1E2240"), lineWidth: 1))
-                        .buttonStyle(.plain)
-                        .disabled(mission.isRunning)
-                        .opacity(mission.isRunning ? 0.35 : 1)
-
-                    Spacer()
-
-                    Button(L(.titanBegin)) { onBegin() }
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(mission.isRunning ? Color(hex: "#6B7399") : Color(hex: "#08090E"))
-                        .padding(.horizontal, 22).padding(.vertical, 9)
-                        .background(mission.isRunning ? Color(hex: "#1A1D30") : Color(hex: "#3ECFB2"))
-                        .cornerRadius(8)
-                        .buttonStyle(.plain)
-                        .disabled(mission.isRunning)
-                } else {
-                    Spacer()
-                    Button("Done") { onCancel() }
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: "#08090E"))
-                        .padding(.horizontal, 28).padding(.vertical, 9)
-                        .background(anyFailed ? Color(hex: "#E05555") : Color(hex: "#3ECFB2"))
-                        .cornerRadius(8)
-                        .buttonStyle(.plain)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
+            .background(Color(hex: "#080A18"))
         }
-        .background(Color(hex: "#07080F"))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .strokeBorder(
-                LinearGradient(
-                    colors: [accentColor.opacity(0.18), Color(hex: "#5B8DEF").opacity(0.06)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing),
-                lineWidth: 0.75))
         .onAppear {
-            barAnim = true
-            startPhraseCycling()
+            guard !mission.isRunning && !mission.isComplete else { return }
+            let pw = adminPassword
+            Task { await mission.execute(adminPassword: pw) }
         }
     }
 
-    private func startPhraseCycling() {
-        DispatchQueue.global(qos: .background).async {
-            while true {
-                Thread.sleep(forTimeInterval: mission.isRunning ? 3.2 : 6.0)
-                DispatchQueue.main.async {
-                    withAnimation(.easeInOut(duration: 0.25)) { phraseIndex += 1 }
-                }
-            }
-        }
-    }
-
-    private func stepDotColor(_ status: TitanMissionStep.Status) -> Color {
+    private func dotColor(_ status: TitanMissionStep.Status) -> Color {
         switch status {
         case .pending:  return Color(hex: "#1E2240")
         case .running:  return Color(hex: "#5B8DEF")
         case .done:     return Color(hex: "#3ECFB2")
         case .failed:   return Color(hex: "#E05555")
-        case .skipped:  return Color(hex: "#353860")
+        case .skipped:  return Color(hex: "#2A2D42")
         }
     }
 }
@@ -280,32 +209,32 @@ struct TitanMissionView: View {
 // MARK: - Step row
 
 private struct StepRow: View {
-    let step:  TitanMissionStep
+    let step: TitanMissionStep
     let index: Int
 
     var body: some View {
         HStack(spacing: 10) {
             ZStack {
-                Circle().fill(bgColor).frame(width: 20, height: 20)
+                Circle().fill(iconBG).frame(width: 20, height: 20)
                 if step.status == .running {
                     ProgressView()
-                        .scaleEffect(0.52)
+                        .scaleEffect(0.5)
                         .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#5B8DEF")))
                 } else {
                     Image(systemName: iconName)
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(iconColor)
+                        .foregroundColor(iconFG)
                 }
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(step.title)
                     .font(.system(size: 10, weight: step.status == .running ? .semibold : .regular))
-                    .foregroundColor(step.status == .pending ? Color(hex: "#2A2D40") : Color(hex: "#B0B8D8"))
+                    .foregroundColor(step.status == .pending ? Color(hex: "#282B40") : Color(hex: "#A8B0D0"))
                     .lineLimit(1)
                 if !step.resultNote.isEmpty {
                     Text(step.resultNote)
                         .font(.system(size: 9))
-                        .foregroundColor(step.status == .failed ? Color(hex: "#E05555") : Color(hex: "#404468"))
+                        .foregroundColor(step.status == .failed ? Color(hex: "#E05555") : Color(hex: "#3A3D5A"))
                         .lineLimit(2)
                 }
             }
@@ -313,15 +242,15 @@ private struct StepRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
-        .background(step.status == .running ? Color(hex: "#0D1020") : Color.clear)
+        .background(step.status == .running ? Color(hex: "#0C0F22") : Color.clear)
     }
 
-    private var bgColor: Color {
+    private var iconBG: Color {
         switch step.status {
         case .pending:  return Color(hex: "#0E1020")
         case .running:  return Color(hex: "#0D1530")
         case .done:     return Color(hex: "#3ECFB2").opacity(0.1)
-        case .failed:   return Color(hex: "#E05555").opacity(0.1)
+        case .failed:   return Color(hex: "#E05555").opacity(0.12)
         case .skipped:  return Color(hex: "#181A28")
         }
     }
@@ -334,13 +263,13 @@ private struct StepRow: View {
         case .skipped:  return "minus"
         }
     }
-    private var iconColor: Color {
+    private var iconFG: Color {
         switch step.status {
-        case .pending:  return Color(hex: "#202238")
+        case .pending:  return Color(hex: "#1E2138")
         case .running:  return Color(hex: "#5B8DEF")
         case .done:     return Color(hex: "#3ECFB2")
         case .failed:   return Color(hex: "#E05555")
-        case .skipped:  return Color(hex: "#353860")
+        case .skipped:  return Color(hex: "#2E3150")
         }
     }
 }

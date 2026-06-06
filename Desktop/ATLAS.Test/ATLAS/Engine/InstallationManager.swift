@@ -422,8 +422,9 @@ struct InstallEngine {
             _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", execURL.path])
             _ = runProcess(path: "/bin/chmod",     arguments: ["+x",  execURL.path])
             let sysLang = Locale.current.languageCode ?? "en"
+        let homeStr = NSHomeDirectory().replacingOccurrences(of: "'", with: "'\\''")
             let r = runShellWithEnv(
-                "'\(execURL.path)'",
+                "env TERM=xterm-256color HOME='\(homeStr)' '\(execURL.path)'",
                 env: ["SYS_LANG": sysLang, "SUDO_ASKPASS": "", "ATLAS_PASSWORD": password,
                       "TERM": "xterm-256color", "HOME": NSHomeDirectory()],
                 adminPassword: password

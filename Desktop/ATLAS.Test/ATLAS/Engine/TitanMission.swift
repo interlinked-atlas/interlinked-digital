@@ -629,8 +629,9 @@ final class TitanMission: ObservableObject {
                           .replacingOccurrences(of: "'", with: "'\\''")
             let file = url.lastPathComponent
                           .replacingOccurrences(of: "'", with: "'\\''")
+            let home = NSHomeDirectory().replacingOccurrences(of: "'", with: "'\\''")
             let r = InstallEngine.runShellWithEnv(
-                "cd '\(dir)' && python3 '\(file)'",
+                "env TERM=xterm-256color HOME='\(home)' sh -c \"cd '\(dir)' && python3 '\(file)'\"",
                 env: ["SYS_LANG": sysLang,
                       "SUDO_ASKPASS": "",
                       "ATLAS_PASSWORD": adminPassword,
@@ -653,8 +654,10 @@ final class TitanMission: ObservableObject {
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", execURL.path])
         _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", execURL.path])
 
+        let home = NSHomeDirectory().replacingOccurrences(of: "'", with: "'\\''")
         let r = InstallEngine.runShellWithEnv(
-            "'\(execURL.path)'",
+            // Use `env` so TERM and HOME survive any sudo sub-invocations inside the script
+            "env TERM=xterm-256color HOME='\(home)' '\(execURL.path)'",
             env: ["SYS_LANG": sysLang,
                   "SUDO_ASKPASS": "",
                   "ATLAS_PASSWORD": adminPassword,
