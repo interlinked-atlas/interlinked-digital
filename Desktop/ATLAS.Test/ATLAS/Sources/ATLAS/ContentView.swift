@@ -92,6 +92,26 @@ struct ContentView: View {
         .sheet(isPresented: $showUpgrade) {
             UpgradeView(feature: upgradeFeature) { showUpgrade = false }
         }
+        // Standard plan — let user pick which product to install when multiple are found
+        .sheet(isPresented: $showMultipleProductsGate) {
+            if let mission = activeTitanMission {
+                let installable = mission.steps.filter {
+                    if case .installPkg = $0.action { return true }
+                    return false
+                }
+                StandardMultipleProductsView(
+                    installableSteps: installable,
+                    onInstallOne: { step in installOneFromMultiple(step: step) },
+                    onCancel: {
+                        showMultipleProductsGate = false
+                        activeTitanMission = nil
+                        detachTitanPreScanMount()
+                        appState.reset()
+                        withAnimation { showDropZone = true }
+                    }
+                )
+            }
+        }
         .sheet(isPresented: $showStorageSelection) {
             if let scanResult = pendingScanResult, let url = pendingInstallURL {
                 StorageSelectionView(
@@ -1197,8 +1217,8 @@ struct ContentView: View {
                     }.count
 
                     if !auth.isPro && installableCount > 1 {
-                        // Standard plan: proceed but mission only runs PKG steps
-                        showTitanMission = true
+                        // Standard plan: let user pick which product to install
+                        showMultipleProductsGate = true
                     } else {
                         showTitanMission = true
                     }
@@ -1781,6 +1801,7 @@ struct ContentView: View {
         let single = TitanMission(mountPoint: mission.mountPoint, sourceURL: mission.sourceURL)
         single.steps = [step]
         activeTitanMission = single
+        showMultipleProductsGate = false
         showTitanMission = true
     }
 
