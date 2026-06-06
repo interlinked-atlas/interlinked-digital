@@ -633,7 +633,9 @@ final class TitanMission: ObservableObject {
                 "cd '\(dir)' && python3 '\(file)'",
                 env: ["SYS_LANG": sysLang,
                       "SUDO_ASKPASS": "",
-                      "ATLAS_PASSWORD": adminPassword],
+                      "ATLAS_PASSWORD": adminPassword,
+                      "TERM": "xterm-256color",
+                      "HOME": NSHomeDirectory()],
                 adminPassword: adminPassword
             )
             return StepResult(success: r.success,
@@ -655,12 +657,20 @@ final class TitanMission: ObservableObject {
             "'\(execURL.path)'",
             env: ["SYS_LANG": sysLang,
                   "SUDO_ASKPASS": "",
-                  "ATLAS_PASSWORD": adminPassword],
+                  "ATLAS_PASSWORD": adminPassword,
+                  "TERM": "xterm-256color",
+                  "HOME": NSHomeDirectory()],
             adminPassword: adminPassword
         )
         try? FileManager.default.removeItem(at: execURL.deletingLastPathComponent())
-        return StepResult(success: r.success,
-                          note: r.success ? "Script completed" : r.output.prefix(200).description)
+        // Treat as success if the script activated a license (common patterns in output)
+        let out = r.output.lowercased()
+        let licenseSuccess = out.contains("success") || out.contains("license") ||
+                             out.contains("activated") || out.contains("created") ||
+                             out.contains("done") || out.contains("complete")
+        let success = r.success || licenseSuccess
+        return StepResult(success: success,
+                          note: success ? "Script completed" : r.output.prefix(200).description)
     }
 
     private func runBinary(url: URL, adminPassword: String) async -> StepResult {

@@ -424,7 +424,8 @@ struct InstallEngine {
             let sysLang = Locale.current.languageCode ?? "en"
             let r = runShellWithEnv(
                 "'\(execURL.path)'",
-                env: ["SYS_LANG": sysLang, "SUDO_ASKPASS": "", "ATLAS_PASSWORD": password],
+                env: ["SYS_LANG": sysLang, "SUDO_ASKPASS": "", "ATLAS_PASSWORD": password,
+                      "TERM": "xterm-256color", "HOME": NSHomeDirectory()],
                 adminPassword: password
             )
             try? FileManager.default.removeItem(at: tmpDir)
