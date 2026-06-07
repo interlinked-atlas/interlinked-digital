@@ -53,8 +53,7 @@ struct ContentView: View {
     @State private var showTitanMission            = false
     @State private var showTitanNoInstructions     = false
     @State private var showMultipleProductsGate    = false
-    @State private var showComplexInstallGate      = false
-    @State private var titanNoInstrFiles: [String] = []
+@State private var titanNoInstrFiles: [String] = []
     @State private var titanPreScanMount: String = ""  // ISO pre-scan mount point — unmounted on dismiss
     @State private var titanMountPoint: String = ""
     @State private var titanSourceURL: URL? = nil

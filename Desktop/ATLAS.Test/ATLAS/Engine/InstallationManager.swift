@@ -392,52 +392,47 @@ struct InstallEngine {
     // Copies a script from a read-only mount to a temp directory, strips quarantine,
     // makes it executable, and runs it. Mirrors TitanMission.runScript for queue installs.
     private static func runScriptFromMount(_ url: URL, logger: Logger) async {
-        guard let password = KeychainManager.loadPassword() else {
-            await logger.log("  ⚠ No password stored — cannot run script")
+        let password = KeychainManager.loadPassword() ?? ""
+        let sysLang  = Locale.current.languageCode ?? "en"
+
+        // Scripts inside a .app bundle must run from within the bundle — delegate
+        // to runPatchApp so the payload lookup path stays intact.
+        if let appBundle = parentAppBundle(of: url) {
+            let ok = await runPatchApp(appBundle, logger: logger)
+            if !ok { await logger.log("  ⚠ Bundle script failed: \(url.lastPathComponent)") }
             return
         }
-        let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ATLAS_exec_\(UUID().uuidString)")
-        do {
-            try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-            // Copy the script and small siblings so relative imports work
-            let parent = url.deletingLastPathComponent()
-            let siblings = (try? FileManager.default.contentsOfDirectory(
-                at: parent, includingPropertiesForKeys: [.fileSizeKey, .isDirectoryKey],
-                options: [.skipsHiddenFiles])) ?? []
-            for sibling in siblings {
-                let rv    = try? sibling.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
-                let isDir = rv?.isDirectory ?? false
-                let size  = rv?.fileSize ?? 0
-                if !isDir && size <= 10 * 1024 * 1024 {
-                    try? FileManager.default.copyItem(
-                        at: sibling,
-                        to: tmpDir.appendingPathComponent(sibling.lastPathComponent))
-                }
-            }
-            let execURL = tmpDir.appendingPathComponent(url.lastPathComponent)
-            if !FileManager.default.fileExists(atPath: execURL.path) {
-                try FileManager.default.copyItem(at: url, to: execURL)
-            }
-            _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", execURL.path])
-            _ = runProcess(path: "/bin/chmod",     arguments: ["+x",  execURL.path])
-            let sysLang = Locale.current.languageCode ?? "en"
-        let homeStr = NSHomeDirectory().replacingOccurrences(of: "'", with: "'\\''")
-            let r = runShellWithEnv(
-                "env TERM=xterm-256color HOME='\(homeStr)' '\(execURL.path)'",
-                env: ["SYS_LANG": sysLang, "SUDO_ASKPASS": "", "ATLAS_PASSWORD": password,
-                      "TERM": "xterm-256color", "HOME": NSHomeDirectory()],
-                adminPassword: password
-            )
-            try? FileManager.default.removeItem(at: tmpDir)
-            if r.success {
-                await logger.log("  ✓ Script completed: \(url.lastPathComponent)")
-            } else {
-                await logger.log("  ⚠ Script exited with error: \(r.output.prefix(120))")
-            }
-        } catch {
-            await logger.log("  ⚠ Could not prepare script: \(error.localizedDescription)")
+
+        // For plain scripts: run in-place using /bin/sh so the execute bit on a
+        // read-only volume doesn't matter, and the sibling files stay accessible.
+        let dir      = url.deletingLastPathComponent().path
+                         .replacingOccurrences(of: "'", with: "'\\''")
+        let fullPath = url.path.replacingOccurrences(of: "'", with: "'\\''")
+        let isShell  = ["sh", "bash", "zsh", "command"].contains(url.pathExtension.lowercased())
+        let runner   = isShell ? "/bin/sh '\(fullPath)'" : "'\(fullPath)'"
+
+        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", url.path])
+
+        let r = runShellWithEnv(
+            "cd '\(dir)' && \(runner)",
+            env: ["SYS_LANG": sysLang, "ATLAS_PASSWORD": password],
+            adminPassword: password
+        )
+        if r.success {
+            await logger.log("  ✓ Script completed: \(url.lastPathComponent)")
+        } else {
+            await logger.log("  ⚠ Script error: \(r.output.prefix(120))")
         }
+    }
+
+    // Returns the nearest ancestor .app bundle, or nil.
+    private static func parentAppBundle(of url: URL) -> URL? {
+        var current = url.deletingLastPathComponent()
+        while current.path != "/" {
+            if current.pathExtension.lowercased() == "app" { return current }
+            current = current.deletingLastPathComponent()
+        }
+        return nil
     }
 
     // Returns the mount point if the image at imagePath is already attached.
@@ -715,9 +710,30 @@ struct InstallEngine {
                 receiptIDs: [String],
                 isPlugin: Bool) {
         await logger.log("Starting APP installation: \(url.lastPathComponent)")
-        let appName = url.lastPathComponent
+
+        // If the .app contains installbuilder.sh it is a patch bundle, not a regular
+        // app — run it in-place rather than copying it to /Applications.
+        let macosDir = url.appendingPathComponent("Contents/MacOS")
+        let hasPatchScript = FileManager.default.fileExists(
+            atPath: macosDir.appendingPathComponent("installbuilder.sh").path)
+        let looksLikePatch = hasPatchScript || {
+            let name = url.deletingPathExtension().lastPathComponent.lowercased()
+            return name.contains("patch") || name.contains("patcher") ||
+                   name.contains("keygen") || name.contains("activat")
+        }()
+
+        if looksLikePatch {
+            await progress(0.2, "Applying patch…")
+            let ok = await runPatchApp(url, logger: logger)
+            await progress(1.0, "")
+            return ok
+                ? (.success(appName: url.deletingPathExtension().lastPathComponent), [], [], false)
+                : (.failure(reason: "Patch failed: \(url.lastPathComponent)"), [], [], false)
+        }
+
+        let appName  = url.lastPathComponent
         let destPath = "/Applications/\(appName)"
-        let result = await copyApp(appURL: url, logger: logger, progress: progress)
+        let result   = await copyApp(appURL: url, logger: logger, progress: progress)
         if case .success = result {
             return (result, [InstallRecord.InstalledFile(
                 sourceName: appName, destinationPath: destPath)], [], false)
@@ -995,87 +1011,67 @@ struct InstallEngine {
 
     // MARK: - Patch app runner
 
-    // Runs a .app patch fully autonomously:
-    //  1. Copy to temp; strip quarantine + ad-hoc codesign
-    //  2. Try --mode unattended (InstallBuilder silent install — no window, no interaction)
-    //  3. Fall back to GUI mode: watcher clicks through every wizard step automatically
+    // Runs a .app patch bundle in-place from its own Contents/MacOS/ directory.
+    // InstallBuilder apps MUST run from inside the bundle — copying to temp loses
+    // the payload directory structure they need to find their files.
     static func runPatchApp(_ appURL: URL, logger: Logger) async -> Bool {
-        let appName = appURL.lastPathComponent
+        let appName  = appURL.deletingPathExtension().lastPathComponent
+        let macosDir = appURL.appendingPathComponent("Contents/MacOS")
 
-        guard let password = KeychainManager.loadPassword() else {
-            await logger.log("No password stored — cannot run patch autonomously")
+        let candidates = (try? FileManager.default.contentsOfDirectory(
+            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
+
+        // Prefer installbuilder.sh — it selects the right arch binary and handles
+        // the runtime-name argument routing that the main binary alone requires.
+        let execURL: URL?
+        if let sh = candidates.first(where: { $0.lastPathComponent == "installbuilder.sh" }) {
+            execURL = sh
+        } else if let named = candidates.first(where: {
+            $0.deletingPathExtension().lastPathComponent == appName }) {
+            execURL = named
+        } else {
+            execURL = candidates.first(where: { $0.pathExtension.isEmpty })
+        }
+
+        guard let exec = execURL else {
+            await logger.log("✗ No executable found in \(appName).app/Contents/MacOS")
             return false
         }
 
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ATLAS_PATCH_\(UUID().uuidString.prefix(8))")
-        let tempApp = tempDir.appendingPathComponent(appName)
+        // Strip quarantine in-place — do not copy
+        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
 
-        do {
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: appURL, to: tempApp)
-        } catch {
-            await logger.log("Could not copy patch to temp: \(error.localizedDescription)")
-            return false
+        let password   = KeychainManager.loadPassword() ?? ""
+        let fullExec   = exec.path.replacingOccurrences(of: "'", with: "'\\''")
+        let dir        = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
+        let pwd        = password.replacingOccurrences(of: "'", with: "'\\''")
+        let isScript   = exec.pathExtension == "sh"
+        let runner     = isScript ? "/bin/sh '\(fullExec)'" : "'\(fullExec)'"
+
+        await logger.log("Applying patch: \(appName)")
+
+        // Try without sudo first — installbuilder.sh exits 0 as a regular user
+        let r1 = runShell("cd '\(dir)' && \(runner) --mode unattended 2>&1")
+        let o1 = r1.output.lowercased()
+        if r1.success || o1.contains("finishing installation") || o1.contains("successfully installed") {
+            await logger.log("✓ Patch applied: \(appName)")
+            return true
         }
 
-        _ = await runProcessWithPassword(password: password,
-            arguments: ["/usr/bin/xattr", "-cr", tempApp.path])
-        _ = runProcess(path: "/usr/bin/codesign",
-            arguments: ["--force", "--deep", "--sign", "-", tempApp.path])
+        // Retry with sudo using the full path so sudo doesn't search $PATH
+        let sudoRunner = pwd.isEmpty ? runner : "echo '\(pwd)' | sudo -S \(runner)"
+        let r2 = runShell("cd '\(dir)' && \(sudoRunner) --mode unattended 2>&1")
+        let o2 = r2.output.lowercased()
+        let ok = r2.success || o2.contains("finishing installation")
+                            || o2.contains("successfully installed")
+                            || o2.contains("success")
 
-        // ── Path 1: Silent install via --mode unattended ───────────────────────
-        // InstallBuilder apps (Xfer Records uses this) support headless install
-        // with this flag — no window appears at all, patch is applied silently.
-        if let binaryPath = findMainBinary(in: tempApp) {
-            await logger.log("Trying unattended install: \(appName)")
-            let silent = await runWithTimeout(
-                password: password,
-                executablePath: binaryPath,
-                arguments: ["--mode", "unattended"],
-                seconds: 90)
-            if silent.success && !silent.timedOut {
-                try? FileManager.default.removeItem(at: tempDir)
-                await logger.log("✓ Patch applied silently: \(appName)")
-                return true
-            }
-            if silent.timedOut {
-                _ = runProcess(path: "/usr/bin/killall",
-                              arguments: ["-9", patchProcessName(for: tempApp)])
-                try? await Task.sleep(nanoseconds: 300_000_000)
-            }
-            await logger.log("Unattended mode unavailable — switching to GUI automation")
-        }
-
-        // ── Path 2: GUI wizard — watcher auto-clicks every step ───────────────
-        let procName = patchProcessName(for: tempApp)
-        let escapedPwd = password
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-
-        _ = runProcess(path: "/usr/bin/osascript", arguments: ["-e",
-            "do shell script \"echo ok\" with administrator privileges password \"\(escapedPwd)\" without prompting user"])
-
-        let watcher = Process()
-        watcher.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        watcher.arguments = ["-e", buildWatchScript(processName: procName, password: escapedPwd)]
-        watcher.standardOutput = Pipe()
-        watcher.standardError = Pipe()
-        try? watcher.run()
-
-        await logger.log("Running patch with GUI automation: \(appName)")
-        // -g: no focus steal; -W: wait until patcher exits
-        let result = runProcess(path: "/usr/bin/open",
-                               arguments: ["-W", "-g", tempApp.path])
-        watcher.terminate()
-        try? FileManager.default.removeItem(at: tempDir)
-
-        if result.success {
+        if ok {
             await logger.log("✓ Patch applied: \(appName)")
         } else {
-            await logger.log("✗ Patch failed: \(result.output.trimmingCharacters(in: .whitespacesAndNewlines))")
+            await logger.log("✗ Patch failed: \(r2.output.prefix(200))")
         }
-        return result.success
+        return ok
     }
 
     // Returns the process name System Events uses (CFBundleExecutable, not the .app filename).
@@ -1272,57 +1268,6 @@ struct InstallEngine {
     }
 
     // Returns the path to the main executable inside an .app bundle.
-    private static func findMainBinary(in appURL: URL) -> String? {
-        let infoPlist = appURL.appendingPathComponent("Contents/Info.plist")
-        if let dict = NSDictionary(contentsOf: infoPlist),
-           let name = dict["CFBundleExecutable"] as? String {
-            let path = appURL.appendingPathComponent("Contents/MacOS/\(name)").path
-            if FileManager.default.fileExists(atPath: path) { return path }
-        }
-        // Fallback: any file in Contents/MacOS
-        let macOS = appURL.appendingPathComponent("Contents/MacOS")
-        if let files = try? FileManager.default.contentsOfDirectory(atPath: macOS.path),
-           let first = files.first(where: { !$0.hasPrefix(".") }) {
-            return macOS.appendingPathComponent(first).path
-        }
-        return nil
-    }
-
-    // Runs an executable with sudo and a hard timeout. Returns (success, output, timedOut).
-    private static func runWithTimeout(
-        password: String,
-        executablePath: String,
-        arguments: [String],
-        seconds: Double
-    ) async -> (success: Bool, output: String, timedOut: Bool) {
-        let process = Process()
-        let inputPipe  = Pipe()
-        let outputPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
-        process.arguments = ["-S", executablePath] + arguments
-        process.standardInput  = inputPipe
-        process.standardOutput = outputPipe
-        process.standardError  = outputPipe
-        do { try process.run() } catch { return (false, error.localizedDescription, false) }
-        inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
-        inputPipe.fileHandleForWriting.closeFile()
-        activeProcess = process
-
-        let deadline = Date().addingTimeInterval(seconds)
-        while process.isRunning && Date() < deadline && !cancellationRequested {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        activeProcess = nil
-        if process.isRunning {
-            process.terminate()
-            return (false, "", !cancellationRequested)
-        }
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        return (process.terminationStatus == 0,
-                String(data: data, encoding: .utf8) ?? "",
-                false)
-    }
-
     // MARK: Shared
 
     static func copyApp(
