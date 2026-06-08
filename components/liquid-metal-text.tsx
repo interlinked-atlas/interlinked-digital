@@ -13,8 +13,8 @@ export function InterLinkedWordmark() {
     const sweep = () => {
       letters.forEach((l, i) => {
         setTimeout(() => {
-          l.style.color = "rgba(255,255,255,0.95)"
-          l.style.textShadow = "0 0 18px rgba(62,207,178,0.55)"
+          l.style.color = "var(--il-text)"
+          l.style.textShadow = "0 0 18px var(--il-border-hover)"
           setTimeout(() => {
             l.style.color = ""
             l.style.textShadow = ""
@@ -39,7 +39,7 @@ export function InterLinkedWordmark() {
         fontSize: "clamp(36px, 5.5vw, 60px)",
         fontWeight: "normal",
         letterSpacing: "0.12em",
-        color: "rgba(220,228,255,0.82)",
+        color: "var(--il-primary)",
         lineHeight: 1,
       }}
     >
@@ -61,7 +61,7 @@ export function InterLinkedWordmark() {
       <sup
         style={{
           fontSize: "0.28em",
-          color: "rgba(62,207,178,0.45)",
+          color: "var(--il-secondary)",
           marginLeft: "3px",
           verticalAlign: "super",
           letterSpacing: 0,

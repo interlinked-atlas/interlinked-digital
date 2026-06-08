@@ -22,3 +22,154 @@
   src: url('/fonts/Vipnagorgialla-Rg.otf') format('opentype');
   font-weight: normal; font-style: normal; font-display: swap;
 }
+
+/* ── ATLAS glow — matches the pulsing teal title glow in the desktop app ── */
+@keyframes atlasGlow {
+  0%, 100% {
+    text-shadow:
+      0 0 8px  rgba(62,207,178,0.20),
+      0 0 18px rgba(62,207,178,0.10);
+  }
+  50% {
+    text-shadow:
+      0 0 16px rgba(62,207,178,0.55),
+      0 0 32px rgba(62,207,178,0.25),
+      0 0 56px rgba(62,207,178,0.10);
+  }
+}
+
+.atlas-text {
+  font-family: 'SF-Intellivised', -apple-system, sans-serif !important;
+  animation: atlasGlow 3s ease-in-out infinite;
+  color: #E8ECFF;
+  letter-spacing: 0.25em;
+}
+
+/* ── Liquid Metal sweep (INTERLINKED wordmark) ── */
+.metal-letter { transition: all 0.3s ease; }
+
+.metal-shine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%, transparent 40%,
+    rgba(62,207,178,0.08) 45%,
+    rgba(62,207,178,0.45) 48%,
+    rgba(180,255,240,0.9) 50%,
+    rgba(62,207,178,0.45) 52%,
+    rgba(62,207,178,0.08) 55%,
+    transparent 60%, transparent 100%
+  );
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.metal-letter.sweeping .metal-shine {
+  opacity: 1;
+  animation: liquidSweep 0.8s ease-in-out forwards;
+}
+.metal-letter.sweeping {
+  text-shadow: 0 0 10px rgba(62,207,178,0.25), 0 0 22px rgba(62,207,178,0.12);
+}
+@keyframes liquidSweep {
+  from { background-position: 100% 0; }
+  to   { background-position: -100% 0; }
+}
+
+/* ── Entrance animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-1   { opacity:0; animation: fadeInUp 1.1s ease-out forwards; animation-delay: 0.3s; }
+.animate-fade-in-2   { opacity:0; animation: fadeInUp 1.0s ease-out forwards; animation-delay: 1.4s; }
+.animate-fade-in-3   { opacity:0; animation: fadeInUp 0.8s ease-out forwards; animation-delay: 2.3s; }
+.animate-fade-in-box-1 { opacity:0; animation: fadeInUp 0.8s ease-out forwards; animation-delay: 3.2s; }
+.animate-fade-in-box-2 { opacity:0; animation: fadeInUp 0.8s ease-out forwards; animation-delay: 3.7s; }
+.animate-fade-in-box-3 { opacity:0; animation: fadeInUp 0.8s ease-out forwards; animation-delay: 4.2s; }
+
+/* ── Splash screen ── */
+@keyframes spin-slow   { from { transform: rotate(0deg);   } to { transform: rotate(360deg);  } }
+@keyframes spin-slower { from { transform: rotate(360deg); } to { transform: rotate(0deg);    } }
+@keyframes pulse-slow  { 0%,100% { opacity:1; } 50% { opacity:0.65; } }
+.animate-spin-slow   { animation: spin-slow    8s linear infinite; }
+.animate-spin-slower { animation: spin-slower 12s linear infinite; }
+.animate-pulse-slow  { animation: pulse-slow   2s ease-in-out infinite; }
+
+/* ── Modal fade ── */
+@keyframes modalFadeIn  { from { opacity:0; transform:translateY(8px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes backdropIn   { from { opacity:0; } to { opacity:1; } }
+.modal-enter   { animation: modalFadeIn 0.22s ease-out forwards; }
+.backdrop-enter { animation: backdropIn 0.2s ease-out forwards; }
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ── ATLAS / account pages (unchanged) ── */
+  --background:     #07080F;
+  --foreground:     #E8ECFF;
+  --card:           #0C0E1C;
+  --border:         #1E2240;
+  --accent-teal:    #3ECFB2;
+  --accent-blue:    #5B8DEF;
+  --text-primary:   #E8ECFF;
+  --text-secondary: #A8B4D0;
+  --text-muted:     #6B7399;
+  --text-dim:       #353860;
+  --error:          #E05555;
+  --warning:        #F0A030;
+  --success:        #2ECC8A;
+
+  /* ── interlinked.digital homepage — dark mode ── */
+  --il-bg:           #00000f;
+  --il-text:         #ffffff;
+  --il-primary:      #d5d9dd;
+  --il-secondary:    #818b99;
+  --il-accent:       #3a4767;
+  --il-card-bg:      #07071c;
+  --il-border:       rgba(58,71,103,0.38);
+  --il-border-hover: rgba(58,71,103,0.65);
+  --il-glow:         rgba(58,71,103,0.10);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* ── interlinked.digital homepage — light mode ── */
+    --il-bg:           #f0f0ff;
+    --il-text:         #000000;
+    --il-primary:      #22262a;
+    --il-secondary:    #2b3037;
+    --il-accent:       #b6c8f7;
+    --il-card-bg:      #e6e6f8;
+    --il-border:       rgba(182,200,247,0.50);
+    --il-border-hover: rgba(182,200,247,0.85);
+    --il-glow:         rgba(182,200,247,0.18);
+  }
+}
+
+/* ── Homepage product card hover (CSS-driven so vars resolve correctly) ── */
+.il-product-card {
+  background: var(--il-card-bg);
+  border: 1px solid var(--il-border);
+  box-shadow: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+.il-product-card:hover {
+  border-color: var(--il-border-hover);
+  box-shadow: 0 0 32px var(--il-glow);
+}
+.il-product-card.il-active {
+  border-color: var(--il-border-hover);
+  box-shadow: 0 0 40px var(--il-glow);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--il-bg);
+  color: var(--il-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

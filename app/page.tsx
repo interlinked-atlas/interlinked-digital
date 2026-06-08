@@ -16,7 +16,7 @@ export default function Home() {
       )}
 
       <div
-        style={{ opacity: showContent ? 1 : 0, transition: "opacity 0.6s ease" }}
+        style={{ opacity: showContent ? 1 : 0, transition: "opacity 0.6s ease", background: "var(--il-bg)" }}
         className="min-h-screen relative overflow-hidden"
       >
         {/* Background grid */}
@@ -24,18 +24,18 @@ export default function Home() {
           className="fixed inset-0 pointer-events-none"
           style={{
             backgroundImage: `
-              linear-gradient(rgba(62,207,178,0.025) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(62,207,178,0.025) 1px, transparent 1px)
+              linear-gradient(var(--il-border) 1px, transparent 1px),
+              linear-gradient(90deg, var(--il-border) 1px, transparent 1px)
             `,
             backgroundSize: "60px 60px",
+            opacity: 0.6,
           }}
         />
         {/* Radial glow */}
         <div
           className="fixed inset-0 pointer-events-none"
           style={{
-            background:
-              "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(62,207,178,0.06) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 60% 40% at 50% 0%, var(--il-glow) 0%, transparent 70%)",
           }}
         />
 
@@ -69,7 +69,7 @@ export default function Home() {
             style={{
               padding: "20px",
               textAlign: "center",
-              color: "#1A1D30",
+              color: "var(--il-border-hover)",
               fontSize: "10px",
               letterSpacing: "2px",
             }}
