@@ -1774,9 +1774,10 @@ struct ContentView: View {
             content: entries.joined(separator: "\n")
         )
 
-        // All users see history. Pro users also get hosts-entries rollback data.
+        // Always save hosts entries to history so rollback can clean them up for any user.
+        // (Hosts entries must be removed on uninstall regardless of plan tier.)
         var fullRecord = record
-        if Features.rollback && !mission.addedHostsEntries.isEmpty {
+        if !mission.addedHostsEntries.isEmpty {
             fullRecord = InstallRecord(
                 id:                record.id,
                 date:              record.date,

@@ -236,6 +236,13 @@ struct InstallIntelligence {
     // MARK: - Main entry point
 
     static func analyze(directory: String, files: [URL]) async -> InstallPlan {
+        // TITAN MEMORY™ — check knowledge base before parsing instructions.
+        // A confirmed match skips HTML/CSS parsing entirely and uses verified data.
+        let dirName = URL(fileURLWithPath: directory).lastPathComponent
+        if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files) {
+            return buildPlanFromMemory(memory, directory: directory, files: files)
+        }
+
         let instructions = findAndParseInstructions(in: directory)
 
         var classified = classifyFiles(files)
@@ -294,6 +301,73 @@ struct InstallIntelligence {
 
         return InstallPlan(instructions: instructions, orderedSteps: ordered,
                            warnings: warnings, summary: summary)
+    }
+
+    // MARK: - TITAN MEMORY™ plan builder
+
+    // Builds an InstallPlan directly from a confirmed TITAN MEMORY™ entry.
+    // Skips HTML/instruction parsing — uses verified step order and hosts entries.
+    private static func buildPlanFromMemory(_ memory: TitanMemoryEntry,
+                                            directory: String,
+                                            files: [URL]) -> InstallPlan {
+        var steps: [InstallStep] = []
+        let memSteps = memory.installSteps.sorted { $0.order < $1.order }
+
+        for memStep in memSteps {
+            // Find the matching file in the actual directory
+            guard let match = files.first(where: { file in
+                let name = file.lastPathComponent.lowercased()
+                let pattern = memStep.filePattern.lowercased()
+                if let regex = try? NSRegularExpression(pattern: pattern),
+                   regex.firstMatch(in: name, range: NSRange(name.startIndex..., in: name)) != nil {
+                    return true
+                }
+                return name.contains(pattern)
+            }) else { continue }
+
+            let stepType: InstallStep.StepType
+            switch memStep.type {
+            case "pkg":    stepType = .installer
+            case "script": stepType = .patch
+            case "binary": stepType = .patch
+            default:       stepType = .installer
+            }
+
+            steps.append(InstallStep(
+                url: match,
+                type: stepType,
+                order: memStep.order,
+                note: memStep.note ?? "TITAN MEMORY™ confirmed step"
+            ))
+        }
+
+        // Synthesise a ParsedInstructions that carries the verified hosts entries
+        let hostsEntries = memory.hostsEntries ?? []
+        let syntheticInstructions = ParsedInstructions(
+            rawText: "",
+            sourceFileName: "TITAN MEMORY™",
+            steps: memSteps.compactMap { $0.note },
+            mentionsPatch: steps.contains { $0.type == .patch },
+            mentionsOrder: true,
+            mentionsRosetta: false,
+            mentionsAdminRequired: true,
+            customNotes: ["TITAN MEMORY™: confirmed install pattern — \(memory.name)"],
+            appToLaunch: nil,
+            mentionsSelectAll: false,
+            mentionsManagerApp: false,
+            hostsEntries: hostsEntries,
+            terminalCommands: [],
+            mentionsXcodeTools: false,
+            scriptsToRun: [],
+            binariesToRun: [],
+            detectedLanguage: "en"
+        )
+
+        let summary = "TITAN MEMORY™ recognized \(memory.name) — using confirmed install pattern"
+        return InstallPlan(instructions: syntheticInstructions,
+                           orderedSteps: steps,
+                           warnings: ["TITAN MEMORY™ active — install pattern verified"],
+                           summary: summary)
     }
 
     // MARK: - Instruction file detection

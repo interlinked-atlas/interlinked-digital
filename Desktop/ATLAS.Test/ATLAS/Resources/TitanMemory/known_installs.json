@@ -1,0 +1,48 @@
+[
+  {
+    "id": "baby-audio-smooth-operator-pro",
+    "name": "Baby Audio Smooth Operator Pro",
+    "version": "1.2",
+    "matchPatterns": [
+      "baby audio smooth operator",
+      "smooth operator pro",
+      "baby audio - smooth operator"
+    ],
+    "instructionGuide": {
+      "source": "0. Инструкция (Instruction).html",
+      "type": "typora-html",
+      "note": "HTML file with large Typora CSS stylesheet — strip <style> blocks before parsing or CSS selectors like body.typora and md-fences.mock will be mistaken for domains."
+    },
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Baby Audio - Smooth Operator Pro.*\\.pkg",
+        "note": "Standard PKG installer. Click Continue, Install, Close."
+      },
+      {
+        "order": 2,
+        "type": "script",
+        "filePattern": "Install License",
+        "interpreter": "bash",
+        "runInPlace": true,
+        "requiresSudo": true,
+        "note": "Bash script. Uses $BASH_SOURCE[0] to locate sibling BTCR/ folder. Must run in-place (not copied to temp) and with /bin/bash as root so internal sudo calls work and parent_path resolves correctly."
+      }
+    ],
+    "hostsEntries": [
+      "babyaudio-activation.herokuapp.com",
+      "activation.babyaud.io"
+    ],
+    "licenseDestination": "~/Library/Application Support/af854ba56b229a56c422472ee764eba8/",
+    "licenseSource": "BTCR/",
+    "licenseFilePattern": "*.lcs",
+    "rollback": {
+      "removeHostsEntries": ["babyaudio-activation.herokuapp.com", "activation.babyaud.io"],
+      "removeLicenseDir": "~/Library/Application Support/af854ba56b229a56c422472ee764eba8"
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-06-08",
+    "confirmedBy": "manual test + ATLAS engine"
+  }
+]
