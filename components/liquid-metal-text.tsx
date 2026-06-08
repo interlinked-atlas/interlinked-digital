@@ -35,7 +35,7 @@ export function InterLinkedWordmark() {
       style={{
         display: "inline-flex",
         alignItems: "baseline",
-        fontFamily: "'BomberEscort', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontFamily: "'Vipnagorgialla', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSize: "clamp(36px, 5.5vw, 60px)",
         fontWeight: "normal",
         letterSpacing: "0.12em",
@@ -74,7 +74,6 @@ export function InterLinkedWordmark() {
   )
 }
 
-// Legacy export kept for any other usage
 export function LiquidMetalText({ text, className = "" }: { text: string; className?: string }) {
   return (
     <span className={className} style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif" }}>
