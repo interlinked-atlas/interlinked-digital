@@ -9,6 +9,7 @@ struct TitanMissionView: View {
     let onDone: () -> Void
 
     @State private var showDetails = true
+    @State private var hasStarted  = false
 
     // MARK: - Derived state
 
@@ -40,7 +41,7 @@ struct TitanMissionView: View {
             }
             return "Working…"
         }
-        return "Preparing…"
+        return hasStarted ? "Preparing…" : "Ready — \(mission.steps.count) step\(mission.steps.count == 1 ? "" : "s") planned"
     }
 
     private var fileName: String {
@@ -111,8 +112,24 @@ struct TitanMissionView: View {
             }
             .padding(.vertical, 32)
 
-            // ── Done button ───────────────────────────────────────────────
-            if mission.isComplete {
+            // ── Action button ─────────────────────────────────────────────
+            if !hasStarted {
+                // Pre-install: user must explicitly begin
+                Button("Begin Install") {
+                    hasStarted = true
+                    let pw = adminPassword
+                    Task { await mission.execute(adminPassword: pw) }
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Color(hex: "#08090E"))
+                .padding(.horizontal, 36)
+                .padding(.vertical, 10)
+                .background(Color(hex: "#5B8DEF"))
+                .cornerRadius(9)
+                .buttonStyle(.plain)
+                .padding(.bottom, 28)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            } else if mission.isComplete {
                 Button(anyFailed ? "Close" : "Done") { onDone() }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(Color(hex: "#08090E"))
@@ -189,9 +206,7 @@ struct TitanMissionView: View {
             .background(Color(hex: "#080A18"))
         }
         .onAppear {
-            guard !mission.isRunning && !mission.isComplete else { return }
-            let pw = adminPassword
-            Task { await mission.execute(adminPassword: pw) }
+            // No auto-start. User must click "Begin Install".
         }
     }
 
