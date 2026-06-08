@@ -34,6 +34,7 @@ interface Props {
 }
 
 export default function AccountDashboard({ user, subscription, profile, devices, logs, isAdmin }: Props) {
+  const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -54,6 +55,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [upgradeError, setUpgradeError] = useState("")
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
 
   // Auto-refresh every 8s when tab is visible
   const doRefresh = useCallback(() => {
@@ -202,7 +205,12 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#07080F", color: "#E8ECFF" }}>
+    <div className="min-h-screen" style={{
+      background: "#07080F", color: "#E8ECFF",
+      opacity: mounted ? 1 : 0,
+      transform: mounted ? "translateY(0)" : "translateY(16px)",
+      transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)",
+    }}>
       {/* ── Header ── */}
       <header style={{
         borderBottom: "1px solid #1E2240", position: "sticky", top: 0, zIndex: 50,
