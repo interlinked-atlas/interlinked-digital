@@ -17,7 +17,7 @@ const PLANS = [
     color: '#8A8A96',
     accentColor: '#5E6AD2',
     recommended: false,
-    features: ['1 device', '3 installs per day', 'TITAN CORE™ engine', 'Install history', 'Notifications'],
+    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
     excluded: ['Bulk installation', 'Uninstall & Rollback', 'Smart Storage'],
     stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
   },
