@@ -17,7 +17,7 @@ const PLANS = [
     color: '#8A8A96',
     accentColor: '#5E6AD2',
     recommended: false,
-    features: ['1 device', '3 installs per day', 'TITAN CORE™ engine', 'Install history', 'Notifications'],
+    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
     excluded: ['Bulk installation', 'Uninstall & Rollback', 'Smart Storage'],
     stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
   },
@@ -260,7 +260,6 @@ export default function AtlasSignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Kick off hero text animation on mount
   const [heroIn, setHeroIn] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setHeroIn(true), 80)
@@ -328,7 +327,6 @@ export default function AtlasSignupPage() {
         WebkitFontSmoothing: 'antialiased',
       }}>
 
-        {/* ── Top nav bar ── */}
         <nav style={{
           position: 'sticky', top: 0, zIndex: 50,
           background: 'rgba(8,8,9,0.85)',
@@ -338,7 +336,6 @@ export default function AtlasSignupPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '52px',
         }}>
-          {/* Left slot: "Back to InterLinked" on landing, "← Back" on inner steps */}
           {step === 'landing' ? (
             <a
               href="https://www.interlinked.digital/"
@@ -374,7 +371,6 @@ export default function AtlasSignupPage() {
               Back
             </button>
           )}
-          {/* Right slot: Sign in */}
           <a
             href="/auth/login"
             style={{
@@ -388,11 +384,8 @@ export default function AtlasSignupPage() {
           </a>
         </nav>
 
-        {/* ── Landing / hero ── */}
         {step === 'landing' && (
           <div>
-
-            {/* Hero */}
             <section style={{
               maxWidth: '860px', margin: '0 auto',
               padding: '100px 24px 80px',
@@ -403,7 +396,6 @@ export default function AtlasSignupPage() {
                 transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
                 transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
               }}>
-                {/* ATLAS star logo */}
                 <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
                   <img
                     src="/atlas-logo.png"
@@ -498,13 +490,11 @@ export default function AtlasSignupPage() {
               </div>
             </section>
 
-            {/* Divider */}
             <div style={{
               width: '100%', height: '1px',
               background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
             }} />
 
-            {/* Features */}
             <section style={{
               maxWidth: '860px', margin: '0 auto',
               padding: '80px 24px',
@@ -553,13 +543,11 @@ export default function AtlasSignupPage() {
               </div>
             </section>
 
-            {/* Divider */}
             <div style={{
               width: '100%', height: '1px',
               background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
             }} />
 
-            {/* Plans teaser */}
             <section style={{
               maxWidth: '560px', margin: '0 auto',
               padding: '80px 24px 100px',
@@ -607,7 +595,6 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
-        {/* ── Plan selection ── */}
         {step === 'plan' && (
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px 80px' }}>
             <FadeUp>
@@ -730,11 +717,9 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
-        {/* ── Account creation ── */}
         {step === 'account' && selectedPlan && (
           <div style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 24px 80px' }}>
             <FadeUp>
-              {/* Plan badge */}
               <div style={{
                 background: `${selectedPlan.accentColor}0C`,
                 border: `1px solid ${selectedPlan.accentColor}28`,
@@ -772,7 +757,6 @@ export default function AtlasSignupPage() {
                 </button>
               </div>
 
-              {/* Form card */}
               <div style={{
                 background: '#0E0E10',
                 borderRadius: '16px',
@@ -863,7 +847,6 @@ export default function AtlasSignupPage() {
                     </button>
                   </div>
 
-                  {/* ToS */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                     <div
                       onClick={() => setTosAgreed(a => !a)}
@@ -929,7 +912,6 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
-        {/* Footer */}
         <footer style={{
           borderTop: '1px solid rgba(255,255,255,0.05)',
           padding: '24px',
