@@ -468,8 +468,18 @@ struct InstallIntelligence {
 
         if ext == "html" || ext == "htm" {
             if let raw = try? String(contentsOf: url, encoding: .utf8) {
-                return raw.replacingOccurrences(of: "<[^>]+>", with: " ",
-                                                options: .regularExpression)
+                // Strip <style>...</style> and <script>...</script> blocks first —
+                // they contain CSS selectors with dots (e.g. body.typora, .md-fences.mock)
+                // that the domain regex would misidentify as hostnames.
+                var stripped = raw
+                for tag in ["style", "script"] {
+                    let pattern = "(?i)<\(tag)[^>]*>[\\s\\S]*?</\(tag)>"
+                    stripped = stripped.replacingOccurrences(of: pattern, with: " ",
+                                                             options: .regularExpression)
+                }
+                // Then strip remaining HTML tags
+                return stripped.replacingOccurrences(of: "<[^>]+>", with: " ",
+                                                     options: .regularExpression)
             }
         }
 
@@ -590,20 +600,39 @@ struct InstallIntelligence {
     // both backward (3 lines before) and forward (5 lines after).
     private static func extractBlockContext(from lower: String, lines: [String]) -> [String] {
         var domains: [String] = []
-        let domainPattern = #"\b([a-z0-9\-]+(?:\.[a-z]{2,}){1,3})\b"#
+        let domainPattern = #"\b([a-z0-9][a-z0-9\-]*(?:\.[a-z0-9][a-z0-9\-]*){1,4})\b"#
         guard let regex = try? NSRegularExpression(pattern: domainPattern) else { return [] }
 
-        // Triggers that indicate an upcoming or surrounding block list
-        let triggers = ["block", "127.0.0.1", "hosts file", "/etc/hosts",
+        // Only accept real internet TLDs. CSS class names (.active, .open, .mock,
+        // .typora, .fences, .monocolor, .md, etc.) do not appear in this list.
+        let validTLDs: Set<String> = [
+            "com","net","org","io","co","app","dev","ai","so","me","us","uk",
+            "de","fr","ru","jp","cn","br","es","it","nl","se","no","fi","pl",
+            "au","ca","nz","in","sg","hk","tw","kr","mx","ar","cl","za",
+            "info","biz","edu","gov","mil","int","aero","museum","coop",
+            "pro","name","mobi","tel","travel","jobs","cloud","tech","store",
+            "online","site","web","fun","win","top","xyz","live","one","plus",
+            "software","studio","digital","media","design","solutions",
+            "services","support","systems","group","team","network","agency",
+            "shop","link","page","host","email","tools","space","run",
+            "id","ie","be","ch","at","pt","cz","hu","ro","bg","gr","sk","lt",
+            "lv","ee","hr","si","rs","ua","by","md","ge","am","az","kz",
+            "tv","fm","am","gg","io","sh","ac","cc","im","vc","ws",
+            "heroku","herokuapp","vercel","netlify","render","fly",
+        ]
+
+        // Triggers that indicate an upcoming or surrounding block list.
+        // "block" alone is too broad (CSS uses "display: block") — require more context.
+        let triggers = ["127.0.0.1", "hosts file", "/etc/hosts",
                         "add to hosts", "add the following to", "block the following",
-                        "block these", "block addresses", "block the addresses"]
+                        "block these", "block addresses", "block the addresses",
+                        "block the address", "babyaudio", "activation."]
 
         // Build a set of line indices that are "in block context"
         var contextIndices = IndexSet()
         for (i, line) in lines.enumerated() {
             let ll = line.lowercased()
             guard triggers.contains(where: { ll.contains($0) }) else { continue }
-            // The trigger line itself plus 5 lines after it and 3 before it
             let lo = max(0, i - 3)
             let hi = min(lines.count - 1, i + 5)
             contextIndices.insert(integersIn: lo...hi)
@@ -614,14 +643,16 @@ struct InstallIntelligence {
             let range = NSRange(line.startIndex..., in: line)
             for match in regex.matches(in: line, range: range) {
                 guard let r = Range(match.range(at: 1), in: line) else { continue }
-                let domain = String(line[r])
-                let skip = ["little", "snitch", "lulu", "such", "tools", "using",
-                            "the", "and", "or", "com", "net", "org"]
+                let domain = String(line[r]).lowercased()
                 let parts = domain.components(separatedBy: ".")
-                guard parts.count >= 2, !skip.contains(parts[0]) else { continue }
-                if domain.contains(".") && domain.count > 5 {
-                    domains.append(domain)
-                }
+                guard parts.count >= 2 else { continue }
+                let tld = parts.last!
+                // Must end with a real TLD — this is the primary guard against CSS selectors
+                guard validTLDs.contains(tld) else { continue }
+                // Must have a meaningful label before the TLD
+                let label = parts.dropLast().joined(separator: ".")
+                guard label.count >= 2, !label.hasPrefix("-") else { continue }
+                domains.append(domain)
             }
         }
         return Array(Set(domains))

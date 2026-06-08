@@ -649,31 +649,60 @@ final class TitanMission: ObservableObject {
             return await runAppBundle(appBundle, adminPassword: adminPassword)
         }
 
-        // All other scripts: copy to writable temp to strip quarantine, then run.
-        let execURL = makeWritableCopy(of: url) ?? url
+        // Run the script IN PLACE — never copy to temp.
+        // Scripts that use $BASH_SOURCE[0] or dirname "$0" to find sibling files
+        // (e.g. BTCR/ license folders) will break if run from a temp copy because
+        // the sibling directory no longer exists next to the script.
+        let execURL = url
         _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", execURL.path])
-        _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", execURL.path])
 
+        // Detect whether the script needs bash (shebang or bash-specific syntax).
+        // /bin/sh ignores $BASH_SOURCE, so parent_path resolves to "" → wrong install dir.
+        let scriptContent = (try? String(contentsOf: execURL, encoding: .utf8)) ?? ""
+        let isBash = scriptContent.hasPrefix("#!/bin/bash") ||
+                     scriptContent.hasPrefix("#!/usr/bin/env bash") ||
+                     scriptContent.contains("BASH_SOURCE") ||
+                     scriptContent.contains("declare -") ||
+                     scriptContent.contains("local ")
+        let shell = isBash ? "/bin/bash" : "/bin/sh"
+
+        let dir  = execURL.deletingLastPathComponent().path
+                          .replacingOccurrences(of: "'", with: "'\\''")
+        let path = execURL.path.replacingOccurrences(of: "'", with: "'\\''")
         let home = NSHomeDirectory().replacingOccurrences(of: "'", with: "'\\''")
-        let r = InstallEngine.runShellWithEnv(
-            // Use `env` so TERM and HOME survive any sudo sub-invocations inside the script
-            "env TERM=xterm-256color HOME='\(home)' '\(execURL.path)'",
-            env: ["SYS_LANG": sysLang,
-                  "SUDO_ASKPASS": "",
-                  "ATLAS_PASSWORD": adminPassword,
-                  "TERM": "xterm-256color",
-                  "HOME": NSHomeDirectory()],
-            adminPassword: adminPassword
+        let pwd  = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+
+        let env: [String: String] = [
+            "SYS_LANG": sysLang,
+            "SUDO_ASKPASS": "",
+            "ATLAS_PASSWORD": adminPassword,
+            "TERM": "xterm-256color",
+            "HOME": NSHomeDirectory(),
+        ]
+
+        // Try without sudo first (some scripts don't need it)
+        let r1 = InstallEngine.runShellWithEnv(
+            "cd '\(dir)' && \(shell) '\(path)'",
+            env: env, adminPassword: adminPassword
         )
-        try? FileManager.default.removeItem(at: execURL.deletingLastPathComponent())
-        // Treat as success if the script activated a license (common patterns in output)
-        let out = r.output.lowercased()
-        let licenseSuccess = out.contains("success") || out.contains("license") ||
-                             out.contains("activated") || out.contains("created") ||
-                             out.contains("done") || out.contains("complete")
-        let success = r.success || licenseSuccess
+        let out1 = r1.output.lowercased()
+        if r1.success || out1.contains("install complete") || out1.contains("complete!") ||
+           out1.contains("license") && (out1.contains("success") || out1.contains("done")) {
+            return StepResult(success: true, note: "Script completed")
+        }
+
+        // Retry with sudo — runs the ENTIRE script as root so internal sudo calls work
+        let r2 = InstallEngine.runShellWithEnv(
+            "cd '\(dir)' && echo '\(pwd)' | sudo -S \(shell) '\(path)'",
+            env: env, adminPassword: adminPassword
+        )
+        let out2 = r2.output.lowercased()
+        let licenseOK = out2.contains("install complete") || out2.contains("complete!") ||
+                        out2.contains("success") || out2.contains("license") ||
+                        out2.contains("activated") || out2.contains("done")
+        let success = r2.success || licenseOK
         return StepResult(success: success,
-                          note: success ? "Script completed" : r.output.prefix(200).description)
+                          note: success ? "Script completed" : (r2.output.isEmpty ? r1.output : r2.output).prefix(300).description)
     }
 
     private func runBinary(url: URL, adminPassword: String) async -> StepResult {

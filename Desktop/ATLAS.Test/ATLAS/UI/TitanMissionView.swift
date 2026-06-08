@@ -8,7 +8,7 @@ struct TitanMissionView: View {
     let adminPassword: String
     let onDone: () -> Void
 
-    @State private var showDetails = false
+    @State private var showDetails = true
 
     // MARK: - Derived state
 

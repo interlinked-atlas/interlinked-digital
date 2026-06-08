@@ -403,25 +403,47 @@ struct InstallEngine {
             return
         }
 
-        // For plain scripts: run in-place using /bin/sh so the execute bit on a
-        // read-only volume doesn't matter, and the sibling files stay accessible.
+        // Run the script IN PLACE so sibling files (license folders, BTCR/, etc.)
+        // remain accessible via dirname "$BASH_SOURCE[0]" / dirname "$0".
         let dir      = url.deletingLastPathComponent().path
                          .replacingOccurrences(of: "'", with: "'\\''")
         let fullPath = url.path.replacingOccurrences(of: "'", with: "'\\''")
-        let isShell  = ["sh", "bash", "zsh", "command"].contains(url.pathExtension.lowercased())
-        let runner   = isShell ? "/bin/sh '\(fullPath)'" : "'\(fullPath)'"
+        let pwd      = password.replacingOccurrences(of: "'", with: "'\\''")
 
         _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", url.path])
 
-        let r = runShellWithEnv(
-            "cd '\(dir)' && \(runner)",
-            env: ["SYS_LANG": sysLang, "ATLAS_PASSWORD": password],
-            adminPassword: password
-        )
-        if r.success {
+        // Choose the right interpreter — bash scripts need /bin/bash for $BASH_SOURCE
+        let scriptContent = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        let isBash = scriptContent.hasPrefix("#!/bin/bash") ||
+                     scriptContent.hasPrefix("#!/usr/bin/env bash") ||
+                     scriptContent.contains("BASH_SOURCE") ||
+                     scriptContent.contains("declare -") ||
+                     scriptContent.contains("local ")
+        let shell = isBash ? "/bin/bash" : "/bin/sh"
+
+        let env: [String: String] = [
+            "SYS_LANG": sysLang, "ATLAS_PASSWORD": password,
+            "TERM": "xterm-256color", "HOME": NSHomeDirectory()
+        ]
+
+        // Try without sudo first
+        let r1 = runShellWithEnv("cd '\(dir)' && \(shell) '\(fullPath)'", env: env, adminPassword: password)
+        let o1 = r1.output.lowercased()
+        if r1.success || o1.contains("install complete") || o1.contains("complete!") {
+            await logger.log("  ✓ Script completed: \(url.lastPathComponent)")
+            return
+        }
+
+        // Retry as root so internal sudo calls work without prompting
+        let r2 = runShellWithEnv("cd '\(dir)' && echo '\(pwd)' | sudo -S \(shell) '\(fullPath)'",
+                                 env: env, adminPassword: password)
+        let o2 = r2.output.lowercased()
+        let ok = r2.success || o2.contains("install complete") || o2.contains("complete!") ||
+                 o2.contains("success") || o2.contains("done")
+        if ok {
             await logger.log("  ✓ Script completed: \(url.lastPathComponent)")
         } else {
-            await logger.log("  ⚠ Script error: \(r.output.prefix(120))")
+            await logger.log("  ⚠ Script error: \((r2.output.isEmpty ? r1.output : r2.output).prefix(200))")
         }
     }
 
