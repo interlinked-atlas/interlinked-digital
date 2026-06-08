@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -23,6 +23,7 @@ function EyeOffIcon() {
 }
 
 export default function LoginPage() {
+  const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -30,6 +31,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -66,9 +69,13 @@ export default function LoginPage() {
         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         WebkitFontSmoothing: 'antialiased',
       }}>
-        <div style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{
+          width: '100%', maxWidth: '400px',
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+          transition: 'opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1)',
+        }}>
 
-          {/* ATLAS heading */}
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <a href="/atlas" style={{ display: 'inline-block' }}>
               <h1 style={{
@@ -93,7 +100,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Login card */}
           <div style={{
             background: '#0E0E10',
             borderRadius: '16px',
