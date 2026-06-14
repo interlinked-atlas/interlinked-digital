@@ -76,7 +76,6 @@ export default function LoginPage() {
           transition: 'opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1)',
         }}>
 
-          {/* ATLAS heading */}
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <a href="/atlas" style={{ display: 'inline-block' }}>
               <h1 style={{
@@ -101,7 +100,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Login card */}
           <div style={{
             background: '#0E0E10',
             borderRadius: '16px',

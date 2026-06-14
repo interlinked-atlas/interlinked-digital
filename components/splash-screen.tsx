@@ -23,18 +23,18 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         "fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-1000",
         phase >= 4 ? "opacity-0 pointer-events-none" : "opacity-100"
       )}
-      style={{ background: "#07080F" }}
+      style={{ background: "var(--il-bg)" }}
     >
       {/* Subtle grid */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(62,207,178,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(62,207,178,0.02) 1px, transparent 1px)
+            linear-gradient(var(--il-border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--il-border) 1px, transparent 1px)
           `,
           backgroundSize: "60px 60px",
-          opacity: phase >= 1 ? 1 : 0,
+          opacity: phase >= 1 ? 0.5 : 0,
           transition: "opacity 0.6s ease",
         }}
       />
@@ -49,7 +49,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             src="/images/interlinked-icon.png"
             alt="InterLinked"
             className={cn("w-full h-full object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
-            style={{ filter: "drop-shadow(0 0 14px rgba(62,207,178,0.3))" }}
+            style={{ filter: "drop-shadow(0 0 14px var(--il-glow))" }}
           />
           {["-16px", "-28px"].map((inset, i) => (
             <div
@@ -61,7 +61,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
               )}
               style={{
                 inset,
-                border: `1px solid rgba(62,207,178,${i === 0 ? "0.18" : "0.1"})`,
+                border: `1px solid var(--il-border)`,
               }}
             />
           ))}
@@ -72,11 +72,11 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           className={cn("text-center transition-all duration-700", phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}
         >
           <p style={{
-            fontFamily: "'BomberEscort', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "'Vipnagorgialla', -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: "28px",
             fontWeight: "normal",
             letterSpacing: "0.12em",
-            color: "rgba(220,228,255,0.82)",
+            color: "var(--il-primary)",
             lineHeight: 1,
             display: "inline-flex",
             alignItems: "baseline",
@@ -84,7 +84,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             InterLinked
             <sup style={{
               fontSize: "0.28em",
-              color: "rgba(62,207,178,0.45)",
+              color: "var(--il-secondary)",
               marginLeft: "3px",
               verticalAlign: "super",
               letterSpacing: 0,
@@ -96,12 +96,12 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         {/* Loading bar */}
         <div
           className={cn("transition-all duration-700", phase >= 2 ? "opacity-100" : "opacity-0")}
-          style={{ width: "120px", height: "1px", background: "#1E2240", borderRadius: "1px", overflow: "hidden" }}
+          style={{ width: "120px", height: "1px", background: "var(--il-border)", borderRadius: "1px", overflow: "hidden" }}
         >
           <div
             style={{
               height: "100%",
-              background: "linear-gradient(90deg, #3ECFB2, #5B8DEF)",
+              background: "linear-gradient(90deg, var(--il-secondary), var(--il-primary))",
               borderRadius: "1px",
               transition: "width 2.5s ease",
               width: phase >= 2 ? "100%" : "0%",
