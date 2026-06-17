@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -81,11 +82,14 @@ export async function POST(req: NextRequest) {
         const email   = session.customer_details?.email ?? session.customer_email
         if (!email) break
         if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(session.subscription as string)
+          const sub     = await stripe.subscriptions.retrieve(session.subscription as string)
           const priceId = sub.items.data[0]?.price.id ?? ''
           const plan    = PRICE_PLAN[priceId] ?? 'standard'
+          const planLabel = plan === 'pro' ? 'Pro' : 'Standard'
+          const renewDate = new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
           await updateProfileByEmail(email, plan, 'active')
           await upsertSubscription(email, sub)
+          sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: planLabel, renewDate } }).catch(() => {})
         }
         break
       }
@@ -96,8 +100,12 @@ export async function POST(req: NextRequest) {
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
         if (!email) break
+        const endDate = sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : ''
         await updateProfileByEmail(email, 'standard', 'cancelled')
         await upsertSubscription(email, sub)
+        sendEmail({ to: email, template: 'subscription-cancelled', data: { endDate } }).catch(() => {})
         break
       }
 
@@ -118,7 +126,10 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const email   = invoice.customer_email
-        if (email) await updateProfileByEmail(email, 'standard', 'payment_failed')
+        if (email) {
+          await updateProfileByEmail(email, 'standard', 'payment_failed')
+          sendEmail({ to: email, template: 'payment-failed' }).catch(() => {})
+        }
         break
       }
 
