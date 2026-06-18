@@ -32,6 +32,7 @@ const PLANS = [
     features: [
       'Up to 3 devices',
       '25 installs per month',
+      'Virus Scanner',
       'Bulk installation',
       'Uninstall & Rollback',
       'Smart Storage',
@@ -51,6 +52,7 @@ const PLANS = [
     features: [
       'Up to 3 devices',
       '50 installs per month',
+      'Virus Scanner',
       'All Pro features',
       'Bulk installation',
       'Uninstall & Rollback',
