@@ -9,13 +9,18 @@ struct ContentView: View {
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
                                            || !UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey)
     @State private var needsPasswordSetup   = !KeychainManager.hasPassword()
-    // Always re-check real permission state on every launch, not just onboarding flag.
-    // Accessibility and FDA are fast sync checks; automation is verified async below.
+    // Re-check real permission state on every launch — not just the onboarding flag.
+    // FDA + Accessibility are fast sync checks. Automation is async; we use the stored
+    // confirmation flag as an initial proxy then verify below.
     @State private var needsPermissionsSetup: Bool = {
         !PermissionsManager.hasCompletedOnboarding ||
         !PermissionsManager.hasAccessibility ||
-        !PermissionsManager.hasFullDiskAccess
+        !PermissionsManager.hasFullDiskAccess ||
+        !PermissionsManager.automationManuallyConfirmed
     }()
+    // Live permission state for the in-app warning banner shown after onboarding.
+    @State private var livePermsMissing: [String] = []
+    @State private var permCheckTimer: Timer? = nil
     @State private var unsupportedExtension: String? = nil
     @State private var showHistory = false
     @State private var rollingBack: InstallRecord? = nil
@@ -33,11 +38,15 @@ struct ContentView: View {
     @State private var queueTask: Task<Void, Never>? = nil
     @State private var pluginScanResults: [PluginCheckResult] = []
     @State private var showPluginScan = false
+    @State private var pendingDemoAlerts: [DemoAlert] = []
+    @State private var showDemoAlert = false
+    @State private var preInstallWarnings: [PreInstallWarning] = []
+    @ObservedObject private var zipBroker = ZIPPasswordBroker.shared
     @ObservedObject private var widgetState  = WidgetStateManager.shared
     @ObservedObject private var appearance   = AppearanceManager.shared
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
-    @ObservedObject private var dailyLimit   = DailyLimitManager.shared
+    @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
     @State private var widgetTimer: Task<Void, Never>? = nil
     @State private var showSettings  = false
     @State private var showAbout     = false
@@ -87,6 +96,26 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(appearance.override)
+        .sheet(isPresented: $showDemoAlert, onDismiss: {
+            pendingDemoAlerts.removeFirst()
+            if !pendingDemoAlerts.isEmpty { showDemoAlert = true }
+        }) {
+            if let alert = pendingDemoAlerts.first {
+                DemoAlertView(alert: alert) { showDemoAlert = false }
+            }
+        }
+        .onChange(of: pendingDemoAlerts.count) { count in
+            if count > 0 && !showDemoAlert { showDemoAlert = true }
+        }
+        // ZIP password prompt — suspends install until user enters password or cancels
+        .sheet(item: $zipBroker.pendingRequest) { request in
+            ZIPPasswordView(request: request)
+                .interactiveDismissDisabled(true)
+        }
+        // When user cancels the password prompt, stop the active install and go home
+        .onChange(of: zipBroker.pendingRequest == nil) { _ in
+            // The broker handles resuming the continuation; nothing else needed here
+        }
         .sheet(isPresented: $showAbout) { AboutView() }
         .sheet(isPresented: $showUpgrade) {
             UpgradeView(feature: upgradeFeature) { showUpgrade = false }
@@ -214,28 +243,30 @@ struct ContentView: View {
                         .transition(.move(edge: .trailing))
                     }
                 }
-                .frame(minWidth: showHistory ? 780 : 540, minHeight: 460)
+                .frame(minWidth: showHistory ? 780 : 420, minHeight: showHistory ? 640 : 360)
                 .atlasBackground()
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: showHistory)
             }
         }
         .onChange(of: showHistory) { visible in
             guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
-            let currentH = window.frame.height
-            let targetW: CGFloat = visible ? 800 : 560
+            let targetW: CGFloat = visible ? 860 : 560
+            let minH:   CGFloat = visible ? 640 : 460
+            let targetH: CGFloat = visible ? max(window.frame.height, minH) : window.frame.height
             let currentX = window.frame.origin.x
             let currentY = window.frame.origin.y
-            // Keep the window anchored; only grow/shrink width
+            // Shift Y down if we need more height so window stays on screen
+            let newY = visible ? min(currentY, currentY - (targetH - window.frame.height)) : currentY
             let newX = max(currentX, 0)
             window.minSize = CGSize(width: 1, height: 1)
             NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.32
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 window.animator().setFrame(
-                    NSRect(x: newX, y: currentY, width: targetW, height: currentH),
+                    NSRect(x: newX, y: max(newY, 0), width: targetW, height: targetH),
                     display: true)
             }, completionHandler: {
-                window.minSize = CGSize(width: visible ? 780 : 540, height: 460)
+                window.minSize = CGSize(width: visible ? 780 : 540, height: minH)
             })
         }
         .onChange(of: historyStore.records.isEmpty) { isEmpty in
@@ -263,14 +294,22 @@ struct ContentView: View {
         }
         .onAppear {
             widgetState.startIdleMonitoring()
+            startPermissionPolling()
         }
         .onDisappear {
             widgetState.stopIdleMonitoring()
+            stopPermissionPolling()
         }
         .task {
             // Automation check is slow (spawns osascript) — run non-blocking.
+            // If not granted, send back to permissions setup screen.
             PermissionsManager.checkAutomationPermission { granted in
-                if !granted { needsPermissionsSetup = true }
+                if granted {
+                    PermissionsManager.automationManuallyConfirmed = true
+                } else if !PermissionsManager.automationManuallyConfirmed {
+                    needsPermissionsSetup = true
+                }
+                checkLivePermissions()
             }
         }
     }
@@ -281,6 +320,14 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
                 .padding(.bottom, 16)
+
+            // ── Live permission warning banner ────────────────────────────
+            if !livePermsMissing.isEmpty {
+                permissionsBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
             // Inline mission view replaces the scroll area during TITAN installs
             if showTitanMission, let mission = activeTitanMission {
@@ -380,7 +427,7 @@ struct ContentView: View {
             }
 
             // TITAN CORE™ live action indicator (Pro only, shown while active)
-            if Features.titanCore && titanCore.isActive && !titanCore.currentAction.isEmpty {
+            if titanCore.isActive && !titanCore.currentAction.isEmpty {
                 HStack(spacing: 5) {
                     ProgressView()
                         .scaleEffect(0.48)
@@ -409,6 +456,77 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             Color.atlasBorderSubtle.frame(height: 0.5)
         }
+    }
+
+    // MARK: - Permissions banner
+
+    var permissionsBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .foregroundColor(Color(hex: "#F0A030"))
+                .font(.system(size: 14))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Permission\(livePermsMissing.count == 1 ? "" : "s") required: \(livePermsMissing.joined(separator: ", "))")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F0A030"))
+                Text("Installs will fail without these. Tap to fix.")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#C8A060"))
+            }
+
+            Spacer()
+
+            Button("Fix →") {
+                needsPermissionsSetup = true
+            }
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(Color(hex: "#F0A030"))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(hex: "#F0A030").opacity(0.12))
+            .cornerRadius(7)
+            .overlay(RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(hex: "#F0A030").opacity(0.3), lineWidth: 1))
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(Color(hex: "#F0A030").opacity(0.06))
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .stroke(Color(hex: "#F0A030").opacity(0.25), lineWidth: 1))
+        .animation(.easeInOut(duration: 0.3), value: livePermsMissing)
+    }
+
+    // Checks all three permissions and updates livePermsMissing.
+    // Called on appear and every 5 seconds while in the main view.
+    private func checkLivePermissions() {
+        var missing: [String] = []
+        if !PermissionsManager.hasFullDiskAccess  { missing.append("Full Disk Access") }
+        if !PermissionsManager.hasAccessibility   { missing.append("Accessibility") }
+        // Automation is async — use confirmation flag as proxy
+        if !PermissionsManager.automationManuallyConfirmed { missing.append("Automation") }
+        withAnimation { livePermsMissing = missing }
+    }
+
+    private func startPermissionPolling() {
+        checkLivePermissions()
+        permCheckTimer?.invalidate()
+        permCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+            checkLivePermissions()
+            // Also verify automation for real (async) and clear flag if it passes
+            PermissionsManager.checkAutomationPermission { granted in
+                if granted && !PermissionsManager.automationManuallyConfirmed {
+                    PermissionsManager.automationManuallyConfirmed = true
+                }
+                checkLivePermissions()
+            }
+        }
+    }
+
+    private func stopPermissionPolling() {
+        permCheckTimer?.invalidate()
+        permCheckTimer = nil
     }
 
     // MARK: - Title bar
@@ -472,14 +590,14 @@ struct ContentView: View {
                 }
             }
             .confirmationDialog(
-                "Cancel in progress?",
+                L(.cancelConfirmTitle),
                 isPresented: $showCancelConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Cancel Installation", role: .destructive) { performCancel() }
-                Button("Continue", role: .cancel) {}
+                Button(L(.cancelConfirmStop), role: .destructive) { performCancel() }
+                Button(L(.cancelConfirmContinue), role: .cancel) {}
             } message: {
-                Text("Canceling while an installation is in progress may leave software partially installed. Items already completed will remain. Are you sure?")
+                Text(L(.cancelConfirmMessage))
             }
         }
     }
@@ -552,18 +670,18 @@ struct ContentView: View {
     @ViewBuilder
     var mainContent: some View {
         // Standard plan: pending files ready to continue after lock expires
-        if !auth.isPro && dailyLimit.hasPendingFiles && !dailyLimit.isLocked && showDropZone {
+        if !auth.isPro && monthlyLimit.hasPendingFiles && !monthlyLimit.isLocked && showDropZone {
             pendingFilesPanel
         }
 
         if showDropZone && !rollbackInProgress {
-            if !auth.isPro && dailyLimit.isLocked {
-                dailyLimitLockedZone
+            if !auth.isPro && monthlyLimit.isLocked {
+                monthlyLimitLockedZone
             } else {
                 // Standard: show remaining installs counter while not locked
                 if !auth.isPro {
-                    let rem = dailyLimit.remainingToday
-                    if rem < DailyLimitManager.dailyLimit {
+                    let rem = monthlyLimit.remainingToday
+                    if rem < MonthlyLimitManager.standardLimit {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
@@ -596,6 +714,33 @@ struct ContentView: View {
                     unsupportedExtension = ext
                 }
             }
+        }
+
+        // Pre-install system warnings (non-blocking — dismissed automatically when install starts)
+        ForEach(preInstallWarnings, id: \.message) { warning in
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(Color(hex: "#F0A030"))
+                    .font(.system(size: 12))
+                Text(warning.message)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C8A060"))
+                    .lineLimit(2)
+                Spacer()
+                Button { preInstallWarnings.removeAll { $0.message == warning.message } } label: {
+                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                        .foregroundColor(Color(hex: "#6B7399"))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color(hex: "#1A1200"))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color(hex: "#F0A030").opacity(0.25), lineWidth: 1))
+            .cornerRadius(8)
+            .padding(.horizontal, 16)
+            .transition(.opacity)
         }
 
         if queue.hasItems {
@@ -654,15 +799,25 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Daily limit UI
+    // MARK: - Monthly limit UI
 
-    var dailyLimitLockedZone: some View {
+    var monthlyLimitLockedZone: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
-            let t  = dailyLimit.timeUntilReset
-            let hh = Int(t) / 3600
-            let mm = (Int(t) % 3600) / 60
-            let ss = Int(t) % 60
-            let countdown = String(format: "%02d:%02d:%02d", hh, mm, ss)
+            let t  = monthlyLimit.timeUntilReset
+            let days = Int(t) / 86400
+            let hh   = (Int(t) % 86400) / 3600
+            let mm   = (Int(t) % 3600) / 60
+            let ss   = Int(t) % 60
+            let countdown = days > 0
+                ? String(format: "%dd %02d:%02d:%02d", days, hh, mm, ss)
+                : String(format: "%02d:%02d:%02d", hh, mm, ss)
+
+            let planName   = auth.isAdvanced ? "Advanced" : (auth.isPro ? "Pro" : "Standard")
+            let cap        = monthlyLimit.currentLimit
+            let nextPlan   = auth.isPro && !auth.isAdvanced ? "Advanced" : "Pro"
+            let upgradeMsg = auth.isPro && !auth.isAdvanced
+                ? "Upgrade to Advanced — 50/mo"
+                : "Upgrade to Pro — 25/mo"
 
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
@@ -679,20 +834,20 @@ struct ContentView: View {
                         .foregroundColor(Color(hex: "#F0A030"))
 
                     VStack(spacing: 4) {
-                        Text("Daily install limit reached")
+                        Text("Monthly install limit reached")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(hex: "#F0A030"))
-                        Text("Standard plan: \(DailyLimitManager.dailyLimit) installs per 24 hours")
+                        Text("\(planName) plan: \(cap) installs per month")
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#6B7399"))
                     }
 
-                    if dailyLimit.hasPendingFiles {
+                    if monthlyLimit.hasPendingFiles {
                         HStack(spacing: 5) {
                             Image(systemName: "clock.badge.fill")
                                 .font(.system(size: 11))
                                 .foregroundColor(Color(hex: "#6B7399"))
-                            Text("\(dailyLimit.pendingURLs.count) file\(dailyLimit.pendingURLs.count == 1 ? "" : "s") pending")
+                            Text("\(monthlyLimit.pendingURLs.count) file\(monthlyLimit.pendingURLs.count == 1 ? "" : "s") pending")
                                 .font(.system(size: 11))
                                 .foregroundColor(Color(hex: "#6B7399"))
                         }
@@ -702,25 +857,27 @@ struct ContentView: View {
                         Image(systemName: "clock")
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#6B7399"))
-                        Text("Unlocks in \(countdown)")
+                        Text("Refills in \(countdown)")
                             .font(.system(size: 13, weight: .medium).monospacedDigit())
                             .foregroundColor(Color(hex: "#D0D8F0"))
                     }
 
-                    Button {
-                        upgradeFeature = "Unlimited Installs"
-                        showUpgrade = true
-                    } label: {
-                        Text("Upgrade to Pro — No Limits")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#3ECFB2"))
-                            .padding(.horizontal, 16).padding(.vertical, 7)
-                            .background(Color(hex: "#3ECFB2").opacity(0.1))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(hex: "#3ECFB2").opacity(0.35), lineWidth: 1))
+                    if !auth.isAdvanced {
+                        Button {
+                            upgradeFeature = nextPlan
+                            showUpgrade = true
+                        } label: {
+                            Text(upgradeMsg)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                                .padding(.horizontal, 16).padding(.vertical, 7)
+                                .background(Color(hex: "#3ECFB2").opacity(0.1))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color(hex: "#3ECFB2").opacity(0.35), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 200)
@@ -737,7 +894,7 @@ struct ContentView: View {
                 Text("Pending installation ready")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(Color.atlasLabel)
-                Text("\(dailyLimit.pendingURLs.count) file\(dailyLimit.pendingURLs.count == 1 ? "" : "s") queued from yesterday's session")
+                Text("\(monthlyLimit.pendingURLs.count) file\(monthlyLimit.pendingURLs.count == 1 ? "" : "s") queued from previous session")
                     .font(.system(size: 11))
                     .foregroundColor(Color.atlasSubtitle)
             }
@@ -745,8 +902,8 @@ struct ContentView: View {
             Spacer()
 
             Button("Continue Install") {
-                let urls = dailyLimit.pendingURLs
-                dailyLimit.clearPending()
+                let urls = monthlyLimit.pendingURLs
+                monthlyLimit.clearPending()
                 for url in urls { queue.add(url: url) }
                 withAnimation { showDropZone = true }
             }
@@ -858,7 +1015,7 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
                     .foregroundColor(Color(hex: "#3ECFB2"))
-                Text("Install more")
+                Text(L(.installMore))
                     .foregroundColor(Color.atlasLabel)
             }
             .font(.system(size: 14, weight: .medium))
@@ -1049,25 +1206,38 @@ struct ContentView: View {
 
         // Standard plan: daily limit gate
         if !auth.isPro {
-            guard !dailyLimit.isLocked else { return }
+            guard !monthlyLimit.isLocked else { return }
 
             if urls.count > 1 {
                 // Cap at remaining daily installs — store overflow as pending
-                let remaining = dailyLimit.remainingToday
+                let remaining = monthlyLimit.remainingToday
                 guard remaining > 0 else { return }
                 let toInstall = Array(urls.prefix(remaining))
                 let pending   = Array(urls.dropFirst(remaining))
-                if !pending.isEmpty { dailyLimit.setPending(pending) }
+                if !pending.isEmpty { monthlyLimit.setPending(pending) }
                 greetingShown = true
-                for url in toInstall { queue.add(url: url) }
+                let bundles = BundleGrouper.group(toInstall)
+                for bundle in bundles {
+                    for url in bundle.files { queue.add(url: url) }
+                }
                 withAnimation { showDropZone = true }
                 return
             }
         } else {
-            // Pro: keep existing bulk-install queue path for multiple files
+            // Pro: group related files into bundles, then queue them in install order
             if urls.count > 1 {
                 greetingShown = true
-                for url in urls { queue.add(url: url) }
+                let bundles = BundleGrouper.group(urls)
+                if bundles.count < urls.count {
+                    // At least one bundle was formed — log it
+                    for bundle in bundles where !bundle.isSingleFile {
+                        logger.log("📦 Bundle detected: \"\(bundle.name)\" (\(bundle.files.count) files — installing in order)")
+                    }
+                }
+                // Add files in the resolved install order (PKG → library → patch)
+                for bundle in bundles {
+                    for url in bundle.files { queue.add(url: url) }
+                }
                 withAnimation { showDropZone = true }
                 return
             }
@@ -1101,7 +1271,7 @@ struct ContentView: View {
         // to the regular plugin install path which just copies + codesigns the bundle.
         let isPluginBundle = ["vst3", "component", "vst", "aaxplugin"].contains(ext)
 
-        if Features.titanCore && TitanCore.shared.isAvailable && (isMountable || isFolder) && !isPluginBundle {
+        if TitanCore.shared.isAvailable && (isMountable || isFolder) && !isPluginBundle {
             // Run on a background thread — hdiutil attach is a blocking call that would
             // freeze the UI if called on the MainActor (Task {} inherits MainActor).
             Task.detached(priority: .userInitiated) {
@@ -1196,6 +1366,67 @@ struct ContentView: View {
                 }
                 let capturedAllFiles = allFiles
                 await MainActor.run { logger.log("TITAN CORE™: Found \(capturedAllFiles.count) installable file(s)") }
+
+                // ── Waves Audio — dedicated engine ──────────────────────────
+                // Checked before generic TITAN plan so Waves always uses its
+                // specific uninstall → Central → patch → AU reg flow.
+                if WavesInstallEngine.isWavesContent(directory: finalScanDir, files: capturedAllFiles) {
+                    let adminPwd = await MainActor.run { KeychainManager.loadPassword() ?? "" }
+                    await MainActor.run {
+                        appState.phase = .installing
+                        logger.log("WAVES: Waves Audio detected — routing to Waves Install Engine.")
+                    }
+                    let (wavesOK, wavesError) = await WavesInstallEngine.install(
+                        sourceDir: finalScanDir,
+                        adminPassword: adminPwd,
+                        logger: logger
+                    )
+                    if !finalMountedAt.isEmpty {
+                        _ = InstallEngine.runProcess(path: "/usr/bin/hdiutil",
+                                                     arguments: ["detach", finalMountedAt, "-quiet"])
+                    }
+                    // ── TITAN VERIFY™ for Waves ───────────────────────────
+                    let wavesBaseOK = wavesOK
+                    var wavesFinalOK = wavesBaseOK
+                    if wavesBaseOK {
+                        let verify = await TitanVerify.verify(
+                            installedFiles: [],
+                            pkgReceiptIDs: [],
+                            sourceURL: url,
+                            logger: logger)
+                        if !verify.passed { wavesFinalOK = false }
+                    }
+                    let wavesLogType = wavesFinalOK ? "install" : "failed"
+
+                    // Write install record + sync log (same pipeline as normal installs)
+                    let wavesInstallResult: InstallResult = wavesFinalOK
+                        ? .success(appName: "Waves Audio V16")
+                        : .failure(reason: wavesError ?? "Waves install failed — check log for details")
+                    await MainActor.run {
+                        let installResult: InstallResult = wavesInstallResult
+                        let record = InstallLogger.writeLog(
+                            fileURL: url,
+                            fileType: "Waves Audio Bundle",
+                            entries: logger.entries,
+                            result: installResult,
+                            installedFiles: [],
+                            pkgReceiptIDs: [],
+                            sessionID: UUID())
+                        historyStore.add(record)
+                        appState.phase = .idle
+                    }
+                    await MainActor.run {
+                        let logContent = logger.entries.joined(separator: "\n")
+                        syncInstallLog(
+                            logType: wavesLogType,
+                            appName: "Waves Audio V16",
+                            fileName: url.lastPathComponent,
+                            content: logContent)
+                    }
+                    return
+                }
+                // ────────────────────────────────────────────────────────────
+
                 let plan = await InstallIntelligence.analyze(directory: finalScanDir, files: capturedAllFiles)
                 await MainActor.run { logger.log("TITAN CORE™: Plan has \(plan.orderedSteps.count) step(s), instructions=\(plan.instructions != nil)") }
 
@@ -1259,7 +1490,7 @@ struct ContentView: View {
 
     private func beginInstall(url: URL) {
         // Record single-file install against daily limit (Standard only)
-        dailyLimit.recordInstall()
+        monthlyLimit.recordInstall()
         withAnimation { showDropZone = false }
         pluginScanResults = []
         showPluginScan = false
@@ -1279,12 +1510,12 @@ struct ContentView: View {
             switch appState.lastResult {
             case .success(let name):
                 ATLASNotification.send(
-                    title: "Installation Complete",
+                    title: L(.notifySuccessTitle),
                     body: "\(name) installed successfully.")
                 WidgetStateManager.shared.menuStatus = .success
             case .failure(let reason):
                 ATLASNotification.send(
-                    title: "Installation Failed",
+                    title: L(.notifyFailedTitle),
                     body: reason)
                 WidgetStateManager.shared.menuStatus = .failure
                 // TITAN CORE™ handles recovery automatically during install —
@@ -1306,10 +1537,10 @@ struct ContentView: View {
     private func startQueue() {
         // Standard plan: cap queue at remaining daily installs, store overflow as pending
         if !auth.isPro {
-            let remaining = dailyLimit.remainingToday
+            let remaining = monthlyLimit.remainingToday
             if queue.items.count > remaining {
                 let overflow = Array(queue.items.dropFirst(remaining))
-                dailyLimit.setPending(overflow.map { $0.url })
+                monthlyLimit.setPending(overflow.map { $0.url })
                 for item in overflow { queue.remove(id: item.id) }
             }
         }
@@ -1325,6 +1556,22 @@ struct ContentView: View {
         let sessionID = UUID()
 
         queueTask = Task {
+            // Pre-install system checks — run before touching any file
+            let urlsToCheck = queue.items.map { $0.url }
+            let checks = PreInstallChecker.check(urls: urlsToCheck)
+            await MainActor.run { preInstallWarnings = checks.filter { !$0.isBlocker } }
+            if let blocker = checks.first(where: { $0.isBlocker }) {
+                logger.log("⛔ Install blocked: \(blocker.message)")
+                for item in queue.items {
+                    if case .waiting = item.status {
+                        queue.updateStatus(id: item.id, status: .failure(blocker.message))
+                    }
+                }
+                queue.isProcessing = false
+                appState.phase = .idle
+                return
+            }
+
             // Phase 1: Scan all items sequentially (fast, read-only)
             let items = queue.items
             for item in items {
@@ -1335,7 +1582,7 @@ struct ContentView: View {
                 queue.updateScanResult(id: item.id, result: scanResult)
                 queue.updateStatus(
                     id: item.id,
-                    status: scanResult.canInstall ? .waiting : .failure("Confidence too low")
+                    status: scanResult.canInstall ? .waiting : .failure("confidence too low")
                 )
             }
 
@@ -1367,6 +1614,7 @@ struct ContentView: View {
 
             queue.isProcessing = false
             queue.currentIndex = nil
+            preInstallWarnings = []
             logger.log("--- Queue complete ---")
             cancelWidgetTimer()
             exitWidgetMode()
@@ -1375,13 +1623,25 @@ struct ContentView: View {
             }
 
             let succeeded = queue.items.filter {
-                if case .success = $0.status { return true }; return false }.count
+                if case .success = $0.status { return true }
+                if case .demoWarning = $0.status { return true }
+                return false }.count
+            let demoCount = queue.items.filter {
+                if case .demoWarning = $0.status { return true }; return false }.count
             let failed = queue.items.filter {
                 if case .failure = $0.status { return true }; return false }.count
+            let demoNote = demoCount > 0 ? ", \(demoCount) in demo mode" : ""
+            let rescanNote: String = {
+                let daws = DAWRescanAdvisor.runningDAWs()
+                if succeeded > 0 && !daws.isEmpty {
+                    return " Rescan plugins in \(daws.joined(separator: " & "))."
+                }
+                return ""
+            }()
             ATLASNotification.send(
                 title: "ATLAS — Queue Complete",
-                body: "\(succeeded) installed successfully" +
-                      (failed > 0 ? ", \(failed) failed." : ".")
+                body: "\(succeeded) installed successfully\(demoNote)" +
+                      (failed > 0 ? ", \(failed) failed." : ".") + rescanNote
             )
             WidgetStateManager.shared.menuStatus = failed > 0 ? .failure : .success
         }
@@ -1389,48 +1649,131 @@ struct ContentView: View {
 
     private func runInstallItem(id: UUID, sessionID: UUID) async {
         guard !InstallEngine.cancellationRequested else {
-            queue.updateStatus(id: id, status: .failure("Cancelled"))
+            queue.updateStatus(id: id, status: .failure("cancelled"))
             return
         }
         guard let item = queue.items.first(where: { $0.id == id }) else { return }
         // Record against daily limit per queued file (Standard only)
-        await MainActor.run { dailyLimit.recordInstall() }
+        await MainActor.run { monthlyLimit.recordInstall() }
         queue.updateStatus(id: id, status: .installing)
         logger.log("Installing: \(item.fileName)")
 
-        let (result, installedFiles, receiptIDs, isPlugin) =
+        var (result, installedFiles, receiptIDs, isPlugin) =
             await InstallEngine.install(url: item.url, logger: logger) { pct, step in
                 self.queue.updateProgress(id: id, progress: pct, step: step)
             }
 
+        // Silent retry — if the first attempt failed and the user didn't cancel,
+        // wait 2 s and try exactly once more (covers transient permission dialogs,
+        // file-lock races, and PKG installer timing issues).
+        if case .failure(let reason) = result,
+           !reason.lowercased().contains("cancelled"),
+           !InstallEngine.cancellationRequested {
+            logger.log("  ↺ Retrying install in 2 s…")
+            queue.updateProgress(id: id, progress: 0.05, step: L(.retrying))
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if !InstallEngine.cancellationRequested {
+                (result, installedFiles, receiptIDs, isPlugin) =
+                    await InstallEngine.install(url: item.url, logger: logger) { pct, step in
+                        self.queue.updateProgress(id: id, progress: pct, step: step)
+                    }
+                if case .success = result {
+                    logger.log("  ✓ Retry succeeded")
+                } else {
+                    logger.log("  ✗ Retry also failed — marking as failed")
+                }
+            }
+        }
+
+        // ── TITAN VERIFY™ ─────────────────────────────────────────────────────
+        var finalResult = result
+        var demoWarnings: [DemoHit] = []
+        var verifyPassed = false
+        if case .success = result {
+            queue.updateProgress(id: id, progress: 0.95, step: "Verifying install…")
+            let verify = await TitanVerify.verify(
+                installedFiles: installedFiles,
+                pkgReceiptIDs: receiptIDs,
+                sourceURL: item.url,
+                logger: logger)
+            demoWarnings = verify.demoWarnings
+            if !verify.passed {
+                finalResult = .failure(reason: verify.summary)
+            } else {
+                verifyPassed = true
+            }
+        }
+
         let type_    = InstallerClassifier.classify(url: item.url)
         let fileType = typeLabel(type_)
-        let record   = InstallLogger.writeLog(
+        var record   = InstallLogger.writeLog(
             fileURL: item.url, fileType: fileType,
-            entries: logger.entries, result: result,
+            entries: logger.entries, result: finalResult,
             installedFiles: installedFiles, pkgReceiptIDs: receiptIDs,
             sessionID: sessionID)
+        record.titanVerified = verifyPassed && demoWarnings.isEmpty
+        record.demoDetected  = !demoWarnings.isEmpty
 
         historyStore.add(record)
+
+        // ── ATLAS LEARN™ — upload verified clean installs as learned patterns ──
+        if verifyPassed && demoWarnings.isEmpty, case .success(let learnName) = finalResult {
+            let capturedFiles    = installedFiles
+            let capturedReceipts = receiptIDs
+            let capturedURL      = item.url
+            Task.detached {
+                await ATLASLearn.shared.contribute(
+                    productName: learnName,
+                    sourceURL: capturedURL,
+                    installedFiles: capturedFiles,
+                    pkgReceiptIDs: capturedReceipts)
+            }
+        }
+
         let logContent = logger.entries.joined(separator: "\n")
-        switch result {
+        switch finalResult {
         case .success(let name):
             queue.updateStatus(id: id, status: .success)
             queue.updateProgress(id: id, progress: 1.0, step: "")
-            logger.log("  ✓ Installed: \(name)")
+            if !demoWarnings.isEmpty {
+                logger.log("  ⚠️ Installed with warning: Demo Mode detected (\(demoWarnings.count) signal(s))")
+                queue.updateStatus(id: id, status: .demoWarning(ATLASMessages.friendlyDemoWarning(keywords: demoWarnings.map { $0.keyword })))
+                await MainActor.run { pendingDemoAlerts.append(DemoAlert(productName: name, hits: demoWarnings)) }
+            } else {
+                logger.log("  ✓ Installed & TITAN VERIFIED™: \(name)")
+            }
             if isPlugin && RosettaEngine.isAppleSilicon {
                 withAnimation { showRosetta = true }
             }
-            // Accumulate plugin scan results from queue installs
             let newScanResults = PluginScanner.scan(installedFiles: installedFiles)
             if !newScanResults.isEmpty {
                 pluginScanResults.append(contentsOf: newScanResults)
             }
-            syncInstallLog(logType: "install", appName: name, fileName: item.fileName, content: logContent)
+            syncInstallLog(logType: demoWarnings.isEmpty ? "install" : "install-demo",
+                           appName: name, fileName: item.fileName, content: logContent)
         case .failure(let reason):
+            let isCancelled = reason.lowercased() == "cancelled"
             queue.updateStatus(id: id, status: .failure(reason))
-            logger.log("  ✗ Failed: \(reason)")
+            logger.log(isCancelled ? "  ✗ Cancelled" : "  ✗ Failed: \(reason)")
             syncInstallLog(logType: "failed", appName: item.fileName, fileName: item.fileName, content: logContent)
+            if !isCancelled {
+                ATLASFailureReporter.report(
+                    productName:    item.fileName,
+                    sourceURL:      item.url,
+                    failureReason:  reason,
+                    stepsAttempted: logger.entries.filter { $0.hasPrefix("[") }.map { $0 },
+                    installLog:     logContent)
+            }
+            // ZIP password cancel — clear queue and go back to home
+            if reason.lowercased().contains("password required") || isCancelled {
+                await MainActor.run {
+                    queue.clear()
+                    queue.items.removeAll()
+                    logger.clear()
+                    withAnimation { showDropZone = true }
+                    appState.reset()
+                }
+            }
         }
     }
 
@@ -1585,7 +1928,7 @@ struct ContentView: View {
             for item in queue.items {
                 switch item.status {
                 case .waiting, .installing, .scanning:
-                    queue.updateStatus(id: item.id, status: .failure("Cancelled"))
+                    queue.updateStatus(id: item.id, status: .failure("cancelled"))
                 default:
                     break
                 }
@@ -1725,17 +2068,23 @@ struct ContentView: View {
     // can roll back the install (uninstall PKG files + remove hosts entries) from
     // the History panel. PRO-only feature.
     private func saveTitanRecord(mission: TitanMission) {
+        Task {
+            await saveTitanRecordAsync(mission: mission)
+        }
+    }
+
+    private func saveTitanRecordAsync(mission: TitanMission) async {
         let sourceName = mission.sourceURL.lastPathComponent
         // Only PKG installs are critical — script/binary failures don't mean the
         // software wasn't installed (all receipts may still be present).
-        let hasFailed  = mission.steps.contains(where: {
+        var hasFailed  = mission.steps.contains(where: {
             guard $0.status == .failed else { return false }
             if case .installPkg = $0.action { return true }
             return false
         })
 
         // Build detailed log entries — include resultNote so failures are diagnosable
-        let entries: [String] = mission.steps.map { step in
+        var entries: [String] = mission.steps.map { step in
             let note = step.resultNote.isEmpty ? "" : " — \(step.resultNote)"
             return "[\(step.status)] \(step.title)\(note)"
         }
@@ -1750,16 +2099,35 @@ struct ContentView: View {
             .map { "\($0.title): \($0.resultNote.isEmpty ? "Step failed" : $0.resultNote)" }
             ?? "One or more steps failed"
 
+        // ── TITAN VERIFY™ ─────────────────────────────────────────────────────
+        var titanDemoWarnings: [DemoHit] = []
+        if !hasFailed {
+            let verify = await TitanVerify.verify(
+                installedFiles: mission.installedFiles,
+                pkgReceiptIDs: mission.installedPKGReceipts,
+                sourceURL: mission.sourceURL,
+                logger: logger)
+            entries.append(contentsOf: verify.checks.map {
+                "[\($0.passed ? "verify-pass" : "verify-fail")] \($0.label): \($0.detail)"
+            })
+            titanDemoWarnings = verify.demoWarnings
+            if !verify.passed {
+                hasFailed = true
+            }
+        }
+
         // Always write the log — every plan gets a record of what happened
+        let finalResult: InstallResult = hasFailed
+            ? .failure(reason: failureReason)
+            : .success(appName: sourceName)
+
         let record = InstallLogger.writeLog(
             fileURL:      mission.sourceURL,
             fileType:     mission.sourceURL.pathExtension.uppercased().isEmpty
                               ? "Install"
                               : mission.sourceURL.pathExtension.uppercased(),
             entries:      entries,
-            result:       hasFailed
-                            ? .failure(reason: failureReason)
-                            : .success(appName: sourceName),
+            result:       finalResult,
             installedFiles:   mission.installedFiles,
             pkgReceiptIDs:    mission.installedPKGReceipts,
             remediationAttempted: false
@@ -1774,9 +2142,21 @@ struct ContentView: View {
             content: entries.joined(separator: "\n")
         )
 
+        if hasFailed {
+            ATLASFailureReporter.report(
+                productName:    sourceName,
+                sourceURL:      mission.sourceURL,
+                failureReason:  failureReason,
+                stepsAttempted: mission.steps.map { "[\($0.status)] \($0.title)" },
+                installLog:     entries.joined(separator: "\n"))
+        }
+
         // Always save hosts entries to history so rollback can clean them up for any user.
         // (Hosts entries must be removed on uninstall regardless of plan tier.)
+        let titanVerifyPassed = !hasFailed && titanDemoWarnings.isEmpty
         var fullRecord = record
+        fullRecord.titanVerified = titanVerifyPassed
+        fullRecord.demoDetected  = !titanDemoWarnings.isEmpty
         if !mission.addedHostsEntries.isEmpty {
             fullRecord = InstallRecord(
                 id:                record.id,
@@ -1788,11 +2168,31 @@ struct ContentView: View {
                 status:            record.status,
                 failureReason:     record.failureReason,
                 logFileName:       record.logFileName,
-                addedHostsEntries: mission.addedHostsEntries
+                addedHostsEntries: mission.addedHostsEntries,
+                titanVerified:     titanVerifyPassed,
+                demoDetected:      !titanDemoWarnings.isEmpty
             )
         }
 
         historyStore.add(fullRecord)
+
+        // ── ATLAS LEARN™ ──────────────────────────────────────────────────────
+        if titanVerifyPassed {
+            Task.detached {
+                await ATLASLearn.shared.contribute(
+                    productName: sourceName,
+                    sourceURL: mission.sourceURL,
+                    installedFiles: mission.installedFiles,
+                    pkgReceiptIDs: mission.installedPKGReceipts)
+            }
+        }
+
+        if !titanDemoWarnings.isEmpty {
+            logger.log("⚠️ Demo Mode detected — \(titanDemoWarnings.count) signal(s): \(titanDemoWarnings.map { $0.keyword }.joined(separator: ", "))")
+            await MainActor.run {
+                pendingDemoAlerts.append(DemoAlert(productName: sourceName, hits: titanDemoWarnings))
+            }
+        }
         logger.log(Features.rollback ? "📋 TITAN mission saved to history — rollback available" : "📋 TITAN mission saved to history")
     }
 
@@ -1827,6 +2227,7 @@ struct ContentView: View {
         case .vst: return "VST"
         case .aax: return "AAX"
         case .kontaktLibrary: return "Kontakt Library"
+        case .exe:            return "EXE (Wine)"
         case .unsupported(let e): return e.uppercased()
         }
     }

@@ -24,10 +24,11 @@ struct ATLASSession: Codable {
 struct ATLASProfile: Codable {
     let id: String
     let email: String
-    let plan: String                // "standard" or "pro"
+    let plan: String                // "standard", "pro", or "advanced"
     let subscriptionStatus: String
 
-    var isPro: Bool { plan == "pro" }
+    var isPro: Bool      { plan == "pro" || plan == "advanced" }
+    var isAdvanced: Bool { plan == "advanced" }
 
     enum CodingKeys: String, CodingKey {
         case id, email, plan
