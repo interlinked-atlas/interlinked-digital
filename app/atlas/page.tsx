@@ -616,7 +616,7 @@ export default function AtlasSignupPage() {
         )}
 
         {step === 'plan' && (
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px 80px' }}>
+          <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
             <FadeUp>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h2 style={{
@@ -631,7 +631,7 @@ export default function AtlasSignupPage() {
               </div>
             </FadeUp>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
               {PLANS.map((plan, i) => (
                 <FadeUp key={plan.id} delay={i * 80}>
                   <div
