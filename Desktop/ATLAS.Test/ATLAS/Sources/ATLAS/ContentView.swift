@@ -47,6 +47,9 @@ struct ContentView: View {
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
+    @ObservedObject private var virusScan     = VirusScanEngine.shared
+    @State private var showVirusScanResult    = false
+    @State private var pendingVirusScanURL:   URL? = nil
     @State private var widgetTimer: Task<Void, Never>? = nil
     @State private var showSettings  = false
     @State private var showAbout     = false
@@ -766,6 +769,35 @@ struct ContentView: View {
                     withAnimation { showDropZone = true }
                 }
             )
+            .sheet(isPresented: $showVirusScanResult) {
+                if let vtResult = virusScan.lastResult, let url = pendingVirusScanURL {
+                    VirusScanView(
+                        result: vtResult,
+                        fileName: url.lastPathComponent,
+                        onProceed: {
+                            showVirusScanResult = false
+                            pendingVirusScanURL = nil
+                            beginInstall(url: url)
+                        },
+                        onDelete: {
+                            showVirusScanResult = false
+                            _ = virusScan.deleteFile(url: url)
+                            pendingVirusScanURL = nil
+                            appState.reset()
+                            logger.clear()
+                            withAnimation { showDropZone = true }
+                        },
+                        onCancel: {
+                            showVirusScanResult = false
+                            pendingVirusScanURL = nil
+                            appState.reset()
+                            logger.clear()
+                            withAnimation { showDropZone = true }
+                        }
+                    )
+                    .frame(width: 360, height: 480)
+                }
+            }
         }
 
         if appState.phase == .success || appState.phase == .failure {
@@ -1483,6 +1515,25 @@ struct ContentView: View {
             pendingInstallURL  = url
             pendingScanResult  = scanResult
             showStorageSelection = true
+        } else if Features.isPro {
+            // Run virus scan for Pro/Advanced before install
+            pendingVirusScanURL = url
+            Task {
+                let result = await virusScan.scan(url: url)
+                // Clean or unknown — proceed automatically without showing sheet
+                if let result, result.isClear {
+                    pendingVirusScanURL = nil
+                    beginInstall(url: url)
+                } else {
+                    // Show sheet for PUA / suspicious / malicious (or scan error → just proceed)
+                    if result != nil {
+                        showVirusScanResult = true
+                    } else {
+                        pendingVirusScanURL = nil
+                        beginInstall(url: url)
+                    }
+                }
+            }
         } else {
             beginInstall(url: url)
         }
