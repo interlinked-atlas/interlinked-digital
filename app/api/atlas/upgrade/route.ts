@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const PRO_PRICE_ID = 'price_1TdIbOA1Bm2dPCGcpLFkuAea'
+const PRO_PRICE_ID = 'price_1TjYPHA1Bm2dPCGcDq8GuJD8'
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()

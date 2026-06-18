@@ -12,7 +12,7 @@ const PLANS = [
   {
     id: 'standard',
     name: 'Standard',
-    price: '$14.99',
+    price: '$24.99',
     period: '/mo',
     color: '#8A8A96',
     accentColor: '#5E6AD2',
@@ -24,7 +24,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '$29.99',
+    price: '$49.99',
     period: '/mo',
     color: '#3ECFB2',
     accentColor: '#3ECFB2',

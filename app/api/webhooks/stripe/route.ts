@@ -13,6 +13,8 @@ const supabase = createClient(
 const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
   'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
   'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
+  'price_1TjYPHA1Bm2dPCGcH9h5gH7E': { profile: 'standard', subscription: 'standard' },
+  'price_1TjYPHA1Bm2dPCGcDq8GuJD8': { profile: 'pro',      subscription: 'pro'      },
 }
 
 async function getUserByEmail(email: string) {

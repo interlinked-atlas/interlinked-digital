@@ -106,7 +106,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
   const maxDevices = isPro ? 3 : 1
   const planName = isPro ? "Pro" : "Standard"
-  const planPrice = isPro ? "$29.99" : "$14.99"
+  const planPrice = isPro ? "$49.99" : "$24.99"
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
