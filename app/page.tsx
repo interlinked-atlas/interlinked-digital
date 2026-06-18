@@ -58,7 +58,7 @@ export default function Home() {
                 isActive={true}
                 iconSrc="/images/atlas-icon.png"
                 href="/atlas"
-                availability={{ mac: true, windows: false }}
+                availability={{ mac: true, windows: true }}
               />
             </div>
           </section>

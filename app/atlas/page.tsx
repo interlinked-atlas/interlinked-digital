@@ -433,7 +433,7 @@ export default function AtlasSignupPage() {
                   opacity: heroIn ? 1 : 0,
                   transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 180ms',
                 }}>
-                  The future of macOS installation.
+                  The World's First Autonomous Installation App.
                 </p>
 
                 <p style={{
