@@ -48,8 +48,11 @@ struct ContentView: View {
     @ObservedObject private var auth         = AuthManager.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
     @ObservedObject private var virusScan     = VirusScanEngine.shared
+    @ObservedObject private var fileShare     = FileShareEngine.shared
     @State private var showVirusScanResult    = false
     @State private var pendingVirusScanURL:   URL? = nil
+    @State private var showFileShare          = false
+    @State private var showFileShareUpload    = false
     @State private var widgetTimer: Task<Void, Never>? = nil
     @State private var showSettings  = false
     @State private var showAbout     = false
@@ -716,6 +719,51 @@ struct ContentView: View {
                 } onUnsupported: { ext in
                     unsupportedExtension = ext
                 }
+
+                // FileSharing panel (Pro/Advanced)
+                if Features.isPro {
+                    if showFileShareUpload {
+                        FileShareUploadOverlay()
+                    }
+
+                    Button(action: {
+                        withAnimation { showFileShare.toggle() }
+                        if showFileShare { Task { await fileShare.loadFiles() } }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "icloud.and.arrow.up")
+                                .font(.system(size: 10))
+                            Text(showFileShare ? "Hide Shared Files" : "Shared Files")
+                                .font(.system(size: 11, weight: .medium))
+                            if !fileShare.sharedFiles.isEmpty && !showFileShare {
+                                Text("\(fileShare.sharedFiles.count)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(Color(hex: "#3ECFB2"))
+                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                    .background(Color(hex: "#3ECFB2").opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                            Spacer()
+                            Image(systemName: showFileShare ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 9))
+                        }
+                        .foregroundStyle(Color(hex: "#525260"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.02))
+                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                        .overlay(RoundedRectangle(cornerRadius: 9)
+                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.75))
+                    }
+                    .buttonStyle(.plain)
+
+                    if showFileShare {
+                        FileShareView { downloadedURL in
+                            showFileShare = false
+                            handleFilesDrop(urls: [downloadedURL])
+                        }
+                    }
+                }
             }
         }
 
@@ -767,7 +815,15 @@ struct ContentView: View {
                     appState.reset()
                     logger.clear()
                     withAnimation { showDropZone = true }
-                }
+                },
+                onShare: Features.isPro ? {
+                    Task {
+                        showFileShareUpload = true
+                        let ok = await fileShare.upload(url: scanResult.fileURL)
+                        showFileShareUpload = false
+                        if ok { showFileShare = true }
+                    }
+                } : nil
             )
             .sheet(isPresented: $showVirusScanResult) {
                 if let vtResult = virusScan.lastResult, let url = pendingVirusScanURL {
