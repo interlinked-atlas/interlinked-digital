@@ -17,6 +17,7 @@ const PRICE_PLAN: Record<string, string> = {
   'price_1TdIbOA1Bm2dPCGcpLFkuAea': 'pro',
   'price_1TjYPHA1Bm2dPCGcH9h5gH7E': 'standard',
   'price_1TjYPHA1Bm2dPCGcDq8GuJD8': 'pro',
+  'price_1TjYgoA1Bm2dPCGc7Qj3C7AB': 'advanced',
 }
 
 export const config = { api: { bodyParser: false } }
