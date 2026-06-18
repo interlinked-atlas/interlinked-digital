@@ -186,7 +186,8 @@ final class FileShareEngine: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONEncoder().encode(["file_name": fileName, "file_size": fileSize])
+        struct UploadURLBody: Encodable { let file_name: String; let file_size: Int64 }
+        req.httpBody = try? JSONEncoder().encode(UploadURLBody(file_name: fileName, file_size: fileSize))
 
         guard let (data, resp) = try? await URLSession.shared.data(for: req) else {
             error = "Upload request failed"; return nil
@@ -234,9 +235,8 @@ final class FileShareEngine: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONEncoder().encode([
-            "file_name": fileName, "file_size": "\(fileSize)", "storage_path": storagePath
-        ])
+        struct ConfirmBody: Encodable { let file_name: String; let file_size: Int64; let storage_path: String }
+        req.httpBody = try? JSONEncoder().encode(ConfirmBody(file_name: fileName, file_size: fileSize, storage_path: storagePath))
         guard let (_, resp) = try? await URLSession.shared.data(for: req) else { return false }
         return (resp as? HTTPURLResponse)?.statusCode == 200
     }

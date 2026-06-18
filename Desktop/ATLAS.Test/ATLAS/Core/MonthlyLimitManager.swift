@@ -66,8 +66,9 @@ final class MonthlyLimitManager: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONEncoder().encode(["count": installsThisMonth,
-                                                   "period_start": ISO8601DateFormatter().string(from: periodStart)])
+        struct SyncBody: Encodable { let count: Int; let period_start: String }
+        req.httpBody = try? JSONEncoder().encode(SyncBody(count: installsThisMonth,
+                                                          period_start: ISO8601DateFormatter().string(from: periodStart)))
         _ = try? await URLSession.shared.data(for: req)
     }
 

@@ -686,7 +686,7 @@ struct ContentView: View {
             } else {
                 // Standard: show remaining installs counter while not locked
                 if !auth.isPro {
-                    let rem = monthlyLimit.remainingToday
+                    let rem = monthlyLimit.remaining
                     if rem < MonthlyLimitManager.standardLimit {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
@@ -1298,7 +1298,7 @@ struct ContentView: View {
 
             if urls.count > 1 {
                 // Cap at remaining daily installs — store overflow as pending
-                let remaining = monthlyLimit.remainingToday
+                let remaining = monthlyLimit.remaining
                 guard remaining > 0 else { return }
                 let toInstall = Array(urls.prefix(remaining))
                 let pending   = Array(urls.dropFirst(remaining))
@@ -1644,7 +1644,7 @@ struct ContentView: View {
     private func startQueue() {
         // Standard plan: cap queue at remaining daily installs, store overflow as pending
         if !auth.isPro {
-            let remaining = monthlyLimit.remainingToday
+            let remaining = monthlyLimit.remaining
             if queue.items.count > remaining {
                 let overflow = Array(queue.items.dropFirst(remaining))
                 monthlyLimit.setPending(overflow.map { $0.url })
