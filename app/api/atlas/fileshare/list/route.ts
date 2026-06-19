@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('shared_files')
-    .select('id, file_name, file_size, storage_path, uploaded_at, expires_at')
+    .select('id, file_name, file_size, storage_path, uploaded_at, expires_at, platform')
     .eq('user_id', user.id)
     .order('uploaded_at', { ascending: false })
 

@@ -2,13 +2,46 @@ import Foundation
 
 // MARK: - Models
 
+// Mac-only file extensions
+private let macOnlyExtensions: Set<String> = ["dmg", "pkg", "app", "mpkg", "command", "kext", "component"]
+// Windows-only file extensions
+private let winOnlyExtensions: Set<String> = ["exe", "msi", "bat", "cmd", "ps1"]
+
+func detectFilePlatform(_ fileName: String) -> String {
+    let ext = (fileName as NSString).pathExtension.lowercased()
+    if macOnlyExtensions.contains(ext) { return "mac" }
+    if winOnlyExtensions.contains(ext)  { return "windows" }
+    return "cross-platform"
+}
+
 struct SharedFile: Identifiable, Codable {
-    let id:          String
-    let file_name:   String
-    let file_size:   Int64
+    let id:           String
+    let file_name:    String
+    let file_size:    Int64
     let storage_path: String
-    let uploaded_at: String
-    let expires_at:  String
+    let uploaded_at:  String
+    let expires_at:   String
+    let platform:     String?
+
+    /// True if this file almost certainly won't run on macOS
+    var osIncompatible: Bool {
+        let p = platform ?? detectFilePlatform(file_name)
+        return p == "windows"
+    }
+    /// User-facing warning when incompatible
+    var osWarning: String? {
+        guard osIncompatible else { return nil }
+        return "⚠ \"\(file_name)\" is a Windows installer and cannot run on macOS."
+    }
+    /// Badge label shown on the file row
+    var platformBadge: String? {
+        switch platform ?? detectFilePlatform(file_name) {
+        case "windows": return "Windows only"
+        case "mac":     return nil  // we're on Mac, no badge needed
+        case "cross-platform": return nil
+        default: return nil
+        }
+    }
 
     var displaySize: String {
         let mb = Double(file_size) / 1_048_576
@@ -78,11 +111,13 @@ final class FileShareEngine: ObservableObject {
         guard await uploadToSignedURL(uploadInfo.uploadURL, fileURL: url) else { return false }
 
         // 3. Confirm to our API
+        let platform = detectFilePlatform(url.lastPathComponent)
         guard await confirmUpload(
             token: token,
             fileName: url.lastPathComponent,
             fileSize: size,
-            storagePath: uploadInfo.storagePath
+            storagePath: uploadInfo.storagePath,
+            platform: platform
         ) else { return false }
 
         await loadFiles()
@@ -229,14 +264,14 @@ final class FileShareEngine: ObservableObject {
         }
     }
 
-    private func confirmUpload(token: String, fileName: String, fileSize: Int64, storagePath: String) async -> Bool {
+    private func confirmUpload(token: String, fileName: String, fileSize: Int64, storagePath: String, platform: String) async -> Bool {
         guard let url = URL(string: "\(apiBase)/confirm") else { return false }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        struct ConfirmBody: Encodable { let file_name: String; let file_size: Int64; let storage_path: String }
-        req.httpBody = try? JSONEncoder().encode(ConfirmBody(file_name: fileName, file_size: fileSize, storage_path: storagePath))
+        struct ConfirmBody: Encodable { let file_name: String; let file_size: Int64; let storage_path: String; let platform: String }
+        req.httpBody = try? JSONEncoder().encode(ConfirmBody(file_name: fileName, file_size: fileSize, storage_path: storagePath, platform: platform))
         guard let (_, resp) = try? await URLSession.shared.data(for: req) else { return false }
         return (resp as? HTTPURLResponse)?.statusCode == 200
     }

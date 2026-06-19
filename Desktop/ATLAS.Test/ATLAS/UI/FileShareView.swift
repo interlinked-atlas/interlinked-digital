@@ -133,28 +133,57 @@ struct FileShareRow: View {
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(file.file_name)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                Text("\(file.displaySize) · expires \(file.expiryDate)")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "#525260"))
+                HStack(spacing: 5) {
+                    Text(file.file_name)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(file.osIncompatible ? Color(hex: "#888890") : .white)
+                        .lineLimit(1)
+                    if let badge = file.platformBadge {
+                        Text(badge)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(Color(hex: "#EF5B5B"))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(hex: "#EF5B5B").opacity(0.12))
+                            .cornerRadius(4)
+                    }
+                }
+                if let warning = file.osWarning {
+                    Text(warning)
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#EF5B5B"))
+                        .lineLimit(2)
+                } else {
+                    Text("\(file.displaySize) · expires \(file.expiryDate)")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#525260"))
+                }
             }
 
             Spacer()
 
-            Button(action: onInstall) {
-                Text("Install")
+            if file.osIncompatible {
+                Text("Incompatible")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(hex: "#3ECFB2"))
+                    .foregroundColor(Color(hex: "#EF5B5B").opacity(0.7))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color(hex: "#3ECFB2").opacity(0.10))
+                    .background(Color(hex: "#EF5B5B").opacity(0.08))
                     .cornerRadius(7)
-                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color(hex: "#3ECFB2").opacity(0.25), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color(hex: "#EF5B5B").opacity(0.18), lineWidth: 1))
+            } else {
+                Button(action: onInstall) {
+                    Text("Install")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "#3ECFB2").opacity(0.10))
+                        .cornerRadius(7)
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color(hex: "#3ECFB2").opacity(0.25), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Button(action: onDelete) {
                 Image(systemName: "trash")
