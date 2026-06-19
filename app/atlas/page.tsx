@@ -1,315 +1,38 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export default function ATLASWaitlistPage() {
+  const [email, setEmail]       = useState('')
+  const [status, setStatus]     = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [mounted, setMounted]   = useState(false)
 
-const PLANS = [
-  {
-    id: 'standard',
-    name: 'Standard',
-    price: '$24.99',
-    period: '/mo',
-    color: '#8A8A96',
-    accentColor: '#5E6AD2',
-    recommended: false,
-    features: ['1 device', '10 installs per month', 'Install history', 'Notifications'],
-    excluded: ['Virus Scanner', 'File Sharing', 'Bulk installation', 'Uninstall & Rollback', 'Smart Storage'],
-    stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$49.99',
-    period: '/mo',
-    color: '#3ECFB2',
-    accentColor: '#3ECFB2',
-    recommended: true,
-    features: [
-      'Up to 3 devices',
-      '25 installs per month',
-      'Virus Scanner',
-      'File Sharing',
-      'Bulk installation',
-      'Uninstall & Rollback',
-      'Smart Storage',
-      'Full install history',
-    ],
-    excluded: [],
-    stripeUrl: 'https://buy.stripe.com/aFafZg7TUc4p0Jx7HSdjO01',
-  },
-  {
-    id: 'advanced',
-    name: 'Advanced',
-    price: '$99.99',
-    period: '/mo',
-    color: '#C084FC',
-    accentColor: '#C084FC',
-    recommended: false,
-    features: [
-      'Up to 3 devices',
-      '50 installs per month',
-      'Virus Scanner',
-      'File Sharing',
-      'All Pro features',
-      'Bulk installation',
-      'Uninstall & Rollback',
-      'Smart Storage',
-      'Full install history',
-    ],
-    excluded: [],
-    stripeUrl: 'https://buy.stripe.com/cNifZgeii7O9fEr1judjO02',
-  },
-]
+  useEffect(() => { setMounted(true) }, [])
 
-const FEATURES = [
-  {
-    icon: '⚡',
-    title: 'Automated installs',
-    desc: 'Drop any DMG, ZIP, PKG, or plugin — ATLAS handles the rest autonomously.',
-  },
-  {
-    icon: '↩',
-    title: 'Uninstall & rollback',
-    desc: 'Track every file placed. Undo any install cleanly, with full recovery support.',
-  },
-  {
-    icon: '◈',
-    title: 'TITAN CORE™',
-    desc: 'Reads installation instructions and performs every step automatically — on every plan.',
-  },
-]
-
-const TOS_TEXT = `ATLAS® — Terms of Service
-© InterLinked®. All rights reserved.
-Last updated: 2025
-
-1. ACCEPTANCE
-By using ATLAS®, you agree to these Terms in full. If you do not agree, do not use the application.
-
-2. DESCRIPTION
-ATLAS® is an autonomous installation and configuration utility developed by InterLinked®. It automates the installation of third-party software on macOS.
-
-3. USER RESPONSIBILITY
-All software installed through ATLAS is installed at your sole direction and risk. You are solely responsible for ensuring you have a valid license for every piece of software you install.
-
-4. NO WARRANTY
-ATLAS® is provided AS IS without warranties of any kind. InterLinked® is not liable for instability, data loss, software conflicts, or any other consequences arising from software you install using ATLAS.
-
-5. DATA COLLECTION & LOGS
-InterLinked® collects certain usage data to provide, improve, and support ATLAS services. This includes:
-• Installation logs (app names, file types, timestamps, result status)
-• Device identifiers (hardware UUID, device name, macOS version)
-• Account activity associated with your InterLinked® account
-
-This data is securely transmitted to InterLinked® servers and stored in your account dashboard. It is used solely for:
-• Account support and troubleshooting
-• Product improvements and future updates
-• Installation history accessible through your account
-
-Log data is stored securely and is never sold to third parties. You may request deletion by contacting interlinked.digital@gmail.com.
-
-6. PROHIBITED USE
-Piracy, license circumvention, keygen use, or any unlicensed use of software through ATLAS is strictly prohibited and is solely the user's legal responsibility.
-
-7. SYSTEM ACCESS
-ATLAS requests Full Disk Access, Accessibility, and Automation permissions solely to perform installations you initiate. Your admin password, if provided, is stored securely in the macOS Keychain and is never transmitted externally.
-
-8. SUBSCRIPTION & BILLING
-ATLAS is available on Standard and Pro plans. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
-
-9. CHANGES
-InterLinked® reserves the right to update these terms at any time. Continued use of ATLAS constitutes acceptance of the current terms.
-
-10. CONTACT
-interlinked.digital@gmail.com
-interlinked.digital`
-
-type Plan = typeof PLANS[0]
-type Step = 'landing' | 'plan' | 'account'
-
-// ─── Scroll-animate hook ────────────────────────────────────────────────────
-function useInView(ref: React.RefObject<Element | null>, once = true) {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (!ref.current) return
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          if (once) obs.disconnect()
-        } else if (!once) {
-          setVisible(false)
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
-    )
-    obs.observe(ref.current)
-    return () => obs.disconnect()
-  }, [ref, once])
-  return visible
-}
-
-// ─── Animated section wrapper ───────────────────────────────────────────────
-function FadeUp({
-  children,
-  delay = 0,
-  style = {},
-}: {
-  children: React.ReactNode
-  delay?: number
-  style?: React.CSSProperties
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const visible = useInView(ref)
-  return (
-    <div
-      ref={ref}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(28px)',
-        transition: `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-// ─── ToS modal ──────────────────────────────────────────────────────────────
-function TosModal({ onClose }: { onClose: () => void }) {
-  const [opacity, setOpacity] = useState(0)
-  useEffect(() => { requestAnimationFrame(() => setOpacity(1)) }, [])
-
-  function close() {
-    setOpacity(0)
-    setTimeout(onClose, 160)
-  }
-
-  return (
-    <div
-      onClick={close}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-        backdropFilter: 'blur(8px)',
-        opacity, transition: 'opacity 0.17s ease',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#111113',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '16px',
-          width: '100%', maxWidth: '520px',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
-          overflow: 'hidden',
-          opacity,
-          transform: `scale(${0.96 + 0.04 * opacity})`,
-          transition: 'opacity 0.17s ease, transform 0.17s ease',
-        }}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <span style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-            Terms of Service — ATLAS
-          </span>
-          <button
-            onClick={close}
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '6px',
-              width: '26px', height: '26px',
-              cursor: 'pointer', color: '#8A8A96',
-              fontSize: '11px', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-          >✕</button>
-        </div>
-        <div style={{ maxHeight: '380px', overflowY: 'auto', padding: '18px' }}>
-          <pre style={{
-            color: '#8A8A96', fontSize: '11.5px', lineHeight: '1.8',
-            whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
-          }}>
-            {TOS_TEXT}
-          </pre>
-        </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button
-            onClick={close}
-            style={{
-              width: '100%', padding: '12px',
-              border: 'none', background: 'transparent',
-              color: '#8A8A96', fontSize: '12px',
-              fontWeight: 500, cursor: 'pointer',
-              transition: 'color 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main page ──────────────────────────────────────────────────────────────
-export default function AtlasSignupPage() {
-  const [step, setStep] = useState<Step>('landing')
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [tosAgreed, setTosAgreed] = useState(false)
-  const [showTosModal, setShowTosModal] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  const [heroIn, setHeroIn] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setHeroIn(true), 80)
-    return () => clearTimeout(t)
-  }, [])
-
-  function handleSelectPlan(plan: Plan) {
-    setSelectedPlan(plan)
-    setError('')
-    setTosAgreed(false)
-    setStep('account')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  async function handleSignup(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedPlan) return
-    if (!tosAgreed) { setError('Please agree to the Terms of Service to continue.'); return }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    setError('')
-    setLoading(true)
-    const { error: signUpError } = await supabase.auth.signUp({ email, password })
-    setLoading(false)
-    if (signUpError) { setError(signUpError.message); return }
-    window.location.href = selectedPlan.stripeUrl
+    if (!email || status === 'loading') return
+    setStatus('loading'); setErrorMsg('')
+
+    try {
+      const res = await fetch('/api/atlas/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setStatus('success')
+      } else {
+        setErrorMsg(data.error ?? 'Something went wrong.')
+        setStatus('error')
+      }
+    } catch {
+      setErrorMsg('Connection failed. Try again.')
+      setStatus('error')
+    }
   }
 
   return (
@@ -318,672 +41,352 @@ export default function AtlasSignupPage() {
         @font-face {
           font-family: 'SF-Intellivised';
           src: url('/fonts/SF-Intellivised.ttf') format('truetype');
-          font-weight: normal; font-style: normal; font-display: swap;
+          font-weight: normal;
+          font-style: normal;
         }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { background: #080809; color: #FFFFFF; }
-        ::selection { background: rgba(62,207,178,0.25); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
-        input::placeholder { color: rgba(255,255,255,0.20); }
-        input:focus { outline: none; border-color: rgba(62,207,178,0.5) !important; box-shadow: 0 0 0 3px rgba(62,207,178,0.08) !important; }
-        .plan-card { transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease; }
-        .plan-card:hover { transform: translateY(-3px); }
-        .feature-card { transition: background 0.18s ease, border-color 0.18s ease; }
-        .feature-card:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.08) !important; }
-        .cta-btn { transition: opacity 0.15s, transform 0.15s cubic-bezier(0.16,1,0.3,1), box-shadow 0.15s; }
-        .cta-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-        .cta-btn:active:not(:disabled) { transform: scale(0.98); }
-        .cta-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .nav-back { transition: color 0.12s; }
-        .nav-back:hover { color: #FFFFFF !important; }
-        .tos-link:hover { opacity: 0.75 !important; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html { background: #080809; }
+
+        .page {
+          min-height: 100vh;
+          background: #080809;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px 20px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Ambient glow */
+        .glow {
+          position: fixed;
+          top: -200px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 800px;
+          height: 500px;
+          background: radial-gradient(ellipse at center, rgba(62,207,178,0.06) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .content {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 440px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0;
+          opacity: ${mounted ? 1 : 0};
+          transform: translateY(${mounted ? '0' : '12px'});
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        /* Logo lockup */
+        .logo-lockup {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 48px;
+        }
+        .logo-text {
+          font-family: 'SF-Intellivised', -apple-system, sans-serif;
+          font-size: 26px;
+          font-weight: normal;
+          letter-spacing: 12px;
+          color: #ffffff;
+          text-transform: uppercase;
+          padding-left: 3px;
+        }
+
+        /* Card */
+        .card {
+          width: 100%;
+          background: #111113;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+        }
+
+        .card-top-bar {
+          height: 2px;
+          background: linear-gradient(90deg, #3ECFB2 0%, #5E6AD2 100%);
+        }
+
+        .card-body {
+          padding: 40px 36px 40px;
+        }
+
+        /* Platform badges */
+        .platforms {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 32px;
+        }
+        .platform-badge {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          background: #0C0C0E;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 9px;
+          padding: 8px 14px;
+        }
+        .platform-icon { font-size: 13px; }
+        .platform-label {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          color: #8A8A96;
+          letter-spacing: -0.01em;
+        }
+
+        /* Eyebrow */
+        .eyebrow {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #525260;
+          margin-bottom: 10px;
+        }
+
+        /* Heading */
+        .heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: -0.035em;
+          line-height: 1.2;
+          color: #ffffff;
+          margin-bottom: 10px;
+        }
+
+        /* Subtext */
+        .subtext {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #525260;
+          line-height: 1.7;
+          letter-spacing: -0.005em;
+          margin-bottom: 28px;
+        }
+
+        /* Divider */
+        .divider {
+          height: 1px;
+          background: rgba(255,255,255,0.06);
+          margin: 28px 0;
+        }
+
+        /* Form */
+        .form { display: flex; flex-direction: column; gap: 10px; }
+
+        .input-row {
+          display: flex;
+          gap: 8px;
+        }
+
+        .email-input {
+          flex: 1;
+          background: #0C0C0E;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          padding: 12px 16px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #ffffff;
+          outline: none;
+          transition: border-color 0.2s;
+          min-width: 0;
+        }
+        .email-input::placeholder { color: #3A3A48; }
+        .email-input:focus { border-color: rgba(62,207,178,0.4); }
+
+        .submit-btn {
+          background: #3ECFB2;
+          border: none;
+          border-radius: 10px;
+          padding: 12px 20px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: #080809;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: opacity 0.2s, transform 0.15s;
+          flex-shrink: 0;
+        }
+        .submit-btn:hover:not(:disabled) { opacity: 0.88; }
+        .submit-btn:active:not(:disabled) { transform: scale(0.97); }
+        .submit-btn:disabled { opacity: 0.5; cursor: default; }
+
+        .error-msg {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          color: #EF5B5B;
+          padding-left: 2px;
+        }
+
+        /* Success state */
+        .success-state {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
+        }
+        .success-check {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(62,207,178,0.12);
+          border: 1px solid rgba(62,207,178,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+          margin-bottom: 8px;
+        }
+        .success-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 15px;
+          font-weight: 700;
+          color: #ffffff;
+          letter-spacing: -0.02em;
+        }
+        .success-sub {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #525260;
+          line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+          margin-top: 28px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+        }
+        .footer-brand {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 10px;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          color: #1E1E28;
+        }
+        .footer-link {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 11px;
+          color: #252530;
+          text-decoration: none;
+        }
+        .footer-link:hover { color: #3A3A48; }
+
+        @media (max-width: 480px) {
+          .card-body { padding: 32px 24px 32px; }
+          .logo-text { font-size: 22px; letter-spacing: 10px; }
+          .input-row { flex-direction: column; }
+          .submit-btn { width: 100%; }
+        }
       `}</style>
 
-      {showTosModal && <TosModal onClose={() => setShowTosModal(false)} />}
+      <div className="page">
+        <div className="glow" />
 
-      <main style={{
-        minHeight: '100vh',
-        background: '#080809',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        WebkitFontSmoothing: 'antialiased',
-      }}>
+        <div className="content">
 
-        <nav style={{
-          position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(8,8,9,0.85)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          padding: '0 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: '52px',
-        }}>
-          {step === 'landing' ? (
-            <a
-              href="https://www.interlinked.digital/"
-              className="nav-back"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-                textDecoration: 'none', transition: 'color 0.12s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Back to InterLinked©
-            </a>
-          ) : (
-            <button
-              className="nav-back"
-              onClick={() => { setStep('landing'); setSelectedPlan(null) }}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-                display: 'flex', alignItems: 'center', gap: '6px',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Back
-            </button>
-          )}
-          <a
-            href="/auth/login"
-            style={{
-              color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-              textDecoration: 'none', transition: 'color 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-          >
-            Sign in
-          </a>
-        </nav>
+          {/* Logo lockup */}
+          <div className="logo-lockup">
+            <Image
+              src="/atlas-logo.png"
+              alt="ATLAS"
+              width={40}
+              height={40}
+              style={{ objectFit: 'contain' }}
+            />
+            <span className="logo-text">ATLAS</span>
+          </div>
 
-        {step === 'landing' && (
-          <div>
-            <section style={{
-              maxWidth: '860px', margin: '0 auto',
-              padding: '100px 24px 80px',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                opacity: heroIn ? 1 : 0,
-                transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
-                transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
-              }}>
-                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-                  <img
-                    src="/atlas-logo.png"
-                    alt="ATLAS"
-                    style={{
-                      width: 'clamp(64px, 10vw, 88px)',
-                      height: 'clamp(64px, 10vw, 88px)',
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 0 28px rgba(62,207,178,0.22))',
-                    }}
-                  />
+          {/* Card */}
+          <div className="card">
+            <div className="card-top-bar" />
+            <div className="card-body">
+
+              {/* Platform badges */}
+              <div className="platforms">
+                <div className="platform-badge">
+                  <span className="platform-icon">🍎</span>
+                  <span className="platform-label">macOS</span>
                 </div>
-
-                <h1 style={{
-                  fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
-                  fontSize: 'clamp(64px, 12vw, 110px)',
-                  fontWeight: 'normal',
-                  letterSpacing: 'clamp(14px, 2.5vw, 28px)',
-                  textIndent: 'clamp(14px, 2.5vw, 28px)',
-                  lineHeight: 1,
-                  marginBottom: '28px',
-                  background: 'linear-gradient(160deg, #FFFFFF 30%, rgba(255,255,255,0.55) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}>
-                  ATLAS
-                </h1>
-
-                <p style={{
-                  fontSize: '18px', fontWeight: 400,
-                  color: 'rgba(255,255,255,0.55)',
-                  letterSpacing: '-0.01em', lineHeight: 1.5,
-                  maxWidth: '480px', margin: '0 auto 14px',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 180ms',
-                }}>
-                  The World's First Autonomous Installation App.
-                </p>
-
-                <p style={{
-                  fontSize: '13px',
-                  color: 'rgba(255,255,255,0.25)',
-                  letterSpacing: '3px',
-                  textTransform: 'uppercase',
-                  marginBottom: '48px',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 260ms',
-                }}>
-                  by InterLinked®
-                </p>
-
-                <div style={{
-                  display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 340ms',
-                }}>
-                  <button
-                    className="cta-btn"
-                    onClick={() => setStep('plan')}
-                    style={{
-                      background: '#3ECFB2',
-                      border: 'none',
-                      borderRadius: '10px',
-                      padding: '12px 28px',
-                      color: '#080809',
-                      fontSize: '14px', fontWeight: 700,
-                      cursor: 'pointer',
-                      letterSpacing: '-0.01em',
-                      boxShadow: '0 0 32px rgba(62,207,178,0.25)',
-                    }}
-                  >
-                    Get started →
-                  </button>
-                  <a
-                    href="/auth/login"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '10px',
-                      padding: '12px 24px',
-                      color: '#FFFFFF',
-                      fontSize: '14px', fontWeight: 500,
-                      cursor: 'pointer',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    Sign in
-                  </a>
+                <div className="platform-badge">
+                  <span className="platform-icon">🪟</span>
+                  <span className="platform-label">Windows</span>
                 </div>
               </div>
-            </section>
 
-            <div style={{
-              width: '100%', height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
-            }} />
+              <p className="eyebrow">Coming Soon</p>
+              <h1 className="heading">Be the first to know.</h1>
+              <p className="subtext">
+                Subscribe with your email and we'll notify you the moment ATLAS is available.
+              </p>
 
-            <section style={{
-              maxWidth: '860px', margin: '0 auto',
-              padding: '80px 24px',
-            }}>
-              <FadeUp>
-                <p style={{
-                  textAlign: 'center',
-                  fontSize: '11px', fontWeight: 600,
-                  letterSpacing: '3px', textTransform: 'uppercase',
-                  color: '#3ECFB2', marginBottom: '40px',
-                }}>
-                  What ATLAS does
-                </p>
-              </FadeUp>
+              <div className="divider" />
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '14px',
-              }}>
-                {FEATURES.map((f, i) => (
-                  <FadeUp key={f.title} delay={i * 90}>
-                    <div
-                      className="feature-card"
-                      style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        borderRadius: '14px',
-                        padding: '24px',
-                        height: '100%',
-                      }}
+              {status === 'success' ? (
+                <div className="success-state">
+                  <div className="success-check">✓</div>
+                  <p className="success-heading">You're on the list.</p>
+                  <p className="success-sub">Check your inbox — we sent a confirmation to <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.</p>
+                </div>
+              ) : (
+                <form className="form" onSubmit={handleSubmit}>
+                  <div className="input-row">
+                    <input
+                      className="email-input"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      disabled={status === 'loading'}
+                      autoComplete="email"
+                    />
+                    <button
+                      className="submit-btn"
+                      type="submit"
+                      disabled={status === 'loading' || !email}
                     >
-                      <div style={{ fontSize: '22px', marginBottom: '14px', lineHeight: 1 }}>{f.icon}</div>
-                      <h3 style={{
-                        fontSize: '14px', fontWeight: 600,
-                        color: '#FFFFFF', marginBottom: '8px',
-                        letterSpacing: '-0.01em',
-                      }}>{f.title}</h3>
-                      <p style={{
-                        fontSize: '13px', color: '#525260',
-                        lineHeight: 1.6, letterSpacing: '-0.005em',
-                      }}>{f.desc}</p>
-                    </div>
-                  </FadeUp>
-                ))}
-              </div>
-            </section>
-
-            <div style={{
-              width: '100%', height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
-            }} />
-
-            <section style={{
-              maxWidth: '560px', margin: '0 auto',
-              padding: '80px 24px 100px',
-              textAlign: 'center',
-            }}>
-              <FadeUp>
-                <p style={{
-                  fontSize: '11px', fontWeight: 600,
-                  letterSpacing: '3px', textTransform: 'uppercase',
-                  color: '#44444E', marginBottom: '18px',
-                }}>
-                  Pricing
-                </p>
-                <h2 style={{
-                  fontSize: '32px', fontWeight: 700,
-                  color: '#FFFFFF', marginBottom: '14px',
-                  letterSpacing: '-0.03em', lineHeight: 1.15,
-                }}>
-                  Pick a plan. Start installing.
-                </h2>
-                <p style={{
-                  fontSize: '14px', color: '#525260',
-                  lineHeight: 1.6, marginBottom: '36px',
-                }}>
-                  Both plans include TITAN CORE™ — our installation intelligence engine.
-                  Upgrade to Pro for unlimited installs, bulk mode, and Smart Storage.
-                </p>
-                <button
-                  className="cta-btn"
-                  onClick={() => setStep('plan')}
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    borderRadius: '10px',
-                    padding: '12px 28px',
-                    color: '#FFFFFF',
-                    fontSize: '14px', fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  See plans →
-                </button>
-              </FadeUp>
-            </section>
-          </div>
-        )}
-
-        {step === 'plan' && (
-          <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
-            <FadeUp>
-              <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: '28px', fontWeight: 700,
-                  color: '#FFFFFF', letterSpacing: '-0.03em', marginBottom: '10px',
-                }}>
-                  Choose your plan
-                </h2>
-                <p style={{ fontSize: '14px', color: '#525260' }}>
-                  Subscribe and create your account — takes 60 seconds
-                </p>
-              </div>
-            </FadeUp>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
-              {PLANS.map((plan, i) => (
-                <FadeUp key={plan.id} delay={i * 80}>
-                  <div
-                    className="plan-card"
-                    style={{
-                      background: '#0E0E10',
-                      borderRadius: '16px',
-                      border: plan.recommended
-                        ? `1px solid ${plan.accentColor}40`
-                        : '1px solid rgba(255,255,255,0.07)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      boxShadow: plan.recommended
-                        ? `0 0 40px ${plan.accentColor}14`
-                        : 'none',
-                    }}
-                  >
-                    {plan.recommended && (
-                      <div style={{
-                        background: `${plan.accentColor}18`,
-                        borderBottom: `1px solid ${plan.accentColor}28`,
-                        padding: '6px 0',
-                        textAlign: 'center',
-                        color: plan.accentColor,
-                        fontSize: '9px', fontWeight: 800,
-                        letterSpacing: '2.5px',
-                      }}>
-                        MOST POPULAR
-                      </div>
-                    )}
-
-                    <div style={{
-                      padding: '20px 20px 16px',
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                      <div style={{
-                        color: plan.accentColor,
-                        fontSize: '9px', fontWeight: 800,
-                        letterSpacing: '2px', marginBottom: '12px',
-                        textTransform: 'uppercase',
-                      }}>
-                        {plan.name}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                        <span style={{ color: '#FFFFFF', fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                          {plan.price}
-                        </span>
-                        <span style={{ color: '#525260', fontSize: '12px' }}>{plan.period}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                      {plan.features.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ color: plan.accentColor, fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                          <span style={{ color: '#CCCCCC', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
-                        </div>
-                      ))}
-                      {plan.excluded.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
-                          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ padding: '0 16px 16px' }}>
-                      <button
-                        className="cta-btn"
-                        onClick={() => handleSelectPlan(plan)}
-                        style={{
-                          width: '100%', padding: '10px',
-                          borderRadius: '10px',
-                          border: plan.recommended ? 'none' : `1px solid ${plan.accentColor}35`,
-                          background: plan.recommended
-                            ? plan.accentColor
-                            : `${plan.accentColor}12`,
-                          color: plan.recommended ? '#080809' : plan.accentColor,
-                          fontSize: '12px', fontWeight: 700,
-                          cursor: 'pointer', letterSpacing: '-0.01em',
-                        }}
-                      >
-                        Get started — {plan.name}
-                      </button>
-                    </div>
+                      {status === 'loading' ? 'Saving…' : 'Notify me'}
+                    </button>
                   </div>
-                </FadeUp>
-              ))}
-            </div>
-
-            <FadeUp delay={200}>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px', marginBottom: '6px' }}>
-                  Secure payment via Stripe · Cancel anytime
-                </p>
-                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px' }}>
-                  Already subscribed?{' '}
-                  <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in →</a>
-                </p>
-              </div>
-            </FadeUp>
-          </div>
-        )}
-
-        {step === 'account' && selectedPlan && (
-          <div style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 24px 80px' }}>
-            <FadeUp>
-              <div style={{
-                background: `${selectedPlan.accentColor}0C`,
-                border: `1px solid ${selectedPlan.accentColor}28`,
-                borderRadius: '12px',
-                padding: '12px 16px',
-                marginBottom: '16px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div>
-                  <div style={{
-                    color: selectedPlan.accentColor, fontSize: '9px',
-                    fontWeight: 800, letterSpacing: '2px',
-                    textTransform: 'uppercase', marginBottom: '4px',
-                  }}>
-                    {selectedPlan.name} Plan
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: 700 }}>{selectedPlan.price}</span>
-                    <span style={{ color: '#525260', fontSize: '11px' }}>{selectedPlan.period}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => { setStep('plan'); setError(''); setTosAgreed(false) }}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '7px', padding: '5px 12px',
-                    color: '#8A8A96', fontSize: '11px', fontWeight: 500,
-                    cursor: 'pointer', transition: 'color 0.12s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-                >
-                  Change
-                </button>
-              </div>
-
-              <div style={{
-                background: '#0E0E10',
-                borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.07)',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  padding: '16px 20px',
-                  borderBottom: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <h2 style={{
-                    color: '#FFFFFF', fontSize: '14px', fontWeight: 600,
-                    letterSpacing: '-0.01em', marginBottom: '4px',
-                  }}>Create your account</h2>
-                  <p style={{ color: '#525260', fontSize: '12px' }}>
-                    You&apos;ll complete payment right after
-                  </p>
-                </div>
-
-                <form onSubmit={handleSignup} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {error && (
-                    <div style={{
-                      background: 'rgba(224,85,85,0.08)',
-                      border: '1px solid rgba(224,85,85,0.20)',
-                      borderRadius: '9px', padding: '10px 14px',
-                      color: '#E05555', fontSize: '12px', lineHeight: 1.5,
-                    }}>{error}</div>
+                  {status === 'error' && (
+                    <p className="error-msg">{errorMsg}</p>
                   )}
-
-                  <input type="email" placeholder="Email address" value={email}
-                    onChange={e => setEmail(e.target.value)} required style={inputStyle} />
-
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Password (min 8 chars)"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      style={{ ...inputStyle, paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      style={{
-                        position: 'absolute', right: '12px', top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#525260', padding: '2px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'color 0.12s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
-                      tabIndex={-1}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
-                  </div>
-
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirm password"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required
-                      style={{ ...inputStyle, paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(v => !v)}
-                      style={{
-                        position: 'absolute', right: '12px', top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#525260', padding: '2px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'color 0.12s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
-                      tabIndex={-1}
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <div
-                      onClick={() => setTosAgreed(a => !a)}
-                      style={{
-                        width: '18px', height: '18px', flexShrink: 0,
-                        borderRadius: '5px', cursor: 'pointer',
-                        border: `1.5px solid ${tosAgreed ? '#3ECFB2' : 'rgba(255,255,255,0.15)'}`,
-                        background: tosAgreed ? 'rgba(62,207,178,0.14)' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'border-color 0.15s, background 0.15s',
-                      }}
-                    >
-                      {tosAgreed && (
-                        <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 800, lineHeight: 1 }}>✓</span>
-                      )}
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#525260' }}>
-                      I agree to the{' '}
-                      <button
-                        type="button"
-                        className="tos-link"
-                        onClick={() => setShowTosModal(true)}
-                        style={{
-                          background: 'none', border: 'none', padding: 0,
-                          color: '#3ECFB2', fontSize: '12px',
-                          cursor: 'pointer', textDecoration: 'underline',
-                          fontFamily: 'inherit', opacity: 1,
-                          transition: 'opacity 0.12s',
-                        }}
-                      >
-                        Terms of Service
-                      </button>
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || !tosAgreed}
-                    className="cta-btn"
-                    style={{
-                      width: '100%', padding: '12px',
-                      border: 'none', borderRadius: '10px',
-                      background: `linear-gradient(135deg, ${selectedPlan.accentColor}, ${selectedPlan.accentColor}CC)`,
-                      color: selectedPlan.recommended ? '#080809' : '#fff',
-                      fontSize: '13px', fontWeight: 700,
-                      cursor: tosAgreed && !loading ? 'pointer' : 'not-allowed',
-                      marginTop: '4px',
-                      letterSpacing: '-0.01em',
-                      boxShadow: tosAgreed ? `0 0 24px ${selectedPlan.accentColor}22` : 'none',
-                      transition: 'box-shadow 0.2s',
-                    }}
-                  >
-                    {loading ? 'Creating account…' : 'Continue to checkout →'}
-                  </button>
-
-                  <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '11px', textAlign: 'center' }}>
-                    Already have an account?{' '}
-                    <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in</a>
-                  </p>
                 </form>
-              </div>
-            </FadeUp>
+              )}
+
+            </div>
           </div>
-        )}
 
-        <footer style={{
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-          padding: '24px',
-          textAlign: 'center',
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', letterSpacing: '0.02em' }}>
-            InterLinked® · All rights reserved
-          </p>
-        </footer>
+          {/* Footer */}
+          <div className="footer">
+            <span className="footer-brand">InterLinked Digital</span>
+            <a href="https://www.interlinked.digital" className="footer-link">interlinked.digital</a>
+          </div>
 
-      </main>
+        </div>
+      </div>
     </>
   )
-}
-
-function EyeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 8C1 8 3.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 12.5 12.5 8 12.5C3.5 12.5 1 8 1 8Z"
-        stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  )
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2 2L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M6.5 4C7 3.8 7.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 14.3 9.3 13.2 10.4"
-        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M4 5.5C2.6 6.5 1.5 7.7 1 8C1 8 3.5 12.5 8 12.5C9.2 12.5 10.3 12.1 11.2 11.5"
-        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M5.8 5.8A2 2 0 0 0 10.2 10.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.09)',
-  borderRadius: '9px',
-  color: '#FFFFFF',
-  fontSize: '13px',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-  letterSpacing: '-0.005em',
 }
