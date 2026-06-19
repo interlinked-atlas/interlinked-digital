@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not save email' }, { status: 500 })
   }
 
-  // Send confirmation email
+  // Get current waitlist count
+  const { count } = await supabase.from('atlas_waitlist').select('*', { count: 'exact', head: true })
+
+  // Send confirmation email to subscriber
   await resend.emails.send({
     from: FROM,
     to: email,
@@ -32,10 +35,18 @@ export async function POST(req: NextRequest) {
     html: waitlistEmail(),
   })
 
+  // Notify admin
+  await resend.emails.send({
+    from: FROM,
+    to: 'interlinked.digital@gmail.com',
+    subject: `ATLAS — New waitlist subscriber`,
+    html: adminNotifyEmail(email, count ?? 0),
+  })
+
   return NextResponse.json({ success: true })
 }
 
-// ─── Email ────────────────────────────────────────────────────────────────────
+// ─── Emails ───────────────────────────────────────────────────────────────────
 
 const BG     = '#080809'
 const CARD   = '#111113'
@@ -138,6 +149,80 @@ function waitlistEmail() {
         <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#2A2A38;">
           <a href="https://www.interlinked.digital/atlas" style="color:#32323F;text-decoration:none;">interlinked.digital/atlas</a>
         </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`
+}
+
+function adminNotifyEmail(subscriberEmail: string, totalCount: number) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>New ATLAS Subscriber</title>
+  <style>@font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");}</style>
+</head>
+<body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};">
+  <tr><td align="center" style="padding:52px 20px 48px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+
+      <!-- Logo -->
+      <tr><td align="center" style="padding-bottom:40px;">
+        <table cellpadding="0" cellspacing="0" border="0"><tr>
+          <td align="center" valign="middle" style="padding-right:12px;">
+            <img src="${LOGO_URL}" width="36" height="36" alt="ATLAS" style="display:block;border:0;">
+          </td>
+          <td align="left" valign="middle">
+            <span style="font-family:'SF-Intellivised',-apple-system,sans-serif;font-size:22px;letter-spacing:10px;color:#ffffff;text-transform:uppercase;">ATLAS</span>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Card -->
+      <tr><td style="background:${CARD};border-radius:16px;border:1px solid ${BORDER};overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.6);">
+        <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+        <div style="padding:36px 36px 40px;">
+
+          <p style="margin:0 0 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">Waitlist</p>
+          <h1 style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.03em;color:#ffffff;">New subscriber</h1>
+
+          <!-- Subscriber info box -->
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin-bottom:24px;">
+            <tr><td style="padding:20px 22px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${MUTED};padding-bottom:6px;">Email</td>
+                </tr>
+                <tr>
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;font-weight:600;color:#ffffff;letter-spacing:-0.01em;">${subscriberEmail}</td>
+                </tr>
+                <tr><td style="height:16px;"></td></tr>
+                <tr>
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${MUTED};padding-bottom:6px;">Total subscribers</td>
+                </tr>
+                <tr>
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:24px;font-weight:700;color:${TEAL};letter-spacing:-0.03em;">${totalCount}</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+            View all subscribers in <a href="https://supabase.com/dashboard/project/bmbmzytnpsntgzmutikp/editor" style="color:${SUBTLE};text-decoration:none;">Supabase → atlas_waitlist</a>
+          </p>
+
+        </div>
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td align="center" style="padding-top:28px;">
+        <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#252530;">INTERLINKED DIGITAL</p>
       </td></tr>
 
     </table>
