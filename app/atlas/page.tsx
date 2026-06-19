@@ -46,7 +46,6 @@ export default function ATLASWaitlistPage() {
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body, html { background: #080809; }
 
         .page {
@@ -61,15 +60,14 @@ export default function ATLASWaitlistPage() {
           overflow: hidden;
         }
 
-        /* Ambient glow */
         .glow {
           position: fixed;
           top: -200px;
           left: 50%;
           transform: translateX(-50%);
-          width: 800px;
-          height: 500px;
-          background: radial-gradient(ellipse at center, rgba(62,207,178,0.06) 0%, transparent 70%);
+          width: 900px;
+          height: 560px;
+          background: radial-gradient(ellipse at center, rgba(62,207,178,0.07) 0%, transparent 70%);
           pointer-events: none;
           z-index: 0;
         }
@@ -78,34 +76,50 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 440px;
+          max-width: 460px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0;
           opacity: ${mounted ? 1 : 0};
-          transform: translateY(${mounted ? '0' : '12px'});
+          transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
-        /* Logo lockup */
+        /* ── Video logo lockup ── */
         .logo-lockup {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 14px;
-          margin-bottom: 48px;
-        }
-        .logo-text {
-          font-family: 'SF-Intellivised', -apple-system, sans-serif;
-          font-size: 26px;
-          font-weight: normal;
-          letter-spacing: 12px;
-          color: #ffffff;
-          text-transform: uppercase;
-          padding-left: 3px;
+          gap: 20px;
+          margin-bottom: 44px;
         }
 
-        /* Card */
+        .logo-video-wrap {
+          width: 100px;
+          height: 100px;
+          border-radius: 24px;
+          overflow: hidden;
+          background: #0A0A0C;
+        }
+        .logo-video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .logo-text {
+          font-family: 'SF-Intellivised', -apple-system, sans-serif;
+          font-size: 38px;
+          font-weight: normal;
+          letter-spacing: 18px;
+          color: #ffffff;
+          text-transform: uppercase;
+          padding-left: 4px;
+          line-height: 1;
+        }
+
+        /* ── Card ── */
         .card {
           width: 100%;
           background: #111113;
@@ -120,26 +134,31 @@ export default function ATLASWaitlistPage() {
           background: linear-gradient(90deg, #3ECFB2 0%, #5E6AD2 100%);
         }
 
-        .card-body {
-          padding: 40px 36px 40px;
-        }
+        .card-body { padding: 36px 36px 38px; }
 
-        /* Platform badges */
+        /* ── Platform badges ── */
         .platforms {
           display: flex;
-          gap: 8px;
-          margin-bottom: 32px;
+          gap: 10px;
+          margin-bottom: 30px;
         }
         .platform-badge {
           display: flex;
           align-items: center;
-          gap: 7px;
+          gap: 9px;
           background: #0C0C0E;
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 9px;
-          padding: 8px 14px;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          padding: 9px 16px;
+          transition: border-color 0.2s;
         }
-        .platform-icon { font-size: 13px; }
+        .platform-badge:hover { border-color: rgba(255,255,255,0.14); }
+
+        .platform-img {
+          display: block;
+          object-fit: contain;
+        }
+
         .platform-label {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
@@ -148,7 +167,7 @@ export default function ATLASWaitlistPage() {
           letter-spacing: -0.01em;
         }
 
-        /* Eyebrow */
+        /* ── Text ── */
         .eyebrow {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 10px;
@@ -158,8 +177,6 @@ export default function ATLASWaitlistPage() {
           color: #525260;
           margin-bottom: 10px;
         }
-
-        /* Heading */
         .heading {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 22px;
@@ -169,31 +186,23 @@ export default function ATLASWaitlistPage() {
           color: #ffffff;
           margin-bottom: 10px;
         }
-
-        /* Subtext */
         .subtext {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
           color: #525260;
           line-height: 1.7;
           letter-spacing: -0.005em;
-          margin-bottom: 28px;
+          margin-bottom: 26px;
         }
-
-        /* Divider */
         .divider {
           height: 1px;
           background: rgba(255,255,255,0.06);
-          margin: 28px 0;
+          margin: 26px 0;
         }
 
-        /* Form */
+        /* ── Form ── */
         .form { display: flex; flex-direction: column; gap: 10px; }
-
-        .input-row {
-          display: flex;
-          gap: 8px;
-        }
+        .input-row { display: flex; gap: 8px; }
 
         .email-input {
           flex: 1;
@@ -237,7 +246,7 @@ export default function ATLASWaitlistPage() {
           padding-left: 2px;
         }
 
-        /* Success state */
+        /* ── Success ── */
         .success-state {
           display: flex;
           flex-direction: column;
@@ -270,7 +279,7 @@ export default function ATLASWaitlistPage() {
           line-height: 1.6;
         }
 
-        /* Footer */
+        /* ── Footer ── */
         .footer {
           margin-top: 28px;
           display: flex;
@@ -294,8 +303,9 @@ export default function ATLASWaitlistPage() {
         .footer-link:hover { color: #3A3A48; }
 
         @media (max-width: 480px) {
-          .card-body { padding: 32px 24px 32px; }
-          .logo-text { font-size: 22px; letter-spacing: 10px; }
+          .card-body { padding: 28px 22px 30px; }
+          .logo-text { font-size: 30px; letter-spacing: 14px; }
+          .logo-video-wrap { width: 80px; height: 80px; }
           .input-row { flex-direction: column; }
           .submit-btn { width: 100%; }
         }
@@ -306,15 +316,18 @@ export default function ATLASWaitlistPage() {
 
         <div className="content">
 
-          {/* Logo lockup */}
+          {/* Logo lockup — video + ATLAS wordmark */}
           <div className="logo-lockup">
-            <Image
-              src="/atlas-logo.png"
-              alt="ATLAS"
-              width={40}
-              height={40}
-              style={{ objectFit: 'contain' }}
-            />
+            <div className="logo-video-wrap">
+              <video
+                className="logo-video"
+                src="/atlas-logo-visualizer.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            </div>
             <span className="logo-text">ATLAS</span>
           </div>
 
@@ -323,14 +336,28 @@ export default function ATLASWaitlistPage() {
             <div className="card-top-bar" />
             <div className="card-body">
 
-              {/* Platform badges */}
+              {/* Platform badges with real logos */}
               <div className="platforms">
                 <div className="platform-badge">
-                  <span className="platform-icon">🍎</span>
+                  <Image
+                    src="/apple-logo.png"
+                    alt="Apple"
+                    width={16}
+                    height={16}
+                    className="platform-img"
+                    style={{ filter: 'brightness(0) invert(0.55)' }}
+                  />
                   <span className="platform-label">macOS</span>
                 </div>
                 <div className="platform-badge">
-                  <span className="platform-icon">🪟</span>
+                  <Image
+                    src="/windows-logo.png"
+                    alt="Windows"
+                    width={16}
+                    height={16}
+                    className="platform-img"
+                    style={{ filter: 'brightness(0) invert(0.55)' }}
+                  />
                   <span className="platform-label">Windows</span>
                 </div>
               </div>
@@ -347,7 +374,10 @@ export default function ATLASWaitlistPage() {
                 <div className="success-state">
                   <div className="success-check">✓</div>
                   <p className="success-heading">You're on the list.</p>
-                  <p className="success-sub">Check your inbox — we sent a confirmation to <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.</p>
+                  <p className="success-sub">
+                    Check your inbox — we sent a confirmation to{' '}
+                    <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.
+                  </p>
                 </div>
               ) : (
                 <form className="form" onSubmit={handleSubmit}>
