@@ -117,6 +117,15 @@ export default function ATLASWaitlistPage() {
           padding-left: 4px;
           line-height: 1;
         }
+        .logo-tagline {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          font-weight: 500;
+          color: #525260;
+          letter-spacing: 0.01em;
+          text-align: center;
+          margin-top: 10px;
+        }
 
         /* ── Card ── */
         .card {
@@ -323,6 +332,7 @@ export default function ATLASWaitlistPage() {
               />
             </div>
             <span className="logo-text">ATLAS</span>
+            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
           </div>
 
           {/* Card */}
