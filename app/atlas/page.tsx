@@ -93,14 +93,14 @@ export default function ATLASWaitlistPage() {
           margin-bottom: 44px;
         }
 
-        .logo-video-wrap {
+        .logo-img-wrap {
           width: 100px;
           height: 100px;
           border-radius: 24px;
           overflow: hidden;
-          background: #0A0A0C;
+          background: #000000;
         }
-        .logo-video {
+        .logo-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
@@ -321,14 +321,11 @@ export default function ATLASWaitlistPage() {
 
           {/* Logo lockup — video + ATLAS wordmark */}
           <div className="logo-lockup">
-            <div className="logo-video-wrap">
-              <video
-                className="logo-video"
-                src="/atlas-logo-visualizer.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
+            <div className="logo-img-wrap">
+              <img
+                className="logo-img"
+                src="/atlas-logo.jpeg"
+                alt="ATLAS"
               />
             </div>
             <span className="logo-text">ATLAS</span>
