@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 
 export default function ATLASWaitlistPage() {
   const [email, setEmail]       = useState('')
@@ -153,11 +152,6 @@ export default function ATLASWaitlistPage() {
           transition: border-color 0.2s;
         }
         .platform-badge:hover { border-color: rgba(255,255,255,0.14); }
-
-        .platform-img {
-          display: block;
-          object-fit: contain;
-        }
 
         .platform-label {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -336,28 +330,24 @@ export default function ATLASWaitlistPage() {
             <div className="card-top-bar" />
             <div className="card-body">
 
-              {/* Platform badges with real logos */}
+              {/* Platform badges — inline SVG icons */}
               <div className="platforms">
                 <div className="platform-badge">
-                  <Image
-                    src="/apple-logo.png"
-                    alt="Apple"
-                    width={16}
-                    height={16}
-                    className="platform-img"
-                    style={{ filter: 'brightness(0) invert(0.55)' }}
-                  />
+                  {/* Apple logo */}
+                  <svg width="15" height="18" viewBox="0 0 170 209" fill="#8A8A96" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M150.4 209c-9.8 0-19.3-5.9-27.3-5.9-8.3 0-18.9 5.7-29.6 5.7-22.4 0-45.4-24.5-61.6-54.6C15.6 124.4 7 94.5 7 67.2 7 28.7 30.6 8 53.5 8c12.6 0 23.2 6.8 32 6.8 8.3 0 21-7.3 35.6-7.3 8.4 0 38.1 1 55.5 30.4-1.9 1.2-33.1 19.3-33.1 57.8 0 44.5 39.2 61.3 40.5 61.8-.2 1.3-6.3 21.9-20.9 43.3-12.7 18.5-26.3 37-42.7 37z"/>
+                    <path d="M113.9 0c.2 11.3-3.9 22.5-11 30.5-7.3 8.3-18.5 14.7-29.5 13.9-.3-11.1 4.6-22.1 11.5-30 7.4-8.5 19-14.9 29-14.4z"/>
+                  </svg>
                   <span className="platform-label">macOS</span>
                 </div>
                 <div className="platform-badge">
-                  <Image
-                    src="/windows-logo.png"
-                    alt="Windows"
-                    width={16}
-                    height={16}
-                    className="platform-img"
-                    style={{ filter: 'brightness(0) invert(0.55)' }}
-                  />
+                  {/* Windows logo — 4 squares */}
+                  <svg width="16" height="16" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
+                    <rect x="12" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
+                    <rect x="0" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
+                    <rect x="12" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
+                  </svg>
                   <span className="platform-label">Windows</span>
                 </div>
               </div>
