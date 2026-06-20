@@ -54,7 +54,7 @@ export default function Home() {
             <div className="animate-fade-in-box-1">
               <ProductCard
                 name="ATLAS®"
-                status="Now Available"
+                status="Join the Waitlist"
                 isActive={true}
                 iconSrc="/images/atlas-icon.png"
                 href="/atlas"
