@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
     to: email,
     subject: "You're on the ATLAS waitlist",
     html: waitlistEmail(),
+    text: `You're on the ATLAS waitlist.\n\nWe'll send you one email the moment ATLAS launches — no spam, ever.\n\nTo make sure you get it, add atlas@interlinked.digital to your contacts.\n\nIf you didn't sign up, you can ignore this email.\n\n— InterLinked\ninterlinked.digital/atlas`,
+    headers: {
+      'List-Unsubscribe': '<mailto:atlas@interlinked.digital?subject=unsubscribe>',
+      'X-Entity-Ref-ID': `atlas-waitlist-${Date.now()}`,
+    },
   })
 
   // Notify admin
@@ -136,6 +141,9 @@ function waitlistEmail() {
             <tr><td style="height:1px;background:${BORDER};font-size:0;">&nbsp;</td></tr>
           </table>
 
+          <p style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+            To make sure you get the launch email, add <span style="color:${SUBTLE};">atlas@interlinked.digital</span> to your contacts.
+          </p>
           <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
             Questions? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
           </p>

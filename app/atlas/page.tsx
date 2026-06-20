@@ -374,8 +374,11 @@ export default function ATLASWaitlistPage() {
                   <div className="success-check">✓</div>
                   <p className="success-heading">You're on the list.</p>
                   <p className="success-sub">
-                    Check your inbox — we sent a confirmation to{' '}
+                    We sent a confirmation to{' '}
                     <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.
+                  </p>
+                  <p className="success-sub" style={{ marginTop: 8, color: '#3A3A48', fontSize: 12 }}>
+                    Don't see it? Check your <strong style={{ color: '#525260' }}>spam or junk folder</strong> — and mark it as "Not Spam" to make sure you get the launch email.
                   </p>
                 </div>
               ) : (
