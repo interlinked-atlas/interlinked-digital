@@ -27,8 +27,7 @@ struct ATLASProfile: Codable {
     let plan: String                // "standard", "pro", or "advanced"
     let subscriptionStatus: String
 
-    var isPro: Bool      { plan == "pro" || plan == "advanced" }
-    var isAdvanced: Bool { plan == "advanced" }
+    var isPro: Bool { plan == "pro" }
 
     enum CodingKeys: String, CodingKey {
         case id, email, plan

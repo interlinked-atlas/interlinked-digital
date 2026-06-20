@@ -3,8 +3,7 @@ import Foundation
 // MARK: - Feature Gates
 
 enum Features {
-    static var isPro: Bool      { AuthManager.shared.isPro }
-    static var isAdvanced: Bool { AuthManager.shared.isAdvanced }
+    static var isPro: Bool { AuthManager.shared.isPro }
 
     static var bulkInstall:   Bool { isPro }
     static var rollback:      Bool { isPro }
@@ -17,8 +16,7 @@ enum Features {
     static let standardHistoryLimit = 5
 
     static var monthlyInstallLimit: Int {
-        if isAdvanced { return MonthlyLimitManager.advancedLimit }
-        if isPro      { return MonthlyLimitManager.proLimit }
+        if isPro { return MonthlyLimitManager.proLimit }
         return MonthlyLimitManager.standardLimit
     }
 }

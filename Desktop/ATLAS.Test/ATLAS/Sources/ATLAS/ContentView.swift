@@ -720,7 +720,7 @@ struct ContentView: View {
                     unsupportedExtension = ext
                 }
 
-                // FileSharing panel (Pro/Advanced)
+                // FileSharing panel (Pro)
                 if Features.isPro {
                     if showFileShareUpload {
                         FileShareUploadOverlay()
@@ -900,12 +900,10 @@ struct ContentView: View {
                 ? String(format: "%dd %02d:%02d:%02d", days, hh, mm, ss)
                 : String(format: "%02d:%02d:%02d", hh, mm, ss)
 
-            let planName   = auth.isAdvanced ? "Advanced" : (auth.isPro ? "Pro" : "Standard")
+            let planName   = auth.isPro ? "Pro" : "Standard"
             let cap        = monthlyLimit.currentLimit
-            let nextPlan   = auth.isPro && !auth.isAdvanced ? "Advanced" : "Pro"
-            let upgradeMsg = auth.isPro && !auth.isAdvanced
-                ? "Upgrade to Advanced — 50/mo"
-                : "Upgrade to Pro — 25/mo"
+            let nextPlan   = "Pro"
+            let upgradeMsg = "Upgrade to Pro"
 
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
@@ -950,7 +948,7 @@ struct ContentView: View {
                             .foregroundColor(Color(hex: "#D0D8F0"))
                     }
 
-                    if !auth.isAdvanced {
+                    if !auth.isPro {
                         Button {
                             upgradeFeature = nextPlan
                             showUpgrade = true

@@ -16,11 +16,9 @@ final class AuthManager: ObservableObject {
     private var planSyncTimer: Timer?
 
     var isSignedIn: Bool { session != nil }
-    var isPro: Bool      { profile?.isPro ?? false }
-    var isAdvanced: Bool { profile?.isAdvanced ?? false }
+    var isPro: Bool { profile?.isPro ?? false }
     var planLabel: String {
-        if isAdvanced { return "Advanced" }
-        if isPro      { return "Pro" }
+        if isPro { return "Pro" }
         return "Standard"
     }
     var userEmail: String { session?.email ?? "" }

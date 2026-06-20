@@ -8,7 +8,6 @@ final class MonthlyLimitManager: ObservableObject {
     // Monthly caps per plan
     static let standardLimit  = 10
     static let proLimit        = 25
-    static let advancedLimit   = 50
 
     @Published private(set) var installsThisMonth: Int = 0
     @Published private(set) var periodStart: Date = Date()
@@ -17,8 +16,7 @@ final class MonthlyLimitManager: ObservableObject {
     // MARK: - Status
 
     var currentLimit: Int {
-        if AuthManager.shared.isAdvanced { return Self.advancedLimit }
-        if AuthManager.shared.isPro      { return Self.proLimit }
+        if AuthManager.shared.isPro { return Self.proLimit }
         return Self.standardLimit
     }
 
