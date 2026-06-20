@@ -13,11 +13,21 @@ export async function GET(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Auto-clean expired files
-  await supabase.from('shared_files')
-    .delete()
+  // Auto-clean expired files — remove from storage first, then DB
+  const { data: expired } = await supabase
+    .from('shared_files')
+    .select('storage_path')
     .eq('user_id', user.id)
     .lt('expires_at', new Date().toISOString())
+
+  if (expired && expired.length > 0) {
+    const paths = expired.map((f: { storage_path: string }) => f.storage_path)
+    await supabase.storage.from('atlas-shared-files').remove(paths)
+    await supabase.from('shared_files')
+      .delete()
+      .eq('user_id', user.id)
+      .lt('expires_at', new Date().toISOString())
+  }
 
   const { data, error } = await supabase
     .from('shared_files')
