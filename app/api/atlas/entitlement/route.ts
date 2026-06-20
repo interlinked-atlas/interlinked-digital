@@ -9,13 +9,11 @@ const supabaseAdmin = createClient(
 const MONTHLY_LIMITS: Record<string, number> = {
   standard: 10,
   pro:      25,
-  advanced: 50,
 }
 
 const MAX_DEVICES: Record<string, number> = {
   standard: 1,
   pro:      3,
-  advanced: 3,
 }
 
 // GET /api/atlas/entitlement

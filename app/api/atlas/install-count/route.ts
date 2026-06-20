@@ -9,7 +9,6 @@ const supabase = createClient(
 const MONTHLY_LIMITS: Record<string, number> = {
   standard: 10,
   pro:      25,
-  advanced: 50,
 }
 
 // POST /api/atlas/install-count

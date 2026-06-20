@@ -101,15 +101,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   }, [user.id, supabase, doRefresh])
 
   const currentPlan = profile?.plan ?? subscription?.plan ?? "standard"
-  const isPro      = currentPlan === "pro" || currentPlan === "advanced"
-  const isAdvanced = currentPlan === "advanced"
+  const isPro   = currentPlan === "pro"
   const isActive = profile?.subscription_status === "active" || subscription?.status === "active" || subscription?.status === "trialing"
   const isCancelled = profile?.subscription_status === "cancelled" || subscription?.status === "canceled"
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
   const maxDevices = isPro ? 3 : 1
-  const planName  = isAdvanced ? "Advanced" : isPro ? "Pro" : "Standard"
-  const planPrice = isAdvanced ? "$99.99" : isPro ? "$49.99" : "$24.99"
-  const monthlyInstallLimit = isAdvanced ? 50 : isPro ? 25 : 10
+  const planName  = isPro ? "Pro" : "Standard"
+  const planPrice = isPro ? "$49.99" : "$24.99"
+  const monthlyInstallLimit = isPro ? 25 : 10
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
@@ -268,7 +267,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "18px", fontWeight: 700, color: isAdvanced ? "#C084FC" : isPro ? "#F0A030" : "#5B8DEF" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: isPro ? "#F0A030" : "#5B8DEF" }}>
                     <span className="atlas-text" style={{ fontSize: "14px", letterSpacing: "4px", marginRight: "6px" }}>ATLAS</span>{planName}
                   </span>
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
@@ -279,9 +278,9 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               </div>
               <div style={{
                 padding: "4px 10px", borderRadius: "8px", fontSize: "10px", fontWeight: 800, letterSpacing: "2px",
-                border: `1px solid ${isAdvanced ? "rgba(192,132,252,0.3)" : isPro ? "rgba(240,160,48,0.3)" : "rgba(91,141,239,0.3)"}`,
-                background: isAdvanced ? "rgba(192,132,252,0.07)" : isPro ? "rgba(240,160,48,0.07)" : "rgba(91,141,239,0.07)",
-                color: isAdvanced ? "#C084FC" : isPro ? "#F0A030" : "#5B8DEF",
+                border: `1px solid ${isPro ? "rgba(240,160,48,0.3)" : "rgba(91,141,239,0.3)"}`,
+                background: isPro ? "rgba(240,160,48,0.07)" : "rgba(91,141,239,0.07)",
+                color: isPro ? "#F0A030" : "#5B8DEF",
               }}>{planName.toUpperCase()}</div>
             </div>
           </div>
@@ -293,15 +292,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 background: "linear-gradient(135deg, #F0A030, #E07820)",
                 color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
               }}>↑ Upgrade to Pro — 25/mo</Link>
-            )}
-            {isPro && !isAdvanced && isActive && (
-              <button onClick={() => handleUpgrade("advanced")} disabled={upgradeLoading} style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px",
-                background: "linear-gradient(135deg, #C084FC, #A855F7)",
-                color: "#07080F", fontSize: "11px", fontWeight: 700,
-                border: "none", cursor: upgradeLoading ? "wait" : "pointer",
-              }}>{upgradeLoading ? "…" : "↑ Upgrade to Advanced — 50/mo"}</button>
             )}
             {isCancelled && (
               <Link href="/atlas" style={{

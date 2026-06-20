@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Pro/Advanced only
+  // Pro only
   const { data: profile } = await supabase
     .from('profiles')
     .select('plan')
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   const plan = profile?.plan ?? 'standard'
-  if (plan !== 'pro' && plan !== 'advanced') {
+  if (plan !== 'pro') {
     return NextResponse.json({ error: 'Virus Scanner is a Pro feature' }, { status: 403 })
   }
 
