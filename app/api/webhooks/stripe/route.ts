@@ -11,11 +11,12 @@ const supabase = createClient(
 
 // Stripe price IDs → plan names
 const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
-  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard',  subscription: 'standard'  },
-  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',       subscription: 'pro'       },
-  'price_1TjYPHA1Bm2dPCGcH9h5gH7E': { profile: 'standard',  subscription: 'standard'  },
-  'price_1TjYPHA1Bm2dPCGcDq8GuJD8': { profile: 'pro',       subscription: 'pro'       },
-  'price_1TjYgoA1Bm2dPCGc7Qj3C7AB': { profile: 'advanced',  subscription: 'advanced'  },
+  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
+  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
+  'price_1TjYPHA1Bm2dPCGcH9h5gH7E': { profile: 'standard', subscription: 'standard' },
+  'price_1TjYPHA1Bm2dPCGcDq8GuJD8': { profile: 'pro',      subscription: 'pro'      },
+  'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'standard', subscription: 'standard' },
+  'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'pro',      subscription: 'pro'      },
 }
 
 async function getUserByEmail(email: string) {
