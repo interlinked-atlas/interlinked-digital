@@ -95,10 +95,21 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('stripe-signature') ?? ''
 
   let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
-  } catch (err: any) {
-    console.error('[ATLAS] Webhook signature failed:', err.message)
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_TEST,
+  ].filter(Boolean) as string[]
+
+  let verified = false
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret)
+      verified = true
+      break
+    } catch {}
+  }
+  if (!verified) {
+    console.error('[ATLAS] Webhook signature failed against all known secrets')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
