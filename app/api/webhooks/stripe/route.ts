@@ -145,7 +145,10 @@ export async function POST(req: NextRequest) {
         const sub = event.data.object as Stripe.Subscription
         const priceId = sub.items.data[0]?.price.id ?? ''
         const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
-        const customer = await stripe.customers.retrieve(sub.customer as string)
+        let customer: Stripe.Customer | Stripe.DeletedCustomer
+        try {
+          customer = await stripe.customers.retrieve(sub.customer as string)
+        } catch { break }
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
         if (!email) break
