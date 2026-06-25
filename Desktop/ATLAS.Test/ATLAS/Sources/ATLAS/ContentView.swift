@@ -5,10 +5,11 @@ struct ContentView: View {
     @StateObject private var logger = Logger()
     @StateObject private var historyStore = HistoryStore()
     @StateObject private var queue = InstallQueue()
+    @StateObject private var updateChecker = UpdateChecker.shared
     @State private var isTargeted = false
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
                                            || !UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey)
-    @State private var needsPasswordSetup   = !KeychainManager.hasPassword()
+    @State private var needsPasswordSetup   = false
     // Re-check real permission state on every launch — not just the onboarding flag.
     // FDA + Accessibility are fast sync checks. Automation is async; we use the stored
     // confirmation flag as an initial proxy then verify below.
@@ -62,6 +63,11 @@ struct ContentView: View {
     @State private var pendingInstallURL: URL? = nil
     @State private var pendingScanResult: ScanResult? = nil
     @AppStorage("atlasGreetingShown") private var greetingShown = false
+    @AppStorage("atlas.tourDismissed") private var tourDismissed = false
+    @State private var showTour = false
+    @State private var feedbackProductName: String? = nil
+    @State private var showFeedbackPrompt = false
+    private var feedbackTimer: Timer? = nil
     @State private var showAtlasSelfInstallAlert = false
     // TITAN CORE™ mission state
     @State private var activeTitanMission: TitanMission? = nil
@@ -92,15 +98,19 @@ struct ContentView: View {
                 }
             } else if !auth.subscriptionActive {
                 SubscriptionRequiredView()
+            } else if needsPermissionsSetup {
+                PermissionsSetupView {
+                    needsPermissionsSetup = false
+                    needsPasswordSetup = !KeychainManager.hasPassword()
+                }
             } else if needsPasswordSetup {
                 PasswordSetupView { needsPasswordSetup = false }
                     .atlasBackground()
-            } else if needsPermissionsSetup {
-                PermissionsSetupView { needsPermissionsSetup = false }
             } else {
                 mainLayout
             }
         }
+        .background(widgetState.isWidgetMode ? Color.clear : nil)
         .preferredColorScheme(appearance.override)
         .sheet(isPresented: $showDemoAlert, onDismiss: {
             pendingDemoAlerts.removeFirst()
@@ -181,37 +191,7 @@ struct ContentView: View {
 
     var mainLayout: some View {
         ZStack {
-            if widgetState.isWidgetMode {
-                WidgetView(appState: appState, queue: queue, onExpand: exitWidgetMode, onClose: {
-                    // Use the stored main window reference — NSApp.windows.first is
-                    // unreliable after orderOut and can return sheets/auxiliary windows.
-                    if let w = AppDelegate.mainWindow {
-                        // Undo every property changed by resizeWindow(toWidget: true)
-                        w.level = .normal
-                        w.isOpaque = true
-                        w.backgroundColor = .windowBackgroundColor
-                        w.minSize = CGSize(width: 520, height: 460)
-                        w.maxSize = CGSize(width: 99999, height: 99999)
-                        [NSWindow.ButtonType.closeButton,
-                         .miniaturizeButton, .zoomButton].forEach {
-                            w.standardWindowButton($0)?.isHidden = false
-                        }
-                        AppDelegate.centerWindow(w)
-                        // Fade to invisible — no orderOut so Dock/menu-bar can always
-                        // find and restore the window via makeKeyAndOrderFront.
-                        NSAnimationContext.runAnimationGroup({ ctx in
-                            ctx.duration = 0.22
-                            w.animator().alphaValue = 0
-                        }, completionHandler: {
-                            // Set AFTER fade so SwiftUI re-render doesn't fight AppKit
-                            // while the window is still animating on screen.
-                            WidgetStateManager.shared.isWidgetMode = false
-                        })
-                    } else {
-                        WidgetStateManager.shared.isWidgetMode = false
-                    }
-                })
-            } else {
+            if !widgetState.isWidgetMode {
                 HStack(spacing: 0) {
                     mainView.frame(minWidth: 520)
                     if showHistory {
@@ -252,6 +232,38 @@ struct ContentView: View {
                 .frame(minWidth: showHistory ? 780 : 420, minHeight: showHistory ? 640 : 360)
                 .atlasBackground()
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: showHistory)
+            }
+
+            // Tour overlay — injected via overlayPreferenceValue below
+
+
+            // Post-install feedback prompt (bottom-right, 60s after success)
+            if showFeedbackPrompt, let product = feedbackProductName {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        InstallFeedbackPrompt(
+                            productName: product,
+                            onYes: {
+                                withAnimation { showFeedbackPrompt = false }
+                                TitanMemory.shared.recordConfirmedSuccess(productName: product)
+                            },
+                            onNo: {
+                                withAnimation { showFeedbackPrompt = false }
+                                showSettings = true
+                            },
+                            onDismiss: {
+                                withAnimation { showFeedbackPrompt = false }
+                            }
+                        )
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 56)
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(998)
+                .animation(.spring(response: 0.4, dampingFraction: 0.78), value: showFeedbackPrompt)
             }
         }
         .onChange(of: showHistory) { visible in
@@ -299,8 +311,21 @@ struct ContentView: View {
             handleFilesDrop(urls: [url])
         }
         .onAppear {
+            // Defer Keychain access until main app appears — avoids system prompt at launch
+            if !needsPasswordSetup {
+                needsPasswordSetup = !KeychainManager.hasPassword()
+            }
             widgetState.startIdleMonitoring()
             startPermissionPolling()
+            if !tourDismissed {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    showTour = true
+                }
+            }
+            // Check for app update in background — non-blocking
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                updateChecker.check()
+            }
         }
         .onDisappear {
             widgetState.stopIdleMonitoring()
@@ -318,6 +343,18 @@ struct ContentView: View {
                 checkLivePermissions()
             }
         }
+        // Resolve tour anchors into concrete CGRects and show tour overlay
+        .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+            if showTour && !widgetState.isWidgetMode {
+                GeometryReader { proxy in
+                    let frames = anchors.mapValues { proxy[$0] }
+                    TourView(isShowing: $showTour,
+                             frames: frames,
+                             containerSize: proxy.size)
+                        .transition(.opacity)
+                }
+            }
+        }
     }
 
     var mainView: some View {
@@ -326,6 +363,57 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
                 .padding(.bottom, 16)
+
+            // ── Update available banner ───────────────────────────────────
+            if updateChecker.showBanner, let info = updateChecker.updateInfo {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("ATLAS \(info.version) is available")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(hex: "#3ECFB2"))
+                        if !info.releaseNotes.isEmpty {
+                            Text(info.releaseNotes)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#3ECFB2").opacity(0.7))
+                        }
+                    }
+                    Spacer()
+                    Button {
+                        updateChecker.openDownload()
+                    } label: {
+                        Text("Download")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Color(hex: "#0A0A0B"))
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(Color(hex: "#3ECFB2"))
+                            .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                    Button { updateChecker.dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(hex: "#3ECFB2").opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Color(hex: "#3ECFB2").opacity(0.08))
+                .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "#3ECFB2").opacity(0.2)), alignment: .bottom)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // ── Payment failed banner ─────────────────────────────────────
+            if auth.profile?.subscriptionStatus == "payment_failed" {
+                paymentFailedBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
             // ── Live permission warning banner ────────────────────────────
             if !livePermsMissing.isEmpty {
@@ -414,7 +502,12 @@ struct ContentView: View {
             bottomBar
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView(onStartTour: {
+                // Wait for the sheet dismiss animation to finish before showing tour
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    showTour = true
+                }
+            })
         }
     }
 
@@ -426,6 +519,7 @@ struct ContentView: View {
             BottomBarIconButton(icon: "gearshape", tooltip: "Settings") {
                 showSettings = true
             }
+            .tourAnchor("settings")
 
             // Logs
             BottomBarIconButton(icon: "doc.text", tooltip: "Open Logs in Finder") {
@@ -453,6 +547,12 @@ struct ContentView: View {
 
             Spacer()
 
+            // Widget mode button
+            BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Minimise to widget") {
+                enterWidgetMode()
+            }
+            .tourAnchor("widget")
+
             AppearanceToggle()
                 .padding(.trailing, 12)
         }
@@ -465,6 +565,37 @@ struct ContentView: View {
     }
 
     // MARK: - Permissions banner
+
+    var paymentFailedBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 13))
+                .foregroundColor(Color(hex: "#E05555"))
+            Text("Payment failed — update your billing to keep access.")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color(hex: "#E05555"))
+            Spacer()
+            Button("Update →") {
+                if let url = URL(string: "https://www.interlinked.digital/atlas/account") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(Color(hex: "#E05555"))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(hex: "#E05555").opacity(0.12))
+            .cornerRadius(7)
+            .overlay(RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(hex: "#E05555").opacity(0.3), lineWidth: 1))
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(Color(hex: "#E05555").opacity(0.06))
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .stroke(Color(hex: "#E05555").opacity(0.25), lineWidth: 1))
+    }
 
     var permissionsBanner: some View {
         HStack(spacing: 10) {
@@ -542,7 +673,7 @@ struct ContentView: View {
             // Logo + ATLAS name — tap opens About
             Button { showAbout = true } label: {
                 HStack(spacing: 9) {
-                    AtlasStarView(size: 30, isAnimating: true)
+                    LiquidMetalView(size: 30)
                     VStack(alignment: .leading, spacing: 1) {
                         AtlasTitleText(size: 20, tracking: 5)
                         Text("by InterLinked©")
@@ -571,7 +702,11 @@ struct ContentView: View {
                 .clipShape(Capsule())
                 .overlay(Capsule().strokeBorder(Color.atlasAccent.opacity(0.22), lineWidth: 0.75))
                 .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                .tourAnchor("titanCore")
             }
+
+            // Invisible anchor for TITAN CORE™ tour step (always registered)
+            Color.clear.frame(width: 1, height: 1).tourAnchor("titanCore")
 
             Spacer()
 
@@ -583,6 +718,7 @@ struct ContentView: View {
                 ) {
                     withAnimation(.atlasSpring) { showHistory.toggle() }
                 }
+                .tourAnchor("history")
 
                 if queue.isProcessing || appState.phase == .installing ||
                    appState.phase == .processing || rollbackInProgress {
@@ -697,11 +833,11 @@ struct ContentView: View {
                             Text("Standard")
                                 .font(.system(size: 9.5, weight: .semibold))
                                 .tracking(0.3)
-                                .foregroundStyle(Color(hex: "#5B8DEF"))
+                                .foregroundStyle(Color(hex: "#7090B8"))
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Color(hex: "#5B8DEF").opacity(0.09))
+                                .background(Color(hex: "#7090B8").opacity(0.09))
                                 .clipShape(Capsule())
-                                .overlay(Capsule().strokeBorder(Color(hex: "#5B8DEF").opacity(0.25), lineWidth: 0.75))
+                                .overlay(Capsule().strokeBorder(Color(hex: "#7090B8").opacity(0.25), lineWidth: 0.75))
                         }
                         .foregroundStyle(Color.atlasSubtitle)
                         .padding(.horizontal, 14)
@@ -719,50 +855,32 @@ struct ContentView: View {
                 } onUnsupported: { ext in
                     unsupportedExtension = ext
                 }
+                .tourAnchor("dropZone")
 
-                // FileSharing panel (Pro)
+                // FileSharing panel — Coming Soon
                 if Features.isPro {
-                    if showFileShareUpload {
-                        FileShareUploadOverlay()
+                    HStack(spacing: 8) {
+                        Image(systemName: "icloud.and.arrow.up")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#525260"))
+                        Text("File Sharing")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#525260"))
+                        Spacer()
+                        Text("Coming Soon")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(Color(hex: "#3ECFB2"))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color(hex: "#3ECFB2").opacity(0.10))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().strokeBorder(Color(hex: "#3ECFB2").opacity(0.2), lineWidth: 0.75))
                     }
-
-                    Button(action: {
-                        withAnimation { showFileShare.toggle() }
-                        if showFileShare { Task { await fileShare.loadFiles() } }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "icloud.and.arrow.up")
-                                .font(.system(size: 10))
-                            Text(showFileShare ? "Hide Shared Files" : "Shared Files")
-                                .font(.system(size: 11, weight: .medium))
-                            if !fileShare.sharedFiles.isEmpty && !showFileShare {
-                                Text("\(fileShare.sharedFiles.count)")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(Color(hex: "#3ECFB2"))
-                                    .padding(.horizontal, 5).padding(.vertical, 2)
-                                    .background(Color(hex: "#3ECFB2").opacity(0.12))
-                                    .clipShape(Capsule())
-                            }
-                            Spacer()
-                            Image(systemName: showFileShare ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 9))
-                        }
-                        .foregroundStyle(Color(hex: "#525260"))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.02))
-                        .clipShape(RoundedRectangle(cornerRadius: 9))
-                        .overlay(RoundedRectangle(cornerRadius: 9)
-                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.75))
-                    }
-                    .buttonStyle(.plain)
-
-                    if showFileShare {
-                        FileShareView { downloadedURL in
-                            showFileShare = false
-                            handleFilesDrop(urls: [downloadedURL])
-                        }
-                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.02))
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                    .overlay(RoundedRectangle(cornerRadius: 9)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.75))
                 }
             }
         }
@@ -780,7 +898,7 @@ struct ContentView: View {
                 Spacer()
                 Button { preInstallWarnings.removeAll { $0.message == warning.message } } label: {
                     Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color(hex: "#6B7399"))
+                        .foregroundColor(Color(hex: "#696E7C"))
                 }
                 .buttonStyle(.plain)
             }
@@ -816,15 +934,22 @@ struct ContentView: View {
                     logger.clear()
                     withAnimation { showDropZone = true }
                 },
-                onShare: Features.isPro ? {
-                    Task {
-                        showFileShareUpload = true
-                        let ok = await fileShare.upload(url: scanResult.fileURL)
-                        showFileShareUpload = false
-                        if ok { showFileShare = true }
-                    }
-                } : nil
+                onShare: nil
             )
+            .tourAnchor("scanResult")
+            .sheet(isPresented: $fileShare.showDevicePicker) {
+                if let pendingURL = fileShare.pendingUploadURL {
+                    DevicePickerView(fileURL: pendingURL, arch: fileShare.pendingArch) {
+                        fileShare.showDevicePicker = false
+                        fileShare.pendingUploadURL = nil
+                        fileShare.pendingArch = nil
+                        Task { await fileShare.loadFiles() }
+                        showFileShare = true
+                    }
+                    .padding(20)
+                    .background(Color(hex: "#080809"))
+                }
+            }
             .sheet(isPresented: $showVirusScanResult) {
                 if let vtResult = virusScan.lastResult, let url = pendingVirusScanURL {
                     VirusScanView(
@@ -925,24 +1050,24 @@ struct ContentView: View {
                             .foregroundColor(Color(hex: "#F0A030"))
                         Text("\(planName) plan: \(cap) installs per month")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#6B7399"))
+                            .foregroundColor(Color(hex: "#696E7C"))
                     }
 
                     if monthlyLimit.hasPendingFiles {
                         HStack(spacing: 5) {
                             Image(systemName: "clock.badge.fill")
                                 .font(.system(size: 11))
-                                .foregroundColor(Color(hex: "#6B7399"))
+                                .foregroundColor(Color(hex: "#696E7C"))
                             Text("\(monthlyLimit.pendingURLs.count) file\(monthlyLimit.pendingURLs.count == 1 ? "" : "s") pending")
                                 .font(.system(size: 11))
-                                .foregroundColor(Color(hex: "#6B7399"))
+                                .foregroundColor(Color(hex: "#696E7C"))
                         }
                     }
 
                     HStack(spacing: 5) {
                         Image(systemName: "clock")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#6B7399"))
+                            .foregroundColor(Color(hex: "#696E7C"))
                         Text("Refills in \(countdown)")
                             .font(.system(size: 13, weight: .medium).monospacedDigit())
                             .foregroundColor(Color(hex: "#D0D8F0"))
@@ -1031,7 +1156,7 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 9))
-                        .foregroundColor(Color(hex: "#6B7399"))
+                        .foregroundColor(Color(hex: "#696E7C"))
                 }
                 .buttonStyle(.plain)
             }
@@ -1063,7 +1188,7 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 9))
-                        .foregroundColor(Color(hex: "#6B7399"))
+                        .foregroundColor(Color(hex: "#696E7C"))
                 }
                 .buttonStyle(.plain)
             }
@@ -1613,7 +1738,7 @@ struct ContentView: View {
             }
             // Post notification and update menu bar icon
             switch appState.lastResult {
-            case .success(let name):
+            case .success(let name, _):
                 ATLASNotification.send(
                     title: L(.notifySuccessTitle),
                     body: "\(name) installed successfully.")
@@ -1822,7 +1947,7 @@ struct ContentView: View {
         historyStore.add(record)
 
         // ── ATLAS LEARN™ — upload verified clean installs as learned patterns ──
-        if verifyPassed && demoWarnings.isEmpty, case .success(let learnName) = finalResult {
+        if verifyPassed && demoWarnings.isEmpty, case .success(let learnName, _) = finalResult {
             let capturedFiles    = installedFiles
             let capturedReceipts = receiptIDs
             let capturedURL      = item.url
@@ -1837,9 +1962,13 @@ struct ContentView: View {
 
         let logContent = logger.entries.joined(separator: "\n")
         switch finalResult {
-        case .success(let name):
+        case .success(let name, let postNote):
             queue.updateStatus(id: id, status: .success)
             queue.updateProgress(id: id, progress: 1.0, step: "")
+            if let note = postNote {
+                logger.log("  ℹ️ Post-install note: \(note)")
+                queue.updateStatus(id: id, status: .demoWarning(note))
+            }
             if !demoWarnings.isEmpty {
                 logger.log("  ⚠️ Installed with warning: Demo Mode detected (\(demoWarnings.count) signal(s))")
                 queue.updateStatus(id: id, status: .demoWarning(ATLASMessages.friendlyDemoWarning(keywords: demoWarnings.map { $0.keyword })))
@@ -1856,6 +1985,13 @@ struct ContentView: View {
             }
             syncInstallLog(logType: demoWarnings.isEmpty ? "install" : "install-demo",
                            appName: name, fileName: item.fileName, content: logContent)
+            // Feedback prompt — ask user 60s after success
+            let feedbackName = name
+            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [self] in
+                guard !showFeedbackPrompt else { return }
+                feedbackProductName = feedbackName
+                withAnimation { showFeedbackPrompt = true }
+            }
         case .failure(let reason):
             let isCancelled = reason.lowercased() == "cancelled"
             queue.updateStatus(id: id, status: .failure(reason))
@@ -2093,25 +2229,39 @@ struct ContentView: View {
 
     private func enterWidgetMode() {
         guard !widgetState.isWidgetMode else { return }
-        widgetState.cancelIdleCollapse()   // no countdown needed while already collapsed
-        widgetState.isWidgetMode = true
-        resizeWindow(toWidget: true)
+        widgetState.cancelIdleCollapse()
+        if showTour { showTour = false }
+        guard let mainWindow = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
+
+        // Fade out main window
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.18
+            mainWindow.animator().alphaValue = 0
+        }, completionHandler: {
+            mainWindow.orderOut(nil)
+            widgetState.isWidgetMode = true
+            AppDelegate.showWidgetPanel(appState: self.appState, queue: self.queue,
+                onExpand: { self.exitWidgetMode() },
+                onClose:  { self.exitWidgetMode(); AppDelegate.mainWindow?.orderOut(nil) })
+        })
     }
 
     private func exitWidgetMode() {
         guard widgetState.isWidgetMode else { return }
-        // Use the stored mainWindow reference — NSApp.windows.first is unreliable
-        // when sheets or auxiliary windows are open.
-        let window = AppDelegate.mainWindow ?? NSApp.windows.first
-        window?.minSize = CGSize(width: 1, height: 1)
-        window?.maxSize = CGSize(width: 99999, height: 99999)
         widgetState.isWidgetMode = false
-        // Brief pause lets SwiftUI finish swapping WidgetView → mainLayout
-        // before AppKit resizes the frame.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            self.resizeWindow(toWidget: false)
+        AppDelegate.closeWidgetPanel()
+        guard let window = AppDelegate.mainWindow else { return }
+        AppDelegate.centerWindow(window)
+        window.isOpaque = true
+        window.backgroundColor = .windowBackgroundColor
+        window.hasShadow = true
+        window.alphaValue = 0
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.28
+            window.animator().alphaValue = 1
         }
-        // Restart the idle countdown so ATLAS will collapse again if left alone
         widgetState.scheduleIdleCollapse()
     }
 
@@ -2124,8 +2274,6 @@ struct ContentView: View {
             let w: CGFloat = 320
             let h: CGFloat = 92
 
-            window.isOpaque = false
-            window.backgroundColor = .clear
             window.level = .floating
             window.minSize = CGSize(width: w, height: h)
             window.maxSize = CGSize(width: w, height: h)
@@ -2144,7 +2292,9 @@ struct ContentView: View {
         } else {
             window.isOpaque = true
             window.backgroundColor = .windowBackgroundColor
+            window.hasShadow = true
             window.level = .normal
+            window.contentView?.layer?.backgroundColor = nil
             // Free all constraints so the animation target is reachable
             window.minSize = CGSize(width: 1, height: 1)
             window.maxSize = CGSize(width: 99999, height: 99999)
@@ -2325,15 +2475,16 @@ struct ContentView: View {
         case .dmg: return "DMG"
         case .iso: return "ISO"
         case .zip: return "ZIP"
-        case .app: return "APP"
-        case .pkg: return "PKG"
-        case .component: return "Component"
-        case .vst3: return "VST3"
-        case .vst: return "VST"
-        case .aax: return "AAX"
-        case .kontaktLibrary: return "Kontakt Library"
-        case .exe:            return "EXE (Wine)"
-        case .unsupported(let e): return e.uppercased()
+        case .app:                  return "APP"
+        case .interactiveInstaller: return "Interactive Installer"
+        case .pkg:                  return "PKG"
+        case .component:            return "Component"
+        case .vst3:                 return "VST3"
+        case .vst:                  return "VST"
+        case .aax:                  return "AAX"
+        case .kontaktLibrary:       return "Kontakt Library"
+        case .exe:                  return "EXE (Wine)"
+        case .unsupported(let e):   return e.uppercased()
         }
     }
 }

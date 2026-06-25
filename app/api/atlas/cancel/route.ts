@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-04-30.basil',
 })
 
 const supabase = createClient(
@@ -54,6 +55,11 @@ export async function POST(req: NextRequest) {
     .from('profiles')
     .update({ subscription_status: 'cancelled' })
     .eq('id', user.id)
+
+  const endDate = sub.current_period_end
+    ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : ''
+  await sendEmail({ to: profile.email, template: 'subscription-cancelled', data: { endDate } })
 
   return NextResponse.json({ ok: true })
 }
