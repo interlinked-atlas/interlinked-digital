@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' })
 
@@ -87,6 +88,7 @@ async function handleCancellation(customerId: string) {
     .update({ status: 'canceled', updated_at: new Date().toISOString() })
     .eq('stripe_customer_id', customerId)
 
+  await sendEmail({ to: email, template: 'subscription-cancelled' })
   console.log(`[ATLAS] Cancelled subscription for ${email}`)
 }
 
@@ -137,6 +139,14 @@ export async function POST(req: NextRequest) {
             sub.current_period_end,
             sub.cancel_at_period_end
           )
+
+          // Welcome + subscription confirmation email
+          const renewDate = sub.current_period_end
+            ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : ''
+          const name = session.customer_details?.name ?? email.split('@')[0]
+          await sendEmail({ to: email, template: 'welcome', data: { name } })
+          await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: plan.profile, renewDate } })
         }
         break
       }
@@ -189,6 +199,8 @@ export async function POST(req: NextRequest) {
           .from('subscriptions')
           .update({ status: 'past_due', updated_at: new Date().toISOString() })
           .eq('stripe_customer_id', invoice.customer as string)
+
+        await sendEmail({ to: email, template: 'payment-failed' })
         break
       }
     }
