@@ -116,7 +116,8 @@ export function ProductCard({
                     fontSize: "9px", letterSpacing: "1px", color: "var(--il-secondary)",
                     padding: "3px 8px", borderRadius: "4px",
                     border: "1px solid var(--il-border)", background: "transparent",
-                  }}>Windows</span>
+                    opacity: 0.5,
+                  }}>Windows — Soon</span>
                 )}
               </div>
             )}

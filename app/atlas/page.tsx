@@ -349,7 +349,7 @@ export default function ATLASWaitlistPage() {
                   </svg>
                   <span className="platform-label">macOS</span>
                 </div>
-                <div className="platform-badge">
+                <div className="platform-badge" style={{ opacity: 0.45 }}>
                   {/* Windows logo — 4 squares */}
                   <svg width="16" height="16" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
@@ -358,6 +358,7 @@ export default function ATLASWaitlistPage() {
                     <rect x="12" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
                   </svg>
                   <span className="platform-label">Windows</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: '#525260', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 5px', marginLeft: 4 }}>SOON</span>
                 </div>
               </div>
 
