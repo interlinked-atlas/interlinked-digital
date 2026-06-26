@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset'
 
 interface SendOptions {
   to: string
@@ -28,6 +28,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'payment-failed': {
       subject: 'ATLAS — Payment Failed',
       html: paymentFailedEmail(),
+    },
+    'password-reset': {
+      subject: 'ATLAS — Reset your password',
+      html: passwordResetEmail(data.resetUrl ?? ''),
     },
   }
 
@@ -274,6 +278,32 @@ function paymentFailedEmail() {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
         Need help? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
+      </p>
+    </div>
+  `)
+}
+
+function passwordResetEmail(resetUrl: string) {
+  return base('ATLAS — Reset your password', `
+    <!-- Top indigo bar -->
+    <div style="height:2px;background:${INDIGO};"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Password Reset')}
+      ${heading('Reset your password.')}
+      ${body("We received a request to reset the password for your ATLAS account. Click the button below to choose a new password. This link expires in 1 hour.")}
+
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+        <tr>
+          <td align="center" style="background:${INDIGO};border-radius:10px;">
+            <a href="${resetUrl}" style="display:inline-block;padding:13px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:-0.01em;color:#FFFFFF;text-decoration:none;">Reset Password →</a>
+          </td>
+        </tr>
+      </table>
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        If you didn't request a password reset, you can safely ignore this email — your password won't change.
       </p>
     </div>
   `)
