@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' })
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' })
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,8 +11,8 @@ const supabase = createClient(
 )
 
 const PRICE_IDS: Record<string, string> = {
-  pro:      'price_1TjYPHA1Bm2dPCGcDq8GuJD8',
-  advanced: 'price_1TjYgoA1Bm2dPCGc7Qj3C7AB',
+  standard: 'price_1TliuWA1Bm2dPCGcbpXH9hE5',
+  pro:      'price_1TlitLA1Bm2dPCGcZRFxm68J',
 }
 
 export async function POST(req: NextRequest) {
@@ -21,7 +22,6 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
-  // Accept optional target plan; default to upgrading one tier
   const body = await req.json().catch(() => ({}))
   const targetPlan: string = body.plan ?? 'pro'
   const priceId = PRICE_IDS[targetPlan]
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!sub) return NextResponse.json({ error: 'No active subscription to upgrade' }, { status: 404 })
 
   const item = sub.items.data[0]
-  await stripe.subscriptions.update(sub.id, {
+  const updatedSub = await stripe.subscriptions.update(sub.id, {
     items: [{ id: item.id, price: priceId }],
     proration_behavior: 'always_invoice',
   })
@@ -59,6 +59,11 @@ export async function POST(req: NextRequest) {
     status:                 'active',
     updated_at:             new Date().toISOString(),
   }, { onConflict: 'user_id' })
+
+  const renewDate = updatedSub.current_period_end
+    ? new Date(updatedSub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : ''
+  await sendEmail({ to: profile.email, template: 'subscription-confirmed', data: { plan: targetPlan, renewDate } })
 
   return NextResponse.json({ ok: true })
 }

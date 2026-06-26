@@ -9,23 +9,26 @@ export interface Product {
   popular?: boolean
 }
 
+// Live Stripe price IDs — must match PRICE_PLAN in webhooks/stripe/route.ts
+export const PRICE_IDS = {
+  standard: 'price_1TliuWA1Bm2dPCGcbpXH9hE5',
+  pro:      'price_1TlitLA1Bm2dPCGcZRFxm68J',
+} as const
+
 export const PRODUCTS: Product[] = [
   {
-    id: 'atlas-basic',
-    name: 'ATLAS Basic',
-    description: 'Perfect for casual users who need the essential ATLAS experience.',
+    id: 'atlas-standard',
+    name: 'ATLAS Standard',
+    description: 'Everything you need to automate your software installations.',
     priceInCents: 2499, // $24.99
     interval: 'month',
     features: [
-      'Standard installations',
-      'Core ATLAS workflow tools',
-      'Single computer activation',
-      'Up to 3 installs daily',
-    ],
-    limitations: [
-      'Bulk queue installs disabled',
-      'Uninstall Manager unavailable',
-      'Recovery System unavailable',
+      'One-click software installation',
+      'Up to 3 installs per day',
+      'Installation history (last 5)',
+      'Real-time account sync',
+      'Notifications & alerts',
+      'Single device',
     ],
   },
   {
@@ -35,14 +38,15 @@ export const PRODUCTS: Product[] = [
     priceInCents: 4999, // $49.99
     interval: 'month',
     features: [
-      'Everything in Basic',
-      'Unlimited installations',
-      'Bulk queue installation support',
-      'Smart Uninstall Manager',
-      'Recovery System',
-      'Up to 3 computer activations',
-      'Faster workflow management',
-      'Future updates included',
+      'Everything in Standard',
+      'Unlimited installs',
+      'Bulk queue installation',
+      'TITAN CORE™ smart installer',
+      'Smart Storage management',
+      'Virus Scanner (VirusTotal)',
+      'Uninstall & Rollback',
+      'Up to 3 devices',
+      'Full installation history',
     ],
     popular: true,
   },

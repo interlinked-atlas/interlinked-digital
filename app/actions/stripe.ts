@@ -1,7 +1,7 @@
 'use server'
 
 import { stripe } from '@/lib/stripe'
-import { PRODUCTS } from '@/lib/products'
+import { PRODUCTS, PRICE_IDS } from '@/lib/products'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 
@@ -14,6 +14,13 @@ export async function startCheckoutSession(productId: string, email?: string) {
   const headersList = await headers()
   const origin = headersList.get('origin') || 'https://interlinked.digital'
 
+  // Map product ID to real Stripe price ID
+  const planKey = productId.replace('atlas-', '') as keyof typeof PRICE_IDS
+  const priceId = PRICE_IDS[planKey]
+  if (!priceId) {
+    throw new Error(`No Stripe price ID found for product "${productId}"`)
+  }
+
   // Check if user is already logged in
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,31 +28,12 @@ export async function startCheckoutSession(productId: string, email?: string) {
   const sessionConfig: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     ui_mode: 'embedded',
     redirect_on_completion: 'never',
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: product.name,
-            description: product.description,
-          },
-          unit_amount: product.priceInCents,
-          recurring: {
-            interval: product.interval,
-          },
-        },
-        quantity: 1,
-      },
-    ],
+    line_items: [{ price: priceId, quantity: 1 }],
     mode: 'subscription',
     subscription_data: {
-      metadata: {
-        plan: productId.replace('atlas-', ''),
-      },
+      metadata: { plan: planKey },
     },
-    metadata: {
-      plan: productId.replace('atlas-', ''),
-    },
+    metadata: { plan: planKey },
   }
 
   // If user is logged in, attach their customer ID or email

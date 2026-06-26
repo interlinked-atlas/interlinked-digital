@@ -286,7 +286,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
             {!isPro && isActive && (
-              <Link href="/atlas/checkout?plan=pro" style={{
+              <Link href="/atlas/checkout?plan=atlas-pro" style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
                 background: "linear-gradient(135deg, #F0A030, #E07820)",
