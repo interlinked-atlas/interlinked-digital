@@ -20,7 +20,7 @@ export const PRODUCTS: Product[] = [
     id: 'atlas-standard',
     name: 'ATLAS Standard',
     description: 'Everything you need to automate your software installations.',
-    priceInCents: 2499, // $24.99
+    priceInCents: 1499, // $14.99
     interval: 'month',
     features: [
       'One-click software installation',
@@ -35,7 +35,7 @@ export const PRODUCTS: Product[] = [
     id: 'atlas-pro',
     name: 'ATLAS Pro',
     description: 'Built for professional producers, engineers, studios, and advanced workflows.',
-    priceInCents: 4999, // $49.99
+    priceInCents: 2999, // $29.99
     interval: 'month',
     features: [
       'Everything in Standard',
