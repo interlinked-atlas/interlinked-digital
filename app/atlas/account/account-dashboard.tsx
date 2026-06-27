@@ -285,21 +285,21 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-            {!isPro && isActive && (
-              <Link href="/atlas/checkout?plan=atlas-pro" style={{
+            {!isPro && isActive && !isCancelled && (
+              <button onClick={() => handleUpgrade("pro")} disabled={upgradeLoading} style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
-                background: "linear-gradient(135deg, #F0A030, #E07820)",
-                color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
-              }}>↑ Upgrade to Pro — $29.99/mo</Link>
+                background: upgradeLoading ? "rgba(240,160,48,0.4)" : "linear-gradient(135deg, #F0A030, #E07820)",
+                color: "#07080F", fontSize: "11px", fontWeight: 700, cursor: upgradeLoading ? "not-allowed" : "pointer", border: "none",
+              }}>{upgradeLoading ? "Switching…" : "↑ Upgrade to Pro — $29.99/mo"}</button>
             )}
             {isPro && isActive && !isCancelled && (
               <button onClick={() => handleUpgrade("standard")} disabled={upgradeLoading} style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
                 border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
-                fontSize: "11px", background: "none", cursor: "pointer",
-              }}>↓ Downgrade to Standard — $14.99/mo</button>
+                fontSize: "11px", background: "none", cursor: upgradeLoading ? "not-allowed" : "pointer",
+              }}>{upgradeLoading ? "Switching…" : "↓ Downgrade to Standard — $14.99/mo"}</button>
             )}
             {isCancelled && (
               <Link href="/atlas" style={{

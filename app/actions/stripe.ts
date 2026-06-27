@@ -36,13 +36,18 @@ export async function startCheckoutSession(productId: string, email?: string) {
     metadata: { plan: planKey },
   }
 
-  // If user is logged in, attach their customer ID or email
+  // If user is logged in, check for existing active subscription first
   if (user) {
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, status, plan')
       .eq('user_id', user.id)
       .single()
+
+    // Block checkout if already on an active subscription — must use upgrade/downgrade instead
+    if (subscription?.status === 'active') {
+      throw new Error('ALREADY_SUBSCRIBED')
+    }
 
     if (subscription?.stripe_customer_id) {
       sessionConfig.customer = subscription.stripe_customer_id
