@@ -3,7 +3,14 @@ import AppKit
 
 final class AuthManager: ObservableObject {
     static let shared = AuthManager()
-    private init() { restoreSession() }
+    private init() {
+        // Delay Keychain access by 3s so the splash screen completes first.
+        // macOS triggers "ATLAS wants to access Keychain" on first write — deferring
+        // this past the splash ensures the prompt appears in context, not over a blank screen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.restoreSession()
+        }
+    }
 
     @Published var session: ATLASSession?
     @Published var profile: ATLASProfile?
@@ -11,8 +18,8 @@ final class AuthManager: ObservableObject {
     @Published var isLoadingProfile = false
     @Published var authError: String?
     @Published var authErrorIsDeviceLimit = false
+    @Published var authErrorIsEmailUnconfirmed = false
     @Published var devices: [ATLASDevice] = []
-
     private var planSyncTimer: Timer?
 
     var isSignedIn: Bool { session != nil }
@@ -40,9 +47,13 @@ final class AuthManager: ObservableObject {
     func signIn(email: String, password: String) async {
         isLoading = true
         authError = nil
+        authErrorIsEmailUnconfirmed = false
         do {
             let s = try await SupabaseService.shared.signIn(email: email, password: password)
             await completeAuth(s)
+        } catch SupabaseError.emailNotConfirmed {
+            authError = "Please confirm your email before signing in. Check your inbox for a link from interlinked.digital."
+            authErrorIsEmailUnconfirmed = true
         } catch {
             authError = error.localizedDescription
         }
@@ -125,7 +136,7 @@ final class AuthManager: ObservableObject {
 
     private func startPlanSyncTimer() {
         planSyncTimer?.invalidate()
-        planSyncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        planSyncTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             guard let self = self, let s = self.session, !s.isExpired else { return }
             Task {
                 // Sync profile (plan + subscription status)
@@ -138,9 +149,15 @@ final class AuthManager: ObservableObject {
                         KeychainManager.saveProfile(p)
                     }
                 }
-                // Sync device list
+                // Sync device list — force sign-out if this device was removed remotely
                 if let list = try? await SupabaseService.shared.getDevices(
                     accessToken: s.accessToken, userID: s.userID) {
+                    let myUUID = atlasHardwareUUID()
+                    let stillRegistered = list.contains { $0.hardwareUUID == myUUID }
+                    if !stillRegistered {
+                        await MainActor.run { self.signOut() }
+                        return
+                    }
                     await MainActor.run { self.devices = list }
                 }
             }
@@ -256,7 +273,7 @@ final class AuthManager: ObservableObject {
 
     // MARK: - Offline restore
 
-    private static let gracePeriodSeconds: TimeInterval = 7 * 24 * 3600
+    private static let gracePeriodSeconds: TimeInterval = 24 * 3600
 
     private func handleOfflineRestore(_ saved: ATLASSession) async {
         if let tokenStr = KeychainManager.loadOfflineToken(),
