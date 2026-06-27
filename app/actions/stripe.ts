@@ -26,10 +26,10 @@ export async function startCheckoutSession(productId: string, email?: string) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const sessionConfig: Parameters<typeof stripe.checkout.sessions.create>[0] = {
-    ui_mode: 'embedded',
-    redirect_on_completion: 'never',
     line_items: [{ price: priceId, quantity: 1 }],
     mode: 'subscription',
+    success_url: `${origin}/atlas/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/atlas/checkout?plan=${productId}`,
     subscription_data: {
       metadata: { plan: planKey },
     },
@@ -38,7 +38,6 @@ export async function startCheckoutSession(productId: string, email?: string) {
 
   // If user is logged in, attach their customer ID or email
   if (user) {
-    // Check if they already have a stripe customer ID
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
@@ -56,7 +55,7 @@ export async function startCheckoutSession(productId: string, email?: string) {
 
   const session = await stripe.checkout.sessions.create(sessionConfig)
 
-  return session.client_secret
+  return session.url!
 }
 
 export async function getCheckoutSessionStatus(sessionId: string) {
