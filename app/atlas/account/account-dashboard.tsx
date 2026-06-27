@@ -127,7 +127,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Upgrade failed")
-      router.refresh()
+      window.location.reload()
     } catch (err: unknown) {
       setUpgradeError(err instanceof Error ? err.message : "Upgrade failed")
     }
@@ -317,6 +317,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               }}>Cancel Subscription</button>
             )}
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}
+            {upgradeError && <p style={{ fontSize: "11px", color: "#E05555", width: "100%" }}>{upgradeError}</p>}
           </div>
         </section>
 
