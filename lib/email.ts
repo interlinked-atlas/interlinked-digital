@@ -225,10 +225,7 @@ function subscriptionCancelledEmail(endDate: string) {
     <div style="padding:36px 36px 40px;">
       ${eyebrow('Subscription Ended')}
       ${heading('Your subscription has been cancelled.')}
-      ${body(endDate
-        ? `You'll have full access until <strong style="color:${WHITE};font-weight:600;">${endDate}</strong>. After that, your account reverts to limited access.`
-        : `Your ATLAS subscription has ended. You can re-subscribe at any time to restore full access.`
-      )}
+      ${body(`Your ATLAS subscription has been cancelled and access has ended immediately. You can re-subscribe at any time to restore full access.`)}
 
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
         <tr><td style="padding:18px 20px;">

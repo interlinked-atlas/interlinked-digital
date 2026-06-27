@@ -49,17 +49,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
   }
 
-  await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true })
+  // Cancel immediately — no remaining access, no free days
+  await stripe.subscriptions.cancel(sub.id)
 
   await supabase
     .from('profiles')
-    .update({ subscription_status: 'cancelled' })
+    .update({ subscription_status: 'cancelled', plan: 'free' })
     .eq('id', user.id)
 
-  const endDate = sub.current_period_end
-    ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : ''
-  await sendEmail({ to: profile.email, template: 'subscription-cancelled', data: { endDate } })
+  await supabase
+    .from('subscriptions')
+    .update({ status: 'canceled', updated_at: new Date().toISOString() })
+    .eq('stripe_customer_id', customer.id)
+
+  await sendEmail({ to: profile.email, template: 'subscription-cancelled', data: { endDate: '' } })
 
   return NextResponse.json({ ok: true })
 }
