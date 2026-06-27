@@ -107,7 +107,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
   const maxDevices = isPro ? 3 : 1
   const planName  = isPro ? "Pro" : "Standard"
-  const planPrice = isPro ? "$49.99" : "$24.99"
+  const planPrice = isPro ? "$29.99" : "$14.99"
   const monthlyInstallLimit = isPro ? 25 : 10
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
@@ -291,7 +291,15 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 padding: "8px 16px", borderRadius: "8px",
                 background: "linear-gradient(135deg, #F0A030, #E07820)",
                 color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
-              }}>↑ Upgrade to Pro — 25/mo</Link>
+              }}>↑ Upgrade to Pro — $29.99/mo</Link>
+            )}
+            {isPro && isActive && !isCancelled && (
+              <button onClick={() => handleUpgrade("standard")} disabled={upgradeLoading} style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "8px 16px", borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
+                fontSize: "11px", background: "none", cursor: "pointer",
+              }}>↓ Downgrade to Standard — $14.99/mo</button>
             )}
             {isCancelled && (
               <Link href="/atlas" style={{

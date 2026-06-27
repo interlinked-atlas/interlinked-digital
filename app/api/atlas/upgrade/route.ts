@@ -42,9 +42,11 @@ export async function POST(req: NextRequest) {
   if (!sub) return NextResponse.json({ error: 'No active subscription to upgrade' }, { status: 404 })
 
   const item = sub.items.data[0]
+  const isDowngrade = profile.plan === 'pro' && targetPlan === 'standard'
   const updatedSub = await stripe.subscriptions.update(sub.id, {
     items: [{ id: item.id, price: priceId }],
-    proration_behavior: 'always_invoice',
+    proration_behavior: isDowngrade ? 'none' : 'always_invoice',
+    billing_cycle_anchor: isDowngrade ? 'unchanged' : 'now',
   })
 
   await supabase.from('profiles')
