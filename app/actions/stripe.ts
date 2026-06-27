@@ -29,7 +29,7 @@ export async function startCheckoutSession(productId: string, email?: string) {
     line_items: [{ price: priceId, quantity: 1 }],
     mode: 'subscription',
     success_url: `${origin}/atlas/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/atlas/checkout?plan=${productId}`,
+    cancel_url: `${origin}/atlas/account`,
     subscription_data: {
       metadata: { plan: planKey },
     },
