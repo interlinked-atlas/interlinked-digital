@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { sendEmail } from '@/lib/email'
 
 // Supabase Auth Hook — Custom Email
-// Configure in Supabase: Authentication → Hooks → Send Email → HTTP
-// Set this URL: https://www.interlinked.digital/api/atlas/auth-email
-// Secret: SUPABASE_AUTH_EMAIL_HOOK_SECRET (env var)
-//
-// Supabase sends { user, email_data: { token, token_hash, redirect_to, email_action_type, site_url } }
+// URL: https://www.interlinked.digital/api/atlas/auth-email
+// Supabase sends HMAC-SHA256 signature in Authorization header as Bearer whsec_...
+
+function verifyHookSignature(rawBody: string, authHeader: string, secret: string): boolean {
+  try {
+    // Supabase secret format: v1,whsec_<base64>
+    const whsecPart = secret.includes(',') ? secret.split(',')[1] : secret
+    const keyBytes = Buffer.from(whsecPart.replace('whsec_', ''), 'base64')
+    const sig = createHmac('sha256', keyBytes).update(rawBody).digest('hex')
+    const expected = `v1,${sig}`
+    const given = authHeader.replace('Bearer ', '')
+    if (expected.length !== given.length) return false
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(given))
+  } catch { return false }
+}
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-supabase-hook-secret') ?? req.headers.get('authorization')?.replace('Bearer ', '')
-  if (process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET && secret !== process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET) {
+  const rawBody = await req.text()
+  const authHeader = req.headers.get('authorization') ?? ''
+  const hookSecret = process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET ?? ''
+
+  if (hookSecret && !verifyHookSignature(rawBody, authHeader, hookSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
+  const body = JSON.parse(rawBody)
 
   const { user, email_data } = body
   const to = user?.email
