@@ -126,7 +126,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         body: JSON.stringify({ plan: targetPlan }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Upgrade failed")
+      if (!res.ok) {
+        if (json.error === 'NO_STRIPE_CUSTOMER' && json.redirectTo) {
+          window.location.href = json.redirectTo
+          return
+        }
+        throw new Error(json.error || "Upgrade failed")
+      }
       window.location.reload()
     } catch (err: unknown) {
       setUpgradeError(err instanceof Error ? err.message : "Upgrade failed")

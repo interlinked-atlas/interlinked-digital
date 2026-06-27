@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
 
   const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
   const customer  = customers.data[0]
-  if (!customer) return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
+  if (!customer) return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
 
   const subs = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 1 })
   const sub  = subs.data[0]
-  if (!sub) return NextResponse.json({ error: 'No active subscription to upgrade' }, { status: 404 })
+  if (!sub) return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
 
   const item = sub.items.data[0]
   const isDowngrade = profile.plan === 'pro' && targetPlan === 'standard'
