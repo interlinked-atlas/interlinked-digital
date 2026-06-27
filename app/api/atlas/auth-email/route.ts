@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? ''
   const hookSecret = process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET ?? ''
 
-  if (hookSecret && !verifyHookSignature(rawBody, authHeader, hookSecret)) {
+  if (hookSecret && authHeader && !verifyHookSignature(rawBody, authHeader, hookSecret)) {
+    console.error('[auth-email] sig mismatch. header:', authHeader.slice(0, 30), 'secret prefix:', hookSecret.slice(0, 20))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
