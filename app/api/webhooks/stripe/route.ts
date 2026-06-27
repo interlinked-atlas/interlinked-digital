@@ -76,7 +76,7 @@ async function handleCancellation(customerId: string) {
 
   await supabase
     .from('profiles')
-    .update({ subscription_status: 'cancelled' })
+    .update({ subscription_status: 'cancelled', plan: 'free' })
     .eq('id', userId)
 
   await supabase
