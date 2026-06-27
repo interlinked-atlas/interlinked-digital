@@ -24,10 +24,10 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? ''
   const hookSecret = process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET ?? ''
 
-  console.log('[auth-email] authorization header:', authHeader.slice(0, 60))
-  console.log('[auth-email] all headers:', JSON.stringify(Object.fromEntries(req.headers.entries())))
-  if (hookSecret && authHeader && !verifyHookSignature(rawBody, authHeader, hookSecret)) {
-    console.error('[auth-email] sig mismatch')
+  // Supabase sends the hook secret as x-supabase-signature, not Authorization
+  const supabaseSig = req.headers.get('x-supabase-signature') ?? ''
+  if (hookSecret && supabaseSig && !verifyHookSignature(rawBody, supabaseSig, hookSecret)) {
+    console.error('[auth-email] signature mismatch')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
