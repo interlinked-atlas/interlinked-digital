@@ -407,6 +407,38 @@ struct ContentView: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            // ── Plan change notice ────────────────────────────────────────
+            if let notice = auth.planChangeNotice {
+                HStack(spacing: 10) {
+                    Image(systemName: auth.isPro ? "star.fill" : "arrow.down.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#8890B0"))
+                    Text(notice)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#8890B0"))
+                    Spacer()
+                    Button { auth.planChangeNotice = nil } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(hex: "#696E7C"))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 9)
+                .background(auth.isPro ? Color(hex: "#F0A030").opacity(0.08) : Color(hex: "#1A1D2E"))
+                .cornerRadius(10)
+                .overlay(RoundedRectangle(cornerRadius: 10)
+                    .stroke(auth.isPro ? Color(hex: "#F0A030").opacity(0.2) : Color(hex: "#2A2D3E"), lineWidth: 1))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        withAnimation { auth.planChangeNotice = nil }
+                    }
+                }
+            }
+
             // ── Payment failed banner ─────────────────────────────────────
             if auth.profile?.subscriptionStatus == "payment_failed" {
                 paymentFailedBanner

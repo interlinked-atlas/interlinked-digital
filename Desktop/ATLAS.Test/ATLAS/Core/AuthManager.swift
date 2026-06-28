@@ -20,6 +20,7 @@ final class AuthManager: ObservableObject {
     @Published var authErrorIsDeviceLimit = false
     @Published var authErrorIsEmailUnconfirmed = false
     @Published var devices: [ATLASDevice] = []
+    @Published var planChangeNotice: String? = nil
     private var planSyncTimer: Timer?
 
     var isSignedIn: Bool { session != nil }
@@ -142,10 +143,21 @@ final class AuthManager: ObservableObject {
                 // Sync profile (plan + subscription status)
                 if let p = try? await SupabaseService.shared.getProfile(
                     accessToken: s.accessToken, userID: s.userID) {
-                    let changed = p.plan != self.profile?.plan ||
-                                  p.subscriptionStatus != self.profile?.subscriptionStatus
-                    if changed {
-                        await MainActor.run { self.profile = p }
+                    let planChanged   = p.plan != self.profile?.plan
+                    let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
+                    if planChanged || statusChanged {
+                        let oldPlan = self.profile?.plan ?? ""
+                        let newPlan = p.plan
+                        await MainActor.run {
+                            self.profile = p
+                            if planChanged && !oldPlan.isEmpty {
+                                self.planChangeNotice = newPlan == "pro"
+                                    ? "✦ Upgraded to Pro — all features unlocked."
+                                    : newPlan == "standard"
+                                    ? "Plan changed to Standard."
+                                    : nil
+                            }
+                        }
                         KeychainManager.saveProfile(p)
                     }
                 }
