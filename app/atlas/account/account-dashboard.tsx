@@ -57,6 +57,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const supabase = createClient()
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    document.body.style.overflow = showCancelConfirm ? "hidden" : ""
+    return () => { document.body.style.overflow = "" }
+  }, [showCancelConfirm])
 
   // Auto-refresh every 8s when tab is visible
   const doRefresh = useCallback(() => {
@@ -634,9 +638,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
       {/* ── Cancel confirmation modal ── */}
       {showCancelConfirm && (
-        <div className="backdrop-enter" style={{
+        <div className="backdrop-enter" onClick={(e) => { if (e.target === e.currentTarget) setShowCancelConfirm(false) }} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)",
           zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+          top: 0, left: 0, right: 0, bottom: 0,
         }}>
           <div className="modal-enter" style={{
             background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "16px",
