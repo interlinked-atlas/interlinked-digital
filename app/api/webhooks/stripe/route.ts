@@ -174,6 +174,14 @@ export async function POST(req: NextRequest) {
             plan, sub.status, sub.current_period_end, sub.cancel_at_period_end
           )
 
+          // Store billing anchor day and interval for reset logic in app
+          const anchorDay = new Date(sub.current_period_start * 1000).getDate()
+          const interval = sub.items.data[0]?.price.recurring?.interval ?? 'month'
+          await supabase.from('profiles').update({
+            billing_anchor_day: anchorDay,
+            billing_interval: interval === 'year' ? 'annual' : 'monthly',
+          }).eq('id', userId)
+
           const renewDate = sub.current_period_end
             ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : ''

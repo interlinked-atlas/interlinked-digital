@@ -579,11 +579,19 @@ struct ContentView: View {
 
             Spacer()
 
-            // Widget mode button
-            BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Minimise to widget") {
-                enterWidgetMode()
+            // Widget mode button — Pro only
+            if Features.widget {
+                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Minimise to widget") {
+                    enterWidgetMode()
+                }
+                .tourAnchor("widget")
+            } else {
+                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Widget — Pro only") {
+                    // show pro upsell
+                }
+                .opacity(0.3)
+                .tourAnchor("widget")
             }
-            .tourAnchor("widget")
 
             AppearanceToggle()
                 .padding(.trailing, 12)

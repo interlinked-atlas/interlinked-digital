@@ -24,14 +24,19 @@ struct ATLASSession: Codable {
 struct ATLASProfile: Codable {
     let id: String
     let email: String
-    let plan: String                // "standard", "pro", or "advanced"
+    let plan: String                // "standard", "pro"
     let subscriptionStatus: String
+    let billingAnchorDay: Int?      // day of month billing renews (1-31)
+    let billingInterval: String?    // "monthly" or "annual"
 
     var isPro: Bool { plan == "pro" }
+    var isAnnual: Bool { billingInterval == "annual" }
 
     enum CodingKeys: String, CodingKey {
         case id, email, plan
         case subscriptionStatus = "subscription_status"
+        case billingAnchorDay   = "billing_anchor_day"
+        case billingInterval    = "billing_interval"
     }
 }
 
@@ -58,6 +63,7 @@ enum SupabaseError: LocalizedError {
     case decodingError(String)
     case notAuthenticated
     case deviceLimitReached
+    case emailNotConfirmed
 
     var errorDescription: String? {
         switch self {
@@ -67,6 +73,7 @@ enum SupabaseError: LocalizedError {
         case .decodingError(let m): return "Could not parse response: \(m)"
         case .notAuthenticated:     return "You are not signed in."
         case .deviceLimitReached:   return "Pro plan allows up to 3 devices. Remove a device in Account settings first."
+        case .emailNotConfirmed:    return "Please confirm your email before signing in. Check your inbox for a confirmation link."
         }
     }
 }
@@ -90,9 +97,15 @@ actor SupabaseService {
 
     func signIn(email: String, password: String) async throws -> ATLASSession {
         let body: [String: String] = ["email": email, "password": password]
-        let data = try await post(path: "/auth/v1/token?grant_type=password",
-                                  body: body, token: nil)
-        return try parseSession(data)
+        do {
+            let data = try await post(path: "/auth/v1/token?grant_type=password",
+                                      body: body, token: nil)
+            return try parseSession(data)
+        } catch SupabaseError.httpError(_, let msg)
+                where msg.lowercased().contains("email not confirmed") ||
+                      msg.lowercased().contains("email_not_confirmed") {
+            throw SupabaseError.emailNotConfirmed
+        }
     }
 
     func refreshSession(_ refreshToken: String) async throws -> ATLASSession {
@@ -110,6 +123,11 @@ actor SupabaseService {
     func resetPassword(email: String) async throws {
         let body: [String: String] = ["email": email]
         _ = try await post(path: "/auth/v1/recover", body: body, token: nil)
+    }
+
+    func updatePassword(accessToken: String, newPassword: String) async throws {
+        let body: [String: String] = ["password": newPassword]
+        _ = try await patch(path: "/auth/v1/user", body: body, token: accessToken)
     }
 
     func cancelSubscription(accessToken: String) async throws {
@@ -130,7 +148,7 @@ actor SupabaseService {
     // MARK: - Profile
 
     func getProfile(accessToken: String, userID: String) async throws -> ATLASProfile {
-        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status"
+        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status,billing_anchor_day,billing_interval"
         let data = try await get(path: path, token: accessToken)
         let profiles = try decode([ATLASProfile].self, from: data)
         guard let profile = profiles.first else {
@@ -290,6 +308,16 @@ actor SupabaseService {
         addHeaders(&req, token: token)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         for (k, v) in extraHeaders { req.setValue(v, forHTTPHeaderField: k) }
+        return try await perform(req)
+    }
+
+    private func patch(path: String, body: Encodable, token: String?) async throws -> Data {
+        guard let url = URL(string: base + path) else { throw SupabaseError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.httpBody = try JSONEncoder().encode(body)
+        addHeaders(&req, token: token)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         return try await perform(req)
     }
 

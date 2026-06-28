@@ -199,7 +199,11 @@ final class AuthManager: ObservableObject {
         KeychainManager.saveSession(s)
         if let p = try? await SupabaseService.shared.getProfile(
             accessToken: s.accessToken, userID: s.userID) {
-            await MainActor.run { profile = p; isLoadingProfile = false }
+            await MainActor.run {
+                profile = p
+                isLoadingProfile = false
+                MonthlyLimitManager.shared.refreshAfterProfileLoad()
+            }
             KeychainManager.saveProfile(p)
         } else {
             await MainActor.run { isLoadingProfile = false }
@@ -294,7 +298,9 @@ final class AuthManager: ObservableObject {
                 id: saved.userID,
                 email: saved.email,
                 plan: claims.p,
-                subscriptionStatus: "active"
+                subscriptionStatus: "active",
+                billingAnchorDay: nil,
+                billingInterval: nil
             )
             await MainActor.run {
                 session = saved
