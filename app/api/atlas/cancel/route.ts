@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
@@ -62,7 +61,7 @@ export async function POST(req: NextRequest) {
     .update({ status: 'canceled', updated_at: new Date().toISOString() })
     .eq('stripe_customer_id', customer.id)
 
-  await sendEmail({ to: profile.email, template: 'subscription-cancelled', data: { endDate: '' } })
+  // Cancellation email sent by Stripe webhook (customer.subscription.deleted) — not here, to avoid duplicates
 
   return NextResponse.json({ ok: true })
 }

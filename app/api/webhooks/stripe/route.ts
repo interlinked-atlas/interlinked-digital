@@ -10,12 +10,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Stripe live price IDs → plan names
+const ADMIN_EMAIL = 'interlinked.digital@gmail.com'
+
 const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
   // TEST MODE
   'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'standard', subscription: 'standard' },
   'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'pro',      subscription: 'pro'      },
-  // LIVE MODE (kept for webhook safety)
+  // LIVE MODE
   'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
   'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
 }
@@ -27,6 +28,33 @@ async function getUserByEmail(email: string) {
     .eq('email', email)
     .single()
   return data?.id ?? null
+}
+
+async function auditLog(event: string, opts: {
+  userId?: string | null
+  email?: string | null
+  plan?: string | null
+  stripeEvent?: string
+  metadata?: Record<string, unknown>
+  notes?: string
+}) {
+  await supabase.from('billing_audit_log').insert({
+    event,
+    user_id:      opts.userId   ?? null,
+    email:        opts.email    ?? null,
+    plan:         opts.plan     ?? null,
+    stripe_event: opts.stripeEvent ?? null,
+    metadata:     opts.metadata ?? null,
+    notes:        opts.notes    ?? null,
+  })
+}
+
+async function notifyAdmin(subject: string, body: string) {
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    template: 'admin-notification',
+    data: { subject, body },
+  })
 }
 
 async function upsertSubscription(
@@ -44,13 +72,11 @@ async function upsertSubscription(
     : status === 'past_due' ? 'past_due'
     : 'incomplete'
 
-  // Update profiles (for ATLAS app)
   await supabase
     .from('profiles')
     .update({ plan: plan.profile, subscription_status: profileStatus })
     .eq('id', userId)
 
-  // Upsert subscriptions (for website + cancel flow)
   await supabase
     .from('subscriptions')
     .upsert({
@@ -59,9 +85,7 @@ async function upsertSubscription(
       stripe_subscription_id: stripeSubscriptionId,
       plan: plan.subscription,
       status: subStatus,
-      current_period_end: periodEnd
-        ? new Date(periodEnd * 1000).toISOString()
-        : null,
+      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       cancel_at_period_end: cancelAtPeriodEnd,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'stripe_subscription_id' })
@@ -69,7 +93,7 @@ async function upsertSubscription(
   console.log(`[ATLAS] Updated user ${userId} → plan:${plan.profile} status:${profileStatus}`)
 }
 
-async function handleCancellation(customerId: string) {
+async function handleCancellation(customerId: string, stripeEvent: string) {
   const customer = await stripe.customers.retrieve(customerId)
   if (customer.deleted) return
   const email = (customer as Stripe.Customer).email
@@ -88,7 +112,22 @@ async function handleCancellation(customerId: string) {
     .update({ status: 'canceled', updated_at: new Date().toISOString() })
     .eq('stripe_customer_id', customerId)
 
+  // User email
   await sendEmail({ to: email, template: 'subscription-cancelled' })
+
+  // Admin notification
+  await notifyAdmin(
+    `❌ Subscription Cancelled — ${email}`,
+    `User ${email} has cancelled their ATLAS subscription.\n\nStripe Customer: ${customerId}\nTime: ${new Date().toUTCString()}`
+  )
+
+  // Audit log
+  await auditLog('subscription.cancelled', {
+    userId, email, plan: 'free',
+    stripeEvent,
+    metadata: { stripe_customer_id: customerId },
+  })
+
   console.log(`[ATLAS] Cancelled subscription for ${email}`)
 }
 
@@ -131,34 +170,42 @@ export async function POST(req: NextRequest) {
           if (!userId) break
 
           await upsertSubscription(
-            userId,
-            sub.customer as string,
-            sub.id,
-            plan,
-            sub.status,
-            sub.current_period_end,
-            sub.cancel_at_period_end
+            userId, sub.customer as string, sub.id,
+            plan, sub.status, sub.current_period_end, sub.cancel_at_period_end
           )
 
-          // Welcome + subscription confirmation email
           const renewDate = sub.current_period_end
             ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : ''
           const name = session.customer_details?.name ?? email.split('@')[0]
+
+          // User emails
           await sendEmail({ to: email, template: 'welcome', data: { name } })
           await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: plan.profile, renewDate } })
+
+          // Admin notification
+          await notifyAdmin(
+            `✅ New Subscriber — ${email}`,
+            `${email} just subscribed to ATLAS ${plan.profile.toUpperCase()}.\n\nRenews: ${renewDate}\nStripe Customer: ${sub.customer}\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
+          )
+
+          // Audit log
+          await auditLog('subscription.created', {
+            userId, email, plan: plan.profile,
+            stripeEvent: event.type,
+            metadata: { stripe_subscription_id: sub.id, stripe_customer_id: sub.customer, renew_date: renewDate },
+          })
         }
         break
       }
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
+        const prevSub = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined
         const priceId = sub.items.data[0]?.price.id ?? ''
         const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
         let customer: Stripe.Customer | Stripe.DeletedCustomer
-        try {
-          customer = await stripe.customers.retrieve(sub.customer as string)
-        } catch { break }
+        try { customer = await stripe.customers.retrieve(sub.customer as string) } catch { break }
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
         if (!email) break
@@ -166,20 +213,31 @@ export async function POST(req: NextRequest) {
         if (!userId) break
 
         await upsertSubscription(
-          userId,
-          sub.customer as string,
-          sub.id,
-          plan,
-          sub.status,
-          sub.current_period_end,
-          sub.cancel_at_period_end
+          userId, sub.customer as string, sub.id,
+          plan, sub.status, sub.current_period_end, sub.cancel_at_period_end
         )
+
+        // Only log/notify if the plan price actually changed
+        const prevPriceId = (prevSub?.items as any)?.data?.[0]?.price?.id
+        const prevPlan = prevPriceId ? PRICE_PLAN[prevPriceId]?.profile : null
+        if (prevPlan && prevPlan !== plan.profile) {
+          const direction = plan.profile === 'pro' ? '⬆️ Upgraded' : '⬇️ Downgraded'
+          await notifyAdmin(
+            `${direction} — ${email}`,
+            `${email} changed plan: ${prevPlan.toUpperCase()} → ${plan.profile.toUpperCase()}.\n\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
+          )
+          await auditLog('subscription.plan_changed', {
+            userId, email, plan: plan.profile,
+            stripeEvent: event.type,
+            metadata: { from_plan: prevPlan, to_plan: plan.profile, stripe_subscription_id: sub.id },
+          })
+        }
         break
       }
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
-        await handleCancellation(sub.customer as string)
+        await handleCancellation(sub.customer as string, event.type)
         break
       }
 
@@ -200,7 +258,37 @@ export async function POST(req: NextRequest) {
           .update({ status: 'past_due', updated_at: new Date().toISOString() })
           .eq('stripe_customer_id', invoice.customer as string)
 
+        // User email
         await sendEmail({ to: email, template: 'payment-failed' })
+
+        // Admin notification
+        await notifyAdmin(
+          `⚠️ Payment Failed — ${email}`,
+          `Payment failed for ${email}.\n\nAmount: $${((invoice.amount_due ?? 0) / 100).toFixed(2)}\nStripe Invoice: ${invoice.id}\nTime: ${new Date().toUTCString()}`
+        )
+
+        // Audit log
+        await auditLog('payment.failed', {
+          userId, email,
+          stripeEvent: event.type,
+          metadata: { invoice_id: invoice.id, amount_due: invoice.amount_due, stripe_customer_id: invoice.customer },
+        })
+        break
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        const email = invoice.customer_email
+        if (!email) break
+        const userId = await getUserByEmail(email)
+
+        // Audit log every successful charge
+        await auditLog('payment.succeeded', {
+          userId, email,
+          stripeEvent: event.type,
+          metadata: { invoice_id: invoice.id, amount_paid: invoice.amount_paid, stripe_customer_id: invoice.customer },
+          notes: `$${((invoice.amount_paid ?? 0) / 100).toFixed(2)} charged successfully`,
+        })
         break
       }
     }

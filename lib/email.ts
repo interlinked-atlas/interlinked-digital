@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification'
 
 interface SendOptions {
   to: string
@@ -32,6 +32,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'password-reset': {
       subject: 'ATLAS — Reset your password',
       html: passwordResetEmail(data.resetUrl ?? ''),
+    },
+    'admin-notification': {
+      subject: data.subject ?? 'ATLAS Admin Alert',
+      html: adminNotificationEmail(data.subject ?? '', data.body ?? ''),
     },
   }
 
@@ -301,6 +305,26 @@ function passwordResetEmail(resetUrl: string) {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
         If you didn't request a password reset, you can safely ignore this email — your password won't change.
+      </p>
+    </div>
+  `)
+}
+
+function adminNotificationEmail(subject: string, bodyText: string) {
+  const lines = bodyText.split('\n').map(l =>
+    `<p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${SUBTLE};line-height:1.7;">${l || '&nbsp;'}</p>`
+  ).join('')
+  return base(`ATLAS Admin — ${subject}`, `
+    <div style="height:2px;background:#7C6FEE;"></div>
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Admin Notification')}
+      ${heading(subject)}
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
+        <tr><td style="padding:18px 20px;">${lines}</td></tr>
+      </table>
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${MUTED};">
+        ATLAS Admin · interlinked.digital
       </p>
     </div>
   `)
