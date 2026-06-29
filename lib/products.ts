@@ -19,6 +19,23 @@ export const PRICE_IDS = {
 
 export const PRODUCTS: Product[] = [
   {
+    id: 'atlas-standard-annual',
+    name: 'ATLAS Standard — Annual',
+    description: 'Standard plan billed annually. Save $30.',
+    priceInCents: 15000,
+    interval: 'year',
+    features: [],
+  },
+  {
+    id: 'atlas-pro-annual',
+    name: 'ATLAS Pro — Annual',
+    description: 'Pro plan billed annually. Save $60.',
+    priceInCents: 30000,
+    interval: 'year',
+    features: [],
+    popular: true,
+  },
+  {
     id: 'atlas-standard',
     name: 'ATLAS Standard',
     description: 'Everything you need to automate your software installations.',
