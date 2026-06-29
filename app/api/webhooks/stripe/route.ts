@@ -13,12 +13,15 @@ const supabase = createClient(
 const ADMIN_EMAIL = 'interlinked.digital@gmail.com'
 
 const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
+  // LIVE — monthly
+  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
+  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
+  // LIVE — annual
+  'price_1TnTWwA1Bm2dPCGchzhfeeZy': { profile: 'standard', subscription: 'standard' },
+  'price_1TnTXWA1Bm2dPCGcPInuLsUt': { profile: 'pro',      subscription: 'pro'      },
   // TEST MODE
   'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'standard', subscription: 'standard' },
   'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'pro',      subscription: 'pro'      },
-  // LIVE MODE
-  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
-  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
 }
 
 async function getUserByEmail(email: string) {

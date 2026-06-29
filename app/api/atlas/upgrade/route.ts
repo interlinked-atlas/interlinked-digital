@@ -11,8 +11,10 @@ const supabase = createClient(
 )
 
 const PRICE_IDS: Record<string, string> = {
-  standard: 'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
-  pro:      'price_1TdIbOA1Bm2dPCGcpLFkuAea',
+  standard:          'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
+  pro:               'price_1TdIbOA1Bm2dPCGcpLFkuAea',
+  'standard-annual': 'price_1TnTWwA1Bm2dPCGchzhfeeZy',
+  'pro-annual':      'price_1TnTXWA1Bm2dPCGcPInuLsUt',
 }
 
 export async function POST(req: NextRequest) {

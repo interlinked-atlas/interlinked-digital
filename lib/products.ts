@@ -11,8 +11,10 @@ export interface Product {
 
 // Live Stripe price IDs — must match PRICE_PLAN in webhooks/stripe/route.ts
 export const PRICE_IDS = {
-  standard: 'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
-  pro:      'price_1TdIbOA1Bm2dPCGcpLFkuAea',
+  standard:        'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
+  pro:             'price_1TdIbOA1Bm2dPCGcpLFkuAea',
+  'standard-annual': 'price_1TnTWwA1Bm2dPCGchzhfeeZy',
+  'pro-annual':      'price_1TnTXWA1Bm2dPCGcPInuLsUt',
 } as const
 
 export const PRODUCTS: Product[] = [
