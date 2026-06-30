@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
@@ -70,11 +71,26 @@ function FadeUp({ children, delay = 0, style = {} }: { children: React.ReactNode
 export default function PlansPage() {
   const [annual, setAnnual] = useState(false)
   const [heroIn, setHeroIn] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const t = setTimeout(() => setHeroIn(true), 80)
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      setLoggedIn(!!data.session)
+    })
     return () => clearTimeout(t)
   }, [])
+
+  function handleSelectPlan(priceId: string) {
+    const dest = `/atlas/checkout?plan=${priceId}`
+    if (loggedIn) {
+      router.push(dest)
+    } else {
+      router.push(`/auth/login?redirect=${encodeURIComponent(dest)}`)
+    }
+  }
 
   const std = annual ? ANNUAL.standard : MONTHLY.standard
   const pro = annual ? ANNUAL.pro      : MONTHLY.pro
@@ -269,20 +285,20 @@ export default function PlansPage() {
                 </div>
 
                 <div style={{ padding: '0 16px 16px' }}>
-                  <Link
-                    href={`/atlas/checkout?plan=${std.priceId}`}
+                  <button
+                    onClick={() => handleSelectPlan(std.priceId)}
                     className="cta-btn"
                     style={{
-                      display: 'block', textAlign: 'center', width: '100%', padding: '10px',
+                      width: '100%', padding: '10px',
                       borderRadius: '10px',
                       border: '1px solid rgba(94,106,210,0.35)',
                       background: 'rgba(94,106,210,0.10)',
                       color: '#5E6AD2', fontSize: '12px', fontWeight: 700,
-                      textDecoration: 'none', letterSpacing: '-0.01em',
+                      cursor: 'pointer', letterSpacing: '-0.01em',
                     }}
                   >
                     Get Standard →
-                  </Link>
+                  </button>
                 </div>
               </div>
             </FadeUp>
@@ -334,20 +350,20 @@ export default function PlansPage() {
                 </div>
 
                 <div style={{ padding: '0 16px 16px' }}>
-                  <Link
-                    href={`/atlas/checkout?plan=${pro.priceId}`}
+                  <button
+                    onClick={() => handleSelectPlan(pro.priceId)}
                     className="cta-btn"
                     style={{
-                      display: 'block', textAlign: 'center', width: '100%', padding: '10px',
+                      width: '100%', padding: '10px',
                       borderRadius: '10px', border: 'none',
                       background: '#3ECFB2',
                       color: '#080809', fontSize: '12px', fontWeight: 700,
-                      textDecoration: 'none', letterSpacing: '-0.01em',
+                      cursor: 'pointer', letterSpacing: '-0.01em',
                       boxShadow: '0 0 24px rgba(62,207,178,0.25)',
                     }}
                   >
                     Get Pro →
-                  </Link>
+                  </button>
                 </div>
               </div>
             </FadeUp>

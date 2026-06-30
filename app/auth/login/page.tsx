@@ -41,7 +41,9 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (authError) { setError(authError.message); return }
-    router.push('/atlas/account')
+    const params = new URLSearchParams(window.location.search)
+    const redirect = params.get('redirect')
+    router.push(redirect && redirect.startsWith('/') ? redirect : '/atlas/account')
     router.refresh()
   }
 
