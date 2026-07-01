@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 const MONTHLY = {
   standard: {
     price: '$14.99', period: '/mo', priceId: 'atlas-standard',
-    features: ['1 device', '10 installs / month', 'TITAN CORE™', 'Storage Manager', 'Install history (last 5)', 'Notifications'],
+    features: ['1 device', '10 installs / month', 'TITAN CORE™', 'Storage Manager', '3 Daily Installations', 'Notifications'],
     excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'Widget mode', 'Virus Scanner', 'File Sharing'],
   },
   pro: {
