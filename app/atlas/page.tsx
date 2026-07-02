@@ -54,7 +54,7 @@ export default function ATLASWaitlistPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 40px 20px;
+          padding: 20px 20px;
           position: relative;
           overflow: hidden;
         }
@@ -89,14 +89,14 @@ export default function ATLASWaitlistPage() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 20px;
-          margin-bottom: 44px;
+          gap: 12px;
+          margin-bottom: 24px;
         }
 
         .logo-video-wrap {
-          width: 100px;
-          height: 100px;
-          border-radius: 24px;
+          width: 72px;
+          height: 72px;
+          border-radius: 18px;
           overflow: hidden;
           background: #0A0A0C;
         }
@@ -109,9 +109,9 @@ export default function ATLASWaitlistPage() {
 
         .logo-text {
           font-family: 'SF-Intellivised', -apple-system, sans-serif;
-          font-size: 38px;
+          font-size: 30px;
           font-weight: normal;
-          letter-spacing: 18px;
+          letter-spacing: 14px;
           color: #ffffff;
           text-transform: uppercase;
           padding-left: 4px;
@@ -119,12 +119,12 @@ export default function ATLASWaitlistPage() {
         }
         .logo-tagline {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 500;
           color: #525260;
           letter-spacing: 0.01em;
           text-align: center;
-          margin-top: 10px;
+          margin-top: 4px;
         }
 
         /* ── Card ── */
@@ -142,13 +142,13 @@ export default function ATLASWaitlistPage() {
           background: linear-gradient(90deg, #3ECFB2 0%, #5E6AD2 100%);
         }
 
-        .card-body { padding: 36px 36px 38px; }
+        .card-body { padding: 24px 28px 26px; }
 
         /* ── Platform badges ── */
         .platforms {
           display: flex;
           gap: 10px;
-          margin-bottom: 30px;
+          margin-bottom: 20px;
         }
         .platform-badge {
           display: flex;
@@ -157,7 +157,7 @@ export default function ATLASWaitlistPage() {
           background: #0C0C0E;
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 10px;
-          padding: 9px 16px;
+          padding: 7px 14px;
           transition: border-color 0.2s;
         }
         .platform-badge:hover { border-color: rgba(255,255,255,0.14); }
@@ -193,14 +193,14 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
           color: #525260;
-          line-height: 1.7;
+          line-height: 1.6;
           letter-spacing: -0.005em;
-          margin-bottom: 26px;
+          margin-bottom: 18px;
         }
         .divider {
           height: 1px;
           background: rgba(255,255,255,0.06);
-          margin: 26px 0;
+          margin: 18px 0;
         }
 
         /* ── Form ── */
@@ -284,11 +284,11 @@ export default function ATLASWaitlistPage() {
 
         /* ── Footer ── */
         .footer {
-          margin-top: 28px;
+          margin-top: 16px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
         }
         .footer-brand {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -306,9 +306,9 @@ export default function ATLASWaitlistPage() {
         .footer-link:hover { color: #3A3A48; }
 
         @media (max-width: 480px) {
-          .card-body { padding: 28px 22px 30px; }
-          .logo-text { font-size: 30px; letter-spacing: 14px; }
-          .logo-video-wrap { width: 80px; height: 80px; }
+          .card-body { padding: 20px 18px 22px; }
+          .logo-text { font-size: 24px; letter-spacing: 10px; }
+          .logo-video-wrap { width: 60px; height: 60px; }
           .input-row { flex-direction: column; }
           .submit-btn { width: 100%; }
         }
