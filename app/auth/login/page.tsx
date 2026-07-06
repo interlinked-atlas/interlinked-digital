@@ -40,7 +40,17 @@ export default function LoginPage() {
     setError('')
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (authError) { setError(authError.message); return }
+    if (authError) {
+      const msg = authError.message
+      if (msg.toLowerCase().includes('email not confirmed')) {
+        setError('Please confirm your email first — check your inbox (and spam) for a confirmation link.')
+      } else if (msg.toLowerCase().includes('invalid login') || msg.toLowerCase().includes('invalid credentials')) {
+        setError('Incorrect email or password.')
+      } else {
+        setError(msg)
+      }
+      return
+    }
     const params = new URLSearchParams(window.location.search)
     const redirect = params.get('redirect')
     router.push(redirect && redirect.startsWith('/') ? redirect : '/atlas/account')

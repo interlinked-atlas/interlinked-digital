@@ -16,22 +16,32 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles').select('email').eq('id', user.id).single()
+  // Prefer stripe_customer_id from subscriptions table (set by webhook, reliable)
+  // Fall back to email lookup for legacy accounts
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (!profile?.email) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+  let customerId: string | null = sub?.stripe_customer_id ?? null
+
+  if (!customerId || customerId === 'admin_bypass') {
+    // Fallback: look up by email
+    const { data: profile } = await supabase
+      .from('profiles').select('email').eq('id', user.id).single()
+    if (!profile?.email) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
+    customerId = customers.data[0]?.id ?? null
   }
 
-  const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
-  const customer = customers.data[0]
-  if (!customer) {
+  if (!customerId) {
     return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
   }
 
   const session = await stripe.billingPortal.sessions.create({
-    customer: customer.id,
-    return_url: 'https://interlinked.digital/atlas/account',
+    customer: customerId,
+    return_url: 'https://www.interlinked.digital/atlas/account',
   })
 
   return NextResponse.json({ url: session.url })

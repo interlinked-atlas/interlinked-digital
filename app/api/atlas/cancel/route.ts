@@ -22,34 +22,47 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('email')
-    .eq('id', user.id)
-    .single()
+  // Prefer stripe_customer_id from subscriptions table — set by webhook, ID-based (reliable)
+  // Fall back to email lookup for legacy accounts
+  const { data: subRow } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id, stripe_subscription_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (profileError || !profile?.email) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+  let customerId: string | null = subRow?.stripe_customer_id ?? null
+  let stripeSubId: string | null = subRow?.stripe_subscription_id ?? null
+
+  // Skip admin_bypass sentinel rows
+  if (customerId === 'admin_bypass') { customerId = null; stripeSubId = null }
+
+  if (!customerId) {
+    const { data: profile } = await supabase
+      .from('profiles').select('email').eq('id', user.id).single()
+    if (!profile?.email) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
+    customerId = customers.data[0]?.id ?? null
   }
 
-  const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
-  const customer = customers.data[0]
-  if (!customer) {
+  if (!customerId) {
     return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
   }
 
-  const subscriptions = await stripe.subscriptions.list({
-    customer: customer.id,
-    status: 'active',
-    limit: 1,
-  })
-  const sub = subscriptions.data[0]
-  if (!sub) {
+  // Get subscription ID if not already known
+  if (!stripeSubId) {
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 1,
+    })
+    stripeSubId = subscriptions.data[0]?.id ?? null
+  }
+
+  if (!stripeSubId) {
     return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
   }
 
-  // Cancel immediately — no remaining access, no free days
-  await stripe.subscriptions.cancel(sub.id)
+  await stripe.subscriptions.cancel(stripeSubId)
 
   await supabase
     .from('profiles')
@@ -59,7 +72,7 @@ export async function POST(req: NextRequest) {
   await supabase
     .from('subscriptions')
     .update({ status: 'canceled', updated_at: new Date().toISOString() })
-    .eq('stripe_customer_id', customer.id)
+    .eq('stripe_customer_id', customerId)
 
   // Cancellation email sent by Stripe webhook (customer.subscription.deleted) — not here, to avoid duplicates
 
