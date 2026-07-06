@@ -284,10 +284,30 @@ export default function AtlasSignupPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setError('')
     setLoading(true)
-    const { error: signUpError } = await supabase.auth.signUp({ email, password })
+
+    // 1. Create Supabase account
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password })
+    if (signUpError || !signUpData.user) {
+      setLoading(false)
+      setError(signUpError?.message ?? 'Account creation failed. Please try again.')
+      return
+    }
+
+    // 2. Create dynamic Stripe Checkout Session with user ID locked in
+    const res = await fetch('/api/atlas/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: selectedPlan.id, email, userId: signUpData.user.id }),
+    })
+    const data = await res.json()
     setLoading(false)
-    if (signUpError) { setError(signUpError.message); return }
-    window.location.href = selectedPlan.stripeUrl
+
+    if (!res.ok || !data.url) {
+      setError(data.error ?? 'Failed to create checkout session. Please try again.')
+      return
+    }
+
+    window.location.href = data.url
   }
 
   return (

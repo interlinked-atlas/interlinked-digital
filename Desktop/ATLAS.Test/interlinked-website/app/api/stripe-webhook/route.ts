@@ -88,15 +88,41 @@ export async function POST(req: NextRequest) {
       // ── New payment / subscription created ──────────────────────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        const email   = session.customer_details?.email ?? session.customer_email
-        if (!email) break
+        if (session.mode !== 'subscription' || !session.subscription) break
 
-        if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(session.subscription as string)
-          const priceId = sub.items.data[0]?.price.id ?? ''
-          const plan    = PRICE_PLAN[priceId] ?? 'standard'
-          await updateProfileByEmail(email, plan, 'active')
-          await upsertSubscription(email, sub)
+        const sub     = await stripe.subscriptions.retrieve(session.subscription as string)
+        const priceId = sub.items.data[0]?.price.id ?? ''
+        const plan    = PRICE_PLAN[priceId] ?? 'standard'
+
+        // Prefer matching by Supabase user ID (set via dynamic checkout)
+        const supabaseUserId = session.client_reference_id
+          ?? session.metadata?.supabase_user_id
+
+        if (supabaseUserId) {
+          const { error } = await supabase.from('profiles')
+            .update({ plan, subscription_status: 'active' })
+            .eq('id', supabaseUserId)
+          if (error) console.error('[ATLAS] profiles update by ID failed:', error.message)
+          else console.log(`[ATLAS] profiles → id=${supabaseUserId}: plan=${plan}`)
+
+          // Upsert subscriptions table
+          await supabase.from('subscriptions').upsert({
+            user_id:                supabaseUserId,
+            stripe_customer_id:     sub.customer as string,
+            stripe_subscription_id: sub.id,
+            plan, status: 'active',
+            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+            current_period_end:   new Date(sub.current_period_end   * 1000).toISOString(),
+            cancel_at_period_end: sub.cancel_at_period_end,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
+        } else {
+          // Fallback: match by email (legacy static payment links)
+          const email = session.customer_details?.email ?? session.customer_email
+          if (email) {
+            await updateProfileByEmail(email, plan, 'active')
+            await upsertSubscription(email, sub)
+          }
         }
         break
       }
