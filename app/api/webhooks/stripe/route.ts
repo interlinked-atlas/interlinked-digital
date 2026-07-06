@@ -22,6 +22,7 @@ const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
   // TEST MODE
   'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'standard', subscription: 'standard' },
   'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'pro',      subscription: 'pro'      },
+  'price_1TqJSEA1Bm2dPCGcEtL4Au0e': { profile: 'pro',      subscription: 'pro'      }, // $0.50 flow test
 }
 
 async function getUserByEmail(email: string) {
@@ -169,7 +170,10 @@ export async function POST(req: NextRequest) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string)
           const priceId = sub.items.data[0]?.price.id ?? ''
           const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
-          const userId = await getUserByEmail(email)
+
+          // Prefer matching by Supabase user ID (set via dynamic checkout), fall back to email
+          const supabaseUserId = session.client_reference_id ?? session.metadata?.supabase_user_id
+          const userId = supabaseUserId ?? await getUserByEmail(email)
           if (!userId) break
 
           await upsertSubscription(

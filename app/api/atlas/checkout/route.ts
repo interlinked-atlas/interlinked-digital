@@ -26,19 +26,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   }
 
-  // Verify the user actually exists in Supabase
-  const { data: profile } = await supabase
-    .from('profiles').select('id, email').eq('id', userId).maybeSingle()
-
-  if (!profile) {
+  // Verify the auth user actually exists
+  const { data: { user: authUser }, error: authErr } = await supabase.auth.admin.getUserById(userId)
+  if (authErr || !authUser) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
+
+  // Ensure a profiles row exists — the DB trigger should create it on signup,
+  // but upsert here to close the race window between signUp() and this call.
+  await supabase.from('profiles').upsert(
+    { id: userId, email, plan: 'free', subscription_status: 'inactive' },
+    { onConflict: 'id', ignoreDuplicates: true }
+  )
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     payment_method_types: ['card'],
-    customer_email: email,           // pre-filled, user can't change it
-    client_reference_id: userId,     // Supabase user ID — webhook uses this
+    customer_email: email,
+    client_reference_id: userId,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `https://www.interlinked.digital/atlas/account?welcome=1`,
     cancel_url:  `https://www.interlinked.digital/atlas?cancelled=1`,
