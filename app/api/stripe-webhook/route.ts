@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -13,14 +12,14 @@ const supabase = createClient(
 )
 
 const PRICE_PLAN: Record<string, string> = {
-  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': 'standard',
-  'price_1TdIbOA1Bm2dPCGcpLFkuAea': 'pro',
-  'price_1TjYPHA1Bm2dPCGcH9h5gH7E': 'standard',
-  'price_1TjYPHA1Bm2dPCGcDq8GuJD8': 'pro',
-  'price_1TjYgoA1Bm2dPCGc7Qj3C7AB': 'advanced',
+  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': 'standard', // $14.99/mo
+  'price_1TdIbOA1Bm2dPCGcpLFkuAea': 'pro',       // $29.99/mo
+  'price_1TqJSEA1Bm2dPCGcEtL4Au0e': 'pro',       // $0.50 flow test
 }
 
 export const config = { api: { bodyParser: false } }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function updateProfileByEmail(email: string, plan: string, status: string) {
   const { error } = await supabase
@@ -35,6 +34,7 @@ async function updateProfileByEmail(email: string, plan: string, status: string)
 }
 
 async function upsertSubscription(email: string, sub: Stripe.Subscription) {
+  // Find the user's profile ID from their email
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
@@ -42,7 +42,7 @@ async function upsertSubscription(email: string, sub: Stripe.Subscription) {
     .maybeSingle()
 
   if (!profile?.id) {
-    console.warn(`[ATLAS] No profile found for ${email} — skipping subscriptions upsert`)
+    console.warn(`[ATLAS] No profile found for email ${email} — skipping subscriptions upsert`)
     return
   }
 
@@ -61,9 +61,14 @@ async function upsertSubscription(email: string, sub: Stripe.Subscription) {
     updated_at:             new Date().toISOString(),
   }, { onConflict: 'user_id' })
 
-  if (error) console.error(`[ATLAS] subscriptions upsert failed for ${email}:`, error.message)
-  else console.log(`[ATLAS] subscriptions → ${email}: plan=${plan}`)
+  if (error) {
+    console.error(`[ATLAS] subscriptions upsert failed for ${email}:`, error.message)
+  } else {
+    console.log(`[ATLAS] subscriptions → ${email}: plan=${plan}, ends=${new Date(sub.current_period_end * 1000).toLocaleDateString()}`)
+  }
 }
+
+// ── Webhook handler ───────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const body      = await req.text()
@@ -80,38 +85,61 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
 
+      // ── New payment / subscription created ──────────────────────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        const email   = session.customer_details?.email ?? session.customer_email
-        if (!email) break
-        if (session.mode === 'subscription' && session.subscription) {
-          const sub     = await stripe.subscriptions.retrieve(session.subscription as string)
-          const priceId = sub.items.data[0]?.price.id ?? ''
-          const plan    = PRICE_PLAN[priceId] ?? 'standard'
-          const planLabel = plan === 'pro' ? 'Pro' : 'Standard'
-          const renewDate = new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-          await updateProfileByEmail(email, plan, 'active')
-          await upsertSubscription(email, sub)
-          sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: planLabel, renewDate } }).catch(() => {})
+        if (session.mode !== 'subscription' || !session.subscription) break
+
+        const sub     = await stripe.subscriptions.retrieve(session.subscription as string)
+        const priceId = sub.items.data[0]?.price.id ?? ''
+        const plan    = PRICE_PLAN[priceId] ?? 'standard'
+
+        // Prefer matching by Supabase user ID (set via dynamic checkout)
+        const supabaseUserId = session.client_reference_id
+          ?? session.metadata?.supabase_user_id
+
+        if (supabaseUserId) {
+          const { error } = await supabase.from('profiles')
+            .update({ plan, subscription_status: 'active' })
+            .eq('id', supabaseUserId)
+          if (error) console.error('[ATLAS] profiles update by ID failed:', error.message)
+          else console.log(`[ATLAS] profiles → id=${supabaseUserId}: plan=${plan}`)
+
+          // Upsert subscriptions table
+          await supabase.from('subscriptions').upsert({
+            user_id:                supabaseUserId,
+            stripe_customer_id:     sub.customer as string,
+            stripe_subscription_id: sub.id,
+            plan, status: 'active',
+            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+            current_period_end:   new Date(sub.current_period_end   * 1000).toISOString(),
+            cancel_at_period_end: sub.cancel_at_period_end,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
+        } else {
+          // Fallback: match by email (legacy static payment links)
+          const email = session.customer_details?.email ?? session.customer_email
+          if (email) {
+            await updateProfileByEmail(email, plan, 'active')
+            await upsertSubscription(email, sub)
+          }
         }
         break
       }
 
+      // ── Subscription cancelled ───────────────────────────────────────────────
       case 'customer.subscription.deleted': {
         const sub      = event.data.object as Stripe.Subscription
         const customer = await stripe.customers.retrieve(sub.customer as string)
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
         if (!email) break
-        const endDate = sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-          : ''
         await updateProfileByEmail(email, 'standard', 'cancelled')
         await upsertSubscription(email, sub)
-        sendEmail({ to: email, template: 'subscription-cancelled', data: { endDate } }).catch(() => {})
         break
       }
 
+      // ── Subscription updated (upgrade / downgrade / renewal / cancellation) ──
       case 'customer.subscription.updated': {
         const sub      = event.data.object as Stripe.Subscription
         const customer = await stripe.customers.retrieve(sub.customer as string)
@@ -126,13 +154,11 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      // ── Payment failed ───────────────────────────────────────────────────────
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const email   = invoice.customer_email
-        if (email) {
-          await updateProfileByEmail(email, 'standard', 'payment_failed')
-          sendEmail({ to: email, template: 'payment-failed' }).catch(() => {})
-        }
+        if (email) await updateProfileByEmail(email, 'standard', 'payment_failed')
         break
       }
 
