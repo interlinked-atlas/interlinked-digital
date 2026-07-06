@@ -49,6 +49,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to submit ticket' }, { status: 500 })
   }
 
+  // Confirm receipt to the user
+  await sendEmail({
+    to: userEmail,
+    template: 'support-received',
+    data: { issueType: type, message: message.trim() },
+  })
+
   // Notify admin
   await sendEmail({
     to: ADMIN_EMAIL,

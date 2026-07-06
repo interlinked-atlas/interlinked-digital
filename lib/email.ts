@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received'
 
 interface SendOptions {
   to: string
@@ -36,6 +36,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'admin-notification': {
       subject: data.subject ?? 'ATLAS Admin Alert',
       html: adminNotificationEmail(data.subject ?? '', data.body ?? ''),
+    },
+    'support-received': {
+      subject: 'ATLAS — We received your support request',
+      html: supportReceivedEmail(data.issueType ?? 'General', data.message ?? ''),
     },
   }
 
@@ -325,6 +329,33 @@ function adminNotificationEmail(subject: string, bodyText: string) {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${MUTED};">
         ATLAS Admin · interlinked.digital
+      </p>
+    </div>
+  `)
+}
+
+function supportReceivedEmail(issueType: string, message: string) {
+  const preview = message.length > 180 ? message.slice(0, 180) + '…' : message
+  return base('ATLAS — Support Request Received', `
+    <!-- Top indigo bar -->
+    <div style="height:2px;background:linear-gradient(90deg,#3ECFB2 0%,#5E6AD2 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Support')}
+      ${heading('We got your message.')}
+      ${body("Thanks for reaching out. We've received your support request and will get back to you as soon as possible — typically within 24 hours.")}
+
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid rgba(255,255,255,0.08);margin:0 0 28px;">
+        <tr><td style="padding:18px 20px;">
+          <p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:#525260;">${issueType}</p>
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#8A8A96;line-height:1.7;">${preview.replace(/\n/g, '<br>')}</p>
+        </td></tr>
+      </table>
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#525260;line-height:1.6;">
+        You can also reply directly to this email and we'll see it.<br>
+        <a href="mailto:interlinked.digital@gmail.com" style="color:#8A8A96;text-decoration:none;">interlinked.digital@gmail.com</a>
       </p>
     </div>
   `)

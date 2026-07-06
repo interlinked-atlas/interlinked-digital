@@ -237,6 +237,13 @@ export async function POST(req: NextRequest) {
         const prevPlan = prevPriceId ? PRICE_PLAN[prevPriceId]?.profile : null
         if (prevPlan && prevPlan !== plan.profile) {
           const direction = plan.profile === 'pro' ? '⬆️ Upgraded' : '⬇️ Downgraded'
+
+          // Email user their new plan confirmation
+          const renewDate = sub.current_period_end
+            ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : ''
+          await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: plan.profile, renewDate } })
+
           await notifyAdmin(
             `${direction} — ${email}`,
             `${email} changed plan: ${prevPlan.toUpperCase()} → ${plan.profile.toUpperCase()}.\n\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
