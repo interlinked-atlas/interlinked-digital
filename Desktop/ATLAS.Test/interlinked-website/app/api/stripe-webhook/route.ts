@@ -14,6 +14,7 @@ const supabase = createClient(
 const PRICE_PLAN: Record<string, string> = {
   'price_1TdIbOA1Bm2dPCGcBzQIiXGV': 'standard', // $14.99/mo
   'price_1TdIbOA1Bm2dPCGcpLFkuAea': 'pro',       // $29.99/mo
+  'price_1TqJSEA1Bm2dPCGcEtL4Au0e': 'pro',       // $0.50 flow test
 }
 
 export const config = { api: { bodyParser: false } }
