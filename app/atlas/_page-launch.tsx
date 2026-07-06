@@ -17,8 +17,8 @@ const PLANS = [
     color: '#8A8A96',
     accentColor: '#5E6AD2',
     recommended: false,
-    features: ['1 device', '10 installs per month', 'Install history', 'Notifications'],
-    excluded: ['Virus Scanner', 'File Sharing', 'Bulk installation', 'Uninstall & Rollback', 'Smart Storage'],
+    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
+    excluded: ['Bulk installation', 'Uninstall & Rollback', 'TITAN CORE™', 'Smart Storage'],
     stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
   },
   {
@@ -31,38 +31,15 @@ const PLANS = [
     recommended: true,
     features: [
       'Up to 3 devices',
-      '25 installs per month',
-      'Virus Scanner',
-      'File Sharing',
+      'Unlimited installs',
       'Bulk installation',
       'Uninstall & Rollback',
+      'TITAN CORE™',
       'Smart Storage',
       'Full install history',
     ],
     excluded: [],
     stripeUrl: 'https://buy.stripe.com/aFafZg7TUc4p0Jx7HSdjO01',
-  },
-  {
-    id: 'advanced',
-    name: 'Advanced',
-    price: '$99.99',
-    period: '/mo',
-    color: '#C084FC',
-    accentColor: '#C084FC',
-    recommended: false,
-    features: [
-      'Up to 3 devices',
-      '50 installs per month',
-      'Virus Scanner',
-      'File Sharing',
-      'All Pro features',
-      'Bulk installation',
-      'Uninstall & Rollback',
-      'Smart Storage',
-      'Full install history',
-    ],
-    excluded: [],
-    stripeUrl: 'https://buy.stripe.com/cNifZgeii7O9fEr1judjO02',
   },
 ]
 
@@ -80,7 +57,7 @@ const FEATURES = [
   {
     icon: '◈',
     title: 'TITAN CORE™',
-    desc: 'Reads installation instructions and performs every step automatically — on every plan.',
+    desc: 'Pre-flight checks, smart recovery, signature validation, and install verification.',
   },
 ]
 
@@ -284,6 +261,7 @@ export default function AtlasSignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // Kick off hero text animation on mount
   const [heroIn, setHeroIn] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setHeroIn(true), 80)
@@ -306,10 +284,30 @@ export default function AtlasSignupPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setError('')
     setLoading(true)
-    const { error: signUpError } = await supabase.auth.signUp({ email, password })
+
+    // 1. Create Supabase account
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password })
+    if (signUpError || !signUpData.user) {
+      setLoading(false)
+      setError(signUpError?.message ?? 'Account creation failed. Please try again.')
+      return
+    }
+
+    // 2. Create dynamic Stripe Checkout Session with user ID locked in
+    const res = await fetch('/api/atlas/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: selectedPlan.id, email, userId: signUpData.user.id }),
+    })
+    const data = await res.json()
     setLoading(false)
-    if (signUpError) { setError(signUpError.message); return }
-    window.location.href = selectedPlan.stripeUrl
+
+    if (!res.ok || !data.url) {
+      setError(data.error ?? 'Failed to create checkout session. Please try again.')
+      return
+    }
+
+    window.location.href = data.url
   }
 
   return (
@@ -351,6 +349,7 @@ export default function AtlasSignupPage() {
         WebkitFontSmoothing: 'antialiased',
       }}>
 
+        {/* ── Top nav bar ── */}
         <nav style={{
           position: 'sticky', top: 0, zIndex: 50,
           background: 'rgba(8,8,9,0.85)',
@@ -360,6 +359,7 @@ export default function AtlasSignupPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '52px',
         }}>
+          {/* Left slot: "Back to InterLinked" on landing, "← Back" on inner steps */}
           {step === 'landing' ? (
             <a
               href="https://www.interlinked.digital/"
@@ -395,6 +395,7 @@ export default function AtlasSignupPage() {
               Back
             </button>
           )}
+          {/* Right slot: Sign in */}
           <a
             href="/auth/login"
             style={{
@@ -408,8 +409,11 @@ export default function AtlasSignupPage() {
           </a>
         </nav>
 
+        {/* ── Landing / hero ── */}
         {step === 'landing' && (
           <div>
+
+            {/* Hero */}
             <section style={{
               maxWidth: '860px', margin: '0 auto',
               padding: '100px 24px 80px',
@@ -420,6 +424,7 @@ export default function AtlasSignupPage() {
                 transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
                 transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
               }}>
+                {/* ATLAS star logo */}
                 <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
                   <img
                     src="/atlas-logo.png"
@@ -457,7 +462,7 @@ export default function AtlasSignupPage() {
                   opacity: heroIn ? 1 : 0,
                   transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 180ms',
                 }}>
-                  The World's First Autonomous Installation App.
+                  The future of macOS installation.
                 </p>
 
                 <p style={{
@@ -514,11 +519,13 @@ export default function AtlasSignupPage() {
               </div>
             </section>
 
+            {/* Divider */}
             <div style={{
               width: '100%', height: '1px',
               background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
             }} />
 
+            {/* Features */}
             <section style={{
               maxWidth: '860px', margin: '0 auto',
               padding: '80px 24px',
@@ -567,11 +574,13 @@ export default function AtlasSignupPage() {
               </div>
             </section>
 
+            {/* Divider */}
             <div style={{
               width: '100%', height: '1px',
               background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
             }} />
 
+            {/* Plans teaser */}
             <section style={{
               maxWidth: '560px', margin: '0 auto',
               padding: '80px 24px 100px',
@@ -596,8 +605,8 @@ export default function AtlasSignupPage() {
                   fontSize: '14px', color: '#525260',
                   lineHeight: 1.6, marginBottom: '36px',
                 }}>
-                  Both plans include TITAN CORE™ — our installation intelligence engine.
-                  Upgrade to Pro for unlimited installs, bulk mode, and Smart Storage.
+                  Standard or Pro — both include the core ATLAS engine.
+                  Upgrade for unlimited installs, bulk mode, and TITAN CORE™.
                 </p>
                 <button
                   className="cta-btn"
@@ -619,8 +628,9 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
+        {/* ── Plan selection ── */}
         {step === 'plan' && (
-          <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px 80px' }}>
             <FadeUp>
               <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h2 style={{
@@ -635,7 +645,7 @@ export default function AtlasSignupPage() {
               </div>
             </FadeUp>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '24px' }}>
               {PLANS.map((plan, i) => (
                 <FadeUp key={plan.id} delay={i * 80}>
                   <div
@@ -741,9 +751,11 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
+        {/* ── Account creation ── */}
         {step === 'account' && selectedPlan && (
           <div style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 24px 80px' }}>
             <FadeUp>
+              {/* Plan badge */}
               <div style={{
                 background: `${selectedPlan.accentColor}0C`,
                 border: `1px solid ${selectedPlan.accentColor}28`,
@@ -781,6 +793,7 @@ export default function AtlasSignupPage() {
                 </button>
               </div>
 
+              {/* Form card */}
               <div style={{
                 background: '#0E0E10',
                 borderRadius: '16px',
@@ -871,6 +884,7 @@ export default function AtlasSignupPage() {
                     </button>
                   </div>
 
+                  {/* ToS */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                     <div
                       onClick={() => setTosAgreed(a => !a)}
@@ -936,6 +950,7 @@ export default function AtlasSignupPage() {
           </div>
         )}
 
+        {/* Footer */}
         <footer style={{
           borderTop: '1px solid rgba(255,255,255,0.05)',
           padding: '24px',

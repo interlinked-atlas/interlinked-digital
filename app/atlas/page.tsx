@@ -242,6 +242,25 @@ export default function ATLASWaitlistPage() {
         .submit-btn:active:not(:disabled) { transform: scale(0.97); }
         .submit-btn:disabled { opacity: 0.5; cursor: default; }
 
+        .login-btn {
+          width: 100%;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          padding: 11px 20px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #8A8A96;
+          cursor: pointer;
+          text-align: center;
+          text-decoration: none;
+          display: block;
+          transition: border-color 0.2s, color 0.2s;
+          letter-spacing: -0.01em;
+        }
+        .login-btn:hover { border-color: rgba(255,255,255,0.16); color: #ffffff; }
+
         .error-msg {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
@@ -319,7 +338,7 @@ export default function ATLASWaitlistPage() {
 
         <div className="content">
 
-          {/* Logo lockup — video + ATLAS wordmark */}
+          {/* Logo lockup */}
           <div className="logo-lockup">
             <div className="logo-video-wrap">
               <video
@@ -340,17 +359,15 @@ export default function ATLASWaitlistPage() {
             <div className="card-top-bar" />
             <div className="card-body">
 
-              {/* Platform badges — inline SVG icons */}
+              {/* Platform badges */}
               <div className="platforms">
                 <div className="platform-badge">
-                  {/* Apple logo */}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#8A8A96" xmlns="http://www.w3.org/2000/svg">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                   </svg>
                   <span className="platform-label">macOS</span>
                 </div>
                 <div className="platform-badge" style={{ opacity: 0.45 }}>
-                  {/* Windows logo — 4 squares */}
                   <svg width="16" height="16" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
                     <rect x="12" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
@@ -408,6 +425,12 @@ export default function ATLASWaitlistPage() {
                   )}
                 </form>
               )}
+
+              <div className="divider" />
+
+              <a href="/auth/login" className="login-btn">
+                Sign in to ATLAS →
+              </a>
 
             </div>
           </div>
