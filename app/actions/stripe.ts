@@ -49,6 +49,9 @@ export async function startCheckoutSession(productId: string, email?: string) {
       throw new Error('ALREADY_SUBSCRIBED')
     }
 
+    // Set client_reference_id so webhook matches user by ID (not just email)
+    sessionConfig.client_reference_id = user.id
+
     if (subscription?.stripe_customer_id) {
       sessionConfig.customer = subscription.stripe_customer_id
     } else {
