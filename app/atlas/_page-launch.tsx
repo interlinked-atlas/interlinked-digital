@@ -1,12 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const PLANS = [
   {
@@ -285,11 +279,16 @@ export default function AtlasSignupPage() {
     setError('')
     setLoading(true)
 
-    // 1. Create Supabase account
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password })
-    if (signUpError || !signUpData.user) {
+    // 1. Create Supabase account via server API (admin createUser — no confirmation email)
+    const signUpRes = await fetch('/api/atlas/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const signUpData = await signUpRes.json()
+    if (!signUpRes.ok || !signUpData.userId) {
       setLoading(false)
-      setError(signUpError?.message ?? 'Account creation failed. Please try again.')
+      setError(signUpData.error ?? 'Account creation failed. Please try again.')
       return
     }
 
@@ -297,7 +296,7 @@ export default function AtlasSignupPage() {
     const res = await fetch('/api/atlas/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: selectedPlan.id, email, userId: signUpData.user.id }),
+      body: JSON.stringify({ plan: selectedPlan.id, email, userId: signUpData.userId }),
     })
     const data = await res.json()
     setLoading(false)
