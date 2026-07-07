@@ -246,6 +246,7 @@ export default function AtlasSignupPage() {
   const [step, setStep] = useState<Step>('landing')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [email, setEmail] = useState('')
+  const [confirmEmail, setConfirmEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -274,6 +275,7 @@ export default function AtlasSignupPage() {
     e.preventDefault()
     if (!selectedPlan) return
     if (!tosAgreed) { setError('Please agree to the Terms of Service to continue.'); return }
+    if (email !== confirmEmail) { setError('Email addresses do not match.'); return }
     if (password !== confirmPassword) { setError('Passwords do not match.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setError('')
@@ -824,6 +826,9 @@ export default function AtlasSignupPage() {
 
                   <input type="email" placeholder="Email address" value={email}
                     onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+
+                  <input type="email" placeholder="Confirm email address" value={confirmEmail}
+                    onChange={e => setConfirmEmail(e.target.value)} required style={inputStyle} />
 
                   <div style={{ position: 'relative' }}>
                     <input
