@@ -19,7 +19,7 @@ function SuccessContent() {
           if (data.status === "complete") {
             setStatus("success")
             // Redirect to account with welcome banner after brief confirmation
-            setTimeout(() => router.push("/atlas/account?welcome=1"), 2000)
+            setTimeout(() => router.push("/atlas/download"), 2000)
           } else {
             setStatus("error")
           }

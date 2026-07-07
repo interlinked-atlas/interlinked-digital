@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     customer_email: email,
     client_reference_id: userId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `https://www.interlinked.digital/atlas/account?welcome=1`,
+    success_url: `https://www.interlinked.digital/atlas/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:  `https://www.interlinked.digital/atlas?cancelled=1`,
     metadata: { plan, supabase_user_id: userId },
   })
