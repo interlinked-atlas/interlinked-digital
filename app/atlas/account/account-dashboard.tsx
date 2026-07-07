@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
@@ -37,6 +37,8 @@ interface Props {
 export default function AccountDashboard({ user, subscription, profile, devices, logs, isAdmin }: Props) {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const [showWelcome, setShowWelcome] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState("")
@@ -58,6 +60,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const supabase = createClient()
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
+
+  useEffect(() => {
+    if (searchParams.get("welcome") === "1") {
+      setShowWelcome(true)
+      const t = setTimeout(() => setShowWelcome(false), 6000)
+      return () => clearTimeout(t)
+    }
+  }, [])
 
   // Auto-refresh every 8s when tab is visible
   const doRefresh = useCallback(() => {
@@ -265,6 +275,23 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       </header>
 
       <main style={{ maxWidth: "900px", margin: "0 auto", padding: "32px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {showWelcome && (
+          <div style={{
+            padding: "14px 18px", borderRadius: "12px",
+            background: "rgba(62,207,178,0.08)", border: "1px solid rgba(62,207,178,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+            animation: "fadeIn 0.4s ease",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "18px" }}>🎉</span>
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "#3ECFB2", margin: 0 }}>Welcome to ATLAS!</p>
+                <p style={{ fontSize: "12px", color: "#6B9E96", margin: "2px 0 0" }}>Your subscription is active. Download the app and sign in to get started.</p>
+              </div>
+            </div>
+            <button onClick={() => setShowWelcome(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#3ECFB2", fontSize: "16px", lineHeight: 1 }}>×</button>
+          </div>
+        )}
         <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#C0C8E8", marginBottom: "4px" }}>Account</h1>
 
         {/* ── Subscription ── */}

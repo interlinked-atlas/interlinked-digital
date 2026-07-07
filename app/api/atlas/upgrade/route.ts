@@ -35,16 +35,41 @@ export async function POST(req: NextRequest) {
   if (!profile?.email) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   if (profile.plan === targetPlan) return NextResponse.json({ ok: true, alreadyOnPlan: true })
 
-  const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
-  const customer  = customers.data[0]
-  if (!customer) return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+  // Look up customer ID from subscriptions table first (ID-based, reliable)
+  // Fall back to email lookup for legacy accounts
+  const { data: subRow } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id, stripe_subscription_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  const subs = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 1 })
-  const sub  = subs.data[0]
-  if (!sub) return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+  let customerId: string | null = subRow?.stripe_customer_id ?? null
+  let stripeSubId: string | null = subRow?.stripe_subscription_id ?? null
 
+  if (!customerId || customerId === 'admin_bypass') {
+    const customers = await stripe.customers.list({ email: profile.email, limit: 1 })
+    customerId = customers.data[0]?.id ?? null
+    stripeSubId = null
+  }
+
+  if (!customerId) {
+    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+  }
+
+  // Get active subscription if not already known
+  if (!stripeSubId || stripeSubId === 'admin_bypass_sub') {
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'active', limit: 1 })
+    stripeSubId = subs.data[0]?.id ?? null
+  }
+
+  if (!stripeSubId) {
+    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+  }
+
+  const sub = await stripe.subscriptions.retrieve(stripeSubId)
   const item = sub.items.data[0]
   const isDowngrade = profile.plan === 'pro' && targetPlan === 'standard'
+
   const updatedSub = await stripe.subscriptions.update(sub.id, {
     items: [{ id: item.id, price: priceId }],
     proration_behavior: isDowngrade ? 'none' : 'always_invoice',
@@ -57,7 +82,7 @@ export async function POST(req: NextRequest) {
 
   await supabase.from('subscriptions').upsert({
     user_id:                user.id,
-    stripe_customer_id:     customer.id,
+    stripe_customer_id:     customerId,
     stripe_subscription_id: sub.id,
     plan:                   targetPlan,
     status:                 'active',
