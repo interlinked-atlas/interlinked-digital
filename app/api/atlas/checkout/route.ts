@@ -11,7 +11,7 @@ const supabase = createClient(
 
 const PRICE_IDS: Record<string, string> = {
   standard: 'price_1TdIbOA1Bm2dPCGcBzQIiXGV', // $14.99/mo
-  pro:      'price_1TdIbOA1Bm2dPCGcpLFkuAea',  // $29.99/mo
+  pro:      'price_1TqJSEA1Bm2dPCGcEtL4Au0e',  // $0.50 TEST — restore to price_1TdIbOA1Bm2dPCGcpLFkuAea after test
 }
 
 export async function POST(req: NextRequest) {
