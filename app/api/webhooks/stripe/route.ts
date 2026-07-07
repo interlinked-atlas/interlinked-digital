@@ -76,23 +76,37 @@ async function upsertSubscription(
     : status === 'past_due' ? 'past_due'
     : 'incomplete'
 
-  await supabase
+  const { error: profileErr } = await supabase
     .from('profiles')
     .update({ plan: plan.profile, subscription_status: profileStatus })
     .eq('id', userId)
+  if (profileErr) console.error('[ATLAS] Profile update failed:', profileErr.message)
 
-  await supabase
-    .from('subscriptions')
-    .upsert({
-      user_id: userId,
-      stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: stripeSubscriptionId,
-      plan: plan.subscription,
-      status: subStatus,
-      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-      cancel_at_period_end: cancelAtPeriodEnd,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'stripe_subscription_id' })
+  // Safe upsert: check for existing row by user_id, then update or insert.
+  // Avoids relying on a unique constraint on stripe_subscription_id.
+  const subPayload = {
+    user_id: userId,
+    stripe_customer_id: stripeCustomerId,
+    stripe_subscription_id: stripeSubscriptionId,
+    plan: plan.subscription,
+    status: subStatus,
+    current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+    cancel_at_period_end: cancelAtPeriodEnd,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data: existing } = await supabase
+    .from('subscriptions').select('id').eq('user_id', userId).maybeSingle()
+
+  if (existing) {
+    const { error: updErr } = await supabase
+      .from('subscriptions').update(subPayload).eq('user_id', userId)
+    if (updErr) console.error('[ATLAS] Subscription update failed:', updErr.message)
+  } else {
+    const { error: insErr } = await supabase
+      .from('subscriptions').insert(subPayload)
+    if (insErr) console.error('[ATLAS] Subscription insert failed:', insErr.message)
+  }
 
   console.log(`[ATLAS] Updated user ${userId} → plan:${plan.profile} status:${profileStatus}`)
 }
