@@ -46,8 +46,8 @@ export default function ForgotPasswordPage() {
         transition: 'opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1)',
       }}>
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">INTERLINKED</h1>
+          <Link href="/atlas" className="inline-block">
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">ATLAS</h1>
           </Link>
           <p className="text-white/40 text-sm mt-2">Reset your password</p>
         </div>

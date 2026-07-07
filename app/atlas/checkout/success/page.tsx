@@ -1,16 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Suspense } from "react"
 import { getCheckoutSessionStatus } from "@/app/actions/stripe"
 
 function SuccessContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sessionId = searchParams.get("session_id")
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
     if (sessionId) {
@@ -18,7 +18,8 @@ function SuccessContent() {
         .then((data) => {
           if (data.status === "complete") {
             setStatus("success")
-            setEmail(data.customerEmail || null)
+            // Redirect to account with welcome banner after brief confirmation
+            setTimeout(() => router.push("/atlas/account?welcome=1"), 2000)
           } else {
             setStatus("error")
           }
@@ -27,7 +28,7 @@ function SuccessContent() {
     } else {
       setStatus("error")
     }
-  }, [sessionId])
+  }, [sessionId, router])
 
   if (status === "loading") {
     return (
@@ -67,30 +68,11 @@ function SuccessContent() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h1 className="text-3xl font-bold mb-4">Welcome to ATLAS!</h1>
-      <p className="text-white/50 mb-2 max-w-md mx-auto">
-        Your subscription is now active.
+      <h1 className="text-3xl font-bold mb-4">You&apos;re subscribed!</h1>
+      <p className="text-white/50 mb-8 max-w-md mx-auto">
+        Your subscription is active. Taking you to your account…
       </p>
-      {email && (
-        <p className="text-white/50 mb-8 max-w-md mx-auto">
-          Check <span className="text-white">{email}</span> for your login details and password setup link.
-        </p>
-      )}
-      
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <Link
-          href="/auth/login"
-          className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#7c6fee] to-[#4ecdc4] rounded-xl font-medium hover:opacity-90 transition-opacity"
-        >
-          Sign In to Your Account
-        </Link>
-        <Link
-          href="/atlas#download"
-          className="w-full sm:w-auto px-8 py-4 border border-white/20 rounded-xl font-medium hover:bg-white/5 transition-colors"
-        >
-          Download ATLAS
-        </Link>
-      </div>
+      <div className="w-8 h-8 border-2 border-white/20 border-t-[#4ecdc4] rounded-full animate-spin mx-auto" />
     </div>
   )
 }

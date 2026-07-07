@@ -14,14 +14,27 @@ export default function ResetPasswordPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Check if we have a valid session from the reset link
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+    // Listen for the PASSWORD_RECOVERY event — Supabase processes the token
+    // from the URL hash asynchronously, so we must wait for the auth event
+    // rather than calling getSession() immediately (which would race and fail).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // Session is ready — user can now set a new password
+      } else if (event === "SIGNED_OUT") {
         router.push("/auth/forgot-password")
       }
+    })
+
+    // Fallback: if page loaded without a recovery token (direct nav), redirect away
+    const timeout = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) router.push("/auth/forgot-password")
+    }, 1500)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
     }
-    checkSession()
   }, [supabase, router])
 
   const handleReset = async (e: React.FormEvent) => {
@@ -61,8 +74,8 @@ export default function ResetPasswordPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">INTERLINKED</h1>
+          <Link href="/atlas" className="inline-block">
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">ATLAS</h1>
           </Link>
           <p className="text-white/40 text-sm mt-2">Set your new password</p>
         </div>
