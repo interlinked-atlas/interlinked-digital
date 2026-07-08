@@ -87,28 +87,16 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     }
   }, [doRefresh])
 
-  // Supabase Realtime — instant push when tables are in the realtime publication
+  // Supabase Realtime — instant push on subscription status, devices, and logs
   useEffect(() => {
     const ch = supabase
-      .channel(`acct-${user.id}`)
+      .channel(`account:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => doRefresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` }, () => doRefresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` }, () => doRefresh())
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` }, () => doRefresh())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [user.id])
-
-  // Supabase Realtime — instant updates when tables are in the realtime publication
-  useEffect(() => {
-    const channel = supabase
-      .channel(`account:${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
-        () => doRefresh()
-      )
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` },
-        () => doRefresh()
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
   }, [user.id, supabase, doRefresh])
 
   const currentPlan = profile?.plan ?? subscription?.plan ?? "standard"
