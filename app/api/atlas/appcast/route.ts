@@ -12,9 +12,9 @@ const CURRENT_VERSION  = '3.0.0'   // must match CFBundleVersion (300)
 const SHORT_VERSION    = '3.0'
 const RELEASE_DATE     = 'Tue, 15 Aug 2026 12:00:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS-latest.dmg'
-const DMG_LENGTH       = '20971520' // bytes — update per release (run: stat -f%z ATLAS-latest.dmg)
+const DMG_LENGTH       = '20931549' // bytes — update per release (run: stat -f%z ATLAS-latest.dmg)
 // EdDSA signature — run sign_update on the DMG before each release
-const ED_SIGNATURE     = 'PLACEHOLDER_SIGN_BEFORE_RELEASE'
+const ED_SIGNATURE     = 'HVUrWJZlShs3c1zaY0ProF4XOU5+CDlxLPKwoTyuI1bUxOg0fY8/IbiH6iaFicXLHmlIZt447FnpaK5BPDc1CA=='
 
 const RELEASE_NOTES = `
 <ul>
