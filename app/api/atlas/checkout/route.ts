@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
     success_url: `https://www.interlinked.digital/atlas/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:  `https://www.interlinked.digital/atlas?cancelled=1`,
     metadata: { plan, supabase_user_id: userId },
+    custom_text: {
+      submit: { message: 'By subscribing you agree to our Terms of Service. All payments are non-refundable.' },
+    },
   })
 
   return NextResponse.json({ url: session.url })
