@@ -60,6 +60,9 @@ export default function AdminPage() {
   const [newPattern, setNewPattern]         = useState(false)
   const [patternSaving, setPatternSaving]   = useState(false)
   const [patternDraft, setPatternDraft]     = useState<any>({})
+  const [titanMemory, setTitanMemory]       = useState<any[]>([])
+  const [promotingId, setPromotingId]       = useState<string | null>(null)
+  const [toastMsg, setToastMsg]             = useState<string | null>(null)
 
   const router = useRouter()
   const supabase = createBrowserClient()
@@ -101,6 +104,15 @@ export default function AdminPage() {
     setMonthlyUsage(usageRes.data ?? [])
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
+
+    // Load titan_memory directly (admin only)
+    const { data: tmData } = await supabase
+      .from("titan_memory")
+      .select("id, product_name, steps, hosts_entries, confirmed_by, confirmed_at, platform")
+      .or("platform.eq.mac,platform.is.null")
+      .order("confirmed_at", { ascending: false })
+    setTitanMemory(tmData ?? [])
+
     setLoading(false)
   }
 
@@ -155,6 +167,63 @@ export default function AdminPage() {
     setPatterns(p => p.filter((x: any) => x.id !== id))
   }
 
+  function showToast(msg: string) {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(null), 3500)
+  }
+
+  async function promoteToPattern(tm: any) {
+    setPromotingId(tm.id)
+    try {
+      const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+
+      // Build installed_paths from steps
+      const extToDir: Record<string, string> = {
+        ".component": "/Library/Audio/Plug-Ins/Components/",
+        ".vst3":      "/Library/Audio/Plug-Ins/VST3/",
+        ".vst":       "/Library/Audio/Plug-Ins/VST/",
+        ".aaxplugin": "/Library/Application Support/Avid/Audio/Plug-Ins/",
+        ".app":       "/Applications/",
+      }
+      const steps: any[] = Array.isArray(tm.steps) ? tm.steps : []
+      const installedPaths: string[] = []
+      for (const step of steps) {
+        if (step.type === "plugin" && step.file) {
+          const ext = Object.keys(extToDir).find(e => step.file.toLowerCase().endsWith(e))
+          if (ext) installedPaths.push(extToDir[ext] + step.file)
+        }
+      }
+
+      // Build match_patterns
+      const base = tm.product_name.toLowerCase()
+        .replace(/v\d[\d.]+/g, "")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+      const matchPatterns = Array.from(new Set([base, ...base.split(" ").filter((w: string) => w.length > 3)]))
+
+      const body = {
+        product_name:      tm.product_name,
+        match_patterns:    matchPatterns,
+        pkg_receipt_ids:   [],
+        installed_paths:   installedPaths,
+        hosts_entries:     Array.isArray(tm.hosts_entries) ? tm.hosts_entries : [],
+      }
+
+      const res = await fetch("/api/atlas/admin/patterns", { method: "POST", headers, body: JSON.stringify(body) })
+      if (!res.ok) throw new Error(await res.text())
+
+      // Refresh patterns list
+      const patRes = await fetch("/api/atlas/admin/patterns", { headers: await authHeader() }).then(r => r.json()).catch(() => [])
+      setPatterns(Array.isArray(patRes) ? patRes : [])
+      showToast(`✓ Promoted "${tm.product_name}" to install_patterns`)
+    } catch (err: any) {
+      showToast(`Error: ${err.message ?? "Failed to promote"}`)
+    } finally {
+      setPromotingId(null)
+    }
+  }
+
   if (!authed) return null
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -202,6 +271,12 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#07080F", color: "#E8ECFF" }}>
+      {/* Toast */}
+      {toastMsg && (
+        <div style={{ position:"fixed", bottom:"24px", left:"50%", transform:"translateX(-50%)", zIndex:999, background:"#1E2240", border:"1px solid #3ECFB2", borderRadius:"10px", padding:"10px 20px", fontSize:"12px", color:"#E8ECFF", boxShadow:"0 4px 20px rgba(0,0,0,0.5)", whiteSpace:"nowrap" }}>
+          {toastMsg}
+        </div>
+      )}
 
       {/* Header */}
       <header style={{ borderBottom: "1px solid #1E2240", position: "sticky", top: 0, zIndex: 50, background: "rgba(7,8,15,0.95)", backdropFilter: "blur(12px)", padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -757,6 +832,46 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))
+              }
+            </div>
+
+            {/* ── TITAN MEMORY entries (admin-confirmed, not yet in install_patterns) ── */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:"8px" }}>
+              <p style={{...labelStyle,margin:0}}>TITAN MEMORY™ — Admin confirmed ({titanMemory.length} entries)</p>
+            </div>
+            <div style={card}>
+              {titanMemory.length === 0
+                ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No titan_memory entries yet.</div>
+                : titanMemory.map((tm: any) => {
+                  const steps: any[] = Array.isArray(tm.steps) ? tm.steps : []
+                  const alreadyPromoted = patterns.some((p: any) => p.product_name.toLowerCase().trim() === tm.product_name.toLowerCase().trim())
+                  return (
+                    <div key={tm.id} style={{ borderBottom:"1px solid #0F1020", padding:"12px 18px", display:"flex", alignItems:"flex-start", gap:"12px" }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" }}>
+                          <p style={{ fontSize:"13px", color:"#D0D8F0", fontWeight:500, margin:0 }}>{tm.product_name}</p>
+                          {alreadyPromoted && <span style={{ fontSize:"8px", fontWeight:800, letterSpacing:"1px", padding:"2px 6px", borderRadius:"3px", background:"rgba(62,207,178,0.1)", color:"#3ECFB2", border:"1px solid rgba(62,207,178,0.2)" }}>IN PATTERNS</span>}
+                          <span style={{ fontSize:"10px", color:"#6B7399", marginLeft:"auto" }}>{fmt(tm.confirmed_at)}</span>
+                        </div>
+                        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+                          {steps.slice(0,4).map((s: any, i: number) => (
+                            <span key={i} style={{ fontSize:"9px", color:"#6B7399", fontFamily:"monospace", padding:"2px 6px", background:"#0A0D1C", borderRadius:"4px", border:"1px solid #1E2240" }}>{s.file ?? s.note ?? s.type}</span>
+                          ))}
+                          {steps.length > 4 && <span style={{fontSize:"9px",color:"#252845"}}>+{steps.length-4} more steps</span>}
+                        </div>
+                        {(tm.hosts_entries??[]).length > 0 && <p style={{ fontSize:"9px", color:"#E05555", margin:"4px 0 0", fontFamily:"monospace" }}>blocks: {tm.hosts_entries.join(", ")}</p>}
+                        {tm.confirmed_by && <p style={{ fontSize:"9px", color:"#252845", margin:"2px 0 0" }}>confirmed by: {tm.confirmed_by}</p>}
+                      </div>
+                      <button
+                        onClick={() => promoteToPattern(tm)}
+                        disabled={promotingId === tm.id || alreadyPromoted}
+                        style={{ fontSize:"10px", fontWeight:600, color: alreadyPromoted?"#353860":"#08090E", background: alreadyPromoted?"#1A1D30":"#A855F7", border:"none", borderRadius:"6px", padding:"5px 12px", cursor: alreadyPromoted?"default":"pointer", flexShrink:0, opacity: promotingId===tm.id ? 0.6 : 1 }}
+                      >
+                        {promotingId === tm.id ? "Promoting…" : alreadyPromoted ? "Promoted" : "Promote to Learn"}
+                      </button>
+                    </div>
+                  )
+                })
               }
             </div>
           </div>
