@@ -4,12 +4,9 @@ import AppKit
 final class AuthManager: ObservableObject {
     static let shared = AuthManager()
     private init() {
-        // Delay Keychain access by 3s so the splash screen completes first.
-        // macOS triggers "ATLAS wants to access Keychain" on first write — deferring
-        // this past the splash ensures the prompt appears in context, not over a blank screen.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.restoreSession()
-        }
+        // Restore session immediately so returning users skip the login screen entirely.
+        // If a Keychain prompt is needed it appears after splash (splash takes ~2s naturally).
+        restoreSession()
     }
 
     @Published var session: ATLASSession?
@@ -25,6 +22,9 @@ final class AuthManager: ObservableObject {
 
     var isSignedIn: Bool { session != nil }
     var isPro: Bool { profile?.isPro ?? false }
+
+    static let adminEmail = "titantinstaller@gmail.com"
+    var isAdmin: Bool { userEmail.lowercased() == Self.adminEmail }
     var planLabel: String {
         if isPro { return "Pro" }
         return "Standard"
@@ -56,7 +56,12 @@ final class AuthManager: ObservableObject {
             authError = "Please confirm your email before signing in. Check your inbox for a link from interlinked.digital."
             authErrorIsEmailUnconfirmed = true
         } catch {
-            authError = error.localizedDescription
+            let msg = error.localizedDescription.lowercased()
+            if msg.contains("invalid login") || msg.contains("invalid credentials") || msg.contains("400") || msg.contains("wrong password") || msg.contains("email not found") {
+                authError = "Incorrect email or password."
+            } else {
+                authError = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -145,6 +150,11 @@ final class AuthManager: ObservableObject {
                     accessToken: s.accessToken, userID: s.userID) {
                     let planChanged   = p.plan != self.profile?.plan
                     let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
+                    // Force sign-out immediately if subscription was cancelled
+                    if p.subscriptionStatus == "cancelled" {
+                        await MainActor.run { self.signOut() }
+                        return
+                    }
                     if planChanged || statusChanged {
                         let oldPlan = self.profile?.plan ?? ""
                         let newPlan = p.plan
@@ -199,6 +209,17 @@ final class AuthManager: ObservableObject {
         KeychainManager.saveSession(s)
         if let p = try? await SupabaseService.shared.getProfile(
             accessToken: s.accessToken, userID: s.userID) {
+            // Block cancelled accounts immediately at login
+            if p.subscriptionStatus == "cancelled" {
+                await MainActor.run {
+                    isLoadingProfile = false
+                    session = nil
+                    authError = "Your subscription has been cancelled. Visit interlinked.digital/atlas to subscribe again."
+                }
+                KeychainManager.clearSession()
+                try? await SupabaseService.shared.signOut(accessToken: s.accessToken)
+                return
+            }
             await MainActor.run {
                 profile = p
                 isLoadingProfile = false
