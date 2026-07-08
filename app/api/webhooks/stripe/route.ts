@@ -318,6 +318,34 @@ export async function POST(req: NextRequest) {
         if (!email) break
         const userId = await getUserByEmail(email)
 
+        // Reactivate users who were in payment_failed / past_due state
+        if (userId) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('subscription_status, plan')
+            .eq('id', userId)
+            .single()
+
+          if (prof && (prof.subscription_status === 'payment_failed' || prof.subscription_status === 'past_due')) {
+            await supabase
+              .from('profiles')
+              .update({ subscription_status: 'active' })
+              .eq('id', userId)
+
+            await supabase
+              .from('subscriptions')
+              .update({ status: 'active', updated_at: new Date().toISOString() })
+              .eq('stripe_customer_id', invoice.customer as string)
+
+            await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: prof.plan ?? 'standard', renewDate: '' } })
+
+            await notifyAdmin(
+              `✅ Payment Recovered — ${email}`,
+              `${email} successfully paid after a failed payment. Subscription reactivated.\n\nStripe Invoice: ${invoice.id}\nTime: ${new Date().toUTCString()}`
+            )
+          }
+        }
+
         // Audit log every successful charge
         await auditLog('payment.succeeded', {
           userId, email,
