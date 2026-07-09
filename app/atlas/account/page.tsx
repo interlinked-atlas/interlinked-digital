@@ -29,7 +29,7 @@ export default async function AccountPage() {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan, subscription_status")
+      .select("plan, subscription_status, billing_interval")
       .eq("id", user.id)
       .maybeSingle(),
     supabase

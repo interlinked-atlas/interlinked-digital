@@ -14,7 +14,7 @@ interface Subscription {
   stripe_subscription_id: string | null
   stripe_customer_id?: string | null
 }
-interface Profile { plan: string; subscription_status: string }
+interface Profile { plan: string; subscription_status: string; billing_interval?: string | null }
 interface Device {
   id: string; device_name: string; hardware_uuid: string
   last_seen: string; created_at: string
@@ -101,6 +101,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   const currentPlan = profile?.plan ?? subscription?.plan ?? "standard"
   const isPro   = currentPlan === "pro"
+  const isMonthly = (profile?.billing_interval ?? "monthly") === "monthly"
   const isActive = profile?.subscription_status === "active" || subscription?.status === "active" || subscription?.status === "trialing"
   const isCancelled = profile?.subscription_status === "cancelled" || subscription?.status === "canceled"
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
@@ -322,6 +323,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
                 fontSize: "11px", background: "none", cursor: upgradeLoading ? "not-allowed" : "pointer",
               }}>{upgradeLoading ? "Switching…" : "↓ Downgrade to Standard — $14.99/mo"}</button>
+            )}
+            {isActive && !isCancelled && isMonthly && (
+              <button onClick={() => handleUpgrade(isPro ? "pro-annual" : "standard-annual")} disabled={upgradeLoading} style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "8px 16px", borderRadius: "8px",
+                background: upgradeLoading ? "rgba(62,207,178,0.3)" : "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
+                color: "#07080F", fontSize: "11px", fontWeight: 700, cursor: upgradeLoading ? "not-allowed" : "pointer", border: "none",
+              }}>{upgradeLoading ? "Switching…" : `⭐ Switch to Annual — ${isPro ? "$299.99" : "$149.99"}/yr`}</button>
             )}
             {isCancelled && (
               <Link href="/atlas" style={{
