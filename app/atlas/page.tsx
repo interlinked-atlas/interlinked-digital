@@ -426,11 +426,6 @@ export default function ATLASWaitlistPage() {
                 </form>
               )}
 
-              <div className="divider" />
-
-              <a href="/auth/login" className="login-btn">
-                Sign in to ATLAS →
-              </a>
 
             </div>
           </div>
