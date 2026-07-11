@@ -354,10 +354,8 @@ export default function ATLASWaitlistPage() {
         }
         .demo-divider {
           width: 100%;
-          max-width: 760px;
           height: 1px;
           background: rgba(255,255,255,0.05);
-          margin-top: 64px;
         }
 
         /* ── Footer ── */
@@ -443,6 +441,9 @@ export default function ATLASWaitlistPage() {
               <p className="subtext">
                 Subscribe with your email and we'll notify you the moment ATLAS is available.
               </p>
+              <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#8A8A96', marginBottom: 14, marginTop: -4 }}>
+                Stay Tuned for Subscription Plans &amp; Pricing.
+              </p>
 
               <div className="divider" />
 
@@ -498,11 +499,12 @@ export default function ATLASWaitlistPage() {
         </div>
 
         {/* Demo section */}
-        <div className="demo-divider" />
         <div className="demo-section">
           <p className="demo-eyebrow">Watch the Demo Below</p>
           <h2 className="demo-heading">See ATLAS in Action</h2>
           <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
+          <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.7, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
+          <div className="demo-divider" />
           <div className="demo-video-wrap">
             <iframe
               className="demo-iframe"

@@ -141,8 +141,11 @@ function waitlistEmail() {
             <tr><td style="height:1px;background:${BORDER};font-size:0;">&nbsp;</td></tr>
           </table>
 
+          <p style="margin:0 0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:${SUBTLE};line-height:1.6;">
+            Stay Tuned for Subscription Plans &amp; Pricing.
+          </p>
           <p style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
-            To make sure you get the launch email, add <span style="color:${SUBTLE};">atlas@interlinked.digital</span> to your contacts.
+            To make sure you get our emails, add <span style="color:${SUBTLE};">atlas@interlinked.digital</span> to your contacts.
           </p>
           <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
             Questions? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
