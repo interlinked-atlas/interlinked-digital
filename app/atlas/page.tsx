@@ -301,32 +301,63 @@ export default function ATLASWaitlistPage() {
           line-height: 1.6;
         }
 
-        /* ── Demo video ── */
-        .demo-wrap {
+        /* ── Demo section ── */
+        .demo-section {
           width: 100%;
-          margin-top: 16px;
-          border-radius: 16px;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.07);
-          box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-          background: #000;
-          position: relative;
+          max-width: 760px;
+          margin-top: 64px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
         }
-        .demo-label {
+        .demo-eyebrow {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 10px;
           font-weight: 700;
-          letter-spacing: 2.5px;
+          letter-spacing: 3px;
           text-transform: uppercase;
           color: #3ECFB2;
           text-align: center;
-          margin-bottom: 10px;
+        }
+        .demo-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 26px;
+          font-weight: 700;
+          letter-spacing: -0.035em;
+          color: #ffffff;
+          text-align: center;
+          line-height: 1.2;
+          margin-top: 4px;
+        }
+        .demo-sub {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #525260;
+          text-align: center;
+          line-height: 1.6;
+          max-width: 380px;
+        }
+        .demo-video-wrap {
+          width: 100%;
+          border-radius: 16px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+          background: #000;
         }
         .demo-iframe {
           width: 100%;
           aspect-ratio: 16/9;
           border: none;
           display: block;
+        }
+        .demo-divider {
+          width: 100%;
+          max-width: 760px;
+          height: 1px;
+          background: rgba(255,255,255,0.05);
+          margin-top: 64px;
         }
 
         /* ── Footer ── */
@@ -458,18 +489,6 @@ export default function ATLASWaitlistPage() {
             </div>
           </div>
 
-          {/* Demo video */}
-          <p className="demo-label">▶ Watch the Demo</p>
-          <div className="demo-wrap">
-            <iframe
-              className="demo-iframe"
-              src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white"
-              title="ATLAS Demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-
           {/* Footer */}
           <div className="footer">
             <span className="footer-brand">InterLinked Digital</span>
@@ -477,6 +496,24 @@ export default function ATLASWaitlistPage() {
           </div>
 
         </div>
+
+        {/* Demo section */}
+        <div className="demo-divider" />
+        <div className="demo-section">
+          <p className="demo-eyebrow">Watch the Demo Below</p>
+          <h2 className="demo-heading">See ATLAS in Action</h2>
+          <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
+          <div className="demo-video-wrap">
+            <iframe
+              className="demo-iframe"
+              src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white"
+              title="ATLAS Demo — The World's First Autonomous Installation App"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+
       </div>
     </>
   )
