@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ allowed: false, reason: 'unauthorized' }, { status: 401 })
 
+  // Admin has unlimited installs — no cap, no increment
+  if (user.email?.toLowerCase() === 'titantinstaller@gmail.com') {
+    return NextResponse.json({ allowed: true, reason: null, daily_used: 0, monthly_used: 0 })
+  }
+
   // Get plan from profile
   const { data: profile } = await supabase
     .from('profiles')
