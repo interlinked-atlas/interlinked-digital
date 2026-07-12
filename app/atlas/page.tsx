@@ -9,6 +9,9 @@ export default function ATLASWaitlistPage() {
   const [codeInput, setCodeInput]   = useState('')
   const [verifyToken, setVerifyToken] = useState('')
   const [verifyTs, setVerifyTs]     = useState(0)
+  const [shareEmail, setShareEmail] = useState('')
+  const [shareStatus, setShareStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [shareError, setShareError] = useState('')
   const [mounted, setMounted]       = useState(false)
   const [count, setCount]           = useState<number | null>(null)
   const [coinAnim, setCoinAnim]     = useState(false)
@@ -101,6 +104,30 @@ export default function ATLASWaitlistPage() {
     } catch {
       setErrorMsg('Connection failed. Try again.')
       setStatus('verifying')
+    }
+  }
+
+  async function handleShare(e: React.FormEvent) {
+    e.preventDefault()
+    if (!shareEmail || shareStatus === 'sending') return
+    setShareStatus('sending'); setShareError('')
+    try {
+      const res = await fetch('/api/atlas/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendEmail: shareEmail }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setShareStatus('sent')
+        setShareEmail('')
+      } else {
+        setShareError(data.error ?? 'Could not send invite.')
+        setShareStatus('error')
+      }
+    } catch {
+      setShareError('Connection failed. Try again.')
+      setShareStatus('error')
     }
   }
 
@@ -628,6 +655,75 @@ export default function ATLASWaitlistPage() {
         }
         .resend-btn:hover { color: #8A8A96; }
 
+        /* ── Share section ── */
+        .share-section {
+          width: 100%;
+          background: #111113;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 16px;
+          padding: 22px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .share-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          letter-spacing: -0.02em;
+        }
+        .share-sub {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          color: #525260;
+          line-height: 1.5;
+          margin-top: -4px;
+        }
+        .share-row {
+          display: flex;
+          gap: 8px;
+        }
+        .share-input {
+          flex: 1;
+          background: #0C0C0E;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          padding: 11px 14px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #ffffff;
+          outline: none;
+          transition: border-color 0.2s;
+          min-width: 0;
+        }
+        .share-input::placeholder { color: #3A3A48; }
+        .share-input:focus { border-color: rgba(62,207,178,0.4); }
+        .share-btn {
+          background: transparent;
+          border: 1px solid rgba(62,207,178,0.35);
+          border-radius: 10px;
+          padding: 11px 18px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          color: #3ECFB2;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: background 0.2s, border-color 0.2s;
+        }
+        .share-btn:hover:not(:disabled) { background: rgba(62,207,178,0.08); border-color: rgba(62,207,178,0.6); }
+        .share-btn:disabled { opacity: 0.45; cursor: default; }
+        .share-sent {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          color: #3ECFB2;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
         /* ── Footer ── */
         .footer {
           margin-top: 16px;
@@ -844,6 +940,38 @@ export default function ATLASWaitlistPage() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
+            </div>
+
+            {/* Share with a friend */}
+            <div className="share-section">
+              <p className="share-heading">Know someone who'd love this?</p>
+              <p className="share-sub">Enter their email and we'll send them a personal invite to join the waitlist.</p>
+              {shareStatus === 'sent' ? (
+                <p className="share-sent">✓ Invite sent — they'll hear from us shortly.</p>
+              ) : (
+                <form className="share-row" onSubmit={handleShare}>
+                  <input
+                    className="share-input"
+                    type="email"
+                    placeholder="friend@email.com"
+                    value={shareEmail}
+                    onChange={e => setShareEmail(e.target.value)}
+                    required
+                    disabled={shareStatus === 'sending'}
+                    autoComplete="off"
+                  />
+                  <button
+                    className="share-btn"
+                    type="submit"
+                    disabled={shareStatus === 'sending' || !shareEmail}
+                  >
+                    {shareStatus === 'sending' ? 'Sending…' : 'Send Invite →'}
+                  </button>
+                </form>
+              )}
+              {shareStatus === 'error' && (
+                <p className="error-msg">{shareError}</p>
+              )}
             </div>
           </div>
         )}
