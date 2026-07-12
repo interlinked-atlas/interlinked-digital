@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { Resend } from 'resend'
+import { generateDemoToken } from '../demo-token/route'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,13 +48,17 @@ export async function POST(req: NextRequest) {
   // Get count for admin email
   const { count } = await supabase.from('atlas_waitlist').select('*', { count: 'exact', head: true })
 
+  // Generate unique signed demo token for this user
+  const demoToken = generateDemoToken(email)
+  const demoUrl = `https://www.interlinked.digital/atlas?token=${demoToken}`
+
   // Send welcome email (with demo link)
   await resend.emails.send({
     from: FROM,
     to: email,
     subject: "You're on the ATLAS waitlist",
-    html: waitlistEmail(),
-    text: `You're on the ATLAS waitlist.\n\nWatch the ATLAS demo: https://www.interlinked.digital/atlas?demo=1\n\nWe'll send you one email the moment ATLAS launches — no spam, ever.\n\n— InterLinked`,
+    html: waitlistEmail(demoUrl),
+    text: `You're on the ATLAS waitlist.\n\nWatch the ATLAS demo: ${demoUrl}\n\nWe'll send you one email the moment ATLAS launches — no spam, ever.\n\n— InterLinked`,
     headers: {
       'List-Unsubscribe': '<mailto:atlas@interlinked.digital?subject=unsubscribe>',
       'X-Entity-Ref-ID': `atlas-waitlist-${Date.now()}`,
@@ -83,7 +88,7 @@ const MUTED  = '#525260'
 const SUBTLE = '#8A8A96'
 const LOGO_URL = 'https://www.interlinked.digital/atlas-logo.png'
 
-function waitlistEmail() {
+function waitlistEmail(demoUrl: string) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -146,13 +151,13 @@ function waitlistEmail() {
           <p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${TEAL};">Demo Now Live</p>
           <p style="margin:0 0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:${WHITE};letter-spacing:-0.02em;">Watch ATLAS in action.</p>
 
-          <a href="https://www.interlinked.digital/atlas?demo=1" target="_blank" style="display:block;text-decoration:none;margin-bottom:16px;">
+          <a href="${demoUrl}" target="_blank" style="display:block;text-decoration:none;margin-bottom:16px;">
             <img src="https://img.youtube.com/vi/OHbz5y4kHeg/maxresdefault.jpg" width="100%" alt="Watch ATLAS Demo" style="display:block;border:0;width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
           </a>
 
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:28px;">
             <tr><td align="center">
-              <a href="https://www.interlinked.digital/atlas?demo=1" target="_blank" style="display:inline-block;background:${TEAL};color:#080809;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.01em;text-decoration:none;padding:14px 32px;border-radius:10px;">Watch the Demo →</a>
+              <a href="${demoUrl}" target="_blank" style="display:inline-block;background:${TEAL};color:#080809;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.01em;text-decoration:none;padding:14px 32px;border-radius:10px;">Watch the Demo →</a>
             </td></tr>
           </table>
 

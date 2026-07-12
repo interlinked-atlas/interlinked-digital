@@ -22,9 +22,13 @@ export default function ATLASWaitlistPage() {
 
   useEffect(() => {
     setMounted(true)
-    // Auto-unlock if coming from email link
-    if (typeof window !== 'undefined' && window.location.search.includes('demo=1')) {
-      setDemo(true)
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) {
+      fetch(`/api/atlas/demo-token?token=${encodeURIComponent(token)}`)
+        .then(r => r.json())
+        .then(d => { if (d.valid) setDemo(true) })
+        .catch(() => {})
     }
   }, [])
 
