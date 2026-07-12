@@ -1,14 +1,35 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function ATLASWaitlistPage() {
   const [email, setEmail]       = useState('')
   const [status, setStatus]     = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [mounted, setMounted]   = useState(false)
+  const [count, setCount]       = useState<number | null>(null)
+  const [coinAnim, setCoinAnim] = useState(false)
+  const prevCount               = useRef<number | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    async function fetchCount() {
+      try {
+        const res = await fetch('/api/atlas/subscriber-count')
+        const data = await res.json()
+        if (prevCount.current !== null && data.count > prevCount.current) {
+          setCoinAnim(true)
+          setTimeout(() => setCoinAnim(false), 1200)
+        }
+        prevCount.current = data.count
+        setCount(data.count)
+      } catch {}
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,6 +45,9 @@ export default function ATLASWaitlistPage() {
       const data = await res.json()
       if (data.success) {
         setStatus('success')
+        setCount(c => c !== null ? c + 1 : c)
+        setCoinAnim(true)
+        setTimeout(() => setCoinAnim(false), 1200)
       } else {
         setErrorMsg(data.error ?? 'Something went wrong.')
         setStatus('error')
@@ -301,6 +325,49 @@ export default function ATLASWaitlistPage() {
           line-height: 1.6;
         }
 
+        /* ── Subscriber counter ── */
+        .counter-wrap {
+          width: 100%;
+          margin-top: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .counter-coin {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 35%, #5EFFD8, #3ECFB2 60%, #1a8a72);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          box-shadow: 0 0 12px rgba(62,207,178,0.5);
+          flex-shrink: 0;
+          transition: transform 0.15s ease;
+        }
+        .counter-coin.pop {
+          animation: coinPop 1.2s ease forwards;
+        }
+        @keyframes coinPop {
+          0%   { transform: scale(1) translateY(0); box-shadow: 0 0 12px rgba(62,207,178,0.5); }
+          20%  { transform: scale(1.4) translateY(-6px); box-shadow: 0 0 28px rgba(62,207,178,0.9); }
+          50%  { transform: scale(1.1) translateY(-2px); box-shadow: 0 0 20px rgba(62,207,178,0.7); }
+          100% { transform: scale(1) translateY(0); box-shadow: 0 0 12px rgba(62,207,178,0.5); }
+        }
+        .counter-text {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #525260;
+          letter-spacing: -0.01em;
+        }
+        .counter-num {
+          font-weight: 700;
+          color: #3ECFB2;
+          font-variant-numeric: tabular-nums;
+        }
+
         /* ── Demo section ── */
         .demo-section {
           width: 100%;
@@ -489,6 +556,16 @@ export default function ATLASWaitlistPage() {
 
             </div>
           </div>
+
+          {/* Live subscriber counter */}
+          {count !== null && (
+            <div className="counter-wrap">
+              <div className={`counter-coin${coinAnim ? ' pop' : ''}`}>✦</div>
+              <span className="counter-text">
+                <span className="counter-num">{count.toLocaleString()}</span> people on the waitlist
+              </span>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="footer">
