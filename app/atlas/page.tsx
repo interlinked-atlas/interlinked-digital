@@ -4,8 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 
 export default function ATLASWaitlistPage() {
   const [email, setEmail]           = useState('')
-  const [status, setStatus]         = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [status, setStatus]         = useState<'idle' | 'loading' | 'verifying' | 'confirming' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg]     = useState('')
+  const [codeInput, setCodeInput]   = useState('')
+  const [verifyToken, setVerifyToken] = useState('')
+  const [verifyTs, setVerifyTs]     = useState(0)
   const [mounted, setMounted]       = useState(false)
   const [count, setCount]           = useState<number | null>(null)
   const [coinAnim, setCoinAnim]     = useState(false)
@@ -46,19 +49,43 @@ export default function ATLASWaitlistPage() {
     setStatus('loading'); setErrorMsg('')
 
     try {
-      const res = await fetch('/api/atlas/waitlist', {
+      const res = await fetch('/api/atlas/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
       const data = await res.json()
+      if (res.ok) {
+        setVerifyToken(data.token)
+        setVerifyTs(data.ts)
+        setStatus('verifying')
+      } else {
+        setErrorMsg(data.error ?? 'Something went wrong.')
+        setStatus('error')
+      }
+    } catch {
+      setErrorMsg('Connection failed. Try again.')
+      setStatus('error')
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!codeInput || status === 'confirming') return
+    setStatus('confirming'); setErrorMsg('')
+
+    try {
+      const res = await fetch('/api/atlas/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: codeInput, token: verifyToken, ts: verifyTs }),
+      })
+      const data = await res.json()
       if (data.success) {
         setStatus('success')
         setCount(c => c !== null ? c + 1 : c)
-        // Coin animation first
         setCoinAnim(true)
         setTimeout(() => setCoinAnim(false), 900)
-        // Then unlock demo after short delay
         setUnlocking(true)
         setTimeout(() => {
           setUnlocking(false)
@@ -68,12 +95,12 @@ export default function ATLASWaitlistPage() {
           }, 100)
         }, 1400)
       } else {
-        setErrorMsg(data.error ?? 'Something went wrong.')
-        setStatus('error')
+        setErrorMsg(data.error ?? 'Invalid code.')
+        setStatus('verifying')
       }
     } catch {
       setErrorMsg('Connection failed. Try again.')
-      setStatus('error')
+      setStatus('verifying')
     }
   }
 
@@ -531,6 +558,76 @@ export default function ATLASWaitlistPage() {
         }
         .demo-back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
+        /* ── Code verification ── */
+        .verify-state {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
+        }
+        .verify-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(62,207,178,0.1);
+          border: 1px solid rgba(62,207,178,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          margin-bottom: 8px;
+        }
+        .verify-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 15px;
+          font-weight: 700;
+          color: #ffffff;
+          letter-spacing: -0.02em;
+        }
+        .verify-sub {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: #525260;
+          line-height: 1.6;
+          margin-bottom: 16px;
+        }
+        .code-row {
+          display: flex;
+          gap: 8px;
+          width: 100%;
+        }
+        .code-input {
+          flex: 1;
+          background: #0C0C0E;
+          border: 1px solid rgba(62,207,178,0.3);
+          border-radius: 10px;
+          padding: 12px 16px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          color: #ffffff;
+          outline: none;
+          transition: border-color 0.2s;
+          min-width: 0;
+          text-align: center;
+        }
+        .code-input::placeholder { color: #2A2A38; letter-spacing: 0.1em; font-weight: 400; font-size: 14px; }
+        .code-input:focus { border-color: rgba(62,207,178,0.6); }
+        .resend-btn {
+          background: transparent;
+          border: none;
+          padding: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          color: #525260;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          margin-top: 8px;
+        }
+        .resend-btn:hover { color: #8A8A96; }
+
         /* ── Footer ── */
         .footer {
           margin-top: 16px;
@@ -622,12 +719,47 @@ export default function ATLASWaitlistPage() {
                   <div className="success-check">✓</div>
                   <p className="success-heading">You're on the list.</p>
                   <p className="success-sub">
-                    We sent a confirmation to{' '}
+                    We sent your welcome email to{' '}
                     <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.
                   </p>
                   <p className="success-sub" style={{ marginTop: 8, color: '#3A3A48', fontSize: 12 }}>
-                    Don't see it? Check your <strong style={{ color: '#525260' }}>spam or junk folder</strong> — and mark it as "Not Spam" to make sure you get the launch email.
+                    Don't see it? Check your <strong style={{ color: '#525260' }}>spam or junk folder</strong>.
                   </p>
+                </div>
+              ) : status === 'verifying' || status === 'confirming' ? (
+                <div className="verify-state">
+                  <div className="verify-icon">✉️</div>
+                  <p className="verify-heading">Check your inbox.</p>
+                  <p className="verify-sub">
+                    We sent a 5-digit code to <strong style={{ color: '#8A8A96' }}>{email}</strong>. Enter it below to unlock the demo.
+                  </p>
+                  <form className="form" style={{ width: '100%' }} onSubmit={handleVerify}>
+                    <div className="code-row">
+                      <input
+                        className="code-input"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="_ _ _ _ _"
+                        maxLength={5}
+                        value={codeInput}
+                        onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                        autoFocus
+                        autoComplete="one-time-code"
+                        disabled={status === 'confirming'}
+                      />
+                      <button
+                        className="submit-btn"
+                        type="submit"
+                        disabled={status === 'confirming' || codeInput.length < 5}
+                      >
+                        {status === 'confirming' ? 'Verifying…' : 'Unlock →'}
+                      </button>
+                    </div>
+                    {errorMsg && <p className="error-msg">{errorMsg}</p>}
+                  </form>
+                  <button className="resend-btn" onClick={() => { setStatus('idle'); setCodeInput(''); setErrorMsg('') }}>
+                    ← Use a different email
+                  </button>
                 </div>
               ) : (
                 <form className="form" onSubmit={handleSubmit}>
@@ -647,7 +779,7 @@ export default function ATLASWaitlistPage() {
                       type="submit"
                       disabled={status === 'loading' || !email}
                     >
-                      {status === 'loading' ? 'Joining…' : 'Subscribe & Watch →'}
+                      {status === 'loading' ? 'Sending…' : 'Subscribe & Watch →'}
                     </button>
                   </div>
                   {status === 'error' && (
