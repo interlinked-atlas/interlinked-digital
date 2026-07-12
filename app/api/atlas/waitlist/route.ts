@@ -145,13 +145,13 @@ function waitlistEmail() {
           <p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${TEAL};">Demo Now Live</p>
           <p style="margin:0 0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:${WHITE};letter-spacing:-0.02em;">Watch ATLAS in action.</p>
 
-          <a href="https://www.interlinked.digital/atlas" target="_blank" style="display:block;text-decoration:none;margin-bottom:16px;">
+          <a href="https://www.interlinked.digital/atlas?demo=1" target="_blank" style="display:block;text-decoration:none;margin-bottom:16px;">
             <img src="https://img.youtube.com/vi/OHbz5y4kHeg/maxresdefault.jpg" width="100%" alt="Watch ATLAS Demo" style="display:block;border:0;width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
           </a>
 
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:28px;">
             <tr><td align="center">
-              <a href="https://www.interlinked.digital/atlas" target="_blank" style="display:inline-block;background:${TEAL};color:#080809;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.01em;text-decoration:none;padding:14px 32px;border-radius:10px;">Watch the Demo →</a>
+              <a href="https://www.interlinked.digital/atlas?demo=1" target="_blank" style="display:inline-block;background:${TEAL};color:#080809;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.01em;text-decoration:none;padding:14px 32px;border-radius:10px;">Watch the Demo →</a>
             </td></tr>
           </table>
 

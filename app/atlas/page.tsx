@@ -3,15 +3,24 @@
 import { useState, useEffect, useRef } from 'react'
 
 export default function ATLASWaitlistPage() {
-  const [email, setEmail]       = useState('')
-  const [status, setStatus]     = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-  const [mounted, setMounted]   = useState(false)
-  const [count, setCount]       = useState<number | null>(null)
-  const [coinAnim, setCoinAnim] = useState(false)
-  const prevCount               = useRef<number | null>(null)
+  const [email, setEmail]           = useState('')
+  const [status, setStatus]         = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [errorMsg, setErrorMsg]     = useState('')
+  const [mounted, setMounted]       = useState(false)
+  const [count, setCount]           = useState<number | null>(null)
+  const [coinAnim, setCoinAnim]     = useState(false)
+  const [demoUnlocked, setDemo]     = useState(false)
+  const [unlocking, setUnlocking]   = useState(false)
+  const prevCount                   = useRef<number | null>(null)
+  const demoRef                     = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    setMounted(true)
+    // Auto-unlock if coming from email link
+    if (typeof window !== 'undefined' && window.location.search.includes('demo=1')) {
+      setDemo(true)
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchCount() {
@@ -20,7 +29,7 @@ export default function ATLASWaitlistPage() {
         const data = await res.json()
         if (prevCount.current !== null && data.count > prevCount.current) {
           setCoinAnim(true)
-          setTimeout(() => setCoinAnim(false), 1200)
+          setTimeout(() => setCoinAnim(false), 900)
         }
         prevCount.current = data.count
         setCount(data.count)
@@ -46,8 +55,18 @@ export default function ATLASWaitlistPage() {
       if (data.success) {
         setStatus('success')
         setCount(c => c !== null ? c + 1 : c)
+        // Coin animation first
         setCoinAnim(true)
-        setTimeout(() => setCoinAnim(false), 1200)
+        setTimeout(() => setCoinAnim(false), 900)
+        // Then unlock demo after short delay
+        setUnlocking(true)
+        setTimeout(() => {
+          setUnlocking(false)
+          setDemo(true)
+          setTimeout(() => {
+            demoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 100)
+        }, 1400)
       } else {
         setErrorMsg(data.error ?? 'Something went wrong.')
         setStatus('error')
@@ -385,15 +404,67 @@ export default function ATLASWaitlistPage() {
           50% { opacity: 1; transform: scale(1.3); }
         }
 
+        /* ── Locked demo teaser ── */
+        .demo-locked {
+          width: 100%;
+          margin-top: 20px;
+          position: relative;
+          border-radius: 14px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.07);
+          cursor: default;
+        }
+        .demo-locked-thumb {
+          width: 100%;
+          aspect-ratio: 16/9;
+          background: url('https://img.youtube.com/vi/OHbz5y4kHeg/maxresdefault.jpg') center/cover no-repeat;
+          filter: blur(6px) brightness(0.35);
+          transform: scale(1.05);
+        }
+        .demo-locked-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .demo-lock-icon {
+          font-size: 28px;
+          opacity: 0.7;
+        }
+        .demo-lock-text {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.5);
+          letter-spacing: -0.01em;
+          text-align: center;
+        }
+        /* ── Unlocking flash ── */
+        .demo-unlocking {
+          animation: unlockFlash 1.4s ease forwards;
+        }
+        @keyframes unlockFlash {
+          0%   { opacity: 1; }
+          40%  { opacity: 0.3; box-shadow: 0 0 60px rgba(62,207,178,0.6); }
+          100% { opacity: 1; }
+        }
         /* ── Demo section ── */
         .demo-section {
           width: 100%;
           max-width: 760px;
-          margin-top: 64px;
+          margin-top: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 20px;
+          animation: fadeUp 0.6s ease forwards;
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         .demo-eyebrow {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -426,8 +497,8 @@ export default function ATLASWaitlistPage() {
           width: 100%;
           border-radius: 16px;
           overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.08);
-          box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+          border: 1px solid rgba(62,207,178,0.2);
+          box-shadow: 0 0 60px rgba(62,207,178,0.12), 0 30px 80px rgba(0,0,0,0.7);
           background: #000;
         }
         .demo-iframe {
@@ -441,6 +512,24 @@ export default function ATLASWaitlistPage() {
           height: 1px;
           background: rgba(255,255,255,0.05);
         }
+        .demo-back-btn {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          color: #525260;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 8px;
+          padding: 8px 16px;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: color 0.2s, border-color 0.2s;
+          align-self: flex-start;
+        }
+        .demo-back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
         /* ── Footer ── */
         .footer {
@@ -523,10 +612,7 @@ export default function ATLASWaitlistPage() {
               <p className="eyebrow">Coming Soon</p>
               <h1 className="heading">Be the first to know.</h1>
               <p className="subtext">
-                Subscribe with your email and we'll notify you the moment ATLAS is available.
-              </p>
-              <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#8A8A96', marginBottom: 14, marginTop: -4 }}>
-                Stay Tuned for Subscription Plans &amp; Pricing.
+                Subscribe &amp; watch ATLAS in action — unlock the demo the moment you join.
               </p>
 
               <div className="divider" />
@@ -561,7 +647,7 @@ export default function ATLASWaitlistPage() {
                       type="submit"
                       disabled={status === 'loading' || !email}
                     >
-                      {status === 'loading' ? 'Saving…' : 'Notify me'}
+                      {status === 'loading' ? 'Joining…' : 'Subscribe & Watch →'}
                     </button>
                   </div>
                   {status === 'error' && (
@@ -593,27 +679,42 @@ export default function ATLASWaitlistPage() {
 
         </div>
 
-        {/* Demo teaser — visible just above fold so users know to scroll */}
-        <div style={{ width: '100%', maxWidth: 460, textAlign: 'center', marginTop: 32, paddingBottom: 8 }}>
-          <p className="demo-eyebrow">↓ Watch the Demo Below</p>
-        </div>
-
-        {/* Demo section */}
-        <div className="demo-section">
-          <h2 className="demo-heading">See ATLAS in Action</h2>
-          <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
-          <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.7, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
-          <div className="demo-divider" />
-          <div className="demo-video-wrap">
-            <iframe
-              className="demo-iframe"
-              src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white"
-              title="ATLAS Demo — The World's First Autonomous Installation App"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+        {/* Locked demo teaser — shown before subscribing */}
+        {!demoUnlocked && (
+          <div style={{ width: '100%', maxWidth: 460, marginTop: 16 }}>
+            <p className="demo-eyebrow" style={{ textAlign: 'center', marginBottom: 10 }}>↓ Demo Preview</p>
+            <div className={`demo-locked${unlocking ? ' demo-unlocking' : ''}`}>
+              <div className="demo-locked-thumb" />
+              <div className="demo-locked-overlay">
+                <span className="demo-lock-icon">🔒</span>
+                <span className="demo-lock-text">Subscribe above to unlock the ATLAS demo</span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Unlocked demo section */}
+        {demoUnlocked && (
+          <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
+            <button className="demo-back-btn" onClick={() => { setDemo(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+              ← Back to Waitlist
+            </button>
+            <p className="demo-eyebrow">🔓 Demo Unlocked</p>
+            <h2 className="demo-heading">See ATLAS in Action</h2>
+            <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
+            <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.8, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
+            <div className="demo-divider" />
+            <div className="demo-video-wrap">
+              <iframe
+                className="demo-iframe"
+                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&autoplay=1"
+                title="ATLAS Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
 
       </div>
     </>
