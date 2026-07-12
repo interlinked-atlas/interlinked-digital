@@ -935,7 +935,7 @@ export default function ATLASWaitlistPage() {
             <div className="demo-video-wrap">
               <iframe
                 className="demo-iframe"
-                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&autoplay=1"
+                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&autoplay=1&fs=0"
                 title="ATLAS Demo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
