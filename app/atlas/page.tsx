@@ -828,7 +828,7 @@ export default function ATLASWaitlistPage() {
         {/* Unlocked demo section */}
         {demoUnlocked && (
           <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
-            <button className="demo-back-btn" onClick={() => { setDemo(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+            <button className="demo-back-btn" onClick={() => { setDemo(false); setStatus('idle'); setEmail(''); setCodeInput(''); setErrorMsg(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
               ← Back to Waitlist
             </button>
             <p className="demo-eyebrow">🔓 Demo Unlocked</p>

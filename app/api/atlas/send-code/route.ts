@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   await resend.emails.send({
     from: FROM,
     to: email,
-    subject: `${code} — your ATLAS verification code`,
+    subject: `${code} — your ATLAS demo code`,
     html: verifyEmail(code),
-    text: `Your ATLAS verification code is: ${code}\n\nEnter this code on the page to unlock the ATLAS demo. This code expires in 10 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— InterLinked`,
+    text: `Your ATLAS demo code is: ${code}\n\nEnter this code on the page to unlock the ATLAS demo. This code expires in 10 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— InterLinked`,
     headers: {
       'X-Entity-Ref-ID': `atlas-verify-${ts}`,
     },
@@ -78,9 +78,9 @@ function verifyEmail(code: string) {
         <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
         <div style="padding:36px 36px 40px;">
 
-          <p style="margin:0 0 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">Verification</p>
-          <h1 style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.03em;color:${WHITE};">Your verification code</h1>
-          <p style="margin:0 0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:${MUTED};line-height:1.7;">Enter this code on the ATLAS page to unlock your demo. Expires in <strong style="color:#8A8A96;">10 minutes</strong>.</p>
+          <p style="margin:0 0 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${TEAL};">Demo Unlock Code</p>
+          <h1 style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.03em;color:${WHITE};">Your ATLAS demo code</h1>
+          <p style="margin:0 0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:${MUTED};line-height:1.7;">Enter this code on the ATLAS page to unlock and watch the demo. Expires in <strong style="color:#8A8A96;">10 minutes</strong>.</p>
 
           <!-- Code digits -->
           <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 32px;">
