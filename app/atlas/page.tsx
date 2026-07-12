@@ -325,40 +325,43 @@ export default function ATLASWaitlistPage() {
           line-height: 1.6;
         }
 
-        /* ── Subscriber counter ── */
-        .counter-wrap {
+        /* ── Subscriber counter banner ── */
+        .counter-banner {
           width: 100%;
-          margin-top: 14px;
+          margin-top: 12px;
+          background: rgba(62,207,178,0.06);
+          border: 1px solid rgba(62,207,178,0.15);
+          border-radius: 12px;
+          padding: 12px 20px;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 10px;
+          gap: 12px;
         }
         .counter-coin {
-          width: 28px;
-          height: 28px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
           background: radial-gradient(circle at 35% 35%, #5EFFD8, #3ECFB2 60%, #1a8a72);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 13px;
-          box-shadow: 0 0 12px rgba(62,207,178,0.5);
+          font-size: 11px;
+          box-shadow: 0 0 10px rgba(62,207,178,0.5);
           flex-shrink: 0;
-          transition: transform 0.15s ease;
         }
         .counter-coin.pop {
           animation: coinPop 1.2s ease forwards;
         }
         @keyframes coinPop {
-          0%   { transform: scale(1) translateY(0); box-shadow: 0 0 12px rgba(62,207,178,0.5); }
-          20%  { transform: scale(1.4) translateY(-6px); box-shadow: 0 0 28px rgba(62,207,178,0.9); }
-          50%  { transform: scale(1.1) translateY(-2px); box-shadow: 0 0 20px rgba(62,207,178,0.7); }
-          100% { transform: scale(1) translateY(0); box-shadow: 0 0 12px rgba(62,207,178,0.5); }
+          0%   { transform: scale(1) translateY(0); box-shadow: 0 0 10px rgba(62,207,178,0.5); }
+          20%  { transform: scale(1.5) translateY(-8px); box-shadow: 0 0 30px rgba(62,207,178,1); }
+          50%  { transform: scale(1.15) translateY(-3px); box-shadow: 0 0 18px rgba(62,207,178,0.7); }
+          100% { transform: scale(1) translateY(0); box-shadow: 0 0 10px rgba(62,207,178,0.5); }
         }
-        .counter-text {
+        .counter-label {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
+          font-size: 12px;
           color: #525260;
           letter-spacing: -0.01em;
         }
@@ -366,6 +369,20 @@ export default function ATLASWaitlistPage() {
           font-weight: 700;
           color: #3ECFB2;
           font-variant-numeric: tabular-nums;
+          font-size: 13px;
+        }
+        .counter-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #3ECFB2;
+          opacity: 0.5;
+          animation: pulse 2s ease-in-out infinite;
+          flex-shrink: 0;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.3); }
         }
 
         /* ── Demo section ── */
@@ -557,11 +574,12 @@ export default function ATLASWaitlistPage() {
             </div>
           </div>
 
-          {/* Live subscriber counter */}
+          {/* Live subscriber counter banner */}
           {count !== null && (
-            <div className="counter-wrap">
+            <div className="counter-banner">
+              <div className="counter-dot" />
               <div className={`counter-coin${coinAnim ? ' pop' : ''}`}>✦</div>
-              <span className="counter-text">
+              <span className="counter-label">
                 <span className="counter-num">{count.toLocaleString()}</span> people on the waitlist
               </span>
             </div>
@@ -575,9 +593,13 @@ export default function ATLASWaitlistPage() {
 
         </div>
 
+        {/* Demo teaser — visible just above fold so users know to scroll */}
+        <div style={{ width: '100%', maxWidth: 460, textAlign: 'center', marginTop: 32, paddingBottom: 8 }}>
+          <p className="demo-eyebrow">↓ Watch the Demo Below</p>
+        </div>
+
         {/* Demo section */}
         <div className="demo-section">
-          <p className="demo-eyebrow">Watch the Demo Below</p>
           <h2 className="demo-heading">See ATLAS in Action</h2>
           <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
           <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.7, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
