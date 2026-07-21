@@ -87,6 +87,7 @@ export default function PlansPage() {
   const [annual, setAnnual] = useState(false)
   const [heroIn, setHeroIn] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
+  const compareRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -105,6 +106,10 @@ export default function PlansPage() {
     } else {
       router.push(`/auth/login?redirect=${encodeURIComponent(dest)}`)
     }
+  }
+
+  function scrollToCompare() {
+    compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const std = annual ? ANNUAL.standard : MONTHLY.standard
@@ -133,6 +138,8 @@ export default function PlansPage() {
         .toggle-btn { transition: background 0.2s, color 0.2s; }
         .nav-link { transition: color 0.12s; }
         .nav-link:hover { color: #FFFFFF !important; }
+        .scroll-hint-btn { transition: color 0.15s, opacity 0.15s; }
+        .scroll-hint-btn:hover { opacity: 0.75; }
 
         @keyframes chrome-shift {
           0%   { background-position: 0% 50%; }
@@ -151,6 +158,12 @@ export default function PlansPage() {
           animation: chrome-shift 3.2s ease-in-out infinite;
           filter: drop-shadow(0 0 8px rgba(62,207,178,0.45));
         }
+
+        @keyframes bounce-down {
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(6px); }
+        }
+        .bounce-arrow { animation: bounce-down 1.6s ease-in-out infinite; }
 
         .compare-row:nth-child(odd) { background: rgba(255,255,255,0.015); }
         .compare-row:hover { background: rgba(62,207,178,0.04); }
@@ -176,7 +189,7 @@ export default function PlansPage() {
           <a
             href="/atlas"
             className="nav-link"
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#8A8A96', fontSize: '13px', fontWeight: 500, textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#8A8A96', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
               <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -186,7 +199,7 @@ export default function PlansPage() {
           <a
             href="/atlas/account"
             className="nav-link"
-            style={{ color: '#8A8A96', fontSize: '13px', fontWeight: 500, textDecoration: 'none' }}
+            style={{ color: '#8A8A96', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
           >
             My Account
           </a>
@@ -225,7 +238,7 @@ export default function PlansPage() {
               </span>
             </div>
 
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.40)', marginBottom: '20px' }}>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.40)', marginBottom: '20px' }}>
               Pick a plan. Start installing.
             </p>
 
@@ -243,7 +256,7 @@ export default function PlansPage() {
                   padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
                   background: !annual ? 'rgba(255,255,255,0.10)' : 'transparent',
                   color: !annual ? '#FFFFFF' : '#8A8A96',
-                  fontSize: '12px', fontWeight: !annual ? 600 : 400,
+                  fontSize: '13px', fontWeight: !annual ? 600 : 400,
                 }}
               >Monthly</button>
               <button
@@ -253,7 +266,7 @@ export default function PlansPage() {
                   padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
                   background: annual ? 'rgba(255,255,255,0.10)' : 'transparent',
                   color: annual ? '#FFFFFF' : '#8A8A96',
-                  fontSize: '12px', fontWeight: annual ? 600 : 400,
+                  fontSize: '13px', fontWeight: annual ? 600 : 400,
                   display: 'flex', alignItems: 'center', gap: '6px',
                 }}
               >
@@ -283,34 +296,34 @@ export default function PlansPage() {
                 height: '100%',
               }}>
                 <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ color: '#5E6AD2', fontSize: '9px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  <div style={{ color: '#5E6AD2', fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
                     Standard
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{std.price}</span>
-                    <span style={{ color: '#525260', fontSize: '11px' }}>{std.period}</span>
+                    <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{std.price}</span>
+                    <span style={{ color: '#525260', fontSize: '12px' }}>{std.period}</span>
                   </div>
                   {annual && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#525260', fontSize: '11px' }}>{(std as typeof ANNUAL.standard).billed}</span>
-                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '9px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
+                      <span style={{ color: '#525260', fontSize: '12px' }}>{(std as typeof ANNUAL.standard).billed}</span>
+                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
                         {(std as typeof ANNUAL.standard).save}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {std.features.map(f => (
                     <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#5E6AD2', fontSize: '9px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                      <span style={{ color: '#CCCCCC', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                      <span style={{ color: '#5E6AD2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
+                      <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>{f}</span>
                     </div>
                   ))}
                   {std.excluded.map(f => (
                     <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '9px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
-                      <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', lineHeight: 1.4 }}>{f}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
+                      <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '13px', lineHeight: 1.4 }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -320,11 +333,11 @@ export default function PlansPage() {
                     onClick={() => handleSelectPlan(std.priceId)}
                     className="cta-btn"
                     style={{
-                      width: '100%', padding: '9px',
+                      width: '100%', padding: '10px',
                       borderRadius: '9px',
                       border: '1px solid rgba(94,106,210,0.35)',
                       background: 'rgba(94,106,210,0.10)',
-                      color: '#5E6AD2', fontSize: '11px', fontWeight: 700,
+                      color: '#5E6AD2', fontSize: '13px', fontWeight: 700,
                       cursor: 'pointer', letterSpacing: '-0.01em',
                     }}
                   >
@@ -345,35 +358,35 @@ export default function PlansPage() {
                 height: '100%',
                 boxShadow: '0 0 40px rgba(62,207,178,0.06)',
               }}>
-                <div style={{ background: 'rgba(62,207,178,0.08)', borderBottom: '1px solid rgba(62,207,178,0.15)', padding: '5px 0', textAlign: 'center', color: '#3ECFB2', fontSize: '9px', fontWeight: 800, letterSpacing: '2.5px' }}>
+                <div style={{ background: 'rgba(62,207,178,0.08)', borderBottom: '1px solid rgba(62,207,178,0.15)', padding: '5px 0', textAlign: 'center', color: '#3ECFB2', fontSize: '10px', fontWeight: 800, letterSpacing: '2.5px' }}>
                   MOST POPULAR
                 </div>
 
                 <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
                     <span className="pro-chrome-text">Pro</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{pro.price}</span>
-                    <span style={{ color: '#525260', fontSize: '11px' }}>{pro.period}</span>
+                    <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{pro.price}</span>
+                    <span style={{ color: '#525260', fontSize: '12px' }}>{pro.period}</span>
                   </div>
                   {annual && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#525260', fontSize: '11px' }}>{(pro as typeof ANNUAL.pro).billed}</span>
-                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '9px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
+                      <span style={{ color: '#525260', fontSize: '12px' }}>{(pro as typeof ANNUAL.pro).billed}</span>
+                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
                         {(pro as typeof ANNUAL.pro).save}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {pro.features.map(f => (
                     <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#3ECFB2', fontSize: '9px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                      <span style={{ color: '#CCCCCC', fontSize: '11px', lineHeight: 1.4 }}>
+                      <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
+                      <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>
                         {f.includes('Coming Soon') ? (
-                          <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '10px' }}>Coming Soon</span></>
+                          <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '11px' }}>Coming Soon</span></>
                         ) : f}
                       </span>
                     </div>
@@ -385,10 +398,10 @@ export default function PlansPage() {
                     onClick={() => handleSelectPlan(pro.priceId)}
                     className="cta-btn"
                     style={{
-                      width: '100%', padding: '9px',
+                      width: '100%', padding: '10px',
                       borderRadius: '9px', border: 'none',
                       background: '#3ECFB2',
-                      color: '#080809', fontSize: '11px', fontWeight: 700,
+                      color: '#080809', fontSize: '13px', fontWeight: 700,
                       cursor: 'pointer', letterSpacing: '-0.01em',
                       boxShadow: '0 0 20px rgba(62,207,178,0.22)',
                     }}
@@ -400,149 +413,158 @@ export default function PlansPage() {
             </FadeUp>
           </div>
 
-          {/* Footer note under plan cards */}
+          {/* Footer note + scroll hint */}
           <FadeUp delay={160}>
-            <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', marginBottom: '4px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', marginBottom: '4px' }}>
                 Secure payment via Stripe · Cancel anytime · Annual plans billed as a single payment
               </p>
-              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px' }}>
                 Already subscribed?{' '}
                 <a href="/atlas/account" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Manage your account →</a>
               </p>
             </div>
-          </FadeUp>
 
-          {/* ── Comparison Section ─────────────────────────────────────────── */}
-          <FadeUp delay={0}>
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '10px' }}>
-                Why ATLAS?
-              </p>
-              <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-                Remote Installation vs{' '}
-                <span className="pro-chrome-text" style={{ fontSize: '22px', fontWeight: 700 }}>ATLAS Pro</span>
-              </h2>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', maxWidth: '480px', margin: '0 auto' }}>
-                Titan Installation services charge per file and require handing over remote access. ATLAS Pro does it all — privately, instantly, for a flat rate.
-              </p>
-            </div>
-          </FadeUp>
-
-          <FadeUp delay={80}>
-            <div style={{
-              borderRadius: '16px',
-              border: '1px solid rgba(255,255,255,0.07)',
-              overflow: 'hidden',
-            }}>
-              {/* Table header */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                background: '#0E0E10',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-              }}>
-                <div style={{ padding: '14px 18px', color: 'rgba(255,255,255,0.30)', fontSize: '10px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                  Feature
-                </div>
-                <div style={{ padding: '14px 18px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ color: '#E05555', fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '2px' }}>
-                    ⚠ Titan Installation
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}>Remote / AnyDesk</div>
-                </div>
-                <div style={{ padding: '14px 18px', textAlign: 'center', borderLeft: '1px solid rgba(62,207,178,0.15)', background: 'rgba(62,207,178,0.04)' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '2px' }}>
-                    <span className="pro-chrome-text">✦ ATLAS Pro</span>
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}>Intelligent Installer</div>
-                </div>
-              </div>
-
-              {/* Rows */}
-              {COMPARE_ROWS.map((row, i) => (
-                <div
-                  key={i}
-                  className="compare-row"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
-                    borderBottom: i < COMPARE_ROWS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                    transition: 'background 0.12s',
-                  }}
-                >
-                  <div style={{ padding: '11px 18px', color: 'rgba(255,255,255,0.55)', fontSize: '11px', fontWeight: 500 }}>
-                    {row.label}
-                  </div>
-                  <div style={{
-                    padding: '11px 18px', textAlign: 'center',
-                    borderLeft: '1px solid rgba(255,255,255,0.04)',
-                    color: '#E05555', fontSize: '11px', fontWeight: 500,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                  }}>
-                    <span style={{ color: '#E05555', fontSize: '10px', opacity: 0.6 }}>✕</span>
-                    {row.titan}
-                  </div>
-                  <div style={{
-                    padding: '11px 18px', textAlign: 'center',
-                    borderLeft: '1px solid rgba(62,207,178,0.10)',
-                    background: 'rgba(62,207,178,0.03)',
-                    color: '#3ECFB2', fontSize: '11px', fontWeight: 600,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                  }}>
-                    <span style={{ fontSize: '10px' }}>✓</span>
-                    {row.pro}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </FadeUp>
-
-          {/* Annual cost callout */}
-          <FadeUp delay={120}>
-            <div style={{
-              marginTop: '16px',
-              padding: '18px 24px',
-              borderRadius: '14px',
-              background: 'rgba(62,207,178,0.06)',
-              border: '1px solid rgba(62,207,178,0.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              flexWrap: 'wrap', gap: '12px',
-            }}>
-              <div>
-                <div style={{ color: 'rgba(255,255,255,0.40)', fontSize: '10px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Annual cost comparison
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px' }}>
-                  <span style={{ color: '#E05555', fontSize: '18px', fontWeight: 700 }}>$1,440+</span>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>Titan Installation</span>
-                  <span style={{ color: 'rgba(255,255,255,0.20)', fontSize: '14px' }}>vs</span>
-                  <span style={{ fontSize: '18px', fontWeight: 700 }}>
-                    <span className="pro-chrome-text" style={{ fontSize: '18px', fontWeight: 700 }}>$359.88</span>
-                  </span>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>ATLAS Pro (annual)</span>
-                </div>
-              </div>
+            {/* Scroll indicator */}
+            <div style={{ textAlign: 'center', marginBottom: '56px', marginTop: '28px' }}>
               <button
-                onClick={() => handleSelectPlan(annual ? 'atlas-pro-annual' : 'atlas-pro')}
-                className="cta-btn"
+                onClick={scrollToCompare}
+                className="scroll-hint-btn"
                 style={{
-                  padding: '10px 22px',
-                  borderRadius: '10px', border: 'none',
-                  background: '#3ECFB2',
-                  color: '#080809', fontSize: '12px', fontWeight: 700,
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                  boxShadow: '0 0 24px rgba(62,207,178,0.25)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                  color: 'rgba(255,255,255,0.30)',
                 }}
               >
-                Get ATLAS Pro →
+                <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.5px' }}>
+                  Why not just hire someone?
+                </span>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.20)' }}>
+                  See the full breakdown below
+                </span>
+                <span className="bounce-arrow" style={{ display: 'block', marginTop: '2px' }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M4 7L9 12L14 7" stroke="rgba(62,207,178,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
               </button>
             </div>
           </FadeUp>
+
+          {/* ── Comparison Section ─────────────────────────────────────────── */}
+          <div ref={compareRef} style={{ scrollMarginTop: '72px' }}>
+            <FadeUp delay={0}>
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '12px' }}>
+                  Why ATLAS?
+                </p>
+                <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '10px' }}>
+                  Remote Installation vs{' '}
+                  <span className="pro-chrome-text" style={{ fontSize: '26px', fontWeight: 700 }}>ATLAS Pro</span>
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
+                  Remote install services charge per file and require handing over access to your machine. ATLAS Pro handles everything — privately, instantly, for one flat rate.
+                </p>
+              </div>
+            </FadeUp>
+
+            <FadeUp delay={80}>
+              <div style={{
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.07)',
+                overflow: 'hidden',
+              }}>
+                {/* Table header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  background: '#0E0E10',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <div style={{ padding: '16px 20px', color: 'rgba(255,255,255,0.30)', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                    Feature
+                  </div>
+                  <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ color: '#E05555', fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                      ⚠ Remote Installation
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>AnyDesk / Hired Tech</div>
+                  </div>
+                  <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid rgba(62,207,178,0.15)', background: 'rgba(62,207,178,0.04)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                      <span className="pro-chrome-text">✦ ATLAS Pro</span>
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>Intelligent Installer</div>
+                  </div>
+                </div>
+
+                {/* Rows */}
+                {COMPARE_ROWS.map((row, i) => (
+                  <div
+                    key={i}
+                    className="compare-row"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr 1fr',
+                      borderBottom: i < COMPARE_ROWS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      transition: 'background 0.12s',
+                    }}
+                  >
+                    <div style={{ padding: '13px 20px', color: 'rgba(255,255,255,0.60)', fontSize: '13px', fontWeight: 500 }}>
+                      {row.label}
+                    </div>
+                    <div style={{
+                      padding: '13px 20px', textAlign: 'center',
+                      borderLeft: '1px solid rgba(255,255,255,0.04)',
+                      color: '#E05555', fontSize: '13px', fontWeight: 500,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}>
+                      <span style={{ color: '#E05555', fontSize: '11px', opacity: 0.6 }}>✕</span>
+                      {row.titan}
+                    </div>
+                    <div style={{
+                      padding: '13px 20px', textAlign: 'center',
+                      borderLeft: '1px solid rgba(62,207,178,0.10)',
+                      background: 'rgba(62,207,178,0.03)',
+                      color: '#3ECFB2', fontSize: '13px', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}>
+                      <span style={{ fontSize: '11px' }}>✓</span>
+                      {row.pro}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </FadeUp>
+
+            {/* CTA after table */}
+            <FadeUp delay={120}>
+              <div style={{ textAlign: 'center', marginTop: '32px', marginBottom: '16px' }}>
+                <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: '13px', marginBottom: '16px' }}>
+                  Stop paying per file. One plan, everything included.
+                </p>
+                <button
+                  onClick={() => handleSelectPlan(annual ? 'atlas-pro-annual' : 'atlas-pro')}
+                  className="cta-btn"
+                  style={{
+                    padding: '13px 32px',
+                    borderRadius: '12px', border: 'none',
+                    background: '#3ECFB2',
+                    color: '#080809', fontSize: '14px', fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 0 28px rgba(62,207,178,0.28)',
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  Get ATLAS Pro →
+                </button>
+              </div>
+            </FadeUp>
+          </div>
         </div>
 
         <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '24px', textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', letterSpacing: '0.02em' }}>
+          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px', letterSpacing: '0.02em' }}>
             InterLinked® · All rights reserved
           </p>
         </footer>
