@@ -87,16 +87,32 @@ export default function PlansPage() {
   const [annual, setAnnual] = useState(false)
   const [heroIn, setHeroIn] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
+  const [hintVisible, setHintVisible] = useState(false)
   const compareRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   useEffect(() => {
+    // Delay hint appearance slightly so it feels intentional, not janky
     const t = setTimeout(() => setHeroIn(true), 80)
+    const hintTimer = setTimeout(() => setHintVisible(true), 900)
+
     const supabase = createClient()
     supabase.auth.getSession().then(({ data }) => {
       setLoggedIn(!!data.session)
     })
-    return () => clearTimeout(t)
+
+    // Hide hint once user reaches comparison section
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setHintVisible(false) },
+      { threshold: 0.1 }
+    )
+    if (compareRef.current) obs.observe(compareRef.current)
+
+    return () => {
+      clearTimeout(t)
+      clearTimeout(hintTimer)
+      obs.disconnect()
+    }
   }, [])
 
   function handleSelectPlan(priceId: string) {
@@ -138,8 +154,6 @@ export default function PlansPage() {
         .toggle-btn { transition: background 0.2s, color 0.2s; }
         .nav-link { transition: color 0.12s; }
         .nav-link:hover { color: #FFFFFF !important; }
-        .scroll-hint-btn { transition: color 0.15s, opacity 0.15s; }
-        .scroll-hint-btn:hover { opacity: 0.75; }
 
         @keyframes chrome-shift {
           0%   { background-position: 0% 50%; }
@@ -161,13 +175,53 @@ export default function PlansPage() {
 
         @keyframes bounce-down {
           0%, 100% { transform: translateY(0); }
-          50%       { transform: translateY(6px); }
+          50%       { transform: translateY(5px); }
         }
-        .bounce-arrow { animation: bounce-down 1.6s ease-in-out infinite; }
+        .bounce-arrow { animation: bounce-down 1.5s ease-in-out infinite; display: inline-block; }
 
         .compare-row:nth-child(odd) { background: rgba(255,255,255,0.015); }
         .compare-row:hover { background: rgba(62,207,178,0.04); }
+
+        .scroll-hint-bar {
+          transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1);
+        }
+        .scroll-hint-bar:hover { opacity: 0.85 !important; }
       `}</style>
+
+      {/* ── Fixed bottom scroll hint — always visible until comparison reached ── */}
+      <button
+        onClick={scrollToCompare}
+        className="scroll-hint-bar"
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: hintVisible ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(16px)',
+          zIndex: 100,
+          opacity: hintVisible ? 1 : 0,
+          pointerEvents: hintVisible ? 'auto' : 'none',
+          background: 'rgba(14,14,16,0.92)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(62,207,178,0.22)',
+          borderRadius: '50px',
+          padding: '10px 20px',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(62,207,178,0.08)',
+        }}
+      >
+        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', fontWeight: 500, fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
+          Why not just hire someone?
+        </span>
+        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
+          See the breakdown
+        </span>
+        <span className="bounce-arrow">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 5L7 10L12 5" stroke="rgba(62,207,178,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      </button>
 
       <main style={{
         minHeight: '100vh',
@@ -282,7 +336,7 @@ export default function PlansPage() {
         </section>
 
         {/* Plan cards */}
-        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '0 24px 48px' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '0 24px 80px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
 
             {/* Standard */}
@@ -413,9 +467,9 @@ export default function PlansPage() {
             </FadeUp>
           </div>
 
-          {/* Footer note + scroll hint */}
+          {/* Footer note under plan cards */}
           <FadeUp delay={160}>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center' }}>
               <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', marginBottom: '4px' }}>
                 Secure payment via Stripe · Cancel anytime · Annual plans billed as a single payment
               </p>
@@ -424,35 +478,10 @@ export default function PlansPage() {
                 <a href="/atlas/account" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Manage your account →</a>
               </p>
             </div>
-
-            {/* Scroll indicator */}
-            <div style={{ textAlign: 'center', marginBottom: '56px', marginTop: '28px' }}>
-              <button
-                onClick={scrollToCompare}
-                className="scroll-hint-btn"
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-                  color: 'rgba(255,255,255,0.30)',
-                }}
-              >
-                <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.5px' }}>
-                  Why not just hire someone?
-                </span>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.20)' }}>
-                  See the full breakdown below
-                </span>
-                <span className="bounce-arrow" style={{ display: 'block', marginTop: '2px' }}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M4 7L9 12L14 7" stroke="rgba(62,207,178,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
-              </button>
-            </div>
           </FadeUp>
 
           {/* ── Comparison Section ─────────────────────────────────────────── */}
-          <div ref={compareRef} style={{ scrollMarginTop: '72px' }}>
+          <div ref={compareRef} style={{ scrollMarginTop: '72px', paddingTop: '64px' }}>
             <FadeUp delay={0}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '12px' }}>
