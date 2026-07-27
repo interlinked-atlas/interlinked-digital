@@ -15,7 +15,7 @@ export default function ATLASWaitlistPage() {
   const [mounted, setMounted]       = useState(false)
   const [count, setCount]           = useState<number | null>(null)
   const [coinAnim, setCoinAnim]     = useState(false)
-  const [demoUnlocked, setDemo]     = useState(false)
+  const [demoUnlocked, setDemo]     = useState(true)
   const [unlocking, setUnlocking]   = useState(false)
   const prevCount                   = useRef<number | null>(null)
   const demoRef                     = useRef<HTMLDivElement>(null)
@@ -809,7 +809,7 @@ export default function ATLASWaitlistPage() {
               <p className="eyebrow">Coming Soon</p>
               <h1 className="heading">Be the first to know.</h1>
               <p className="subtext">
-                Subscribe &amp; watch ATLAS in action — unlock the demo the moment you join.
+                Join the waitlist and be the first to know when ATLAS launches.
               </p>
 
               <div className="divider" />
@@ -831,7 +831,7 @@ export default function ATLASWaitlistPage() {
                   <div className="verify-icon">✉️</div>
                   <p className="verify-heading">Check your inbox.</p>
                   <p className="verify-sub">
-                    We sent a 5-digit code to <strong style={{ color: '#8A8A96' }}>{email}</strong>. Enter it below to unlock the demo.
+                    We sent a 5-digit code to <strong style={{ color: '#8A8A96' }}>{email}</strong>. Enter it below to confirm your spot.
                   </p>
                   <form className="form" style={{ width: '100%' }} onSubmit={handleVerify}>
                     <div className="code-row">
@@ -879,7 +879,7 @@ export default function ATLASWaitlistPage() {
                       type="submit"
                       disabled={status === 'loading' || !email}
                     >
-                      {status === 'loading' ? 'Sending…' : 'Subscribe & Watch →'}
+                      {status === 'loading' ? 'Sending…' : 'Join Waitlist →'}
                     </button>
                   </div>
                   {status === 'error' && (
@@ -911,27 +911,8 @@ export default function ATLASWaitlistPage() {
 
         </div>
 
-        {/* Locked demo teaser — shown before subscribing */}
-        {!demoUnlocked && (
-          <div style={{ width: '100%', maxWidth: 460, marginTop: 16 }}>
-            <p className="demo-eyebrow" style={{ textAlign: 'center', marginBottom: 10 }}>↓ Demo Preview</p>
-            <div className={`demo-locked${unlocking ? ' demo-unlocking' : ''}`}>
-              <div className="demo-locked-thumb" />
-              <div className="demo-locked-overlay">
-                <span className="demo-lock-icon">🔒</span>
-                <span className="demo-lock-text">Subscribe above to unlock the ATLAS demo</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Unlocked demo section */}
-        {demoUnlocked && (
-          <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
-            <button className="demo-back-btn" onClick={() => { setDemo(false); setStatus('idle'); setEmail(''); setCodeInput(''); setErrorMsg(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-              ← Back to Waitlist
-            </button>
-            <p className="demo-eyebrow">🔓 Demo Unlocked</p>
+        {/* Demo section — always visible */}
+        <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
             <h2 className="demo-heading">See ATLAS in Action</h2>
             <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
             <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.8, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
@@ -978,7 +959,6 @@ export default function ATLASWaitlistPage() {
               )}
             </div>
           </div>
-        )}
 
       </div>
     </>

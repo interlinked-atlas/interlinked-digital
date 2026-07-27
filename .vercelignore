@@ -1,1 +1,50 @@
-# vercel build config
+# Exclude home directory folders not part of the Next.js project
+Library/
+"Library/"
+Desktop/
+Applications/
+Movies/
+Music/
+Pictures/
+Documents/
+Downloads/
+Public/
+
+# Dot dirs
+.installbuilder/
+.anydesk/
+.cache/
+.cargo/
+.config/
+.cups/
+.cursor/
+.firebase/
+.idlerc/
+.local/
+.matplotlib/
+.ngrok/
+.npm/
+.nvm/
+.nx/
+.pyenv/
+.qt/
+.rustup/
+.ssh/
+.swiftpm/
+.thumbnails/
+.videostream/
+.vnc/
+.vscode/
+.zsh_sessions/
+
+# Build / dev
+.next/
+node_modules/
+.env*
+.vercel/
+*.log
+*.dmg
+*.zip
+
+# Mac noise
+.DS_Store
