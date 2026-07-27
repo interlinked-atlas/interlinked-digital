@@ -512,7 +512,7 @@ export default function ATLASWaitlistPage() {
         /* ── Demo section ── */
         .demo-section {
           width: 100%;
-          max-width: 760px;
+          max-width: 960px;
           margin-top: 0;
           display: flex;
           flex-direction: column;
