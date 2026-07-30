@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 
 // Secret for signing entitlement tokens (should be in env vars)
 const ENTITLEMENT_SECRET = new TextEncoder().encode(
-  process.env.ENTITLEMENT_SECRET || 'atlas-entitlement-secret-key-change-me'
+  process.env.ENTITLEMENT_SECRET
 )
 
 // POST /api/atlas/activate

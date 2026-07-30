@@ -36,6 +36,10 @@ Public/
 .vnc/
 .vscode/
 .zsh_sessions/
+.claude/
+.claude.json
+.claude.json.backup
+.mcp.json
 
 # Build / dev
 .next/
