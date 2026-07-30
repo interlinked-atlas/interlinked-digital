@@ -119,7 +119,7 @@ class TitanMemory {
     // No auth required — reads use the public anon key.
     func syncFromCloud() {
         Task.detached(priority: .background) {
-            guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/titan_memory?select=*&order=confirmed_at.desc") else { return }
+            guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/titan_memory?select=id,product_name,steps,hosts_entries,platform") else { return }
             var req = URLRequest(url: url)
             req.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
             req.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -329,7 +329,7 @@ class TitanMemory {
 
     /// Admin-only. Fetches all entries from the Supabase `titan_memory` table.
     func fetchAllEntries() async -> [[String: Any]] {
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/titan_memory?select=*&order=confirmed_at.desc") else { return [] }
+        guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/titan_memory?select=id,product_name,file_name,steps,hosts_entries,confirmed_by,confirmed_at,install_log,platform") else { return [] }
         var req = URLRequest(url: url)
         req.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
         if let token = AuthManager.shared.session?.accessToken {

@@ -24,13 +24,15 @@ struct InstallStep: Identifiable {
     let order: Int
     let note: String
 
-    enum StepType {
+    enum StepType: Equatable {
         case installer       // standard .pkg / .mpkg
         case patch           // crack, keygen, license tool
         case plugin          // audio plugin bundle
         case app             // plain .app — copy to /Applications
         case managedInstall  // manager app that must be launched and automated
         case manual          // requires manual action
+        case folderCopy(merge: Bool, destination: URL)  // copy a folder to a destination
+        case dawInstall      // DAW-specific installation via UI automation
     }
 
     var label: String {
@@ -41,6 +43,8 @@ struct InstallStep: Identifiable {
         case .app:            return "Copy app"
         case .managedInstall: return "Run installer"
         case .manual:         return "Manual step"
+        case .folderCopy:     return "Copy folder"
+        case .dawInstall:     return "DAW install"
         }
     }
 
@@ -52,6 +56,8 @@ struct InstallStep: Identifiable {
         case .app:            return "app.badge.fill"
         case .managedInstall: return "gearshape.fill"
         case .manual:         return "hand.point.right.fill"
+        case .folderCopy:     return "folder.fill"
+        case .dawInstall:     return "pianokeys.fill"
         }
     }
 }
@@ -70,12 +76,15 @@ struct ParsedInstructions {
     let mentionsManagerApp: Bool
 
     // TITAN CORE™ executable steps
+    let folderCopySteps: [String]        // folder copy instructions
     let hostsEntries: [String]           // domains to add to /etc/hosts
     let terminalCommands: [String]       // shell commands to run
     let mentionsXcodeTools: Bool         // xcode-select --install needed
     let scriptsToRun: [String]           // script filenames mentioned
     let binariesToRun: [String]          // binary/tool filenames mentioned
     let detectedLanguage: String         // "en", "ru", etc.
+    let requiresInternetActivation: Bool
+    let isDownloadAssistant: Bool
 }
 
 struct InstallIntelligence {
@@ -236,13 +245,24 @@ struct InstallIntelligence {
     // MARK: - Main entry point
 
     static func analyze(directory: String, files: [URL]) async -> InstallPlan {
-        // TITAN MEMORY™ — check knowledge base before parsing instructions.
-        // A confirmed match skips HTML/CSS parsing entirely and uses verified data.
         let dirName = URL(fileURLWithPath: directory).lastPathComponent
+
+        // 1. Bundled / cloud-synced TITAN MEMORY™ — highest priority.
+        //    A confirmed match skips HTML/CSS parsing entirely and uses verified data.
         if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files) {
+            NSLog("[ATLAS] Plan source: TITAN MEMORY™ — \(memory.name)")
             return buildPlanFromMemory(memory, directory: directory, files: files)
         }
 
+        // 2. ATLASLearn™ crowd-sourced patterns — supplements TITAN MEMORY.
+        //    Used only when no bundled or cloud TITAN MEMORY entry matched.
+        if let cloudPattern = await ATLASLearn.shared.lookup(directoryName: dirName, files: files) {
+            NSLog("[ATLAS] Plan source: ATLASLearn™ — \(cloudPattern.productName)")
+            return buildPlanFromCloudPattern(cloudPattern, directory: directory, files: files)
+        }
+
+        // 3. Heuristic fallback — parse instruction file + classify files.
+        NSLog("[ATLAS] Plan source: heuristic fallback — \(dirName)")
         let instructions = findAndParseInstructions(in: directory)
 
         var classified = classifyFiles(files)
@@ -327,10 +347,10 @@ struct InstallIntelligence {
 
             let stepType: InstallStep.StepType
             switch memStep.type {
-            case "pkg":    stepType = .installer
-            case "script": stepType = .patch
-            case "binary": stepType = .patch
-            default:       stepType = .installer
+            case "pkg":                         stepType = .installer
+            case "script", "binary":            stepType = .patch
+            case "appBundle", "app", "patch":   stepType = .patch
+            default:                            stepType = .installer
             }
 
             steps.append(InstallStep(
@@ -355,18 +375,66 @@ struct InstallIntelligence {
             appToLaunch: nil,
             mentionsSelectAll: false,
             mentionsManagerApp: false,
+            folderCopySteps: [],
             hostsEntries: hostsEntries,
             terminalCommands: [],
             mentionsXcodeTools: false,
             scriptsToRun: [],
             binariesToRun: [],
-            detectedLanguage: "en"
+            detectedLanguage: "en",
+            requiresInternetActivation: false,
+            isDownloadAssistant: false
         )
 
         let summary = "TITAN MEMORY™ recognized \(memory.name) — using confirmed install pattern"
         return InstallPlan(instructions: syntheticInstructions,
                            orderedSteps: steps,
                            warnings: ["TITAN MEMORY™ active — install pattern verified"],
+                           summary: summary)
+    }
+
+    // MARK: - ATLASLearn™ plan builder
+
+    // Builds an InstallPlan from a crowd-sourced ATLASLearn pattern.
+    // Falls back to heuristic file classification for step ordering since
+    // ATLASLearn patterns carry installed paths and match data, not step sequences.
+    private static func buildPlanFromCloudPattern(
+        _ pattern: ATLASLearn.CloudPattern,
+        directory: String,
+        files: [URL]
+    ) -> InstallPlan {
+        // Use heuristic classifier for step types — ATLASLearn doesn't store step sequences.
+        let classified = classifyFiles(files)
+        let ordered    = determineOrder(files: classified, instructions: nil)
+
+        let hostsEntries = pattern.hostsEntries
+        let syntheticInstructions = ParsedInstructions(
+            rawText: "",
+            sourceFileName: "ATLASLearn™",
+            steps: [],
+            mentionsPatch: ordered.contains { $0.type == .patch },
+            mentionsOrder: false,
+            mentionsRosetta: false,
+            mentionsAdminRequired: true,
+            customNotes: ["ATLASLearn™: crowd-sourced pattern — \(pattern.productName) (\(pattern.successCount) confirmed installs)"],
+            appToLaunch: nil,
+            mentionsSelectAll: false,
+            mentionsManagerApp: false,
+            folderCopySteps: [],
+            hostsEntries: hostsEntries,
+            terminalCommands: [],
+            mentionsXcodeTools: false,
+            scriptsToRun: [],
+            binariesToRun: [],
+            detectedLanguage: "en",
+            requiresInternetActivation: false,
+            isDownloadAssistant: false
+        )
+
+        let summary = "ATLASLearn™ recognized \(pattern.productName) — \(pattern.successCount) confirmed install\(pattern.successCount == 1 ? "" : "s")"
+        return InstallPlan(instructions: syntheticInstructions,
+                           orderedSteps: ordered,
+                           warnings: ["ATLASLearn™ active — crowd-confirmed pattern (\(pattern.successCount) installs)"],
                            summary: summary)
     }
 
@@ -660,12 +728,15 @@ struct InstallIntelligence {
             appToLaunch: appToLaunch,
             mentionsSelectAll: mentionsSelectAll,
             mentionsManagerApp: mentionsManagerApp,
+            folderCopySteps: [],
             hostsEntries: hostsEntries,
             terminalCommands: terminalCommands,
             mentionsXcodeTools: mentionsXcodeTools,
             scriptsToRun: scriptsToRun,
             binariesToRun: binariesToRun,
-            detectedLanguage: detectedLang
+            detectedLanguage: detectedLang,
+            requiresInternetActivation: false,
+            isDownloadAssistant: false
         )
     }
 
@@ -975,6 +1046,8 @@ struct InstallIntelligence {
                 case .managedInstall: return 2  // after PKGs, before patches
                 case .patch:          return 3
                 case .manual:         return 4
+                case .folderCopy:     return 2
+                case .dawInstall:     return 2
                 }
             }
             let pa = typePriority(a.type), pb = typePriority(b.type)
