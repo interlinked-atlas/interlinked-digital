@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   // Otherwise insert a new entry.
   const { data: existing } = await supabase
     .from('install_patterns')
-    .select('id, success_count, match_patterns, installed_paths, hosts_entries')
+    .select('id, success_count, match_patterns, installed_paths, hosts_entries, device_uuids')
     .ilike('product_name', product_name as string)
     .maybeSingle()
 
@@ -48,6 +48,10 @@ export async function POST(req: NextRequest) {
       ...(existing.hosts_entries ?? []),
       ...((hosts_entries as string[]) ?? [])
     ]))
+    const mergedDevices = Array.from(new Set([
+      ...(existing.device_uuids ?? []),
+      ...((hardware_uuid as string) ? [hardware_uuid as string] : [])
+    ]))
 
     await supabase
       .from('install_patterns')
@@ -56,6 +60,7 @@ export async function POST(req: NextRequest) {
         match_patterns:   mergedPatterns,
         installed_paths:  mergedPaths,
         hosts_entries:    mergedHosts,
+        device_uuids:     mergedDevices,
         last_confirmed_at: new Date().toISOString(),
         last_device_name:  device_name ?? 'Unknown',
       })
