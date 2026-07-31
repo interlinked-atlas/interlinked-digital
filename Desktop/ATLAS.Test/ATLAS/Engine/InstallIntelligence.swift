@@ -247,6 +247,43 @@ struct InstallIntelligence {
     static func analyze(directory: String, files: [URL]) async -> InstallPlan {
         let dirName = URL(fileURLWithPath: directory).lastPathComponent
 
+        // ── New pipeline: PackageManifest → WorkflowRecognizer → RecipeComposer ──
+        // Enabled by Features.titanPipeline. Off by default — existing path runs when false.
+        if Features.titanPipeline {
+            let manifest      = buildManifest(directory: directory, files: files)
+            let workflowMatch = WorkflowRecognizer.recognize(manifest: manifest)
+            NSLog("[ATLAS] New pipeline — workflow: \(workflowMatch.family) (\(workflowMatch.confidence)) via \(workflowMatch.source)")
+
+            // Resolve product knowledge from TITAN MEMORY™ or ATLASLearn™.
+            // The product supplies hosts entries and path knowledge — not the workflow.
+            var product: ProductMatch? = nil
+            if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files) {
+                product = ProductMatch(
+                    canonicalName: memory.name,
+                    hostsEntries:  memory.hostsEntries ?? [],
+                    knownPaths:    [],
+                    source:        .titanMemory
+                )
+                NSLog("[ATLAS] New pipeline — product: TITAN MEMORY™ '\(memory.name)'")
+            } else if let cloud = await ATLASLearn.shared.lookup(directoryName: dirName, files: files) {
+                product = ProductMatch(
+                    canonicalName: cloud.productName,
+                    hostsEntries:  cloud.hostsEntries,
+                    knownPaths:    cloud.installedPaths,
+                    source:        .atlasLearn(successCount: cloud.successCount)
+                )
+                NSLog("[ATLAS] New pipeline — product: ATLASLearn™ '\(cloud.productName)' (\(cloud.successCount) installs)")
+            }
+
+            return RecipeComposer.compose(
+                workflow:  workflowMatch,
+                manifest:  manifest,
+                product:   product,
+                directory: directory
+            )
+        }
+
+        // ── Existing pipeline (unchanged) ─────────────────────────────────────
         // 1. Bundled / cloud-synced TITAN MEMORY™ — highest priority.
         //    A confirmed match skips HTML/CSS parsing entirely and uses verified data.
         if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files) {

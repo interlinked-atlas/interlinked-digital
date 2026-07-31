@@ -12,11 +12,17 @@ enum Features {
     static var pluginScanner:  Bool { isPro }
     static var widget:         Bool { isPro }
     static var trashInstaller: Bool { isPro }
+    static var titanVScan:     Bool { isPro }
     static var fileShare:      Bool { false }  // Coming Soon — Pro only when released
+
+    // New pipeline: PackageManifest → WorkflowRecognizer → RecipeComposer → InstallPlan.
+    // Off by default — existing analyze() path runs unchanged when false.
+    // Toggle to true to validate new pipeline output against known packages.
+    static var titanPipeline: Bool { false }
 
     static let standardHistoryLimit = 5
 
     static var monthlyInstallLimit: Int {
-        isPro ? MonthlyLimitManager.proLimit : MonthlyLimitManager.standardLimit
+        isPro ? MonthlyLimitManager.proLimit : MonthlyLimitManager.standardMonthlyLimit
     }
 }
