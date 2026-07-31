@@ -800,6 +800,9 @@ struct RollbackEngine {
         process.standardOutput = pipe
         process.standardError  = Pipe()
         guard (try? process.run()) != nil else { return [] }
+        // Close our copy of the write end so readDataToEndOfFile() sees EOF when the process exits.
+        // Without this, the Pipe object keeps the write fd open and readDataToEndOfFile blocks forever.
+        pipe.fileHandleForWriting.closeFile()
 
         // Read pipe in a detached task so large receipts (10k+ files) never fill
         // the pipe buffer and deadlock the process before it can exit.
@@ -951,6 +954,8 @@ struct RollbackEngine {
             try process.run()
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
             inputPipe.fileHandleForWriting.closeFile()
+            // Close our copy of the output pipe write end so readDataToEndOfFile() sees EOF on process exit.
+            outputPipe.fileHandleForWriting.closeFile()
         } catch {
             return (false, error.localizedDescription)
         }
