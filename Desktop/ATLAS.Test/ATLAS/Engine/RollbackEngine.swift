@@ -29,6 +29,7 @@ struct RollbackEngine {
                          logger: Logger,
                          onProgress: (@Sendable (Double, String) -> Void)? = nil) async -> RollbackResult {
         cancellationRequested = false
+        let rollbackStart = Date()
         await logger.log("--- Rollback: \(record.fileName) ---")
 
         guard let password = KeychainManager.loadPassword() else {
@@ -59,19 +60,26 @@ struct RollbackEngine {
         }
 
         let allReceiptIDs = Array(Set(record.pkgReceiptIDs + freshByName + freshByPrefix))
+        NSLog("[ATLAS-UNINSTALL] Phase 1: %d receipt(s) to enumerate", allReceiptIDs.count)
+        await logger.log("⏱ Phase 1: \(allReceiptIDs.count) receipt(s) to scan")
         if allReceiptIDs.count > record.pkgReceiptIDs.count {
             await logger.log("Supplemented \(record.pkgReceiptIDs.count) stored receipts with \(allReceiptIDs.count - record.pkgReceiptIDs.count) additional found by name")
         }
 
-        for receiptID in allReceiptIDs {
-            // Check cancellation between each receipt so Cancel is responsive during Preparing
-            if cancellationRequested {
+        let totalReceipts = allReceiptIDs.count
+        for (receiptIndex, receiptID) in allReceiptIDs.enumerated() {
+            onProgress?(Double(receiptIndex) / Double(max(totalReceipts, 1)) * 0.3,
+                        "Reading receipts (\(receiptIndex + 1) of \(totalReceipts))…")
+            if cancellationRequested || Task.isCancelled {
+                cancellationRequested = true
                 await logger.log("Uninstall cancelled during receipt scan.")
                 return RollbackResult(success: false, removedFiles: [], failedFiles: [],
                                      detail: "Cancelled.")
             }
-            let files = receiptFilesWithTimeout(receiptID: receiptID, seconds: 10)
-            await logger.log("Receipt \(receiptID): \(files.count) paths")
+            let receiptStart = Date()
+            let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 10)
+            let receiptElapsed = Date().timeIntervalSince(receiptStart)
+            await logger.log("⏱ Receipt \(receiptIndex+1)/\(allReceiptIDs.count) [\(String(format: "%.1f", receiptElapsed))s] \(receiptID): \(files.count) paths")
             if files.isEmpty {
                 // Timeout or no files — fall back to the PKG install location.
                 // Packages like Serum 2 Presets have 10k+ files; pkgutil --files
@@ -110,7 +118,10 @@ struct RollbackEngine {
             }
         }
 
-        if cancellationRequested {
+        await logger.log("Phase 1 done — \(candidates.count) raw candidates")
+
+        if cancellationRequested || Task.isCancelled {
+            cancellationRequested = true
             await logger.log("Uninstall cancelled during preparation.")
             return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: "Cancelled.")
         }
@@ -140,7 +151,8 @@ struct RollbackEngine {
             }
         }
 
-        if cancellationRequested {
+        if cancellationRequested || Task.isCancelled {
+            cancellationRequested = true
             await logger.log("Uninstall cancelled during preparation.")
             return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: "Cancelled.")
         }
@@ -215,7 +227,6 @@ struct RollbackEngine {
 
         // ── Phase 2: Collapse bundles, then by directory ──────────────────────
         await logger.log("Finding installed files...")
-        await logger.log("Candidates before collapse: \(Array(Set(candidates)).count)")
         let afterBundles = collapseIntoBundles(Array(Set(candidates)))
         let collapsed    = collapseByDirectory(afterBundles)
         let sorted       = sortByPriority(collapsed)
@@ -223,29 +234,31 @@ struct RollbackEngine {
         await logger.log("Final trash list (\(sorted.count) item(s)):")
         for p in sorted { await logger.log("  → \(p)") }
         await logger.log("Moving files to Trash...")
-        onProgress?(0.0, "")
+        onProgress?(0.3, "Removing \(sorted.count) item\(sorted.count == 1 ? "" : "s")…")
 
         // ── Phase 3: Move each item to Trash ──────────────────────────────────
         var alreadyGoneCount = 0
 
+        let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
-            if cancellationRequested {
+            if cancellationRequested || Task.isCancelled {
+                cancellationRequested = true
                 await logger.log("Uninstall cancelled by user.")
                 break
             }
             let name = URL(fileURLWithPath: path).lastPathComponent
-            let pct  = Double(i + 1) / Double(sorted.count)
+            let pct  = 0.3 + Double(i + 1) / Double(max(totalItems, 1)) * 0.6
 
             guard FileManager.default.fileExists(atPath: path) else {
                 alreadyGoneCount += 1
                 removed.append(path)
-                onProgress?(pct, "")
+                onProgress?(pct, "Removing (\(i + 1) of \(totalItems))…")
                 continue
             }
 
             if isSystemPath(path) {
                 await logger.log("⚠ Skipped (system path): \(name)")
-                onProgress?(pct, "")
+                onProgress?(pct, "Removing (\(i + 1) of \(totalItems))…")
                 continue
             }
 
@@ -273,30 +286,32 @@ struct RollbackEngine {
             }
 
             if path.contains("/LaunchAgents/") || path.contains("/LaunchDaemons/") {
-                _ = runWithPassword(password: password,
-                                    arguments: ["/bin/launchctl", "unload", path])
+                _ = await runWithPassword(password: password,
+                                         arguments: ["/bin/launchctl", "unload", path])
             }
 
             await logger.log("Trashing \(name)...")
-            onProgress?(pct, name)
+            onProgress?(pct, "Removing: \(name) (\(i + 1) of \(totalItems))")
 
             let t = itemTimeout(path)
-            let (result, trashPath) = trashItem(path: path, password: password, seconds: t)
+            let trashStart = Date()
+            let (result, trashPath) = await trashItem(path: path, password: password, seconds: t)
+            let trashElapsed = Date().timeIntervalSince(trashStart)
             switch result {
             case .done:
-                await logger.log("✓ \(name) → Trash")
+                await logger.log("✓ \(name) → Trash [\(String(format: "%.1f", trashElapsed))s]")
                 removed.append(path)
                 if let tp = trashPath {
                     trashRecords.append(TrashRecord(originalPath: path, trashPath: tp))
                 }
             case .skipped:
-                await logger.log("⚠ Skipped (timeout): \(name)")
+                await logger.log("⚠ Skipped (timeout \(String(format: "%.0f", t))s exceeded): \(name)")
             case .failed:
                 await logger.log("✗ Could not trash: \(name)")
                 failed.append(path)
             }
 
-            onProgress?(pct, name)
+            onProgress?(pct, "Removing: \(name) (\(i + 1) of \(totalItems))")
         }
 
         if alreadyGoneCount > 0 {
@@ -308,19 +323,27 @@ struct RollbackEngine {
 
         // ── Phase 5: Forget PKG receipts ─────────────────────────────────────
         await logger.log("Removing receipts...")
+        onProgress?(0.9, "Removing receipts…")
         var forgotCount = 0
-        for id in record.pkgReceiptIDs {
-            if cancellationRequested {
+        let receiptIDsToForget = record.pkgReceiptIDs
+        for (forgetIndex, id) in receiptIDsToForget.enumerated() {
+            if cancellationRequested || Task.isCancelled {
+                cancellationRequested = true
                 await logger.log("Uninstall cancelled during receipt removal.")
                 break
             }
-            if PKGReceiptScanner.forgetReceipt(id, password: password) { forgotCount += 1 }
+            let forgot = PKGReceiptScanner.forgetReceipt(id, password: password)
+            await logger.log("\(forgot ? "✓" : "✗") \(id)")
+            if forgot { forgotCount += 1 }
             else { await logger.log("⚠ Could not clear receipt: \(id)") }
+            onProgress?(0.9 + Double(forgetIndex + 1) / Double(max(receiptIDsToForget.count, 1)) * 0.07,
+                        "Removing receipts (\(forgetIndex + 1) of \(receiptIDsToForget.count))…")
         }
         if forgotCount > 0 { await logger.log("✓ Cleared \(forgotCount) receipt(s)") }
 
         // ── Phase 6: Clean up empty parent directories ────────────────────────
-        let emptyDirs = cleanupEmptyDirs(from: removed, password: password)
+        onProgress?(0.97, "Cleaning up…")
+        let emptyDirs = await cleanupEmptyDirs(from: removed, password: password)
         if !emptyDirs.isEmpty {
             await logger.log("Cleaned \(emptyDirs.count) empty folder(s)")
             removed += emptyDirs
@@ -339,12 +362,14 @@ struct RollbackEngine {
         // ── Summary ──────────────────────────────────────────────────────────
         let uniqueRemoved = Array(Set(removed))
         let uniqueFailed  = Array(Set(failed))
+        let totalElapsed  = Date().timeIntervalSince(rollbackStart)
 
-        onProgress?(1.0, "")
         if cancellationRequested {
+            onProgress?(1.0, "Cancelled — \(uniqueRemoved.count) of \(sorted.count) item\(sorted.count == 1 ? "" : "s") removed")
             await logger.log("Cancelled — partial uninstall: trashed \(uniqueRemoved.count) item(s)")
         } else {
-            await logger.log("Completed — trashed: \(uniqueRemoved.count), failed: \(uniqueFailed.count)")
+            onProgress?(1.0, "Completed")
+            await logger.log("Completed — total \(String(format: "%.1f", totalElapsed))s — trashed: \(uniqueRemoved.count), failed: \(uniqueFailed.count)")
         }
 
         let detail: String
@@ -445,7 +470,7 @@ struct RollbackEngine {
             }
 
             let parentDir = URL(fileURLWithPath: record.originalPath).deletingLastPathComponent().path
-            _ = runWithPassword(password: password, arguments: ["/bin/mkdir", "-p", parentDir])
+            _ = await runWithPassword(password: password, arguments: ["/bin/mkdir", "-p", parentDir])
 
             // Try user-space move first, fall back to sudo
             if (try? FileManager.default.moveItem(atPath: record.trashPath,
@@ -453,8 +478,8 @@ struct RollbackEngine {
                 restoredCount += 1
                 await logger.log("✓ Recovered: \(URL(fileURLWithPath: record.originalPath).lastPathComponent)")
             } else {
-                let r = runWithPassword(password: password,
-                                        arguments: ["/bin/mv", record.trashPath, record.originalPath])
+                let r = await runWithPassword(password: password,
+                                             arguments: ["/bin/mv", record.trashPath, record.originalPath])
                 if r.success {
                     restoredCount += 1
                     await logger.log("✓ Recovered: \(URL(fileURLWithPath: record.originalPath).lastPathComponent)")
@@ -699,7 +724,7 @@ struct RollbackEngine {
     // followed by sudo chown so the user owns the item in Trash (Finder shows it correctly).
     private static func trashItem(path: String,
                                   password: String,
-                                  seconds: Double) -> (RemoveResult, String?) {
+                                  seconds: Double) async -> (RemoveResult, String?) {
         let url = URL(fileURLWithPath: path)
 
         // User-space: FileManager.trashItem handles this natively
@@ -715,15 +740,15 @@ struct RollbackEngine {
         let trashDir = NSHomeDirectory() + "/.Trash"
         let dest     = uniqueTrashPath(for: path, in: trashDir)
 
-        let mv = runWithPassword(password: password,
-                                 arguments: ["/bin/mv", path, dest])
+        let mv = await runWithPassword(password: password,
+                                      arguments: ["/bin/mv", path, dest])
         guard mv.success else { return (.failed, nil) }
 
         // Fix ownership so the item appears under the user's account in Finder Trash
         // and can be emptied without an admin prompt.
         let userName = NSUserName()
-        _ = runWithPassword(password: password,
-                            arguments: ["/usr/sbin/chown", "-R", userName, dest])
+        _ = await runWithPassword(password: password,
+                                  arguments: ["/usr/sbin/chown", "-R", userName, dest])
 
         return (.done, dest)
     }
@@ -767,7 +792,7 @@ struct RollbackEngine {
     }
 
     private static func receiptFilesWithTimeout(receiptID: String,
-                                                seconds: Double) -> [String] {
+                                                seconds: Double) async -> [String] {
         let process = Process()
         let pipe    = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
@@ -776,23 +801,23 @@ struct RollbackEngine {
         process.standardError  = Pipe()
         guard (try? process.run()) != nil else { return [] }
 
-        // Read pipe concurrently so a large receipt (10k+ files) never fills
-        // the pipe buffer and deadlocks the process before it can exit.
-        var outputData = Data()
-        let sema = DispatchSemaphore(value: 0)
-        DispatchQueue.global(qos: .utility).async {
-            outputData = pipe.fileHandleForReading.readDataToEndOfFile()
-            sema.signal()
-        }
+        // Read pipe in a detached task so large receipts (10k+ files) never fill
+        // the pipe buffer and deadlock the process before it can exit.
+        let pipeReadTask = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
 
-        // Poll with cancellation check — terminate early if user cancelled
         let deadline = Date().addingTimeInterval(seconds)
+        var cancelledMidway = false
         while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
-            if cancellationRequested { break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            if cancellationRequested || Task.isCancelled {
+                cancellationRequested = true
+                cancelledMidway = true
+                break
+            }
         }
         if process.isRunning { process.terminate() }
-        _ = sema.wait(timeout: .now() + 5)
+        let outputData = await pipeReadTask.value
+        _ = cancelledMidway  // used below via process.isRunning path
 
         let output   = String(data: outputData, encoding: .utf8) ?? ""
         let location = PKGReceiptScanner.installLocation(forReceipt: receiptID)
@@ -848,7 +873,7 @@ struct RollbackEngine {
 
     @discardableResult
     private static func cleanupEmptyDirs(from removedPaths: [String],
-                                         password: String) -> [String] {
+                                         password: String) async -> [String] {
         var parents    = Set<String>()
         let protected  = protectedDirs
         let aggregates = aggregateDirs
@@ -871,7 +896,7 @@ struct RollbackEngine {
             guard FileManager.default.fileExists(atPath: dir) else { continue }
             let contents = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
             if contents.isEmpty {
-                if case .done = hardRemove(path: dir, password: password, seconds: 4) {
+                if case .done = await hardRemove(path: dir, password: password, seconds: 4) {
                     cleaned.append(dir)
                 }
             }
@@ -882,7 +907,7 @@ struct RollbackEngine {
     // Permanent delete — only used for empty directories where there is nothing to preserve.
     private static func hardRemove(path: String,
                                    password: String,
-                                   seconds: Double) -> RemoveResult {
+                                   seconds: Double) async -> RemoveResult {
         if (try? FileManager.default.removeItem(atPath: path)) != nil { return .done }
 
         let process   = Process()
@@ -899,7 +924,7 @@ struct RollbackEngine {
 
         let deadline = Date().addingTimeInterval(seconds)
         while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
         if process.isRunning { process.terminate(); return .skipped }
         return process.terminationStatus == 0 ? .done : .failed
@@ -912,7 +937,7 @@ struct RollbackEngine {
     @discardableResult
     private static func runWithPassword(password: String,
                                         arguments: [String],
-                                        timeout: TimeInterval = 30) -> (success: Bool, output: String) {
+                                        timeout: TimeInterval = 30) async -> (success: Bool, output: String) {
         let process    = Process()
         let inputPipe  = Pipe()
         let outputPipe = Pipe()
@@ -922,9 +947,6 @@ struct RollbackEngine {
         process.standardOutput = outputPipe
         process.standardError  = outputPipe
 
-        var outputData = Data()
-        let sema = DispatchSemaphore(value: 0)
-
         do {
             try process.run()
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
@@ -933,23 +955,28 @@ struct RollbackEngine {
             return (false, error.localizedDescription)
         }
 
-        DispatchQueue.global(qos: .utility).async {
-            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            sema.signal()
-        }
+        let pipeReadTask = Task.detached { outputPipe.fileHandleForReading.readDataToEndOfFile() }
 
         let deadline = Date().addingTimeInterval(timeout)
+        var timedOut = false
+        var cancelledMidway = false
         while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
-            if cancellationRequested { break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            if cancellationRequested || Task.isCancelled {
+                cancellationRequested = true
+                cancelledMidway = true
+                break
+            }
         }
         if process.isRunning {
+            timedOut = !cancelledMidway
             process.terminate()
         }
-        _ = sema.wait(timeout: .now() + 3)
+        let outputData = await pipeReadTask.value
 
+        let exitCode = process.terminationStatus
         let out = String(data: outputData, encoding: .utf8) ?? ""
-        return (process.terminationStatus == 0, out)
+        return (exitCode == 0 && !timedOut, out)
     }
 
     // Extracts short vendor/product tokens from PKG receipt IDs and file names.

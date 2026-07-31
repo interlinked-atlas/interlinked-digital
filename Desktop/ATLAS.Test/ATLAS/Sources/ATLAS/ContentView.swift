@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var rollbackInProgress = false
     @State private var rollbackProgress: Double = 0.0
     @State private var rollbackStep: String = ""
+    @State private var rollbackTask: Task<Void, Never>? = nil
     @State private var rollbackQueue: [InstallRecord] = []
     @State private var rollbackQueueTotal: Int = 0
     @State private var rollbackQueueDone: Int = 0
@@ -1462,7 +1463,7 @@ struct ContentView: View {
                 }
                 ATLASProgressBar(
                     progress: rollbackProgress,
-                    stepLabel: rollbackStep.isEmpty ? "Preparing…" : "Moving \(rollbackStep) to Trash…",
+                    stepLabel: rollbackStep.isEmpty ? "Preparing…" : rollbackStep,
                     danger: true
                 )
             }
@@ -2225,7 +2226,7 @@ struct ContentView: View {
             ? "--- Uninstall \(rollbackQueueDone + 1) of \(rollbackQueueTotal): \(record.fileName) ---"
             : "--- Uninstall initiated ---")
 
-        Task {
+        rollbackTask = Task {
             let result = await RollbackEngine.rollback(
                 record: record,
                 otherRecords: historyStore.records,
@@ -2238,13 +2239,14 @@ struct ContentView: View {
             }
             await MainActor.run {
                 rollbackInProgress = false
+                rollbackTask = nil
                 rollbackProgress   = 1.0
                 rollbackStep       = ""
                 rollbackQueueDone += 1
 
-                // User cancelled — reset silently, no error card
+                // User cancelled before any files were removed — reset silently
                 if result.detail == "Cancelled." {
-                    logger.log("⚠ Uninstall cancelled by user.")
+                    logger.log("⚠ Uninstall cancelled.")
                     resetAll()
                     WidgetStateManager.shared.menuStatus = .idle
                     return
@@ -2345,6 +2347,8 @@ struct ContentView: View {
     private func performCancel() {
         if rollbackInProgress {
             RollbackEngine.cancelRollback()
+            rollbackTask?.cancel()
+            rollbackTask = nil
         } else {
             InstallEngine.cancelCurrentInstall()
             queueTask?.cancel()
@@ -2374,6 +2378,8 @@ struct ContentView: View {
         uninstallResult = nil
         rollingBack = nil
         rollbackInProgress = false
+        rollbackTask?.cancel()
+        rollbackTask = nil
         rollbackQueue = []
         rollbackQueueTotal = 0
         rollbackQueueDone  = 0
