@@ -15,6 +15,9 @@ struct InstallPlan {
     let orderedSteps: [InstallStep]
     let warnings: [String]
     let summary: String
+    // Identifies which decision path produced this plan — for failure tracing and learning data.
+    // "TITAN MEMORY" | "ATLASLearn" | "heuristic" | "pipeline"
+    let planSource: String
 }
 
 struct InstallStep: Identifiable {
@@ -357,7 +360,7 @@ struct InstallIntelligence {
             : "ATLAS will install: \(summaryParts.joined(separator: " → "))"
 
         return InstallPlan(instructions: instructions, orderedSteps: ordered,
-                           warnings: warnings, summary: summary)
+                           warnings: warnings, summary: summary, planSource: "heuristic")
     }
 
     // MARK: - TITAN MEMORY™ plan builder
@@ -427,7 +430,7 @@ struct InstallIntelligence {
         return InstallPlan(instructions: syntheticInstructions,
                            orderedSteps: steps,
                            warnings: ["TITAN MEMORY™ active — install pattern verified"],
-                           summary: summary)
+                           summary: summary, planSource: "TITAN MEMORY")
     }
 
     // MARK: - ATLASLearn™ plan builder
@@ -472,7 +475,7 @@ struct InstallIntelligence {
         return InstallPlan(instructions: syntheticInstructions,
                            orderedSteps: ordered,
                            warnings: ["ATLASLearn™ active — crowd-confirmed pattern (\(pattern.successCount) installs)"],
-                           summary: summary)
+                           summary: summary, planSource: "ATLASLearn")
     }
 
     // MARK: - Instruction file detection

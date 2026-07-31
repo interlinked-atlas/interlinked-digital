@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var appState = AppState.shared
     @StateObject private var logger = Logger()
     @StateObject private var historyStore = HistoryStore()
-    @StateObject private var queue = InstallQueue()
+    @StateObject private var queue = InstallQueue.shared
     @StateObject private var updateChecker = UpdateChecker.shared
     @State private var isTargeted = false
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
@@ -36,6 +36,8 @@ struct ContentView: View {
     @State private var uninstallResult: RollbackResult? = nil
     @State private var showDropZone = true
     @State private var showCancelConfirm = false
+    @State private var showTrashEmptiedAlert = false
+    @State private var trashEmptiedProductName = ""
     @State private var queueTask: Task<Void, Never>? = nil
     @State private var pluginScanResults: [PluginCheckResult] = []
     @State private var showPluginScan = false
@@ -48,10 +50,11 @@ struct ContentView: View {
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
-    @ObservedObject private var virusScan     = VirusScanEngine.shared
-    @ObservedObject private var fileShare     = FileShareEngine.shared
-    @State private var showVirusScanResult    = false
-    @State private var pendingVirusScanURL:   URL? = nil
+    @ObservedObject private var titanVScan      = TitanVScan.shared
+    @ObservedObject private var fileShare       = FileShareEngine.shared
+    @State private var showVScanSheet           = false
+    @State private var pendingVScanURL:         URL? = nil
+    @State private var pendingVScanResult:      VScanResult? = nil
     @State private var showFileShare          = false
     @State private var showFileShareUpload    = false
     @State private var widgetTimer: Task<Void, Never>? = nil
@@ -66,6 +69,7 @@ struct ContentView: View {
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
     @State private var showTour = false
     @State private var feedbackProductName: String? = nil
+    @State private var feedbackRecord: InstallRecord? = nil
     @State private var showFeedbackPrompt = false
     private var feedbackTimer: Timer? = nil
     @State private var showAtlasSelfInstallAlert = false
@@ -187,20 +191,33 @@ struct ContentView: View {
         } message: {
             Text("ATLAS cannot install or uninstall itself. Please drag a different installer file.")
         }
+        .alert("Files Permanently Deleted", isPresented: $showTrashEmptiedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\(trashEmptiedProductName) cannot be recovered — its files were in the Trash but have since been permanently deleted.\n\nTo restore it, you'll need to reinstall from the original installer.")
+        }
     }
 
     var mainLayout: some View {
         ZStack {
             if !widgetState.isWidgetMode {
-                HStack(spacing: 0) {
-                    mainView.frame(minWidth: 520)
-                    if showHistory {
-                        Rectangle()
-                            .fill(Color.atlasBorder)
-                            .frame(width: 1)
+                // Main content — always full window width, never resizes for history
+                mainView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minWidth: 420, minHeight: 360)
+                    .atlasBackground()
+
+                // History panel slides in as a trailing overlay — window never resizes.
+                // A thin scrim behind it dims the main content slightly for focus.
+                if showHistory {
+                    HStack(spacing: 0) {
+                        // Tap-to-close scrim
+                        Color.black.opacity(0.18)
+                            .onTapGesture { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } }
                         HistoryPanelView(
                             store: historyStore,
                             logger: logger,
+                            onClose: { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } },
                             onRollback: { record in
                                 if !Features.rollback {
                                     upgradeFeature = "Uninstall & Rollback"
@@ -209,7 +226,7 @@ struct ContentView: View {
                                     beginBatchUninstall(records: [record])
                                 }
                             },
-                            onRestore:  { record in
+                            onRestore: { record in
                                 if !Features.restore {
                                     upgradeFeature = "Restore"
                                     showUpgrade = true
@@ -226,16 +243,56 @@ struct ContentView: View {
                                 }
                             }
                         )
-                        .transition(.move(edge: .trailing))
+                        .shadow(color: .black.opacity(0.25), radius: 16, x: -4, y: 0)
                     }
+                    .transition(.move(edge: .trailing))
+                    .zIndex(50)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showHistory)
                 }
-                .frame(minWidth: showHistory ? 780 : 420, minHeight: showHistory ? 640 : 360)
-                .atlasBackground()
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: showHistory)
             }
 
             // Tour overlay — injected via overlayPreferenceValue below
 
+
+            // Resume banner — shown when waiting queue items survived a crash/force-quit
+            if !queue.pendingResumeURLs.isEmpty {
+                VStack {
+                    HStack(spacing: 10) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Resume previous installs?")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("\(queue.pendingResumeURLs.count) item\(queue.pendingResumeURLs.count == 1 ? "" : "s") from last session")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.75))
+                        }
+                        Spacer()
+                        Button("Resume") {
+                            queue.resumePersistedQueue()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        Button("Dismiss") {
+                            queue.clearPersistedQueue()
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 12))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.blue.opacity(0.85))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(999)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: queue.pendingResumeURLs.isEmpty)
+            }
 
             // Post-install feedback prompt (bottom-right, 60s after success)
             if showFeedbackPrompt, let product = feedbackProductName {
@@ -245,14 +302,11 @@ struct ContentView: View {
                         Spacer()
                         InstallFeedbackPrompt(
                             productName: product,
-                            onYes: {
-                                withAnimation { showFeedbackPrompt = false }
-                                TitanMemory.shared.recordConfirmedSuccess(productName: product)
-                            },
-                            onNo: {
-                                withAnimation { showFeedbackPrompt = false }
-                                showSettings = true
-                            },
+                            steps: [],
+                            hostsEntries: [],
+                            installLog: "",
+                            installRecord: feedbackRecord,
+                            historyStore: historyStore,
                             onDismiss: {
                                 withAnimation { showFeedbackPrompt = false }
                             }
@@ -266,32 +320,8 @@ struct ContentView: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.78), value: showFeedbackPrompt)
             }
         }
-        .onChange(of: showHistory) { visible in
-            guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
-            let targetW: CGFloat = visible ? 860 : 560
-            let minH:   CGFloat = visible ? 640 : 460
-            let targetH: CGFloat = visible ? max(window.frame.height, minH) : window.frame.height
-            let currentX = window.frame.origin.x
-            let currentY = window.frame.origin.y
-            // Shift Y down if we need more height so window stays on screen
-            let newY = visible ? min(currentY, currentY - (targetH - window.frame.height)) : currentY
-            let newX = max(currentX, 0)
-            window.minSize = CGSize(width: 1, height: 1)
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.32
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(
-                    NSRect(x: newX, y: max(newY, 0), width: targetW, height: targetH),
-                    display: true)
-            }, completionHandler: {
-                window.minSize = CGSize(width: visible ? 780 : 540, height: minH)
-            })
-        }
         .onChange(of: historyStore.records.isEmpty) { isEmpty in
             if isEmpty { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
-        }
-        .onChange(of: queue.isProcessing) { processing in
-            if processing { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
         }
         .onChange(of: rollbackInProgress) { inProgress in
             if inProgress { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
@@ -546,17 +576,24 @@ struct ContentView: View {
     // MARK: - Bottom bar
 
     var bottomBar: some View {
-        HStack(spacing: 0) {
-            // Settings
-            BottomBarIconButton(icon: "gearshape", tooltip: "Settings") {
+        let busy = queue.isProcessing || rollbackInProgress
+            || appState.phase == .installing || appState.phase == .processing
+            || appState.phase == .verifying  || appState.phase == .cleanup
+        return HStack(spacing: 0) {
+            // Settings — disabled while installing/uninstalling
+            BottomBarIconButton(icon: "gearshape", tooltip: busy ? "Unavailable during install" : "Settings") {
                 showSettings = true
             }
+            .disabled(busy)
+            .opacity(busy ? 0.3 : 1)
             .tourAnchor("settings")
 
-            // Logs
-            BottomBarIconButton(icon: "doc.text", tooltip: "Open Logs in Finder") {
+            // Logs — disabled while installing/uninstalling
+            BottomBarIconButton(icon: "doc.text", tooltip: busy ? "Unavailable during install" : "Open Logs in Finder") {
                 InstallLogger.openLogsInFinder()
             }
+            .disabled(busy)
+            .opacity(busy ? 0.3 : 1)
 
             // TITAN CORE™ live action indicator (Pro only, shown while active)
             if titanCore.isActive && !titanCore.currentAction.isEmpty {
@@ -579,11 +616,13 @@ struct ContentView: View {
 
             Spacer()
 
-            // Widget mode button — Pro only
+            // Widget mode button — disabled while installing/uninstalling
             if Features.widget {
-                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Minimise to widget") {
+                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: busy ? "Unavailable during install" : "Minimise to widget") {
                     enterWidgetMode()
                 }
+                .disabled(busy)
+                .opacity(busy ? 0.3 : 1)
                 .tourAnchor("widget")
             } else {
                 BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Widget — Pro only") {
@@ -593,7 +632,10 @@ struct ContentView: View {
                 .tourAnchor("widget")
             }
 
+            // Appearance toggle — disabled while installing/uninstalling
             AppearanceToggle()
+                .disabled(busy)
+                .opacity(busy ? 0.3 : 1)
                 .padding(.trailing, 12)
         }
         .padding(.horizontal, 8)
@@ -709,7 +751,10 @@ struct ContentView: View {
     // MARK: - Title bar
 
     var titleBar: some View {
-        HStack(spacing: 12) {
+        let busy = queue.isProcessing || rollbackInProgress
+            || appState.phase == .installing || appState.phase == .processing
+            || appState.phase == .verifying  || appState.phase == .cleanup
+        return HStack(spacing: 12) {
             // Logo + ATLAS name — tap opens About
             Button { showAbout = true } label: {
                 HStack(spacing: 9) {
@@ -758,6 +803,8 @@ struct ContentView: View {
                 ) {
                     withAnimation(.atlasSpring) { showHistory.toggle() }
                 }
+                .disabled(busy)
+                .opacity(busy ? 0.3 : 1)
                 .tourAnchor("history")
 
                 if queue.isProcessing || appState.phase == .installing ||
@@ -837,10 +884,14 @@ struct ContentView: View {
             let active = appState.phase == .installing ||
                          appState.phase == .processing ||
                          appState.phase == .classifying
-            if active && appState.progress > 0 {
+            if active {
+                // progress == 0 → indeterminate animated bar (classifying, early install)
+                // progress > 0  → determinate fill bar
                 ATLASProgressBar(
                     progress: appState.progress,
-                    stepLabel: appState.progressStep
+                    stepLabel: appState.progressStep.isEmpty && appState.phase == .classifying
+                        ? "Classifying installer…"
+                        : appState.progressStep
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -863,7 +914,7 @@ struct ContentView: View {
                 // Standard: show remaining installs counter while not locked
                 if !auth.isPro {
                     let rem = monthlyLimit.remaining
-                    if rem < MonthlyLimitManager.standardLimit {
+                    if rem < MonthlyLimitManager.standardDailyLimit {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
@@ -889,7 +940,7 @@ struct ContentView: View {
                     }
                 }
 
-                DropZoneView(isTargeted: $isTargeted) { urls in
+                DropZoneView(isTargeted: $isTargeted, isQueuing: queue.isProcessing) { urls in
                     unsupportedExtension = nil
                     handleFilesDrop(urls: urls)
                 } onUnsupported: { ext in
@@ -990,33 +1041,65 @@ struct ContentView: View {
                     .background(Color(hex: "#080809"))
                 }
             }
-            .sheet(isPresented: $showVirusScanResult) {
-                if let vtResult = virusScan.lastResult, let url = pendingVirusScanURL {
-                    VirusScanView(
-                        result: vtResult,
-                        fileName: url.lastPathComponent,
+            .sheet(isPresented: $showVScanSheet) {
+                if let vsResult = pendingVScanResult, let url = pendingVScanURL {
+                    TitanVScanView(
+                        result: vsResult,
                         onProceed: {
-                            showVirusScanResult = false
-                            pendingVirusScanURL = nil
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
                             beginInstall(url: url)
                         },
-                        onDelete: {
-                            showVirusScanResult = false
-                            _ = virusScan.deleteFile(url: url)
-                            pendingVirusScanURL = nil
-                            appState.reset()
-                            logger.clear()
+                        onQuarantine: {
+                            let types  = vsResult.threats.map(\.type.rawValue)
+                            let names  = vsResult.threats.map(\.name)
+                            let notes  = vsResult.threats.map(\.detail).joined(separator: "\n")
+                            _ = QuarantineManager.shared.quarantine(
+                                fileURL: url,
+                                verdict: vsResult.verdict.rawValue,
+                                threatTypes: types,
+                                threatNames: names,
+                                notes: notes
+                            )
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
                             withAnimation { showDropZone = true }
+                            ATLASNotification.send(
+                                title: "TITAN VSCAN™ — Quarantined",
+                                body: "\(url.lastPathComponent) moved to ATLAS Quarantine."
+                            )
+                        },
+                        onDelete: {
+                            try? FileManager.default.removeItem(at: url)
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
+                            withAnimation { showDropZone = true }
+                            ATLASNotification.send(
+                                title: "TITAN VSCAN™ — Deleted",
+                                body: "\(url.lastPathComponent) permanently deleted."
+                            )
+                        },
+                        onStripAndInstall: {
+                            // For now: proceed — strip logic runs inside InstallationManager
+                            // based on the vscan result stored on appState
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            beginInstall(url: url)
                         },
                         onCancel: {
-                            showVirusScanResult = false
-                            pendingVirusScanURL = nil
-                            appState.reset()
-                            logger.clear()
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
                             withAnimation { showDropZone = true }
                         }
                     )
-                    .frame(width: 360, height: 480)
                 }
             }
         }
@@ -1250,6 +1333,24 @@ struct ContentView: View {
             Text("Scanning \(appState.selectedFileURL?.lastPathComponent ?? "")...")
                 .font(.system(size: 13))
                 .foregroundColor(Color.atlasSubtitle)
+            Spacer()
+            Button {
+                appState.reset()
+                withAnimation { showDropZone = true }
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color.atlasSubtitle)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.atlasPanelBG)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color.atlasBorder, lineWidth: 0.75)
+                    )
+            }
+            .buttonStyle(.plain)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1497,7 +1598,7 @@ struct ContentView: View {
         // Dismiss first-launch greeting permanently
         greetingShown = true
 
-        if urls.count == 1 && !queue.hasItems && appState.phase == .idle {
+        if urls.count == 1 && !queue.hasItems && appState.phase == .idle && !queue.isProcessing {
             withAnimation { showDropZone = false }
             beginScan(url: urls[0])
         } else {
@@ -1728,29 +1829,36 @@ struct ContentView: View {
         }
     }
 
-    // Called from ScanResultView. Routes through storage selection for large Pro installs.
+    // Called from ScanResultView. Routes through storage selection then TITAN VSCAN™.
     private func beginInstallFromScan(url: URL, scanResult: ScanResult) {
         if Features.smartStorage && scanResult.requiresStorageSelection {
             pendingInstallURL  = url
             pendingScanResult  = scanResult
             showStorageSelection = true
-        } else if Features.isPro {
-            // Run virus scan for Pro/Advanced before install
-            pendingVirusScanURL = url
+        } else if Features.titanVScan {
+            // TITAN VSCAN™ — Pro only
+            pendingVScanURL = url
             Task {
-                let result = await virusScan.scan(url: url)
-                // Clean or unknown — proceed automatically without showing sheet
-                if let result, result.isClear {
-                    pendingVirusScanURL = nil
+                appState.phase = .scanning
+                appState.selectedFileURL = url
+                let result = await titanVScan.scan(url: url)
+                appState.phase = .scanned
+
+                guard let result else {
+                    // Scan failed (unexpected) — proceed without blocking
+                    pendingVScanURL = nil
+                    beginInstall(url: url)
+                    return
+                }
+
+                if result.verdict == .clean {
+                    // Silently pass — no need to show sheet for clean files
+                    pendingVScanURL = nil
                     beginInstall(url: url)
                 } else {
-                    // Show sheet for PUA / suspicious / malicious (or scan error → just proceed)
-                    if result != nil {
-                        showVirusScanResult = true
-                    } else {
-                        pendingVirusScanURL = nil
-                        beginInstall(url: url)
-                    }
+                    // Show TITAN VSCAN™ sheet for everything else
+                    pendingVScanResult = result
+                    showVScanSheet = true
                 }
             }
         } else {
@@ -1815,7 +1923,7 @@ struct ContentView: View {
             }
         }
 
-        withAnimation { showDropZone = false }
+        withAnimation { showDropZone = true }   // keep drop zone visible so users can queue more
         queue.isProcessing = true
         InstallEngine.resetCancellation()
         logger.log("--- Queue started: \(queue.items.count) file(s) ---")
@@ -1928,7 +2036,7 @@ struct ContentView: View {
         queue.updateStatus(id: id, status: .installing)
         logger.log("Installing: \(item.fileName)")
 
-        var (result, installedFiles, receiptIDs, isPlugin) =
+        var (result, installedFiles, receiptIDs, isPlugin, runtimeCreatedPaths) =
             await InstallEngine.install(url: item.url, logger: logger) { pct, step in
                 self.queue.updateProgress(id: id, progress: pct, step: step)
             }
@@ -1943,10 +2051,14 @@ struct ContentView: View {
             queue.updateProgress(id: id, progress: 0.05, step: L(.retrying))
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             if !InstallEngine.cancellationRequested {
-                (result, installedFiles, receiptIDs, isPlugin) =
+                var retryRuntimePaths: [String]
+                (result, installedFiles, receiptIDs, isPlugin, retryRuntimePaths) =
                     await InstallEngine.install(url: item.url, logger: logger) { pct, step in
                         self.queue.updateProgress(id: id, progress: pct, step: step)
                     }
+                // Merge paths from both attempts so nothing discovered during the
+                // first attempt is lost if the second attempt's snapshot starts fresh.
+                runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryRuntimePaths))
                 if case .success = result {
                     logger.log("  ✓ Retry succeeded")
                 } else {
@@ -1983,6 +2095,9 @@ struct ContentView: View {
             sessionID: sessionID)
         record.titanVerified = verifyPassed && demoWarnings.isEmpty
         record.demoDetected  = !demoWarnings.isEmpty
+        if !runtimeCreatedPaths.isEmpty {
+            record.runtimeCreatedPaths = runtimeCreatedPaths
+        }
 
         historyStore.add(record)
 
@@ -2027,9 +2142,12 @@ struct ContentView: View {
                            appName: name, fileName: item.fileName, content: logContent)
             // Feedback prompt — ask user 60s after success
             let feedbackName = name
+            let capturedRecord = record
             DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [self] in
                 guard !showFeedbackPrompt else { return }
+                guard !UserDefaults.standard.bool(forKey: "atlas.feedbackSubmitted.\(feedbackName)") else { return }
                 feedbackProductName = feedbackName
+                feedbackRecord = capturedRecord
                 withAnimation { showFeedbackPrompt = true }
             }
         case .failure(let reason):
@@ -2109,7 +2227,9 @@ struct ContentView: View {
 
         Task {
             let result = await RollbackEngine.rollback(
-                record: record, logger: logger
+                record: record,
+                otherRecords: historyStore.records,
+                logger: logger
             ) { progress, step in
                 Task { @MainActor in
                     rollbackProgress = progress
@@ -2121,6 +2241,14 @@ struct ContentView: View {
                 rollbackProgress   = 1.0
                 rollbackStep       = ""
                 rollbackQueueDone += 1
+
+                // User cancelled — reset silently, no error card
+                if result.detail == "Cancelled." {
+                    logger.log("⚠ Uninstall cancelled by user.")
+                    resetAll()
+                    WidgetStateManager.shared.menuStatus = .idle
+                    return
+                }
 
                 if result.success {
                     logger.log("✓ Uninstall complete: \(result.detail)")
@@ -2170,6 +2298,22 @@ struct ContentView: View {
 
     func beginRestore(record: InstallRecord) {
         guard let backupPath = record.rollbackBackupPath else { return }
+
+        // Check if any files still exist in the Trash before starting recovery.
+        // If the manifest exists but every file is gone, the Trash was emptied.
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: backupPath)),
+           let trashRecords = try? JSONDecoder().decode([TrashRecord].self, from: data),
+           !trashRecords.isEmpty {
+            let anyInTrash = trashRecords.contains {
+                FileManager.default.fileExists(atPath: $0.trashPath)
+            }
+            if !anyInTrash {
+                trashEmptiedProductName = record.fileName
+                showTrashEmptiedAlert = true
+                return
+            }
+        }
+
         rollbackInProgress = true
         rollbackProgress = 0.0
         rollbackStep = "Restoring..."
@@ -2269,6 +2413,7 @@ struct ContentView: View {
 
     private func enterWidgetMode() {
         guard !widgetState.isWidgetMode else { return }
+        guard UserDefaults.standard.bool(forKey: "atlas.widgetEnabled") else { return }
         widgetState.cancelIdleCollapse()
         if showTour { showTour = false }
         guard let mainWindow = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
@@ -2443,7 +2588,8 @@ struct ContentView: View {
                 sourceURL:      mission.sourceURL,
                 failureReason:  failureReason,
                 stepsAttempted: mission.steps.map { "[\($0.status)] \($0.title)" },
-                installLog:     entries.joined(separator: "\n"))
+                installLog:     entries.joined(separator: "\n"),
+                planSource:     mission.plan?.planSource ?? "")
         }
 
         // Always save hosts entries to history so rollback can clean them up for any user.
@@ -2473,12 +2619,16 @@ struct ContentView: View {
 
         // ── ATLAS LEARN™ ──────────────────────────────────────────────────────
         if titanVerifyPassed {
+            let capturedHosts  = mission.addedHostsEntries
+            let capturedSource = mission.plan?.planSource ?? ""
             Task.detached {
                 await ATLASLearn.shared.contribute(
-                    productName: sourceName,
-                    sourceURL: mission.sourceURL,
+                    productName:  sourceName,
+                    sourceURL:    mission.sourceURL,
                     installedFiles: mission.installedFiles,
-                    pkgReceiptIDs: mission.installedPKGReceipts)
+                    pkgReceiptIDs:  mission.installedPKGReceipts,
+                    hostsEntries:   capturedHosts,
+                    planSource:     capturedSource)
             }
         }
 

@@ -297,11 +297,19 @@ struct RecipeComposer {
             ? "[\(sourceTag)] No installable content found"
             : "[\(sourceTag)] \(parts.joined(separator: " → "))"
 
+        let pipelineSource: String
+        switch product?.source {
+        case .titanMemory:              pipelineSource = "TITAN MEMORY"
+        case .atlasLearn:               pipelineSource = "ATLASLearn"
+        case nil:                       pipelineSource = "pipeline"
+        }
+
         return InstallPlan(
             instructions: syntheticInstructions,
             orderedSteps: orderedSteps,
             warnings:     warnings,
-            summary:      summary
+            summary:      summary,
+            planSource:   pipelineSource
         )
     }
 }
