@@ -282,7 +282,7 @@ export default function AdminPage() {
       <header style={{ borderBottom: "1px solid #1E2240", position: "sticky", top: 0, zIndex: 50, background: "rgba(7,8,15,0.95)", backdropFilter: "blur(12px)", padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <Link href="/atlas/account" style={{ fontSize: "10px", letterSpacing: "1px", color: "#6B7399", textDecoration: "none", padding: "5px 10px", border: "1px solid #1E2240", borderRadius: "6px" }}>← ACCOUNT</Link>
-          <span style={{ fontSize: "18px", letterSpacing: "6px" }}>ATLAS</span>
+          <span style={{ fontSize: "18px", letterSpacing: "6px", fontFamily: "'SF-Intellivised', sans-serif" }}>ATLAS</span>
           <span style={{ fontSize: "9px", color: "#F0A030", letterSpacing: "3px", padding: "2px 8px", border: "1px solid rgba(240,160,48,0.3)", borderRadius: "4px", background: "rgba(240,160,48,0.06)" }}>ADMIN</span>
         </div>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>

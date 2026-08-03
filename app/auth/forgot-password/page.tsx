@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
       }}>
         <div className="text-center mb-8">
           <Link href="/atlas" className="inline-block">
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90">ATLAS</h1>
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white/90" style={{ fontFamily: "'SF-Intellivised', sans-serif" }}>ATLAS</h1>
           </Link>
           <p className="text-white/40 text-sm mt-2">Reset your password</p>
         </div>

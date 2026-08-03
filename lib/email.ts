@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch'
 
 interface SendOptions {
   to: string
@@ -40,6 +40,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'support-received': {
       subject: 'ATLAS — We received your support request',
       html: supportReceivedEmail(data.issueType ?? 'General', data.message ?? ''),
+    },
+    'launch': {
+      subject: 'ATLAS is live — Download now',
+      html: launchEmail(),
     },
   }
 
@@ -214,7 +218,7 @@ function subscriptionConfirmedEmail(plan: string, renewDate: string) {
     <div style="height:2px;background:${accent};"></div>
 
     <div style="padding:36px 36px 40px;">
-      ${eyebrow(`Atlas ${plan}`)}
+      ${eyebrow(`ATLAS ${plan}`)}
       ${heading('Subscription confirmed.')}
       ${body(`You're now on <strong style="color:${WHITE};font-weight:600;">ATLAS ${plan}</strong>.${renewDate ? ` Your subscription renews on <strong style="color:${WHITE};font-weight:600;">${renewDate}</strong>.` : ''}`)}
 
@@ -329,6 +333,34 @@ function adminNotificationEmail(subject: string, bodyText: string) {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${MUTED};">
         ATLAS Admin · interlinked.digital
+      </p>
+    </div>
+  `)
+}
+
+function launchEmail() {
+  return base('ATLAS is live', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Now Available')}
+      ${heading('ATLAS is live.')}
+      ${body("You're on the waitlist — so you're first. ATLAS for macOS is available right now. Download it, sign up, and automate your software installations in seconds.")}
+
+      ${infoBox([
+        'TITAN MEMORY™ — learns every installer you run',
+        'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
+        'TITAN VSCAN™ — built-in malware scanner (Pro)',
+        'One-click rollback &amp; recovery (Pro)',
+        'Standard and Pro plans available',
+      ], TEAL)}
+
+      ${tealBtn('Download ATLAS', 'https://www.interlinked.digital/atlas')}
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        Questions? Reply to this email or reach us at <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
       </p>
     </div>
   `)
