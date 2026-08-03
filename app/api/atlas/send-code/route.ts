@@ -57,7 +57,6 @@ function verifyEmail(code: string) {
   <style>@font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");}</style>
 </head>
 <body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
-<style>@font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");}</style>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};">
   <tr><td align="center" style="padding:52px 20px 48px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
@@ -69,7 +68,7 @@ function verifyEmail(code: string) {
             <img src="${LOGO_URL}" width="36" height="36" alt="ATLAS" style="display:block;border:0;width:36px;height:36px;object-fit:contain;">
           </td>
           <td align="left" valign="middle">
-            <span style="font-family:'SF-Intellivised',-apple-system,sans-serif;font-size:22px;font-weight:normal;letter-spacing:10px;color:${WHITE};text-transform:uppercase;display:inline-block;padding-left:2px;">ATLAS</span>
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASgAAAAqCAYAAAAAuMamAAAE/klEQVR42u2da4hVVRTHf2ssEcQBlZnAyoksKyOSSOgBzgd7SIY1yKQzHyIIgqToQSEUQsR8sAcEElRQSElmD7KkjGoUMkv8EBiS9HEK6WEmDVbmq9WHe4KxPHfO2Wffe8699//7JO7Zm73v+a911jpn73WgIO6+1uPwJG2Iu3+Z83fY00JrG8l7kVvw+nWsvt29N3CtC2LNoSvCGEOR5jJEe3I859+fQFSJTtb3tYH9vq+Eg3L3hcBlkeZykbsvkj2ICkUQna7v8wL7ra5KBBX7rjAksxBtGD21qr5nBvZbl6T/U0pzUO5uwMq0ZmBnwLAr3b1LdiEqED1J32AF+j0O7HD3OWVFUNcBfSltXwBPB4w5B+iXeYgKIH3DrwX7Lwb2uvvSMhxUvXD1DeBj4JDSPNGG6V2n6Ht/hDF6gG3uvs7dz2qKg0pyy8GU5pPA22Z2EngnYPgV7n627EOUmN5J3zX2AEcjpYprgM/c/fxmRFA3AL0pbaNm9kvy700BY88ClspMRIlI34CZHQXejZw273X3WxvtoCYLf/9lF2F7IpTmiSqnd52k76eAUxHHmwVsdfdnsqR8XQHh7zRgIKX5L2DLBA/swOaARSx39+myE1FCeid9nx5F7QOea8DbwUeAUXfvjR1BLQO6U9o+MLMj//m/kDB4OrBc5iJKQPr+P48Bow0Ytx/Y7e7zYzqoeuHppjN44K+Bb5TmiTZI7zpS32Z2ArgN+LABw18I7HT3Swo7KHefkdxhzsQ4sC3rhc3Aze4+U/YimpjeSd/pTurPJOpbS/zzoucAn7h7T9EIagCYltK2xcyORbyAU4EVMhvRRKTv+k7qbzMboXaI+NvIw88FNhR1UMN5wt8JCxsDdgdMelg2I5qI9J3NUX0FXAWsT479xGKZu98S5KCS8GtJSvNBYMckQ4TcZfqLnuURQvpuzB4pM3sAuBE4EHHoh0IjqEEgbd/CW2Y22V6JN6ntwiXnRtI7ZD6iCUjfYY5qO3AFsDHSkEvcfXaIgxoqcvdIdt9uV5onaIO3d9L3aWv/zczupPam76cIe6SuyeWg3H0ucH1K85iZZc2/Xw+Y8CJ3nyf7EQ1M76TvOI5qK3A58CrFH5jniqBW1akNc0GOetSvqZCdqCDSdzwnddjM7gJup7bzPoQZeR1U2T+gHJRoZ321nb7N7H3g3sDu45kdlLtfCiwseb0L3P1K2ZFoQHonfTeOjYQdNP45TwQ1rLuciOgQptI6e5+k72LMB6YE1qHK7KBWVeU5QVInWrQ2j7p7N9V6/iR9x78R9QEvB3Tdb2Y/ZnJQ7n41cHFF1txHreCVaG1GgPGU58xPNNmIpO/IH2ad8MJgLHA9L5Fjo2bVwk6leaKd9dTp+j4IvJLJQSWfx1lZpy5zjxUAeDFgAYMxvrUlonG4hVMQ6bt63GNmf2SNoBYD55Jel/lQwcmEnF3qpVYvWlSDTyMfFm0m0ne1WJ9sTSCrg6oXbm6OMKFdwHcKg2nlvS77gGfbML2TvpvLBuBBshasSz6Lk1ar5hjwXgRxh9ZzHkjqRotqsAa4HzjSQumd9F0NfgdWA3cnv1fmipo3AbNT2j4ys/FIEww5u9RNetVD0fwoys3seWrnp+6jVnXyAHC8wtOWvsvhFPAD8DnwMDDPzF5Ic05CCCGEEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghOpF/AK7Xe5xV+BxWAAAAAElFTkSuQmCC" width="148" height="21" alt="ATLAS" style="display:block;border:0;">
           </td>
         </tr></table>
       </td></tr>
