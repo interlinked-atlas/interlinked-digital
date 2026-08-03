@@ -8,7 +8,7 @@ Music/
 Pictures/
 Documents/
 Downloads/
-Public/
+/Public/
 
 # Dot dirs
 .installbuilder/
@@ -52,3 +52,4 @@ node_modules/
 
 # Mac noise
 .DS_Store
+Library/Saved Application State/
