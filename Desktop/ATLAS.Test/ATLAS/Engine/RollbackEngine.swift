@@ -193,7 +193,7 @@ struct RollbackEngine {
         // Package folder in Trash after all safety checks pass.
         // All ownership decisions, guards, and safety checks are unchanged.
         var alreadyGoneCount = 0
-        var pendingItems: [String] = []   // all approved items queued for ATLAS Uninstall Package
+        var looseFiles: [String] = []   // individual loose files queued for ATLAS Uninstall Package
 
         let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
@@ -246,20 +246,53 @@ struct RollbackEngine {
                                          arguments: ["/bin/launchctl", "unload", path])
             }
 
-            // All approved items (loose files, bundles, directories, LaunchAgents/Daemons)
-            // join the unified accumulator. Packaging into the ATLAS Uninstall Package
-            // happens after the loop. Ownership decisions and safety checks are above.
-            pendingItems.append(path)
+            // Route: loose files → container accumulator (presentation only).
+            // Directories, bundles, and LaunchAgent/Daemon paths → immediate trashItem().
+            // All ownership decisions were made above; this is execution routing only.
+            let isLooseFile = !pathIsDir.boolValue && !knownBundleExts.contains(pathExt)
+                && !path.contains("/LaunchAgents/") && !path.contains("/LaunchDaemons/")
+            if isLooseFile {
+                looseFiles.append(path)
+                onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
+                continue
+            }
+
+            await logger.log("Trashing \(name)...")
+            alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) START: \(path, privacy: .public)")
+            onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
+
+            let t = itemTimeout(path)
+            let trashStart = Date()
+            let (result, trashPath) = await trashItem(path: path, password: password, seconds: t)
+            let trashElapsed = Date().timeIntervalSince(trashStart)
+            switch result {
+            case .done:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) DONE: \(String(format: "%.1f", trashElapsed))s \(path, privacy: .public)")
+                await logger.log("✓ \(name) → Trash [\(String(format: "%.1f", trashElapsed))s]")
+                removed.append(path)
+                if let tp = trashPath {
+                    trashRecords.append(TrashRecord(originalPath: path, trashPath: tp))
+                }
+            case .skipped:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) SKIPPED (timeout): \(path, privacy: .public)")
+                await logger.log("⚠ Skipped (timeout \(String(format: "%.0f", t))s exceeded): \(name)")
+            case .failed:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) FAILED: \(path, privacy: .public)")
+                await logger.log("✗ Could not trash: \(name)")
+                failed.append(path)
+            }
+
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
         }
 
-        // ── Package all approved items into ATLAS Uninstall Package ─────────
-        // Creates one container folder in Trash with Files/ subdirectory and READ THIS.txt.
+        // ── Flush loose-file container ────────────────────────────────────────
+        // Groups individually approved loose files into one ATLAS Uninstall Package.
+        // Directories, bundles, and LaunchAgent/Daemon items were already moved above.
         // Falls back to individual trashItem() if container creation fails.
-        if !pendingItems.isEmpty {
+        if !looseFiles.isEmpty {
             let productLabel = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
-            onProgress?(0.88, "Moving to Trash|Packaging \(pendingItems.count) item(s)…")
-            let grouped = await trashGrouped(paths: pendingItems,
+            onProgress?(0.88, "Moving to Trash|Packaging \(looseFiles.count) file(s)…")
+            let grouped = await trashGrouped(paths: looseFiles,
                                              productLabel: productLabel,
                                              password: password)
             for (originalPath, trashPath, result) in grouped {
@@ -277,7 +310,7 @@ struct RollbackEngine {
                 }
             }
             if grouped.contains(where: { $0.2 == .done }) {
-                await logger.log("Packaged \(pendingItems.count) item(s) into ATLAS Uninstall Package")
+                await logger.log("Packaged \(looseFiles.count) loose file(s) into ATLAS Uninstall Package")
             }
         }
 
@@ -785,7 +818,31 @@ struct RollbackEngine {
             return results
         }
 
-        // Write human-readable README for the user. Non-fatal — uninstall continues if this fails.
+        var results: [(String, String, RemoveResult)] = []
+        for path in paths {
+            // Destination preserves full original path inside the Files/ subdirectory.
+            // e.g. /Library/ArturiaSC/temp/soft_001.desc2
+            //   → ~/.Trash/ATLAS — … — Uninstall Package — UUID/Files/Library/ArturiaSC/temp/soft_001.desc2
+            let dest      = container + "/Files" + path   // path always starts with "/"
+            let parentDir = URL(fileURLWithPath: dest).deletingLastPathComponent().path
+
+            let mkp = await runWithPassword(password: password,
+                                             arguments: ["/bin/mkdir", "-p", parentDir])
+            guard mkp.success else { results.append((path, "", .failed)); continue }
+
+            let mv = await runWithPassword(password: password,
+                                           arguments: ["/bin/mv", path, dest])
+            results.append((path, dest, mv.success ? .done : .failed))
+        }
+
+        // Fix ownership so the container appears under the user's account in Finder Trash.
+        let userName = NSUserName()
+        _ = await runWithPassword(password: password,
+                                   arguments: ["/usr/sbin/chown", "-R", userName, container])
+
+        // Write README after chown — container is now user-owned, so this user-space write succeeds.
+        // Written regardless of how many files succeeded or failed: a partial package still explains itself.
+        // Non-fatal: if this fails, uninstall and recovery continue normally.
         let formatter = DateFormatter()
         formatter.dateStyle = .long
         formatter.timeStyle = .short
@@ -819,28 +876,6 @@ struct RollbackEngine {
             --------------------------------
             """
         try? readmeText.write(toFile: container + "/READ THIS.txt", atomically: true, encoding: .utf8)
-
-        var results: [(String, String, RemoveResult)] = []
-        for path in paths {
-            // Destination preserves full original path inside the Files/ subdirectory.
-            // e.g. /Library/Audio/Plug-Ins/VST3/Plugin.vst3
-            //   → ~/.Trash/ATLAS — … — Uninstall Package — UUID/Files/Library/Audio/Plug-Ins/VST3/Plugin.vst3
-            let dest      = container + "/Files" + path   // path always starts with "/"
-            let parentDir = URL(fileURLWithPath: dest).deletingLastPathComponent().path
-
-            let mkp = await runWithPassword(password: password,
-                                             arguments: ["/bin/mkdir", "-p", parentDir])
-            guard mkp.success else { results.append((path, "", .failed)); continue }
-
-            let mv = await runWithPassword(password: password,
-                                           arguments: ["/bin/mv", path, dest])
-            results.append((path, dest, mv.success ? .done : .failed))
-        }
-
-        // Fix ownership so the container appears under the user's account in Finder Trash.
-        let userName = NSUserName()
-        _ = await runWithPassword(password: password,
-                                   arguments: ["/usr/sbin/chown", "-R", userName, container])
 
         return results
     }
