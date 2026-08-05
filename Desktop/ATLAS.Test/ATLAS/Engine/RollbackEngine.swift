@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 struct RollbackResult {
     let success: Bool
@@ -16,9 +17,12 @@ struct TrashRecord: Codable {
 
 struct RollbackEngine {
 
+    private static let alog = os.Logger(subsystem: "digital.interlinked.atlas", category: "rollback")
+
     static var cancellationRequested = false
 
     static func cancelRollback() {
+        alog.notice("[ATLAS-CANCEL] cancelRollback() called — setting cancellationRequested=true")
         cancellationRequested = true
     }
 
@@ -28,6 +32,7 @@ struct RollbackEngine {
                          otherRecords: [InstallRecord] = [],
                          logger: Logger,
                          onProgress: (@Sendable (Double, String) -> Void)? = nil) async -> RollbackResult {
+        alog.notice("[ATLAS-ROLLBACK] ENTER rollback() — product=\(record.fileName, privacy: .public) receipts=\(record.pkgReceiptIDs.count) installedFiles=\(record.installedFiles.count) isMainThread=\(Thread.isMainThread)")
         cancellationRequested = false
         let rollbackStart = Date()
         await logger.log("--- Rollback: \(record.fileName) ---")
@@ -42,112 +47,108 @@ struct RollbackEngine {
         var failed:       [String]      = []
         var trashRecords: [TrashRecord] = []
 
-        // ── Phase 1: Collect candidate paths (tracked files + PKG receipts only) ──
-        // ATLAS only removes what it recorded at install time — nothing else.
-        await logger.log("Scanning receipts...")
-        var candidates: [String] = []
-        candidates += record.installedFiles.map(\.destinationPath)
+        // ── Plan: Build deletion list from stored manifest (ownership-based) ──
+        // InstallRecord is the single source of truth. No filesystem scanning,
+        // no vendor inference, no receipt re-enumeration.
+        // Every product owns ONLY the paths in its own InstallRecord.
+        // Shared directories are protected: only this product's files are removed.
 
-        // Supplement stored receipt IDs with fresh scans — catches any receipts that
-        // weren't flushed to disk when we recorded them at install time.
-        let freshByName = PKGReceiptScanner.findReceiptsByName(record.fileName)
+        onProgress?(0.10, "Building uninstall plan|Reading installation manifest")
+        await logger.log("Manifest: \(record.installedFiles.count) installed file(s), \(record.runtimeCreatedPaths?.count ?? 0) runtime path(s)")
+        alog.notice("[ATLAS-ROLLBACK] PLAN START — manifest installedFiles=\(record.installedFiles.count) runtimePaths=\(record.runtimeCreatedPaths?.count ?? 0) isMainThread=\(Thread.isMainThread)")
 
-        // Also use TITAN MEMORY™ known receipt prefixes for confirmed products
-        let titanEntry  = TitanMemory.shared.lookup(name: record.fileName)
-        let allInstalled = PKGReceiptScanner.snapshotReceipts()
-        let freshByPrefix: [String] = (titanEntry?.knownReceiptPrefixes ?? []).flatMap { prefix in
-            allInstalled.filter { $0.hasPrefix(prefix) }
+        // Compute all paths owned by OTHER installed products. Used to detect
+        // shared directories and prevent removing another product's files.
+        onProgress?(0.14, "Building uninstall plan|Checking shared ownership")
+        var otherOwnedPaths = Set<String>()
+        for other in otherRecords where other.id != record.id && other.status == .success {
+            other.installedFiles.forEach { otherOwnedPaths.insert($0.destinationPath) }
+            (other.runtimeCreatedPaths ?? []).forEach { otherOwnedPaths.insert($0) }
         }
+        alog.notice("[ATLAS-ROLLBACK] otherOwnedPaths=\(otherOwnedPaths.count)")
 
-        let allReceiptIDs = Array(Set(record.pkgReceiptIDs + freshByName + freshByPrefix))
-        NSLog("[ATLAS-UNINSTALL] Phase 1: %d receipt(s) to enumerate", allReceiptIDs.count)
-        await logger.log("⏱ Phase 1: \(allReceiptIDs.count) receipt(s) to scan")
-        if allReceiptIDs.count > record.pkgReceiptIDs.count {
-            await logger.log("Supplemented \(record.pkgReceiptIDs.count) stored receipts with \(allReceiptIDs.count - record.pkgReceiptIDs.count) additional found by name")
-        }
-
-        let totalReceipts = allReceiptIDs.count
-        for (receiptIndex, receiptID) in allReceiptIDs.enumerated() {
-            onProgress?(Double(receiptIndex) / Double(max(totalReceipts, 1)) * 0.3,
-                        "Reading receipts (\(receiptIndex + 1) of \(totalReceipts))…")
-            if cancellationRequested || Task.isCancelled {
-                cancellationRequested = true
-                await logger.log("Uninstall cancelled during receipt scan.")
-                return RollbackResult(success: false, removedFiles: [], failedFiles: [],
-                                     detail: "Cancelled.")
-            }
-            let receiptStart = Date()
-            let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 10)
-            let receiptElapsed = Date().timeIntervalSince(receiptStart)
-            await logger.log("⏱ Receipt \(receiptIndex+1)/\(allReceiptIDs.count) [\(String(format: "%.1f", receiptElapsed))s] \(receiptID): \(files.count) paths")
-            if files.isEmpty {
-                // Timeout or no files — fall back to the PKG install location.
-                // Packages like Serum 2 Presets have 10k+ files; pkgutil --files
-                // takes too long. Use pkgutil --pkg-info to get the vendor directory.
-                let location = PKGReceiptScanner.installLocation(forReceipt: receiptID)
-                let pkgName  = PKGReceiptScanner.pkgName(forReceipt: receiptID)
-                // Only add if this resolves to a vendor-specific directory (not a
-                // shared container like /Library/Audio/Plug-Ins).
-                let sharedDirs: Set<String> = [
-                    "/Library/Audio/Plug-Ins/Components",
-                    "/Library/Audio/Plug-Ins/VST3",
-                    "/Library/Audio/Plug-Ins/VST",
-                    "/Library/Application Support/Avid/Audio/Plug-Ins",
-                    "/Library/Audio/Plug-Ins",
-                    "/Library/Application Support",
-                    "/Library/Audio/Presets",
-                    "/Library"
-                ]
-                if !location.isEmpty && location != "/" && !sharedDirs.contains(location) {
-                    await logger.log("Receipt \(receiptID): timed out — using install location: \(location)")
-                    candidates.append(location)
-                } else if let name = pkgName, !name.isEmpty {
-                    // Try to find a vendor directory matching the package name
-                    let vendorDirs = [
-                        "/Library/Audio/Presets/\(name)",
-                        "/Library/Application Support/\(name)",
-                        NSHomeDirectory() + "/Library/Audio/Presets/\(name)",
-                    ]
-                    for dir in vendorDirs where FileManager.default.fileExists(atPath: dir) {
-                        await logger.log("Receipt \(receiptID): adding vendor dir: \(dir)")
-                        candidates.append(dir)
-                    }
-                }
-            } else {
-                candidates += files
-            }
-        }
-
-        await logger.log("Phase 1 done — \(candidates.count) raw candidates")
-
-        if cancellationRequested || Task.isCancelled {
-            cancellationRequested = true
-            await logger.log("Uninstall cancelled during preparation.")
-            return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: "Cancelled.")
-        }
-
-        // ── Phase 1b: Runtime-created paths (precise, snapshot-based) ────────
-        // These are folders that appeared in Library dirs DURING the install
-        // (not in any PKG receipt) — recorded at install time via filesystem diff.
-        // These are trusted completely — the whole point of recording them is we KNOW
-        // the vendor created this directory fresh during the install. The untracked-items
-        // safety check (Phase 3) is bypassed for these paths.
+        var candidates = Set<String>()
         var runtimeTrustedPaths = Set<String>()
-        if let runtimePaths = record.runtimeCreatedPaths, !runtimePaths.isEmpty {
-            let otherClaimedPaths: Set<String> = otherRecords.reduce(into: []) { set, other in
-                guard other.id != record.id, other.status == .success else { return }
-                (other.runtimeCreatedPaths ?? []).forEach { set.insert($0) }
-                other.installedFiles.forEach { set.insert($0.destinationPath) }
+
+        // Manifest path: add explicitly tracked files (license assets, ZIP-installed plugins, etc.)
+        if !record.installedFiles.isEmpty {
+            onProgress?(0.18, "Building uninstall plan|Assembling file list")
+            for path in record.installedFiles.map(\.destinationPath) {
+                guard !otherOwnedPaths.contains(path) else { continue }
+                candidates.insert(path)
             }
-            for path in runtimePaths {
-                guard FileManager.default.fileExists(atPath: path) else { continue }
-                if otherClaimedPaths.contains(path) {
-                    await logger.log("Skipping shared path (owned by another product): \(path)")
-                    continue
+        }
+
+        // PKG receipt path: enumerate receipts via pkgutil.
+        // Runs when receipts are recorded, regardless of whether installedFiles is also populated.
+        // (TITAN missions record license assets in installedFiles AND PKG installs in pkgReceiptIDs —
+        // both must be processed so uninstall removes plugins AND license files.)
+        if !record.pkgReceiptIDs.isEmpty || record.installedFiles.isEmpty {
+            // Always run receipt scan when receipts exist.
+            // Also run as legacy fallback when installedFiles is empty (old records).
+            if record.installedFiles.isEmpty {
+                alog.notice("[ATLAS-ROLLBACK] LEGACY PATH — no stored manifest, enumerating receipts via pkgutil")
+            }
+            onProgress?(0.18, "Reading receipts|Enumerating PKG receipts")
+            await logger.log("Scanning receipts...")
+            let fnTask = Task.detached { PKGReceiptScanner.findReceiptsByName(record.fileName) }
+            let aiTask = Task.detached { PKGReceiptScanner.snapshotReceipts() }
+            let titanEntry   = TitanMemory.shared.lookup(name: record.fileName)
+            let freshByName  = await fnTask.value
+            let allInstalled = await aiTask.value
+            let freshByPrefix: [String] = (titanEntry?.knownReceiptPrefixes ?? []).flatMap { prefix in
+                allInstalled.filter { $0.hasPrefix(prefix) }
+            }
+            let allReceiptIDs = Array(Set(record.pkgReceiptIDs + freshByName + freshByPrefix))
+            await logger.log("Phase 1: \(allReceiptIDs.count) receipt(s) to scan")
+            let totalReceipts = allReceiptIDs.count
+            for (receiptIndex, receiptID) in allReceiptIDs.enumerated() {
+                onProgress?(0.18 + Double(receiptIndex) / Double(max(totalReceipts, 1)) * 0.10,
+                            "Reading receipts|Receipt \(receiptIndex + 1) of \(totalReceipts): \(receiptID)")
+                if cancellationRequested || Task.isCancelled {
+                    cancellationRequested = true
+                    await logger.log("Uninstall cancelled during receipt scan.")
+                    return RollbackResult(success: false, removedFiles: [], failedFiles: [],
+                                         detail: "Cancelled.")
                 }
-                candidates.append(path)
+                let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 10)
+                if files.isEmpty {
+                    let locTask = Task.detached { PKGReceiptScanner.installLocation(forReceipt: receiptID) }
+                    let pnTask  = Task.detached { PKGReceiptScanner.pkgName(forReceipt: receiptID) }
+                    let location = await locTask.value
+                    let pkgName  = await pnTask.value
+                    let sharedDirs: Set<String> = [
+                        "/Library/Audio/Plug-Ins/Components", "/Library/Audio/Plug-Ins/VST3",
+                        "/Library/Audio/Plug-Ins/VST", "/Library/Application Support/Avid/Audio/Plug-Ins",
+                        "/Library/Audio/Plug-Ins", "/Library/Application Support",
+                        "/Library/Audio/Presets", "/Library"
+                    ]
+                    if !location.isEmpty && location != "/" && !sharedDirs.contains(location) {
+                        candidates.insert(location)
+                    } else if let name = pkgName, !name.isEmpty {
+                        for dir in ["/Library/Audio/Presets/\(name)",
+                                    "/Library/Application Support/\(name)",
+                                    NSHomeDirectory() + "/Library/Audio/Presets/\(name)"]
+                        where FileManager.default.fileExists(atPath: dir) {
+                            candidates.insert(dir)
+                        }
+                    }
+                } else {
+                    files.forEach { candidates.insert($0) }
+                }
+            }
+            await logger.log("Receipt scan complete — \(candidates.count) raw candidate(s)")
+        }
+
+        // Runtime-created directories (from filesystem diff at install time)
+        for path in (record.runtimeCreatedPaths ?? []) {
+            guard !otherOwnedPaths.contains(path) else { continue }
+            let prefix = path.hasSuffix("/") ? path : path + "/"
+            if otherOwnedPaths.contains(where: { $0.hasPrefix(prefix) }) {
+                await logger.log("Shared container — contents only: \(URL(fileURLWithPath: path).lastPathComponent)")
+            } else {
+                candidates.insert(path)
                 runtimeTrustedPaths.insert(path)
-                await logger.log("Runtime-created path: \(path)")
             }
         }
 
@@ -157,84 +158,35 @@ struct RollbackEngine {
             return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: "Cancelled.")
         }
 
-        // ── Phase 1c: Vendor plist + preferences files ────────────────────────
-        // Extract vendor name(s) from PKG receipt IDs (e.g. "com.oeksound.soothe2.au"
-        // → vendor "oeksound") and scan known preference locations for matching files.
-        // Only includes files whose modification date is on or after the install date,
-        // so we never touch pre-existing preference files from an older install.
-        // ATLAS never adds a path here unless its name contains the vendor token.
-        let vendorTokens = vendorTokensFromReceipts(record.pkgReceiptIDs +
-                                                     (record.installedFiles.map {
-                                                         URL(fileURLWithPath: $0.destinationPath)
-                                                             .deletingPathExtension().lastPathComponent
-                                                     }))
-        if !vendorTokens.isEmpty {
-            let home = NSHomeDirectory()
-            // Scan preferences + caches for vendor-named files
-            let prefDirs = [
-                home + "/Library/Preferences",
-                "/Library/Preferences",
-                home + "/Library/Caches",
-            ]
-            let fm = FileManager.default
-            for dir in prefDirs {
-                guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
-                for entry in entries {
-                    let lower = entry.lowercased()
-                    // Bidirectional match: token may be a substring of the name, or vice versa.
-                    // e.g. token "oeksoundsoothe" matches directory "oeksound" via token.contains(lower)
-                    guard vendorTokens.contains(where: { lower.contains($0) }) else { continue }
-                    let full = "\(dir)/\(entry)"
-                    guard !candidates.contains(full) else { continue }
-                    // Only include if created/modified at or after install date
-                    if let attrs = try? fm.attributesOfItem(atPath: full),
-                       let mod = attrs[.modificationDate] as? Date,
-                       mod >= record.date.addingTimeInterval(-60) {   // 60s grace for clock skew
-                        candidates.append(full)
-                        runtimeTrustedPaths.insert(full)   // pref files trusted — vendor-named
-                        await logger.log("Vendor pref/cache: \(full)")
-                    }
-                }
-            }
-
-            // Scan Application Support for vendor-named directories.
-            // Many audio plugins create /Library/Application Support/<Vendor>/ at install time
-            // but PKG receipts don't list it, and some PKG installers set directory timestamps
-            // to epoch-0 (Dec 31 1969), so a date guard would incorrectly skip them.
-            // Safe because tokens are derived exclusively from this install's receipt IDs.
-            let appSupportDirs = [
-                "/Library/Application Support",
-                home + "/Library/Application Support",
-            ]
-            for dir in appSupportDirs {
-                guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
-                for entry in entries {
-                    let lower = entry.lowercased()
-                    // Never touch known browser/editor/OS app support directories
-                    guard !appSupportExclusions.contains(where: { lower == $0 || lower.hasPrefix($0) }) else { continue }
-                    guard vendorTokens.contains(where: { lower.contains($0) }) else { continue }
-                    let full = "\(dir)/\(entry)"
-                    guard !candidates.contains(full) else { continue }
-                    var isDir: ObjCBool = false
-                    fm.fileExists(atPath: full, isDirectory: &isDir)
-                    guard isDir.boolValue else { continue }
-                    candidates.append(full)
-                    runtimeTrustedPaths.insert(full)
-                    await logger.log("Vendor Application Support dir: \(full)")
-                }
-            }
+        // ── Collapse files inside plugin bundles (in-memory, no I/O) ─────────
+        // Replaces individual files inside .vst3/.component/.aaxplugin etc.
+        // with the bundle root so we trash the bundle as a single item.
+        onProgress?(0.24, "Building uninstall plan|Collapsing plugin bundles")
+        let afterBundles = collapseIntoBundles(Array(candidates))
+        // Trust bundle roots — bypass Phase 3 untracked-items safety check.
+        let knownBundleExts: Set<String> = [
+            "component", "vst3", "vst", "aaxplugin", "app",
+            "framework", "plugin", "kext", "appex", "bundle"
+        ]
+        for path in afterBundles where knownBundleExts.contains(
+            URL(fileURLWithPath: path).pathExtension.lowercased()) {
+            runtimeTrustedPaths.insert(path)
         }
 
-        // ── Phase 2: Collapse bundles, then by directory ──────────────────────
-        await logger.log("Finding installed files...")
-        let afterBundles = collapseIntoBundles(Array(Set(candidates)))
-        let collapsed    = collapseByDirectory(afterBundles)
-        let sorted       = sortByPriority(collapsed)
-
-        await logger.log("Final trash list (\(sorted.count) item(s)):")
-        for p in sorted { await logger.log("  → \(p)") }
+        let afterDirs = collapseByDirectory(afterBundles)
+        if afterDirs.count < afterBundles.count {
+            await logger.log("Folder collapse: \(afterBundles.count) → \(afterDirs.count) item(s)")
+            let priorPaths = Set(afterBundles)
+            for path in afterDirs where !priorPaths.contains(path) {
+                runtimeTrustedPaths.insert(path)
+            }
+        }
+        let sorted = sortByPriority(afterDirs)
+        let previewNames = sorted.prefix(5).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ")
+        await logger.log("Uninstall plan: \(sorted.count) item(s) — \(previewNames)\(sorted.count > 5 ? "…" : "")")
+        alog.notice("[ATLAS-ROLLBACK] PLAN COMPLETE — \(sorted.count) item(s) elapsed=\(String(format: "%.1f", Date().timeIntervalSince(rollbackStart)))s")
         await logger.log("Moving files to Trash...")
-        onProgress?(0.3, "Removing \(sorted.count) item\(sorted.count == 1 ? "" : "s")…")
+        onProgress?(0.28, "Moving to Trash|Preparing \(sorted.count) item\(sorted.count == 1 ? "" : "s")")
 
         // ── Phase 3: Move each item to Trash ──────────────────────────────────
         var alreadyGoneCount = 0
@@ -291,7 +243,8 @@ struct RollbackEngine {
             }
 
             await logger.log("Trashing \(name)...")
-            onProgress?(pct, "Removing: \(name) (\(i + 1) of \(totalItems))")
+            alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) START: \(path, privacy: .public)")
+            onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
 
             let t = itemTimeout(path)
             let trashStart = Date()
@@ -299,19 +252,22 @@ struct RollbackEngine {
             let trashElapsed = Date().timeIntervalSince(trashStart)
             switch result {
             case .done:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) DONE: \(String(format: "%.1f", trashElapsed))s \(path, privacy: .public)")
                 await logger.log("✓ \(name) → Trash [\(String(format: "%.1f", trashElapsed))s]")
                 removed.append(path)
                 if let tp = trashPath {
                     trashRecords.append(TrashRecord(originalPath: path, trashPath: tp))
                 }
             case .skipped:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) SKIPPED (timeout): \(path, privacy: .public)")
                 await logger.log("⚠ Skipped (timeout \(String(format: "%.0f", t))s exceeded): \(name)")
             case .failed:
+                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) FAILED: \(path, privacy: .public)")
                 await logger.log("✗ Could not trash: \(name)")
                 failed.append(path)
             }
 
-            onProgress?(pct, "Removing: \(name) (\(i + 1) of \(totalItems))")
+            onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
         }
 
         if alreadyGoneCount > 0 {
@@ -322,27 +278,32 @@ struct RollbackEngine {
         let manifestPath = writeTrashManifest(trashRecords, for: record.fileName)
 
         // ── Phase 5: Forget PKG receipts ─────────────────────────────────────
-        await logger.log("Removing receipts...")
-        onProgress?(0.9, "Removing receipts…")
         var forgotCount = 0
         let receiptIDsToForget = record.pkgReceiptIDs
+        alog.notice("[ATLAS-ROLLBACK] Phase5 START — forgetting \(receiptIDsToForget.count) receipt(s), elapsed=\(String(format: "%.1f", Date().timeIntervalSince(rollbackStart)))s")
+        await logger.log("Removing receipts...")
+        onProgress?(0.9, "Removing receipts|Forgetting \(receiptIDsToForget.count) receipt(s)")
         for (forgetIndex, id) in receiptIDsToForget.enumerated() {
             if cancellationRequested || Task.isCancelled {
                 cancellationRequested = true
                 await logger.log("Uninstall cancelled during receipt removal.")
                 break
             }
-            let forgot = PKGReceiptScanner.forgetReceipt(id, password: password)
+            alog.notice("[ATLAS-ROLLBACK] Phase5 forget \(forgetIndex + 1)/\(receiptIDsToForget.count): \(id, privacy: .public)")
+            // PKGReceiptScanner.forgetReceipt uses sudo + Thread.sleep — background thread.
+            let forgot = await Task.detached { PKGReceiptScanner.forgetReceipt(id, password: password) }.value
+            alog.notice("[ATLAS-ROLLBACK] Phase5 forget \(id, privacy: .public) result: \(forgot ? 1 : 0)")
             await logger.log("\(forgot ? "✓" : "✗") \(id)")
             if forgot { forgotCount += 1 }
             else { await logger.log("⚠ Could not clear receipt: \(id)") }
             onProgress?(0.9 + Double(forgetIndex + 1) / Double(max(receiptIDsToForget.count, 1)) * 0.07,
-                        "Removing receipts (\(forgetIndex + 1) of \(receiptIDsToForget.count))…")
+                        "Removing receipts|Receipt \(forgetIndex + 1) of \(receiptIDsToForget.count)")
         }
         if forgotCount > 0 { await logger.log("✓ Cleared \(forgotCount) receipt(s)") }
 
         // ── Phase 6: Clean up empty parent directories ────────────────────────
-        onProgress?(0.97, "Cleaning up…")
+        alog.notice("[ATLAS-ROLLBACK] Phase6 START — cleanup empty dirs, elapsed=\(String(format: "%.1f", Date().timeIntervalSince(rollbackStart)))s")
+        onProgress?(0.97, "Cleaning up|Removing empty directories")
         let emptyDirs = await cleanupEmptyDirs(from: removed, password: password)
         if !emptyDirs.isEmpty {
             await logger.log("Cleaned \(emptyDirs.count) empty folder(s)")
@@ -626,9 +587,12 @@ struct RollbackEngine {
         let aggregates = aggregateDirs
         var current    = Set(paths)
         var changed    = true
+        var iteration  = 0
 
         while changed {
             changed = false
+            iteration += 1
+            alog.notice("[ATLAS-ROLLBACK] collapseByDirectory iteration=\(iteration) candidates=\(current.count)")
             var byParent: [String: [String]] = [:]
             var keep = Set<String>()
 
@@ -822,8 +786,13 @@ struct RollbackEngine {
         let outputData = await pipeReadTask.value
         _ = cancelledMidway  // used below via process.isRunning path
 
-        let output   = String(data: outputData, encoding: .utf8) ?? ""
-        let location = PKGReceiptScanner.installLocation(forReceipt: receiptID)
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let lineCount = output.components(separatedBy: "\n").filter { !$0.isEmpty }.count
+        alog.notice("[ATLAS-RFWT] pipe read done for \(receiptID, privacy: .public) (\(outputData.count) bytes, \(lineCount) lines) — dispatching installLocation")
+        // PKGReceiptScanner.installLocation calls runProcess which uses Thread.sleep.
+        // Run it on a background thread so the main thread (and Cancel button) stay live.
+        let location = await Task.detached { PKGReceiptScanner.installLocation(forReceipt: receiptID) }.value
+        alog.notice("[ATLAS-RFWT] installLocation done for \(receiptID, privacy: .public): '\(location, privacy: .public)'")
         let anchors  = protectedAncestors
 
         // Bundle extensions that are directories but should be treated as files
@@ -832,11 +801,12 @@ struct RollbackEngine {
             "framework", "plugin", "kext", "appex", "bundle"
         ]
         let fm = FileManager.default
+        let rawLines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+        alog.notice("[ATLAS-RFWT] path filter ENTER — \(rawLines.count) raw lines from pkgutil, receipt=\(receiptID, privacy: .public)")
+        let filterStart = Date()
 
-        return output
-            .components(separatedBy: "\n")
+        let result = rawLines
             .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
             .compactMap { p -> String? in
                 let abs: String
                 if p.hasPrefix("/") { abs = p }
@@ -854,6 +824,9 @@ struct RollbackEngine {
                 }
                 return abs
             }
+
+        alog.notice("[ATLAS-RFWT] path filter EXIT — \(String(format: "%.1f", Date().timeIntervalSince(filterStart)))s \(rawLines.count) raw → \(result.count) file paths, receipt=\(receiptID, privacy: .public)")
+        return result
     }
 
     // MARK: - Empty directory cleanup (permanent — empty dirs have no data)
@@ -886,10 +859,13 @@ struct RollbackEngine {
             for _ in 0..<5 {
                 let p           = url.path
                 let grandparent = url.deletingLastPathComponent().path
-                // Stop if we hit a protected dir or a vendor root
                 if protected.contains(p) || p == "/" { break }
-                if aggregates.contains(grandparent) || aggregates.contains(p) { break }
+                if aggregates.contains(p) { break }
+                // Add p before checking grandparent so vendor roots directly inside
+                // aggregate dirs (e.g. /Library/Application Support/iZotope/) are
+                // included — their emptiness check is the correct guard, not this one.
                 parents.insert(p)
+                if aggregates.contains(grandparent) { break }
                 url = url.deletingLastPathComponent()
             }
         }
