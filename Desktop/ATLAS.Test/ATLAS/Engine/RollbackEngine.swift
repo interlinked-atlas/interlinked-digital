@@ -189,11 +189,11 @@ struct RollbackEngine {
         onProgress?(0.28, "Moving to Trash|Preparing \(sorted.count) item\(sorted.count == 1 ? "" : "s")")
 
         // ── Phase 3: Move each item to Trash ──────────────────────────────────
-        // Individual loose files (non-directory, non-bundle) are accumulated and
-        // grouped into a single ATLAS Trash container after all safety checks pass.
+        // All approved items are accumulated and packaged into one ATLAS Uninstall
+        // Package folder in Trash after all safety checks pass.
         // All ownership decisions, guards, and safety checks are unchanged.
         var alreadyGoneCount = 0
-        var looseFiles: [String] = []   // individual files queued for container grouping
+        var pendingItems: [String] = []   // all approved items queued for ATLAS Uninstall Package
 
         let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
@@ -246,59 +246,27 @@ struct RollbackEngine {
                                          arguments: ["/bin/launchctl", "unload", path])
             }
 
-            // Route: individual loose files → container accumulator (presentation only).
-            // Directories, bundles, and LaunchAgent/Daemon paths → immediate trashItem().
-            // All ownership decisions were made above; this is execution routing only.
-            let isLooseFile = !pathIsDir.boolValue && !knownBundleExts.contains(pathExt)
-                && !path.contains("/LaunchAgents/") && !path.contains("/LaunchDaemons/")
-            if isLooseFile {
-                looseFiles.append(path)
-                onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
-                continue
-            }
-
-            await logger.log("Trashing \(name)...")
-            alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) START: \(path, privacy: .public)")
-            onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
-
-            let t = itemTimeout(path)
-            let trashStart = Date()
-            let (result, trashPath) = await trashItem(path: path, password: password, seconds: t)
-            let trashElapsed = Date().timeIntervalSince(trashStart)
-            switch result {
-            case .done:
-                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) DONE: \(String(format: "%.1f", trashElapsed))s \(path, privacy: .public)")
-                await logger.log("✓ \(name) → Trash [\(String(format: "%.1f", trashElapsed))s]")
-                removed.append(path)
-                if let tp = trashPath {
-                    trashRecords.append(TrashRecord(originalPath: path, trashPath: tp))
-                }
-            case .skipped:
-                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) SKIPPED (timeout): \(path, privacy: .public)")
-                await logger.log("⚠ Skipped (timeout \(String(format: "%.0f", t))s exceeded): \(name)")
-            case .failed:
-                alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) FAILED: \(path, privacy: .public)")
-                await logger.log("✗ Could not trash: \(name)")
-                failed.append(path)
-            }
-
+            // All approved items (loose files, bundles, directories, LaunchAgents/Daemons)
+            // join the unified accumulator. Packaging into the ATLAS Uninstall Package
+            // happens after the loop. Ownership decisions and safety checks are above.
+            pendingItems.append(path)
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
         }
 
-        // ── Flush loose-file container ────────────────────────────────────────
-        // Groups individually approved loose files into one ATLAS Trash folder.
+        // ── Package all approved items into ATLAS Uninstall Package ─────────
+        // Creates one container folder in Trash with Files/ subdirectory and READ THIS.txt.
         // Falls back to individual trashItem() if container creation fails.
-        if !looseFiles.isEmpty {
+        if !pendingItems.isEmpty {
             let productLabel = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
-            onProgress?(0.88, "Moving to Trash|Grouping \(looseFiles.count) file(s)…")
-            let grouped = await trashGrouped(paths: looseFiles,
+            onProgress?(0.88, "Moving to Trash|Packaging \(pendingItems.count) item(s)…")
+            let grouped = await trashGrouped(paths: pendingItems,
                                              productLabel: productLabel,
                                              password: password)
             for (originalPath, trashPath, result) in grouped {
                 let name = URL(fileURLWithPath: originalPath).lastPathComponent
                 switch result {
                 case .done:
-                    await logger.log("✓ \(name) → Trash (grouped)")
+                    await logger.log("✓ \(name) → Trash (packaged)")
                     removed.append(originalPath)
                     trashRecords.append(TrashRecord(originalPath: originalPath, trashPath: trashPath))
                 case .skipped:
@@ -309,7 +277,7 @@ struct RollbackEngine {
                 }
             }
             if grouped.contains(where: { $0.2 == .done }) {
-                await logger.log("Grouped \(looseFiles.count) file(s) into ATLAS Trash container")
+                await logger.log("Packaged \(pendingItems.count) item(s) into ATLAS Uninstall Package")
             }
         }
 
@@ -494,6 +462,31 @@ struct RollbackEngine {
         }
 
         await logger.log("Recovery complete — \(restoredCount)/\(records.count) file(s) recovered")
+
+        // ── Post-restore cleanup: remove ATLAS Uninstall Package if complete ──
+        // Identifies container roots referenced by this manifest. Removes the
+        // container only when nothing remains inside it — meaning every item was
+        // either successfully restored or is no longer present in Trash.
+        // If restore was partial, the container is preserved for remaining recovery.
+        var containerRoots = Set<String>()
+        for rec in records {
+            if let root = uninstallContainerRoot(from: rec.trashPath) {
+                containerRoots.insert(root)
+            }
+        }
+        for root in containerRoots {
+            let anyRemaining = records.contains { rec in
+                guard let recRoot = uninstallContainerRoot(from: rec.trashPath) else { return false }
+                return recRoot == root && FileManager.default.fileExists(atPath: rec.trashPath)
+            }
+            if !anyRemaining {
+                try? FileManager.default.removeItem(atPath: root + "/READ THIS.txt")
+                try? FileManager.default.removeItem(atPath: root + "/Files")
+                try? FileManager.default.removeItem(atPath: root)
+                await logger.log("Removed ATLAS Uninstall Package (recovery complete)")
+            }
+        }
+
         return restoredCount > 0
     }
 
@@ -776,8 +769,9 @@ struct RollbackEngine {
             .replacingOccurrences(of: "[^a-zA-Z0-9 _\\-]", with: "_", options: .regularExpression)
             .prefix(40)
         let uuid8     = UUID().uuidString.prefix(8)
-        let container = uniqueTrashPath(for: "\(trashDir)/ATLAS — \(safeName) — \(uuid8)",
-                                        in: trashDir)
+        let container = uniqueTrashPath(
+            for: "\(trashDir)/ATLAS — \(safeName) — Uninstall Package — \(uuid8)",
+            in: trashDir)
 
         // Create the container directory. If this fails, fall back to individual trash.
         let mkdir = await runWithPassword(password: password,
@@ -791,12 +785,47 @@ struct RollbackEngine {
             return results
         }
 
+        // Write human-readable README for the user. Non-fatal — uninstall continues if this fails.
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        let dateString = formatter.string(from: Date())
+        let readmeText = """
+            --------------------------------
+
+            ATLAS Uninstall Recovery Package
+
+            Product:
+            \(productLabel)
+
+            Uninstall Date:
+            \(dateString)
+
+            This folder contains files removed during the ATLAS uninstall process.
+
+            ATLAS organized these files into this recovery package so they can be restored using:
+
+            ATLAS → History → Undo Uninstall
+
+            IMPORTANT:
+            Do not rename, move, edit, or modify files inside this folder if you want ATLAS recovery to remain available.
+
+            The Files folder preserves the original directory structure.
+
+            You may permanently delete this entire folder if you no longer need recovery.
+
+            Created by ATLAS.
+
+            --------------------------------
+            """
+        try? readmeText.write(toFile: container + "/READ THIS.txt", atomically: true, encoding: .utf8)
+
         var results: [(String, String, RemoveResult)] = []
         for path in paths {
-            // Destination preserves full original path as relative structure inside container.
-            // e.g. /Library/ArturiaSC/.../soft_1.desc2
-            //   → ~/.Trash/ATLAS—…/Library/ArturiaSC/.../soft_1.desc2
-            let dest = container + path   // path always starts with "/"
+            // Destination preserves full original path inside the Files/ subdirectory.
+            // e.g. /Library/Audio/Plug-Ins/VST3/Plugin.vst3
+            //   → ~/.Trash/ATLAS — … — Uninstall Package — UUID/Files/Library/Audio/Plug-Ins/VST3/Plugin.vst3
+            let dest      = container + "/Files" + path   // path always starts with "/"
             let parentDir = URL(fileURLWithPath: dest).deletingLastPathComponent().path
 
             let mkp = await runWithPassword(password: password,
@@ -814,6 +843,13 @@ struct RollbackEngine {
                                    arguments: ["/usr/sbin/chown", "-R", userName, container])
 
         return results
+    }
+
+    // Extracts the ATLAS Uninstall Package root directory from a trashPath that includes "/Files/".
+    // Returns nil for paths not inside a container (e.g. individual trashItem() fallback paths).
+    private static func uninstallContainerRoot(from trashPath: String) -> String? {
+        guard let range = trashPath.range(of: "/Files/") else { return nil }
+        return String(trashPath[..<range.lowerBound])
     }
 
     // Generates a unique destination path in trashDir to avoid overwriting existing items.
