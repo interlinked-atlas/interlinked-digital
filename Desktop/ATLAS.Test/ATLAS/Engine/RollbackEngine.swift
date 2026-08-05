@@ -567,6 +567,7 @@ struct RollbackEngine {
     private static var aggregateDirs: Set<String> {
         let home = NSHomeDirectory()
         return [
+            "/Library",
             "/Library/Application Support",
             "/Library/Audio/Plug-Ins",
             "/Library/Audio/Presets",
