@@ -57,8 +57,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
   }
 
-  // Build claims: 30-day TTL
-  const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+  // Build claims: 24-hour TTL
+  const exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60
   const claims = {
     u: user.id,
     h: hardwareUUID,
