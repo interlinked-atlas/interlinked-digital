@@ -189,7 +189,11 @@ struct RollbackEngine {
         onProgress?(0.28, "Moving to Trash|Preparing \(sorted.count) item\(sorted.count == 1 ? "" : "s")")
 
         // ── Phase 3: Move each item to Trash ──────────────────────────────────
+        // Individual loose files (non-directory, non-bundle) are accumulated and
+        // grouped into a single ATLAS Trash container after all safety checks pass.
+        // All ownership decisions, guards, and safety checks are unchanged.
         var alreadyGoneCount = 0
+        var looseFiles: [String] = []   // individual files queued for container grouping
 
         let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
@@ -242,6 +246,17 @@ struct RollbackEngine {
                                          arguments: ["/bin/launchctl", "unload", path])
             }
 
+            // Route: individual loose files → container accumulator (presentation only).
+            // Directories, bundles, and LaunchAgent/Daemon paths → immediate trashItem().
+            // All ownership decisions were made above; this is execution routing only.
+            let isLooseFile = !pathIsDir.boolValue && !knownBundleExts.contains(pathExt)
+                && !path.contains("/LaunchAgents/") && !path.contains("/LaunchDaemons/")
+            if isLooseFile {
+                looseFiles.append(path)
+                onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
+                continue
+            }
+
             await logger.log("Trashing \(name)...")
             alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) START: \(path, privacy: .public)")
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
@@ -268,6 +283,34 @@ struct RollbackEngine {
             }
 
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
+        }
+
+        // ── Flush loose-file container ────────────────────────────────────────
+        // Groups individually approved loose files into one ATLAS Trash folder.
+        // Falls back to individual trashItem() if container creation fails.
+        if !looseFiles.isEmpty {
+            let productLabel = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
+            onProgress?(0.88, "Moving to Trash|Grouping \(looseFiles.count) file(s)…")
+            let grouped = await trashGrouped(paths: looseFiles,
+                                             productLabel: productLabel,
+                                             password: password)
+            for (originalPath, trashPath, result) in grouped {
+                let name = URL(fileURLWithPath: originalPath).lastPathComponent
+                switch result {
+                case .done:
+                    await logger.log("✓ \(name) → Trash (grouped)")
+                    removed.append(originalPath)
+                    trashRecords.append(TrashRecord(originalPath: originalPath, trashPath: trashPath))
+                case .skipped:
+                    await logger.log("⚠ Skipped (timeout): \(name)")
+                case .failed:
+                    await logger.log("✗ Could not trash: \(name)")
+                    failed.append(originalPath)
+                }
+            }
+            if grouped.contains(where: { $0.2 == .done }) {
+                await logger.log("Grouped \(looseFiles.count) file(s) into ATLAS Trash container")
+            }
         }
 
         if alreadyGoneCount > 0 {
@@ -716,6 +759,61 @@ struct RollbackEngine {
                                   arguments: ["/usr/sbin/chown", "-R", userName, dest])
 
         return (.done, dest)
+    }
+
+    // Groups individually approved loose files into a single ATLAS Trash container folder.
+    // All ownership decisions were made before calling this — this is presentation routing only.
+    // Each file gets its own TrashRecord; originalPath is exact; trashPath points inside container.
+    // Falls back to individual trashItem() calls if the container cannot be created.
+    private static func trashGrouped(
+        paths: [String],
+        productLabel: String,
+        password: String
+    ) async -> [(originalPath: String, trashPath: String, result: RemoveResult)] {
+
+        let trashDir  = NSHomeDirectory() + "/.Trash"
+        let safeName  = productLabel
+            .replacingOccurrences(of: "[^a-zA-Z0-9 _\\-]", with: "_", options: .regularExpression)
+            .prefix(40)
+        let uuid8     = UUID().uuidString.prefix(8)
+        let container = uniqueTrashPath(for: "\(trashDir)/ATLAS — \(safeName) — \(uuid8)",
+                                        in: trashDir)
+
+        // Create the container directory. If this fails, fall back to individual trash.
+        let mkdir = await runWithPassword(password: password,
+                                          arguments: ["/bin/mkdir", "-p", container])
+        guard mkdir.success else {
+            var results: [(String, String, RemoveResult)] = []
+            for path in paths {
+                let (r, tp) = await trashItem(path: path, password: password, seconds: itemTimeout(path))
+                results.append((path, tp ?? "", r))
+            }
+            return results
+        }
+
+        var results: [(String, String, RemoveResult)] = []
+        for path in paths {
+            // Destination preserves full original path as relative structure inside container.
+            // e.g. /Library/ArturiaSC/.../soft_1.desc2
+            //   → ~/.Trash/ATLAS—…/Library/ArturiaSC/.../soft_1.desc2
+            let dest = container + path   // path always starts with "/"
+            let parentDir = URL(fileURLWithPath: dest).deletingLastPathComponent().path
+
+            let mkp = await runWithPassword(password: password,
+                                             arguments: ["/bin/mkdir", "-p", parentDir])
+            guard mkp.success else { results.append((path, "", .failed)); continue }
+
+            let mv = await runWithPassword(password: password,
+                                           arguments: ["/bin/mv", path, dest])
+            results.append((path, dest, mv.success ? .done : .failed))
+        }
+
+        // Fix ownership so the container appears under the user's account in Finder Trash.
+        let userName = NSUserName()
+        _ = await runWithPassword(password: password,
+                                   arguments: ["/usr/sbin/chown", "-R", userName, container])
+
+        return results
     }
 
     // Generates a unique destination path in trashDir to avoid overwriting existing items.
