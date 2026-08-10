@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { file_name, file_size, storage_path, platform, target_device_id } = await req.json()
+  const { file_name, file_size, storage_path, platform, target_device_id, arch } = await req.json()
   if (!file_name || !storage_path || typeof file_size !== 'number') {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     storage_path,
     platform:         platform ?? 'unknown',
     target_device_id: target_device_id ?? null,
+    arch:             arch ?? null,
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

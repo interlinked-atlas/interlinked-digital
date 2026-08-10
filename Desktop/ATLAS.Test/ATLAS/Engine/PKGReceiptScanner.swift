@@ -44,10 +44,13 @@ struct PKGReceiptScanner {
     static func findReceiptsByName(_ name: String) -> [String] {
         let all = snapshotReceipts()
 
-        // Extract meaningful words (5+ chars, skip common words)
+        // Extract meaningful words (5+ chars, skip common words and ATLAS's own name)
         let skipWords = ["audio", "plugin", "installer", "setup",
                         "install", "macos", "universal", "moria",
-                        "moria", "crack", "patch"]
+                        "crack", "patch",
+                        // Never use ATLAS's own name as a receipt search keyword —
+                        // would match digital.interlinked.atlas.* and trash the app itself.
+                        "atlas", "interlinked", "titan", "digital"]
         let keywords = name
             .replacingOccurrences(of: ".pkg", with: "")
             .replacingOccurrences(of: ".dmg", with: "")
@@ -61,9 +64,13 @@ struct PKGReceiptScanner {
         guard !keywords.isEmpty else { return [] }
 
         return all.filter { receipt in
-            let lower = receipt.lowercased()
-            // Must match at least one keyword
-            return keywords.contains { lower.contains($0) }
+            // Token-boundary match: split receipt ID on component delimiters and
+            // require the keyword to exactly equal one segment. Prevents "final"
+            // from matching "com.finalmix.*" because "finalmix" ≠ "final".
+            let segments = Set(receipt.lowercased()
+                .components(separatedBy: CharacterSet(charactersIn: "._-"))
+                .filter { !$0.isEmpty })
+            return keywords.contains { segments.contains($0) }
         }.sorted()
     }
 
@@ -172,6 +179,7 @@ struct PKGReceiptScanner {
 
         do {
             try process.run()
+            pipe.fileHandleForWriting.closeFile()
         } catch {
             return (false, error.localizedDescription)
         }
@@ -214,6 +222,7 @@ struct PKGReceiptScanner {
             try process.run()
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
             inputPipe.fileHandleForWriting.closeFile()
+            outputPipe.fileHandleForWriting.closeFile()
         } catch {
             return (false, error.localizedDescription)
         }

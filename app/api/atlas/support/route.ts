@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { issue_type, message, attached_log_id, attached_log_content } = body
+  const { issue_type, message, attached_log_id, attached_log_content, product_name, product_status } = body
 
   if (!message?.trim()) {
     return NextResponse.json({ error: 'Message is required' }, { status: 400 })
@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
     message:              message.trim(),
     attached_log_id:      attached_log_id    ?? null,
     attached_log_content: attached_log_content ?? null,
+    product_name:         product_name        ?? null,
+    product_status:       product_status      ?? null,
     status:               'open',
   })
 

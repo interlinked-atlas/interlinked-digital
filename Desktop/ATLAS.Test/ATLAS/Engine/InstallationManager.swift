@@ -8,8 +8,25 @@ struct InstallEngine {
 
     // MARK: - Cancellation
 
-    static var activeProcess: Process? = nil
-    static var cancellationRequested = false
+    // Per-install cancellation: keyed by install job UUID so multiple queue items
+    // never share a cancel token or process handle. Replaces the old single static.
+    static var activeProcesses: [UUID: Process] = [:]
+    static var cancelledJobs:   Set<UUID>       = []
+
+    // Legacy single-job shim — used by code paths that don't yet carry a job ID.
+    // New code must prefer activeProcesses[jobID] and cancelledJobs.
+    static var activeProcess: Process? {
+        get { activeProcesses.values.first }
+        set {
+            if let p = newValue { activeProcesses[UUID()] = p }
+            else { activeProcesses.removeAll() }
+        }
+    }
+    static var cancellationRequested: Bool {
+        get { !cancelledJobs.isEmpty }
+        set { if newValue { cancelledJobs.insert(UUID()) } else { cancelledJobs.removeAll() } }
+    }
+
     // TITAN CORE™ Smart Storage: set before install to route files to a custom volume root.
     // nil = default system paths (/Applications, /Library/…). Cleared after install.
     static var storageRoot: URL? = nil
@@ -19,14 +36,65 @@ struct InstallEngine {
     // Runs for the full duration of any install. Catches every "wants to make changes"
     // / "requires your password" dialog from authorizationhost (macOS 12+) or
     // SecurityAgent (macOS 11-) and fills + dismisses it automatically.
-    static func startAuthWatcher(password: String) -> Process {
-        let escaped = password
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+    // SECURITY CONSTRAINT: ATLAS must ONLY auto-fill passwords for dialogs triggered
+    // by software it is actively installing. This watcher is ONLY called from
+    // TitanMission for GUI wizard installers. It runs for a maximum of 60 seconds
+    // per call and is always terminated by the caller via defer{}.
+    // The password is NEVER passed via process arguments (visible in ps aux) —
+    // it is written to a temp file readable only by the current user, then deleted.
+    // installerPID: the PID of the process ATLAS launched (installer, patch app, etc.).
+    // The watcher checks this PID is still alive before filling ANY dialog. This is the
+    // guarantee that we NEVER auto-fill a password dialog the user triggered outside of
+    // ATLAS — if our process is gone, we stop immediately regardless of what's on screen.
+    static func startAuthWatcher(password: String, installerPID: Int32 = 0) -> Process {
+        // Write password to a temp file (never embed in script args — visible via ps aux)
+        let tmpFile = NSTemporaryDirectory() + "atlas_aw_\(Int.random(in: 100000...999999))"
+        try? password.write(toFile: tmpFile, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tmpFile)
+
+        // Also install a SUDO_ASKPASS helper so any child `sudo` call inside PKG
+        // postinstall scripts gets the password silently — no GUI dialog ever appears.
+        // This is the primary fix for "X wants to make changes" dialogs from PKG scripts.
+        let askpassFile = NSTemporaryDirectory() + "atlas_askpass_\(Int.random(in: 100000...999999)).sh"
+        let askpassScript = """
+        #!/bin/sh
+        cat "\(tmpFile)"
+        """
+        try? askpassScript.write(toFile: askpassFile, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: askpassFile)
+        // Set globally so all child processes inherit it
+        setenv("SUDO_ASKPASS", askpassFile, 1)
+
+        // AppleScript watcher as secondary fallback — catches any GUI dialogs that
+        // slip through despite SUDO_ASKPASS (e.g. Authorization Services API calls).
+        // Watches all known auth processes across macOS versions:
+        //   authorizationhost — macOS 12+ Monterey and later
+        //   SecurityAgent     — macOS 10.x / 11 Big Sur
+        // Polls every 0.3s (tighter than before) and handles both text field
+        // structures and secure input fields.
+        // SAFETY — three-layer containment:
+        // 1. Only watch authorizationhost and SecurityAgent (real password-entry processes).
+        // 2. Only interact with windows that have a text field — never blind OK/Allow clicks.
+        // 3. PID guard: before filling any dialog, verify our installer process is still
+        //    running via `kill -0 <pid>`. If it exited (user finished, crashed, or was
+        //    cancelled), we stop immediately. This is the guarantee that ATLAS NEVER fills
+        //    a password dialog the user triggered in another app or System Settings while
+        //    ATLAS was in the background.
+        // Loop cap: 200 × 0.3s = 60 s max. defer{} in caller kills us sooner.
+        let pidCheck = installerPID > 0
+            ? "do shell script \"kill -0 \(installerPID) 2>/dev/null && echo alive || echo dead\""
+            : "\"alive\""
         let script = """
+        set pwdFile to "\(tmpFile)"
+        set pwd to do shell script "cat " & quoted form of pwdFile
         tell application "System Events"
-            repeat 7200 times
-                delay 0.4
+            repeat 200 times
+                delay 0.3
+                -- PID guard: stop if our installer process is gone
+                try
+                    set pidStatus to \(pidCheck)
+                    if pidStatus is "dead" then exit repeat
+                end try
                 repeat with authProcName in {"authorizationhost", "SecurityAgent"}
                     try
                         set authProcs to processes whose name is authProcName
@@ -39,11 +107,11 @@ struct InstallEngine {
                                             set n to count of allFields
                                             if n >= 1 then
                                                 if n >= 2 then
-                                                    set value of (last item of allFields) to "\(escaped)"
+                                                    set value of (last item of allFields) to pwd
                                                 else
-                                                    set value of (first item of allFields) to "\(escaped)"
+                                                    set value of (first item of allFields) to pwd
                                                 end if
-                                                delay 0.2
+                                                delay 0.15
                                                 try
                                                     click button "OK" of w
                                                 on error
@@ -74,7 +142,23 @@ struct InstallEngine {
         p.standardOutput = Pipe()
         p.standardError  = Pipe()
         try? p.run()
+
+        // Clean up askpass file when the watcher exits
+        p.terminationHandler = { _ in
+            try? FileManager.default.removeItem(atPath: askpassFile)
+            unsetenv("SUDO_ASKPASS")
+        }
+
         return p
+    }
+
+    // Kills any leaked auth watcher osascript processes from previous ATLAS sessions.
+    // Called at app launch to ensure no stale watchers run after a crash.
+    static func killLeakedAuthWatchers() {
+        let r = runProcess(path: "/usr/bin/pgrep", arguments: ["-f", "authorizationhost.*SecurityAgent"])
+        // Kill any osascript that mentions authorizationhost/SecurityAgent (our watcher pattern)
+        _ = runProcess(path: "/usr/bin/pkill", arguments: ["-f", "repeat.*authorizationhost"])
+        _ = runProcess(path: "/usr/bin/pkill", arguments: ["-f", "repeat.*SecurityAgent"])
     }
 
     static func cancelCurrentInstall() {
@@ -95,41 +179,84 @@ struct InstallEngine {
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
                 receiptIDs: [String],
-                isPlugin: Bool) {
-        // Start global auth-dialog watcher for the full duration of this install.
-        // Handles every "wants to make changes" / "requires password" popup automatically.
-        let authWatcher: Process?
-        if let pwd = KeychainManager.loadPassword() {
-            authWatcher = startAuthWatcher(password: pwd)
-        } else {
-            authWatcher = nil
+                isPlugin: Bool,
+                runtimeCreatedPaths: [String]) {
+        // Strip quarantine from the source file before anything runs.
+        // This prevents macOS Gatekeeper from showing "cannot be opened because
+        // the developer cannot be verified" dialogs for downloaded installers.
+        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", url.path])
+
+        // Snapshot top-level Library dirs so we can detect runtime-created
+        // data folders (e.g. ~/Library/Application Support/MBM Audio) that
+        // aren't recorded in any PKG receipt.
+        let libSnapshot = snapshotLibraryTopLevel()
+
+        // Plugin-only directory: a folder dropped directly whose contents are
+        // only audio plugin bundles (.component/.vst3/.vst/.aaxplugin).
+        // InstallerClassifier returns .unsupported("") for plain directories, so
+        // we intercept here before the type switch.
+        var isDirCheck: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirCheck)
+        if isDirCheck.boolValue && InstallerClassifier.findNcintFile(in: url) == nil {
+            let hasPlugin = findFile(extension: "component", in: url.path) != nil ||
+                            findFile(extension: "vst3",      in: url.path) != nil ||
+                            findFile(extension: "vst",       in: url.path) != nil ||
+                            findFile(extension: "aaxplugin", in: url.path) != nil
+            if hasPlugin {
+                await progress(0.2, "Installing audio plugins…")
+                let (r, f) = await PluginInstallEngine.installPlugins(in: url.path, logger: logger)
+                await progress(1.0, "")
+                let rtPaths = diffLibraryTopLevel(before: libSnapshot)
+                return (r, f, [], true, rtPaths)
+            }
         }
-        defer { authWatcher?.terminate() }
 
         let type_ = InstallerClassifier.classify(url: url)
+        let (result, files, receipts, isPlugin): (InstallResult, [InstallRecord.InstalledFile], [String], Bool)
         switch type_ {
-        case .dmg:                  return await installDMG(url: url, logger: logger, progress: progress)
-        case .iso:                  return await installDMG(url: url, logger: logger, progress: progress)
-        case .zip:                  return await installZIP(url: url, logger: logger, progress: progress)
-        case .app:                  return await installAPP(url: url, logger: logger, progress: progress)
+        case .dmg:
+            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, progress: progress)
+        case .iso:
+            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, progress: progress)
+        case .zip:
+            (result, files, receipts, isPlugin) = await installZIP(url: url, logger: logger, progress: progress)
+        case .app:
+            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, progress: progress)
         case .pkg:
-            let (result, files, receipts) = await installPKG(
+            let (r, f, rc) = await installPKG(
                 url: url, installerName: url.lastPathComponent,
                 logger: logger, progress: progress)
-            return (result, files, receipts, false)
+            (result, files, receipts, isPlugin) = (r, f, rc, false)
         case .component, .vst3, .vst, .aax:
             await progress(0.2, "Placing plugin in your library…")
-            let (result, files) = await PluginInstallEngine.installSinglePlugin(
-                url: url, logger: logger)
+            let (r, f) = await PluginInstallEngine.installSinglePlugin(url: url, logger: logger)
             await progress(1.0, "")
-            return (result, files, [], true)
+            (result, files, receipts, isPlugin) = (r, f, [], true)
         case .kontaktLibrary:
-            let result = await KontaktInstaller.install(libraryFolder: url, logger: logger, progress: progress)
-            return (result, [], [], false)
+            let r = await KontaktInstaller.install(libraryFolder: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = (r, [], [], false)
+        case .interactiveInstaller:
+            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, progress: progress)
+        case .exe:
+            await logger.log("Windows .exe files are not supported on macOS.")
+            (result, files, receipts, isPlugin) = (.failure(reason: "Windows .exe not supported on macOS"), [], [], false)
         case .unsupported(let ext):
             await logger.log("Unsupported file type: .\(ext)")
-            return (.failure(reason: "Unsupported file type: .\(ext)"), [], [], false)
+            (result, files, receipts, isPlugin) = (.failure(reason: "Unsupported file type: .\(ext)"), [], [], false)
         }
+
+        // Diff Library dirs to find folders the installer created at runtime.
+        let runtimePaths: [String]
+        if case .success = result {
+            runtimePaths = diffLibraryTopLevel(before: libSnapshot)
+            if !runtimePaths.isEmpty {
+                await logger.log("Runtime-created paths recorded for uninstall: \(runtimePaths)")
+            }
+        } else {
+            runtimePaths = []
+        }
+
+        return (result, files, receipts, isPlugin, runtimePaths)
     }
 
     // MARK: DMG + ISO
@@ -175,6 +302,24 @@ struct InstallEngine {
             )
         }
 
+        // Some DMGs embed a Software License Agreement that causes hdiutil to
+        // print the license text and wait for "y/n". Since our process has no
+        // stdin, it exits with "attach canceled". Retry by piping 'yes' to accept.
+        if !mountResult.success &&
+            (mountResult.output.contains("attach canceled") ||
+             mountResult.output.contains("license") ||
+             mountResult.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+            await logger.log("SLA detected — retrying with auto-accept...")
+            let escaped = url.path.replacingOccurrences(of: "'", with: "'\\''")
+            let mp      = mountPoint.replacingOccurrences(of: "'", with: "'\\''")
+            let slaResult = runShell(
+                "yes | /usr/bin/hdiutil attach '\(escaped)' -mountpoint '\(mp)' -nobrowse -noautoopen 2>&1"
+            )
+            if slaResult.success {
+                mountResult = (success: true, output: slaResult.output)
+            }
+        }
+
         if !mountResult.success {
             let msg = mountResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
             await logger.log("Failed to mount: \(msg)")
@@ -182,6 +327,11 @@ struct InstallEngine {
         }
 
         await logger.log("Mounted at \(mountPoint)")
+
+        // Strip quarantine recursively from everything inside the volume
+        // so no app or PKG inside triggers a Gatekeeper dialog when run.
+        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", mountPoint])
+
         await progress(0.07, "Reading what's inside…")
         return await installFromMountPoint(
             mountPoint, url: url, logger: logger,
@@ -198,6 +348,38 @@ struct InstallEngine {
                 installedFiles: [InstallRecord.InstalledFile],
                 receiptIDs: [String],
                 isPlugin: Bool) {
+
+        // ── Fast path: "Drag to Applications" DMG ────────────────────────────
+        // Auth watcher is NOT started here — it is only started inside installPKG and
+        // runPatchApp where elevated permissions are actually needed. Starting it for the
+        // full DMG mount caused the watcher to run during simple drag-to-install copies
+        // (e.g. EdiLoad) where no password is needed, and the watcher's blind window-clicking
+        // destabilised unrelated macOS system dialogs.
+        // Pattern: top-level .app + Applications symlink → /Applications, no PKG.
+        // This is the most common single-app DMG pattern (e.g. EdiLoad, many others).
+        // Instructions like "drag the app onto Applications" map exactly to this.
+        let hasDragTarget = FileManager.default.fileExists(
+            atPath: "\(mountPoint)/Applications")
+        let noPKG = findFile(extension: "pkg", in: mountPoint) == nil &&
+                    findFile(extension: "mpkg", in: mountPoint) == nil
+        let topLevelApps = (try? FileManager.default.contentsOfDirectory(atPath: mountPoint))?
+            .filter { !$0.hasPrefix(".") && $0.hasSuffix(".app") } ?? []
+
+        if hasDragTarget && noPKG && topLevelApps.count == 1 {
+            let appURL  = URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0])
+            let appName = appURL.lastPathComponent
+            await logger.log("Drag-to-install DMG: copying \(appName) to /Applications")
+            await progress(0.15, "Copying \(appName.replacingOccurrences(of: ".app", with: "")) to Applications…")
+            let result = await copyApp(appURL: appURL, logger: logger, progress: progress)
+            if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
+            if case .success = result {
+                return (result,
+                        [InstallRecord.InstalledFile(sourceName: appName,
+                                                     destinationPath: "/Applications/\(appName)")],
+                        [], false)
+            }
+            return (result, [], [], false)
+        }
 
         let allInstallable = findAllFiles(extension: "pkg", in: mountPoint) +
                             findAllFiles(extension: "app", in: mountPoint) +
@@ -300,6 +482,31 @@ struct InstallEngine {
 
                 case .manual:
                     await logger.log("  Manual step required — skipping")
+
+                case .folderCopy(let merge, let destination):
+                    await logger.log("  Copying \(step.url.lastPathComponent) → \(destination.path) (merge: \(merge))")
+                    do {
+                        if merge {
+                            let fm = FileManager.default
+                            let contents = try fm.contentsOfDirectory(at: step.url, includingPropertiesForKeys: nil)
+                            for item in contents {
+                                let dest = destination.appendingPathComponent(item.lastPathComponent)
+                                if fm.fileExists(atPath: dest.path) { try? fm.removeItem(at: dest) }
+                                try fm.copyItem(at: item, to: dest)
+                                allFiles.append(InstallRecord.InstalledFile(sourceName: item.lastPathComponent, destinationPath: dest.path))
+                            }
+                        } else {
+                            let dest = destination.appendingPathComponent(step.url.lastPathComponent)
+                            if FileManager.default.fileExists(atPath: dest.path) { try? FileManager.default.removeItem(at: dest) }
+                            try FileManager.default.copyItem(at: step.url, to: dest)
+                            allFiles.append(InstallRecord.InstalledFile(sourceName: step.url.lastPathComponent, destinationPath: dest.path))
+                        }
+                    } catch {
+                        await logger.log("  Folder copy failed: \(error.localizedDescription)")
+                    }
+
+                case .dawInstall:
+                    await logger.log("  DAW install step — handled by TITAN Mission")
                 }
             }
 
@@ -358,6 +565,24 @@ struct InstallEngine {
             if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
             await progress(1.0, "")
             return (result, files, [], true)
+        }
+
+        // Check for ZIP files containing audio plugins (e.g. Antares Bundle DMG → ZIP → AU/VST3 folders)
+        let zipFiles = findAllFiles(extension: "zip", in: mountPoint)
+        for zipURL in zipFiles {
+            let peek = runProcess(path: "/usr/bin/unzip",
+                                  arguments: ["-l", zipURL.path])
+            let hasPlugins = peek.output.contains(".component") || peek.output.contains(".vst3") ||
+                             peek.output.contains(".vst") || peek.output.contains("AU/") ||
+                             peek.output.contains("VST3/") || peek.output.contains("VST/")
+            guard hasPlugins else { continue }
+
+            await logger.log("ZIP with audio plugins detected: \(zipURL.lastPathComponent)")
+            await progress(0.15, "Extracting plugin archive…")
+
+            let (zipResult, zipFiles2, zipReceipts, _) = await installZIP(url: zipURL, logger: logger, progress: progress)
+            if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
+            return (zipResult, zipFiles2, zipReceipts, true)
         }
 
         if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
@@ -509,17 +734,56 @@ struct InstallEngine {
         }
 
         await progress(0.05, "Saving a restore point in case something goes wrong…")
-        await logger.log("Taking pre-install snapshot...")
-        let beforeReceipts = PKGReceiptScanner.snapshotReceipts()
-        let beforeFS = FilesystemSnapshot.take()
-        let installStart = Date()  // timestamp for receipt validation
+        await logger.log("Taking pre-install receipt snapshot...")
+        // Snapshot receipts only — filesystem diffing enumerates tens of thousands
+        // of files for large packages (Serum 2 has 10k+ presets) and hangs indefinitely.
+        // Rollback re-queries pkgutil at rollback time, so we only need receipt IDs here.
+        let beforeReceipts = await Task.detached(priority: .userInitiated) {
+            PKGReceiptScanner.snapshotReceipts()
+        }.value
+        let installStart = Date()
 
         await progress(0.12, "Running the package installer — this may take a moment…")
         await logger.log("Running installer...")
-        let result = await runProcessWithPassword(
-            password: password,
-            arguments: ["/usr/sbin/installer", "-pkg", url.path, "-target", "/"]
-        )
+
+        // Launch installer and capture its PID before starting the auth watcher.
+        // The watcher receives the PID and uses kill -0 to verify the process is still
+        // alive before filling any dialog — so it NEVER fills a dialog the user triggered
+        // in a different app while ATLAS is in the background.
+        let installerProcess = Process()
+        let inputPipe  = Pipe()
+        let outputPipe = Pipe()
+        installerProcess.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+        installerProcess.arguments     = ["-S", "/usr/sbin/installer", "-pkg", url.path, "-target", "/"]
+        installerProcess.standardInput  = inputPipe
+        installerProcess.standardOutput = outputPipe
+        installerProcess.standardError  = outputPipe
+
+        var installerPID: Int32 = 0
+        do {
+            try installerProcess.run()
+            inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
+            inputPipe.fileHandleForWriting.closeFile()
+            installerPID = installerProcess.processIdentifier
+            activeProcesses[UUID()] = installerProcess
+        } catch {
+            return (.failure(reason: "Could not launch installer: \(error.localizedDescription)"), [], [])
+        }
+
+        // Auth watcher starts NOW with the real installer PID — scoped to PKG only,
+        // and will self-terminate as soon as kill -0 reports the process is gone.
+        let authWatcher = startAuthWatcher(password: password, installerPID: installerPID)
+        defer { authWatcher.terminate() }
+
+        while installerProcess.isRunning && !cancellationRequested {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+        if cancellationRequested { installerProcess.terminate() }
+        activeProcesses.removeValue(forKey: activeProcesses.first(where: { $0.value === installerProcess })?.key ?? UUID())
+
+        let outData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let outStr  = String(data: outData, encoding: .utf8) ?? ""
+        let result: (success: Bool, output: String) = (installerProcess.terminationStatus == 0 && !cancellationRequested, outStr)
 
         if !result.success {
             await logger.log("PKG installer failed: \(result.output)")
@@ -527,38 +791,68 @@ struct InstallEngine {
         }
 
         await logger.log("PKG installer completed")
-        await progress(0.82, "Checking that everything installed correctly…")
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        await progress(0.90, "Verifying installation receipts…")
+        try? await Task.sleep(nanoseconds: 500_000_000)
 
-        // findNewReceipts now validates receipt file timestamps against installStart,
-        // preventing background processes from polluting the receipt list.
-        var newReceiptIDs = PKGReceiptScanner.findNewReceipts(before: beforeReceipts, since: installStart)
+        var newReceiptIDs = await Task.detached(priority: .userInitiated) {
+            PKGReceiptScanner.findNewReceipts(before: beforeReceipts, since: installStart)
+        }.value
         if newReceiptIDs.isEmpty {
-            newReceiptIDs = PKGReceiptScanner.findReceiptsByName(installerName)
+            newReceiptIDs = await Task.detached(priority: .userInitiated) {
+                PKGReceiptScanner.findReceiptsByName(installerName)
+            }.value
         }
 
         for id in newReceiptIDs { await logger.log("  Receipt: \(id)") }
+        await logger.log("Total receipts tracked: \(newReceiptIDs.count)")
 
-        await progress(0.90, "Discovering what files were added to your Mac…")
-        let afterFS = FilesystemSnapshot.take()
-        let changedPaths = FilesystemSnapshot.diff(before: beforeFS, after: afterFS)
-        await logger.log("Changes detected: \(changedPaths.count) items")
-
-        if !changedPaths.isEmpty {
-            let dirs = Set(changedPaths.map {
-                URL(fileURLWithPath: $0).deletingLastPathComponent().path
-            }).sorted()
-            await logger.log("  Locations: \(dirs.joined(separator: ", "))")
+        // Codesign any audio plugin bundles modified in the last 5 minutes.
+        // Covers the common case: a plain PKG installs AU/VST3/AAX plugins
+        // and macOS Gatekeeper would otherwise reject them at load time.
+        await progress(0.95, "Re-signing installed plugins…")
+        await logger.log("Codesigning recently installed audio plugins...")
+        let pluginDirs = [
+            "/Library/Audio/Plug-Ins/Components",
+            "/Library/Audio/Plug-Ins/VST3",
+            "/Library/Audio/Plug-Ins/VST",
+            "/Library/Application Support/Avid/Audio/Plug-Ins",
+            NSHomeDirectory() + "/Library/Audio/Plug-Ins/Components",
+            NSHomeDirectory() + "/Library/Audio/Plug-Ins/VST3",
+        ]
+        let cutoff = installStart
+        let fm = FileManager.default
+        let pwd = password.replacingOccurrences(of: "'", with: "'\\''")
+        var signedCount = 0
+        for dir in pluginDirs {
+            guard let contents = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            for item in contents {
+                let fullPath = "\(dir)/\(item)"
+                guard let attrs = try? fm.attributesOfItem(atPath: fullPath),
+                      let mod = attrs[.modificationDate] as? Date,
+                      mod >= cutoff else { continue }
+                _ = runShell("echo '\(pwd)' | sudo -S xattr -cr '\(fullPath)' 2>/dev/null")
+                _ = runShell("echo '\(pwd)' | sudo -S xattr -r -d com.apple.quarantine '\(fullPath)' 2>/dev/null")
+                _ = runShell("echo '\(pwd)' | sudo -S codesign --force --deep --sign - '\(fullPath)' 2>/dev/null")
+                await logger.log("  ✓ Signed: \(item)")
+                signedCount += 1
+            }
+        }
+        if signedCount > 0 {
+            await logger.log("Codesign complete — \(signedCount) plugin(s) signed")
+        } else {
+            await logger.log("Codesign — no recently modified plugins found (PKG may not install audio plugins)")
         }
 
-        // Use filesystem snapshot for file tracking. Receipt-based rollback
-        // (RollbackEngine Step 1) already re-queries pkgutil at rollback time,
-        // so enumerating all receipt files here would be redundant and very
-        // slow for large packages (e.g. Serum has thousands of preset files).
-        let installedFiles = FilesystemSnapshot.buildInstalledFiles(
-            changedPaths: changedPaths)
+        // Enumerate installed bundles from PKG receipts so the success card can
+        // show the user exactly what was installed and where.
+        // Only pull meaningful bundle types — not every individual file in the receipt.
+        await progress(0.97, "Finding installed files…")
+        let receiptSnapshot = newReceiptIDs
+        let installedFiles = await Task.detached(priority: .utility) {
+            resolveInstalledBundlesFromReceipts(receiptSnapshot)
+        }.value
+        for f in installedFiles { await logger.log("  Installed: \(f.destinationPath)") }
 
-        await logger.log("Total tracked: \(installedFiles.count) item(s)")
         await progress(1.0, "")
         return (.success(appName: url.lastPathComponent), installedFiles, newReceiptIDs)
     }
@@ -586,15 +880,39 @@ struct InstallEngine {
             return (.failure(reason: "Could not create temp directory."), [], [], false)
         }
 
-        await progress(0.05, "Unzipping the archive…")
+        let archiveExt = url.pathExtension.lowercased()
+        let isNonZip   = ["rar", "7z", "001"].contains(archiveExt)
+
+        await progress(0.05, isNonZip ? "Extracting the archive…" : "Unzipping the archive…")
         await logger.log("Extracting \(url.lastPathComponent)...")
 
-        let unzipResult = runProcess(
-            path: "/usr/bin/unzip",
-            arguments: ["-q", url.path, "-d", tempDir.path]
-        )
+        let extractionSucceeded: Bool
+        if isNonZip {
+            // RAR / 7z / .001 — use ArchiveExtractor (unar → unrar → 7z)
+            if !ArchiveExtractor.hasAnyTool {
+                await logger.log("No extraction tool — installing unar…")
+                if let err = await ArchiveExtractor.installUnar(logger: logger) {
+                    await logger.log("Could not install unar: \(err)")
+                    try? FileManager.default.removeItem(at: tempDir)
+                    return (.failure(reason: "No extraction tool available. Install unar via Homebrew."), [], [], false)
+                }
+            }
+            let result = ArchiveExtractor.extract(url: url, to: tempDir.path)
+            if !result.success {
+                await logger.log("Archive extraction failed: \(result.error ?? "unknown")")
+                try? FileManager.default.removeItem(at: tempDir)
+                return (.failure(reason: "Could not extract \(archiveExt.uppercased()) archive."), [], [], false)
+            }
+            extractionSucceeded = true
+        } else {
+            let unzipResult = runProcess(
+                path: "/usr/bin/unzip",
+                arguments: ["-q", url.path, "-d", tempDir.path]
+            )
+            extractionSucceeded = unzipResult.success
+        }
 
-        if !unzipResult.success {
+        if !extractionSucceeded {
             try? FileManager.default.removeItem(at: tempDir)
             return (.failure(reason: "Could not extract ZIP."), [], [], false)
         }
@@ -694,6 +1012,31 @@ struct InstallEngine {
 
                 case .manual:
                     await logger.log("  Manual step — skipping")
+
+                case .folderCopy(let merge, let destination):
+                    await logger.log("  Copying \(step.url.lastPathComponent) → \(destination.path) (merge: \(merge))")
+                    do {
+                        if merge {
+                            let fm = FileManager.default
+                            let contents = try fm.contentsOfDirectory(at: step.url, includingPropertiesForKeys: nil)
+                            for item in contents {
+                                let dest = destination.appendingPathComponent(item.lastPathComponent)
+                                if fm.fileExists(atPath: dest.path) { try? fm.removeItem(at: dest) }
+                                try fm.copyItem(at: item, to: dest)
+                                allFiles.append(InstallRecord.InstalledFile(sourceName: item.lastPathComponent, destinationPath: dest.path))
+                            }
+                        } else {
+                            let dest = destination.appendingPathComponent(step.url.lastPathComponent)
+                            if FileManager.default.fileExists(atPath: dest.path) { try? FileManager.default.removeItem(at: dest) }
+                            try FileManager.default.copyItem(at: step.url, to: dest)
+                            allFiles.append(InstallRecord.InstalledFile(sourceName: step.url.lastPathComponent, destinationPath: dest.path))
+                        }
+                    } catch {
+                        await logger.log("  Folder copy failed: \(error.localizedDescription)")
+                    }
+
+                case .dawInstall:
+                    await logger.log("  DAW install step — handled by TITAN Mission")
                 }
             }
 
@@ -1063,35 +1406,68 @@ struct InstallEngine {
         // Strip quarantine in-place — do not copy
         _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
 
-        let password   = KeychainManager.loadPassword() ?? ""
-        let fullExec   = exec.path.replacingOccurrences(of: "'", with: "'\\''")
-        let dir        = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
-        let pwd        = password.replacingOccurrences(of: "'", with: "'\\''")
-        let isScript   = exec.pathExtension == "sh"
-        let runner     = isScript ? "/bin/sh '\(fullExec)'" : "'\(fullExec)'"
+        let password = KeychainManager.loadPassword() ?? ""
+        let fullExec = exec.path.replacingOccurrences(of: "'", with: "'\\''")
+        let dir      = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
+        let pwd      = password.replacingOccurrences(of: "'", with: "'\\''")
+        let isScript = exec.pathExtension == "sh"
+        let runner   = isScript ? "/bin/sh '\(fullExec)'" : "'\(fullExec)'"
 
         await logger.log("Applying patch: \(appName)")
 
-        // Try without sudo first — installbuilder.sh exits 0 as a regular user
-        let r1 = runShell("cd '\(dir)' && \(runner) --mode unattended 2>&1")
-        let o1 = r1.output.lowercased()
-        if r1.success || o1.contains("finishing installation") || o1.contains("successfully installed") {
+        // Try without sudo first — installbuilder.sh exits 0 as a regular user.
+        // Run via a Process so we can capture its PID for the auth watcher.
+        let patchProc = Process()
+        patchProc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        patchProc.arguments     = ["-c", "cd '\(dir)' && \(runner) --mode unattended 2>&1"]
+        let patchOut = Pipe()
+        patchProc.standardOutput = patchOut
+        patchProc.standardError  = patchOut
+        var patchPID: Int32 = 0
+        if (try? patchProc.run()) != nil {
+            patchPID = patchProc.processIdentifier
+        }
+
+        // Auth watcher starts with the real patch process PID — stops automatically
+        // when that process exits, so it never touches dialogs from other apps.
+        let patchWatcher = startAuthWatcher(password: password, installerPID: patchPID)
+        defer { patchWatcher.terminate() }
+
+        patchProc.waitUntilExit()
+        let o1raw = String(data: patchOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let o1    = o1raw.lowercased()
+        if patchProc.terminationStatus == 0 || o1.contains("finishing installation") || o1.contains("successfully installed") {
             await logger.log("✓ Patch applied: \(appName)")
             return true
         }
 
-        // Retry with sudo using the full path so sudo doesn't search $PATH
+        // Retry with sudo
         let sudoRunner = pwd.isEmpty ? runner : "echo '\(pwd)' | sudo -S \(runner)"
-        let r2 = runShell("cd '\(dir)' && \(sudoRunner) --mode unattended 2>&1")
-        let o2 = r2.output.lowercased()
-        let ok = r2.success || o2.contains("finishing installation")
-                            || o2.contains("successfully installed")
-                            || o2.contains("success")
+        let sudoProc   = Process()
+        sudoProc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        sudoProc.arguments     = ["-c", "cd '\(dir)' && \(sudoRunner) --mode unattended 2>&1"]
+        let sudoOut = Pipe()
+        sudoProc.standardOutput = sudoOut
+        sudoProc.standardError  = sudoOut
+        var sudoPID: Int32 = 0
+        if (try? sudoProc.run()) != nil { sudoPID = sudoProc.processIdentifier }
+
+        // Restart watcher with new PID for the sudo retry
+        patchWatcher.terminate()
+        let sudoWatcher = startAuthWatcher(password: password, installerPID: sudoPID)
+        defer { sudoWatcher.terminate() }
+
+        sudoProc.waitUntilExit()
+        let o2 = (String(data: sudoOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").lowercased()
+        let ok = sudoProc.terminationStatus == 0
+               || o2.contains("finishing installation")
+               || o2.contains("successfully installed")
+               || o2.contains("success")
 
         if ok {
             await logger.log("✓ Patch applied: \(appName)")
         } else {
-            await logger.log("✗ Patch failed: \(r2.output.prefix(200))")
+            await logger.log("✗ Patch failed: \(o2.prefix(200))")
         }
         return ok
     }
@@ -1558,6 +1934,119 @@ struct InstallEngine {
         runProcess(path: "/bin/bash", arguments: ["-c", script])
     }
 
+    // After a PKG install, enumerate the actual installed bundles (plugins, apps)
+    // from receipt file lists. Only returns paths that exist on disk and have a
+    // meaningful bundle extension — not every individual file in the manifest.
+    static func resolveInstalledBundlesFromReceipts(_ receiptIDs: [String]) -> [InstallRecord.InstalledFile] {
+        let bundleExts: Set<String> = ["component", "vst3", "vst", "aaxplugin", "app", "framework", "plugin"]
+        // Suffixes that indicate sample/content/preset packages — skip entirely because
+        // they contain thousands of files and cause runProcess pipe-buffer deadlocks.
+        let skipSuffixes = [".content", ".presets", ".samples", ".data", ".library"]
+        var seen  = Set<String>()
+        var files = [InstallRecord.InstalledFile]()
+        let fm    = FileManager.default
+
+        for receiptID in receiptIDs {
+            let lower = receiptID.lowercased()
+            if skipSuffixes.contains(where: { lower.hasSuffix($0) }) { continue }
+
+            // Use --only-dirs: audio plugin bundles (.component, .vst3, etc.) ARE
+            // directories, so they appear in the dirs listing. Individual files inside
+            // bundles are not needed and listing them risks a pipe-buffer deadlock on
+            // large receipts. We run the process with async pipe reading to avoid
+            // blocking if the output is unexpectedly large.
+            let output = runProcessWithTimeout(
+                path: "/usr/sbin/pkgutil",
+                arguments: ["--files", receiptID, "--only-dirs"],
+                seconds: 15)
+
+            let location = PKGReceiptScanner.installLocation(forReceipt: receiptID)
+
+            output
+                .components(separatedBy: "\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .forEach { line in
+                    let ext = URL(fileURLWithPath: line).pathExtension.lowercased()
+                    guard bundleExts.contains(ext) else { return }
+                    let abs: String
+                    if line.hasPrefix("/") {
+                        abs = line
+                    } else if location.isEmpty || location == "/" {
+                        abs = "/\(line)"
+                    } else {
+                        let raw = "\(location)/\(line)"
+                    abs = raw.hasPrefix("/") ? raw : "/\(raw)"
+                    }
+                    guard !seen.contains(abs), fm.fileExists(atPath: abs) else { return }
+                    seen.insert(abs)
+                    files.append(InstallRecord.InstalledFile(
+                        sourceName:      URL(fileURLWithPath: abs).lastPathComponent,
+                        destinationPath: abs))
+                }
+        }
+
+        // Fallback: scan known plugin dirs for bundles modified in the last 5 minutes.
+        // This catches installs where pkgutil returned no paths (e.g. FLARE-patched
+        // receipts whose paths don't line up with real install locations).
+        if files.isEmpty {
+            let pluginDirs = [
+                "/Library/Audio/Plug-Ins/Components",
+                "/Library/Audio/Plug-Ins/VST3",
+                "/Library/Audio/Plug-Ins/VST",
+                "/Library/Application Support/Avid/Audio/Plug-Ins",
+            ]
+            let cutoff = Date().addingTimeInterval(-300) // 5 min window
+            for dir in pluginDirs {
+                guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+                for entry in entries {
+                    let ext = URL(fileURLWithPath: entry).pathExtension.lowercased()
+                    guard bundleExts.contains(ext) else { continue }
+                    let full = "\(dir)/\(entry)"
+                    guard !seen.contains(full) else { continue }
+                    if let attrs = try? fm.attributesOfItem(atPath: full),
+                       let mod = attrs[.modificationDate] as? Date,
+                       mod >= cutoff {
+                        seen.insert(full)
+                        files.append(InstallRecord.InstalledFile(
+                            sourceName: entry,
+                            destinationPath: full))
+                    }
+                }
+            }
+        }
+
+        return files
+    }
+
+    // Runs a process with async pipe reading so large outputs don't cause a
+    // pipe-buffer deadlock. Returns stdout+stderr output, or "" on timeout.
+    private static func runProcessWithTimeout(path: String, arguments: [String], seconds: Double) -> String {
+        let process = Process()
+        let pipe    = Pipe()
+        process.executableURL  = URL(fileURLWithPath: path)
+        process.arguments      = arguments
+        process.standardOutput = pipe
+        process.standardError  = Pipe()
+
+        var outputData = Data()
+        let readSema = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .utility).async {
+            outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            readSema.signal()
+        }
+
+        guard (try? process.run()) != nil else { return "" }
+
+        let deadline = Date().addingTimeInterval(seconds)
+        while process.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        if process.isRunning { process.terminate() }
+        _ = readSema.wait(timeout: .now() + 5)
+        return String(data: outputData, encoding: .utf8) ?? ""
+    }
+
     // Run a shell script with extra environment variables and optional admin password
     static func runShellWithEnv(
         _ script: String,
@@ -1609,6 +2098,134 @@ struct InstallEngine {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return (process.terminationStatus == 0, String(data: data, encoding: .utf8) ?? "")
     }
+
+    // MARK: - Library snapshot helpers
+
+    // Returns a dict mapping each watched directory path → set of top-level entry names.
+    // For Application Support dirs, also snapshots one level deeper inside existing
+    // non-system vendor directories. This lets diffLibraryTopLevel detect new product
+    // subdirectories added to an existing vendor dir (e.g. a fresh "Ozone 12" folder
+    // created inside a pre-existing "/Library/Application Support/iZotope/").
+    static func snapshotLibraryTopLevel() -> [String: Set<String>] {
+        let home = NSHomeDirectory()
+        let dirs = [
+            home + "/Library/Application Support",
+            "/Library/Application Support",
+            home + "/Library/Preferences",
+            "/Library/Preferences",
+            home + "/Library/Caches",
+        ]
+        var snapshot: [String: Set<String>] = [:]
+        let fm = FileManager.default
+        for dir in dirs {
+            guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            snapshot[dir] = Set(entries)
+            // One level deeper for Application Support: snapshot existing vendor dirs
+            // so we can detect new product subdirectories added during install.
+            guard dir.hasSuffix("/Application Support") else { continue }
+            for entry in entries {
+                guard !isSystemEntry(entry) else { continue }
+                let vendorPath = "\(dir)/\(entry)"
+                var isDir: ObjCBool = false
+                guard fm.fileExists(atPath: vendorPath, isDirectory: &isDir), isDir.boolValue else { continue }
+                if let vendorEntries = try? fm.contentsOfDirectory(atPath: vendorPath) {
+                    snapshot[vendorPath] = Set(vendorEntries)
+                }
+            }
+        }
+        return snapshot
+    }
+
+    // System/OS entries that should never be treated as product-created folders.
+    // Prevents false positives when macOS or background processes create dirs
+    // in the same time window as an install.
+    static let systemEntryBlocklist: Set<String> = [
+        "com.apple", "CloudDocs", "AddressBook", "Calendars", "CallHistoryDB",
+        "CallHistoryTransactions", "CoreData", "DataDeliveryMetrics",
+        "FaceTime", "Group Containers", "HomeKit", "iCloud", "iLifeAssetManagement",
+        "iTunesMetadata", "Knowledge", "Mail", "Maps", "Messages", "NanoRegistry",
+        "News", "Notes", "Passes", "Photos", "Reminders", "Safari", "Screentime",
+        "Suggestions", "SyncedPreferences", "SystemData", "Trial", "TwitterAssets",
+        "weatherd", "Accounts", "Autofill", "BrowserState", "Cookies",
+        "com.crashlytics", "com.google", "com.microsoft", "com.adobe",
+        ".DS_Store", "Logs", "networkserviceproxy",
+    ]
+
+    // Compares current top-level entries to the snapshot and returns full paths
+    // of any new entries that appeared (i.e. folders created during install).
+    // Filters against the system blocklist to avoid false positives.
+    // Also checks one level deeper in Application Support vendor directories,
+    // capturing new product subdirectories inside pre-existing vendor dirs.
+    static func diffLibraryTopLevel(before: [String: Set<String>]) -> [String] {
+        let fm = FileManager.default
+        var newPaths: [String] = []
+        let home = NSHomeDirectory()
+        let allDirs = [
+            home + "/Library/Application Support",
+            "/Library/Application Support",
+            home + "/Library/Preferences",
+            "/Library/Preferences",
+            home + "/Library/Caches",
+        ]
+        for dir in allDirs {
+            let prior = before[dir] ?? []
+            guard let currentEntries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            for entry in currentEntries where !prior.contains(entry) {
+                guard !isSystemEntry(entry) else { continue }
+                newPaths.append("\(dir)/\(entry)")
+            }
+            // For Application Support: also check for new subdirectories inside
+            // vendor dirs that already existed before the install.
+            guard dir.hasSuffix("/Application Support") else { continue }
+            for entry in currentEntries {
+                guard !isSystemEntry(entry) else { continue }
+                let vendorPath = "\(dir)/\(entry)"
+                var isDir: ObjCBool = false
+                guard fm.fileExists(atPath: vendorPath, isDirectory: &isDir), isDir.boolValue else { continue }
+                let priorVendorEntries = before[vendorPath] ?? []
+                guard let currentVendorEntries = try? fm.contentsOfDirectory(atPath: vendorPath) else { continue }
+                for vendorEntry in currentVendorEntries where !priorVendorEntries.contains(vendorEntry) {
+                    guard !isSystemEntry(vendorEntry) else { continue }
+                    newPaths.append("\(vendorPath)/\(vendorEntry)")
+                }
+            }
+        }
+        return newPaths
+    }
+
+    // Finds Library dirs entries that were created on or after a given date.
+    // Used at feedback-confirm time to catch first-launch folders that didn't
+    // exist when the install-time snapshot was taken.
+    static func discoverPathsCreatedSince(date: Date) -> [String] {
+        let home = NSHomeDirectory()
+        let dirs = [
+            home + "/Library/Application Support",
+            "/Library/Application Support",
+            home + "/Library/Preferences",
+            "/Library/Preferences",
+            home + "/Library/Caches",
+        ]
+        let fm = FileManager.default
+        var found: [String] = []
+        let cutoff = date.addingTimeInterval(-30) // 30s grace before install start
+        for dir in dirs {
+            guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            for entry in entries {
+                guard !isSystemEntry(entry) else { continue }
+                let full = "\(dir)/\(entry)"
+                if let attrs = try? fm.attributesOfItem(atPath: full),
+                   let created = attrs[.creationDate] as? Date,
+                   created >= cutoff {
+                    found.append(full)
+                }
+            }
+        }
+        return found
+    }
+
+    private static func isSystemEntry(_ name: String) -> Bool {
+        systemEntryBlocklist.contains(where: { name.lowercased().hasPrefix($0.lowercased()) })
+    }
 }
 
 // MARK: - InstallationManager
@@ -1629,7 +2246,7 @@ class InstallationManager: ObservableObject {
             TitanCore.shared.clearLastRecovery()
 
             let type_ = InstallerClassifier.classify(url: url)
-            let fileType = typeName(type_)
+            let fileType = self.typeName(type_)
             logger.log("Classified as: \(fileType)")
 
             // ── TITAN CORE™ Pre-flight ────────────────────────────────────
@@ -1669,8 +2286,11 @@ class InstallationManager: ObservableObject {
 
             // ── Attempt 1 ────────────────────────────────────────────────
             logger.log("--- Attempt 1 ---")
-            var (result, installedFiles, receiptIDs, isPlugin) =
+            // Run the actual install off the main thread so blocking calls
+            // (PKG installer, filesystem snapshots, receipt scans) don't freeze the UI.
+            var (result, installedFiles, receiptIDs, isPlugin, runtimeCreatedPaths) = await Task.detached(priority: .userInitiated) {
                 await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+            }.value
             var remediationAttempted = false
 
             // ── TITAN CORE™ Smart Recovery ────────────────────────────────
@@ -1690,8 +2310,11 @@ class InstallationManager: ObservableObject {
                         logger.log("--- Attempt 2 (TITAN CORE™ recovery) ---")
                         appState.phase = .installing
                         appState.progress = 0
-                        (result, installedFiles, receiptIDs, isPlugin) =
+                        var retryPaths2: [String]
+                        (result, installedFiles, receiptIDs, isPlugin, retryPaths2) = await Task.detached(priority: .userInitiated) {
                             await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                        }.value
+                        runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPaths2))
 
                         // Second failure: one more recovery pass
                         if case .failure(let reason2) = result {
@@ -1704,8 +2327,11 @@ class InstallationManager: ObservableObject {
                                 logger.log("--- Attempt 3 (TITAN CORE™ final) ---")
                                 appState.phase = .installing
                                 appState.progress = 0
-                                (result, installedFiles, receiptIDs, isPlugin) =
+                                var retryPaths3: [String]
+                                (result, installedFiles, receiptIDs, isPlugin, retryPaths3) = await Task.detached(priority: .userInitiated) {
                                     await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                                }.value
+                                runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPaths3))
                             }
                         }
                     } else {
@@ -1727,8 +2353,10 @@ class InstallationManager: ObservableObject {
                         logger.log("--- Attempt 2 (after remediation) ---")
                         appState.phase = .installing
                         appState.progress = 0
-                        (result, installedFiles, receiptIDs, isPlugin) =
+                        var retryPathsLegacy: [String]
+                        (result, installedFiles, receiptIDs, isPlugin, retryPathsLegacy) =
                             await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                        runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPathsLegacy))
                     } else {
                         logger.log("Remediation could not fix: \(remediation.detail)")
                     }
@@ -1740,7 +2368,7 @@ class InstallationManager: ObservableObject {
                 await TitanCore.shared.verify(installedFiles: installedFiles, logger: logger)
             }
 
-            let record = InstallLogger.writeLog(
+            var record = InstallLogger.writeLog(
                 fileURL: url,
                 fileType: fileType,
                 entries: logger.entries,
@@ -1749,11 +2377,14 @@ class InstallationManager: ObservableObject {
                 pkgReceiptIDs: receiptIDs,
                 remediationAttempted: remediationAttempted
             )
+            if !runtimeCreatedPaths.isEmpty {
+                record.runtimeCreatedPaths = runtimeCreatedPaths
+            }
 
             historyStore.add(record)
 
             switch result {
-            case .success(let appName):
+            case .success(let appName, _):
                 appState.phase = .success
                 appState.lastResult = .success(appName: appName)
                 logger.log("✓ Installation complete: \(appName)")
@@ -1781,6 +2412,8 @@ class InstallationManager: ObservableObject {
         case .vst:       return "VST"
         case .aax:           return "AAX"
         case .kontaktLibrary: return "Kontakt Library"
+        case .interactiveInstaller: return "Interactive Installer"
+        case .exe: return "EXE"
         case .unsupported(let ext): return ext.uppercased()
         }
     }

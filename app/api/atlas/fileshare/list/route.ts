@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   // Return files targeted at this device OR files with no specific target (null = all devices)
   let query = supabase
     .from('shared_files')
-    .select('id, file_name, file_size, storage_path, uploaded_at, expires_at, platform, target_device_id')
+    .select('id, file_name, file_size, storage_path, uploaded_at, expires_at, platform, target_device_id, arch')
     .eq('user_id', user.id)
     .order('uploaded_at', { ascending: false })
 

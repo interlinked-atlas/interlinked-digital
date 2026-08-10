@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const ADMIN_EMAILS = ['titantinstaller@gmail.com', 'interlinked.digital@gmail.com']
+const ADMIN_EMAIL = 'titantinstaller@gmail.com'
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-  if (!ADMIN_EMAILS.includes(user.email ?? '')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: logs, error } = await supabase
     .from('install_logs')

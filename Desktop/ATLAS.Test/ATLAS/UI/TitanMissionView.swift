@@ -16,13 +16,18 @@ struct TitanMissionView: View {
     private var progress: Double {
         guard !mission.steps.isEmpty else { return 0 }
         let done = mission.steps.filter {
-            $0.status == .done || $0.status == .skipped || $0.status == .failed
+            $0.status == .done || $0.status == .skipped || $0.status == .failed || $0.status == .warning
         }.count
         return Double(done) / Double(mission.steps.count)
     }
 
+    // True only when a CRITICAL step failed — non-critical warnings do not count.
     private var anyFailed: Bool {
         mission.steps.contains { $0.status == .failed }
+    }
+
+    private var anyWarnings: Bool {
+        mission.steps.contains { $0.status == .warning }
     }
 
     private var accentColor: Color {
@@ -33,7 +38,9 @@ struct TitanMissionView: View {
 
     private var statusText: String {
         if mission.isComplete {
-            return anyFailed ? "Finished with errors" : "Installation complete"
+            if anyFailed   { return "Installation failed" }
+            if anyWarnings { return "Installation complete" }
+            return "Installation complete"
         }
         if mission.isRunning {
             if let running = mission.steps.first(where: { $0.status == .running }) {
@@ -216,6 +223,7 @@ struct TitanMissionView: View {
         case .running:  return Color(hex: "#5B8DEF")
         case .done:     return Color(hex: "#3ECFB2")
         case .failed:   return Color(hex: "#E05555")
+        case .warning:  return Color(hex: "#F0A030")
         case .skipped:  return Color(hex: "#2A2D42")
         }
     }
@@ -266,6 +274,7 @@ private struct StepRow: View {
         case .running:  return Color(hex: "#0D1530")
         case .done:     return Color(hex: "#3ECFB2").opacity(0.1)
         case .failed:   return Color(hex: "#E05555").opacity(0.12)
+        case .warning:  return Color(hex: "#F0A030").opacity(0.10)
         case .skipped:  return Color(hex: "#181A28")
         }
     }
@@ -275,6 +284,7 @@ private struct StepRow: View {
         case .running:  return "circle.fill"
         case .done:     return "checkmark"
         case .failed:   return "xmark"
+        case .warning:  return "exclamationmark"
         case .skipped:  return "minus"
         }
     }
@@ -284,6 +294,7 @@ private struct StepRow: View {
         case .running:  return Color(hex: "#5B8DEF")
         case .done:     return Color(hex: "#3ECFB2")
         case .failed:   return Color(hex: "#E05555")
+        case .warning:  return Color(hex: "#F0A030")
         case .skipped:  return Color(hex: "#2E3150")
         }
     }

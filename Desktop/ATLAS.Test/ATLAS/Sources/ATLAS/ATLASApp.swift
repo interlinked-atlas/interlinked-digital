@@ -3,13 +3,20 @@ import AppKit
 import CoreText
 import UserNotifications
 import Combine
+import os
 
 @main
 struct ATLASApp: App {
     @State private var showSplash = true
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @ObservedObject private var appearance = AppearanceManager.shared
+
+    private static let alog = os.Logger(subsystem: "digital.interlinked.atlas", category: "app")
 
     init() {
+        // Build stamp — verify in Console.app (filter by subsystem: digital.interlinked.atlas).
+        // This appears on every launch when the correct binary is running.
+        ATLASApp.alog.notice("[ATLAS-BUILD-v18s] ATLAS launched — fixed self-trash (atlas/interlinked in receipt skipWords); VSCAN now runs in queue path (blocks malware, warns on suspicious/bundled)")
         ATLASApp.registerFonts()
     }
 
@@ -48,6 +55,7 @@ struct ATLASApp: App {
                         .transition(.opacity)
                 }
             }
+            .preferredColorScheme(appearance.override)
             .onAppear { }
         }
         .windowStyle(.hiddenTitleBar)
@@ -87,6 +95,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         InstallLogger.captureCrashLogs()
         InstallLogger.syncExistingLogs()
         InstallEngine.cleanupStaleMounts()
+        InstallEngine.killLeakedAuthWatchers()
+        // Check for queue items that survived a crash or force-quit last session.
+        // The UI in ContentView observes pendingResumeURLs and shows a resume prompt.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            InstallQueue.shared.loadPersistedQueueIfNeeded()
+        }
+        TitanMemory.shared.syncFromCloud()   // pull latest confirmed patterns from Supabase
         setupMenuBarIcon()
 
         menuStatusCancellable = WidgetStateManager.shared.$menuStatus
@@ -211,6 +226,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             action: #selector(openLogs),
             keyEquivalent: ""))
 
+        menu.addItem(NSMenuItem(
+            title: "Check for Updates",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""))
+
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(
@@ -221,7 +241,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Set targets
         for item in menu.items {
             if item.action == #selector(openMainWindow) ||
-               item.action == #selector(openLogs) {
+               item.action == #selector(openLogs) ||
+               item.action == #selector(checkForUpdates) {
                 item.target = self
             }
         }
@@ -296,6 +317,53 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func openLogs() {
         InstallLogger.openLogsInFinder()
+    }
+
+    @objc private func checkForUpdates() {
+        Task { @MainActor in
+            UpdateChecker.shared.dismissed = false
+            UpdateChecker.shared.check()
+            openMainWindow()
+        }
+    }
+
+    private static var widgetPanel: NSPanel?
+
+    static func showWidgetPanel(appState: AppState, queue: InstallQueue,
+                                 onExpand: @escaping () -> Void,
+                                 onClose: @escaping () -> Void) {
+        closeWidgetPanel()
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 280, height: 80),
+            styleMask: [.nonactivatingPanel, .titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false)
+        panel.title = ""
+        panel.titlebarAppearsTransparent = true
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.isMovableByWindowBackground = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let hostingView = NSHostingView(rootView:
+            WidgetView(appState: appState, queue: queue,
+                       onExpand: onExpand, onClose: onClose))
+        panel.contentView = hostingView
+
+        let mouseLocation = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main
+        if let screen = screen {
+            let sf = screen.visibleFrame
+            let origin = NSPoint(x: sf.maxX - 300, y: sf.maxY - 120)
+            panel.setFrameOrigin(origin)
+        }
+        panel.orderFront(nil)
+        widgetPanel = panel
+    }
+
+    static func closeWidgetPanel() {
+        widgetPanel?.orderOut(nil)
+        widgetPanel = nil
     }
 }
 

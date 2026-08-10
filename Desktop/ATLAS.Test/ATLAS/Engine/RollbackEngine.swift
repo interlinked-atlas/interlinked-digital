@@ -67,8 +67,49 @@ struct RollbackEngine {
         }
         alog.notice("[ATLAS-ROLLBACK] otherOwnedPaths=\(otherOwnedPaths.count)")
 
+        // ── Pre-flight: receipt collision check ───────────────────────────────
+        // If any stored receipt ID is also claimed by another live product, ATLAS
+        // cannot know which product owns the associated files. Halt immediately.
+        if !record.pkgReceiptIDs.isEmpty {
+            let liveOthers = otherRecords.filter { $0.id != record.id && $0.status == .success }
+            for other in liveOthers {
+                if let collidingID = record.pkgReceiptIDs.first(where: { other.pkgReceiptIDs.contains($0) }) {
+                    let selfName  = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
+                    let otherName = URL(fileURLWithPath: other.fileName).deletingPathExtension().lastPathComponent
+                    let msg = "Cannot safely uninstall \"\(selfName)\" — receipt ID \"\(collidingID)\" is also claimed by \"\(otherName)\". Uninstall both products together or resolve the conflict manually."
+                    await logger.log("⛔ \(msg)")
+                    alog.notice("[ATLAS-ROLLBACK] PRE-FLIGHT HALT — receipt collision: \(collidingID, privacy: .public) shared with \(otherName, privacy: .public)")
+                    return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: msg)
+                }
+            }
+        }
+
+        // Pre-flight: destination path collision check
+        // If any tracked installed file path is also in another live record, halt.
+        if !record.installedFiles.isEmpty {
+            let myPaths = Set(record.installedFiles.map(\.destinationPath))
+            let liveOthers = otherRecords.filter { $0.id != record.id && $0.status == .success }
+            for other in liveOthers {
+                let otherPaths = other.installedFiles.map(\.destinationPath)
+                if let collidingPath = myPaths.first(where: { otherPaths.contains($0) }) {
+                    let selfName  = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
+                    let otherName = URL(fileURLWithPath: other.fileName).deletingPathExtension().lastPathComponent
+                    let msg = "Cannot safely uninstall \"\(selfName)\" — destination path \"\(collidingPath)\" is also claimed by \"\(otherName)\". Resolve the conflict manually."
+                    await logger.log("⛔ \(msg)")
+                    alog.notice("[ATLAS-ROLLBACK] PRE-FLIGHT HALT — path collision: \(collidingPath, privacy: .public) shared with \(otherName, privacy: .public)")
+                    return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: msg)
+                }
+            }
+        }
+
         var candidates = Set<String>()
         var runtimeTrustedPaths = Set<String>()
+
+        // positivelyOwnedPaths: the exact set of paths that satisfy the ownership invariant.
+        // Rule A: explicitly listed in this record's installedFiles.
+        // Rule B: returned by pkgutil for a receipt ID stored in this record's pkgReceiptIDs.
+        // Nothing else qualifies. Built incrementally alongside candidates below.
+        var positivelyOwnedPaths = Set<String>()
 
         // Manifest path: add explicitly tracked files (license assets, ZIP-installed plugins, etc.)
         if !record.installedFiles.isEmpty {
@@ -76,6 +117,7 @@ struct RollbackEngine {
             for path in record.installedFiles.map(\.destinationPath) {
                 guard !otherOwnedPaths.contains(path) else { continue }
                 candidates.insert(path)
+                positivelyOwnedPaths.insert(path)
             }
         }
 
@@ -99,7 +141,22 @@ struct RollbackEngine {
             let freshByPrefix: [String] = (titanEntry?.knownReceiptPrefixes ?? []).flatMap { prefix in
                 allInstalled.filter { $0.hasPrefix(prefix) }
             }
-            let allReceiptIDs = Array(Set(record.pkgReceiptIDs + freshByName + freshByPrefix))
+
+            // Heuristic receipts (name-matched, prefix-matched) are diagnostic only.
+            // They do NOT authorize deletion — only record.pkgReceiptIDs does (rule B).
+            // Cross-record filter retained for logging accuracy.
+            let otherReceiptIDs = Set(otherRecords
+                .filter { $0.id != record.id && $0.status == .success }
+                .flatMap(\.pkgReceiptIDs))
+            let safeByName   = freshByName.filter   { !otherReceiptIDs.contains($0) }
+            let safeByPrefix = freshByPrefix.filter { !otherReceiptIDs.contains($0) }
+            let heuristicIDs = Set(safeByName + safeByPrefix).subtracting(record.pkgReceiptIDs)
+            if !heuristicIDs.isEmpty {
+                await logger.log("ℹ Heuristic receipts found (not used for deletion): \(heuristicIDs.sorted().joined(separator: ", "))")
+            }
+
+            // Only stored receipt IDs authorize deletion.
+            let allReceiptIDs = Array(Set(record.pkgReceiptIDs))
             await logger.log("Phase 1: \(allReceiptIDs.count) receipt(s) to scan")
             let totalReceipts = allReceiptIDs.count
             for (receiptIndex, receiptID) in allReceiptIDs.enumerated() {
@@ -125,30 +182,52 @@ struct RollbackEngine {
                     ]
                     if !location.isEmpty && location != "/" && !sharedDirs.contains(location) {
                         candidates.insert(location)
+                        positivelyOwnedPaths.insert(location)
                     } else if let name = pkgName, !name.isEmpty {
                         for dir in ["/Library/Audio/Presets/\(name)",
                                     "/Library/Application Support/\(name)",
                                     NSHomeDirectory() + "/Library/Audio/Presets/\(name)"]
                         where FileManager.default.fileExists(atPath: dir) {
                             candidates.insert(dir)
+                            positivelyOwnedPaths.insert(dir)
                         }
                     }
                 } else {
-                    files.forEach { candidates.insert($0) }
+                    for f in files where !otherOwnedPaths.contains(f) {
+                        candidates.insert(f)
+                        positivelyOwnedPaths.insert(f)
+                    }
                 }
             }
             await logger.log("Receipt scan complete — \(candidates.count) raw candidate(s)")
         }
 
-        // Runtime-created directories (from filesystem diff at install time)
+        // Runtime-created paths (filesystem diff at install time) — diagnostic and deferred cleanup only.
+        // These paths are NOT independently authorized for deletion.
+        // Files: only deletable via installedFiles or pkgReceiptIDs (already in candidates above).
+        // Directories: deferred — Phase 6 cleanupEmptyDirs removes them if empty after file deletion.
+        // Owning files inside a directory does NOT authorize deleting the directory itself.
         for path in (record.runtimeCreatedPaths ?? []) {
+            let name = URL(fileURLWithPath: path).lastPathComponent
             guard !otherOwnedPaths.contains(path) else { continue }
-            let prefix = path.hasSuffix("/") ? path : path + "/"
-            if otherOwnedPaths.contains(where: { $0.hasPrefix(prefix) }) {
-                await logger.log("Shared container — contents only: \(URL(fileURLWithPath: path).lastPathComponent)")
+            guard !isProtectedPath(path, productFileName: record.fileName) else {
+                alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath skipped (protected namespace): \(path, privacy: .public)")
+                continue
+            }
+            var isDir: ObjCBool = false
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            if isDir.boolValue {
+                await logger.log("ℹ Runtime-created directory deferred to Phase 6 cleanup: \(name)")
+                alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory deferred: \(path, privacy: .public)")
             } else {
-                candidates.insert(path)
-                runtimeTrustedPaths.insert(path)
+                // File paths require positive ownership to be deleted.
+                // If already in candidates via installedFiles or receipt path, this is a no-op.
+                // If not in positivelyOwnedPaths, timing evidence alone does not authorize deletion.
+                if !positivelyOwnedPaths.contains(path) {
+                    await logger.log("⚠ Runtime-created file excluded (no positive ownership evidence): \(name)")
+                    alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath file excluded: \(path, privacy: .public)")
+                }
+                // Already in candidates if positively owned; no action needed either way.
             }
         }
 
@@ -163,6 +242,7 @@ struct RollbackEngine {
         // with the bundle root so we trash the bundle as a single item.
         onProgress?(0.24, "Building uninstall plan|Collapsing plugin bundles")
         let afterBundles = collapseIntoBundles(Array(candidates))
+        let ownedPaths   = Set(afterBundles)
         // Trust bundle roots — bypass Phase 3 untracked-items safety check.
         let knownBundleExts: Set<String> = [
             "component", "vst3", "vst", "aaxplugin", "app",
@@ -173,14 +253,27 @@ struct RollbackEngine {
             runtimeTrustedPaths.insert(path)
         }
 
-        let afterDirs = collapseByDirectory(afterBundles)
+        // Compute the bundle-collapsed form of positively-owned paths only.
+        // collapseByDirectory uses this to require every real directory item to be
+        // positively owned before promoting the directory to a single candidate.
+        let positivelyOwnedBundles = Set(collapseIntoBundles(Array(positivelyOwnedPaths)))
+
+        let afterDirs = collapseByDirectory(afterBundles, positivelyOwned: positivelyOwnedBundles)
         if afterDirs.count < afterBundles.count {
             await logger.log("Folder collapse: \(afterBundles.count) → \(afterDirs.count) item(s)")
-            let priorPaths = Set(afterBundles)
-            for path in afterDirs where !priorPaths.contains(path) {
-                runtimeTrustedPaths.insert(path)
-            }
         }
+
+        // Directories produced by collapseByDirectory were verified as fully owned
+        // during collapse — every meaningful item in them belongs to this installation.
+        // Add them to runtimeTrustedPaths so Phase 3 does not re-check against the
+        // pre-collapse ownedPaths (which holds individual files, not collapsed dirs).
+        let afterBundlesSet = Set(afterBundles)
+        for path in afterDirs where !afterBundlesSet.contains(path) {
+            var isDir: ObjCBool = false
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            if isDir.boolValue { runtimeTrustedPaths.insert(path) }
+        }
+
         let sorted = sortByPriority(afterDirs)
         let previewNames = sorted.prefix(5).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ")
         await logger.log("Uninstall plan: \(sorted.count) item(s) — \(previewNames)\(sorted.count > 5 ? "…" : "")")
@@ -189,11 +282,17 @@ struct RollbackEngine {
         onProgress?(0.28, "Moving to Trash|Preparing \(sorted.count) item\(sorted.count == 1 ? "" : "s")")
 
         // ── Phase 3: Move each item to Trash ──────────────────────────────────
-        // All approved items are accumulated and packaged into one ATLAS Uninstall
-        // Package folder in Trash after all safety checks pass.
+        // ALL items — bundles, directories, and loose files — go into one named
+        // ATLAS Uninstall Package folder in Trash. This keeps the user's Trash clean,
+        // makes the uninstall atomic from the user's perspective, and gives recovery
+        // a single well-known location to read from. If the package folder cannot be
+        // created, each item falls back to individual trashItem() calls.
         // All ownership decisions, guards, and safety checks are unchanged.
+        let productLabel = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
+        let packageFolder = createUninstallPackage(productLabel: productLabel,
+                                                   fileName: record.fileName,
+                                                   password: password)
         var alreadyGoneCount = 0
-        var looseFiles: [String] = []   // individual loose files queued for ATLAS Uninstall Package
 
         let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
@@ -229,10 +328,18 @@ struct RollbackEngine {
             var pathIsDir: ObjCBool = false
             FileManager.default.fileExists(atPath: path, isDirectory: &pathIsDir)
             if pathIsDir.boolValue && !knownBundleExts.contains(pathExt) && !runtimeTrustedPaths.contains(path) {
-                let dirContents = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+                // Fail closed: if directory contents cannot be read for any reason,
+                // skip deletion rather than assuming it is safe to proceed.
+                guard let dirContents = try? FileManager.default.contentsOfDirectory(atPath: path) else {
+                    await logger.log("⚠ Skipped directory (contents unreadable — cannot verify ownership): \(name)")
+                    alog.notice("[ATLAS-ROLLBACK] Phase3 skip — contentsOfDirectory failed for: \(path, privacy: .public)")
+                    onProgress?(pct, "")
+                    continue
+                }
                 let untrackedItems = dirContents.filter { item in
+                    guard !fsMetadata.contains(item) else { return false }
                     let full = (path as NSString).appendingPathComponent(item)
-                    return !sorted.contains(full)
+                    return !ownedPaths.contains(full)
                 }
                 if !untrackedItems.isEmpty {
                     await logger.log("⚠ Skipped directory (contains \(untrackedItems.count) untracked item(s)): \(name)")
@@ -246,14 +353,12 @@ struct RollbackEngine {
                                          arguments: ["/bin/launchctl", "unload", path])
             }
 
-            // Route: loose files → container accumulator (presentation only).
-            // Directories, bundles, and LaunchAgent/Daemon paths → immediate trashItem().
-            // All ownership decisions were made above; this is execution routing only.
-            let isLooseFile = !pathIsDir.boolValue && !knownBundleExts.contains(pathExt)
-                && !path.contains("/LaunchAgents/") && !path.contains("/LaunchDaemons/")
-            if isLooseFile {
-                looseFiles.append(path)
-                onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
+            // Defense-in-depth: block ATLAS/Apple/unrelated-vendor namespace files
+            // even if they survived upstream filters (e.g. from runtimeCreatedPaths).
+            if isProtectedPath(path, productFileName: record.fileName) {
+                await logger.log("⚠ Skipped (protected namespace): \(name)")
+                alog.notice("[ATLAS-ROLLBACK] Phase3 PROTECTED skip: \(path, privacy: .public)")
+                onProgress?(pct, "")
                 continue
             }
 
@@ -261,9 +366,10 @@ struct RollbackEngine {
             alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) START: \(path, privacy: .public)")
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
 
-            let t = itemTimeout(path)
             let trashStart = Date()
-            let (result, trashPath) = await trashItem(path: path, password: password, seconds: t)
+            let (result, trashPath) = await moveIntoPackage(path: path,
+                                                            packageFolder: packageFolder,
+                                                            password: password)
             let trashElapsed = Date().timeIntervalSince(trashStart)
             switch result {
             case .done:
@@ -275,7 +381,7 @@ struct RollbackEngine {
                 }
             case .skipped:
                 alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) SKIPPED (timeout): \(path, privacy: .public)")
-                await logger.log("⚠ Skipped (timeout \(String(format: "%.0f", t))s exceeded): \(name)")
+                await logger.log("⚠ Skipped (timeout exceeded): \(name)")
             case .failed:
                 alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) FAILED: \(path, privacy: .public)")
                 await logger.log("✗ Could not trash: \(name)")
@@ -285,37 +391,50 @@ struct RollbackEngine {
             onProgress?(pct, "Moving to Trash|\(name) (\(i + 1) of \(totalItems))")
         }
 
-        // ── Flush loose-file container ────────────────────────────────────────
-        // Groups individually approved loose files into one ATLAS Uninstall Package.
-        // Directories, bundles, and LaunchAgent/Daemon items were already moved above.
-        // Falls back to individual trashItem() if container creation fails.
-        if !looseFiles.isEmpty {
-            let productLabel = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
-            onProgress?(0.88, "Moving to Trash|Packaging \(looseFiles.count) file(s)…")
-            let grouped = await trashGrouped(paths: looseFiles,
-                                             productLabel: productLabel,
-                                             password: password)
-            for (originalPath, trashPath, result) in grouped {
-                let name = URL(fileURLWithPath: originalPath).lastPathComponent
-                switch result {
-                case .done:
-                    await logger.log("✓ \(name) → Trash (packaged)")
-                    removed.append(originalPath)
-                    trashRecords.append(TrashRecord(originalPath: originalPath, trashPath: trashPath))
-                case .skipped:
-                    await logger.log("⚠ Skipped (timeout): \(name)")
-                case .failed:
-                    await logger.log("✗ Could not trash: \(name)")
-                    failed.append(originalPath)
-                }
-            }
-            if grouped.contains(where: { $0.2 == .done }) {
-                await logger.log("Packaged \(looseFiles.count) loose file(s) into ATLAS Uninstall Package")
-            }
+        // Fix ownership so the package folder appears under the user's account in Finder Trash.
+        if let pkg = packageFolder {
+            let userName = NSUserName()
+            _ = await runWithPassword(password: password,
+                                      arguments: ["/usr/sbin/chown", "-R", userName, pkg])
+        }
+
+        // Write README after chown and after trashRecords is final — reflects actual completed state.
+        if let pkg = packageFolder {
+            writeUninstallReadme(to: pkg,
+                                 productLabel: productLabel,
+                                 trashRecords: trashRecords,
+                                 failedPaths: failed)
         }
 
         if alreadyGoneCount > 0 {
             await logger.log("Skipped \(alreadyGoneCount) already-removed path(s)")
+        }
+
+        // ── Phase 3b: Back up PKG receipt files into the uninstall package ────
+        // Copies /var/db/receipts/PKGID.{plist,bom} into the package folder and
+        // records TrashRecords so restore() can move them back to /var/db/receipts/.
+        // This runs after the README is written (receipt paths are internal, not
+        // user-facing) but before the manifest, so recovery sees them.
+        // pkgutil --forget in Phase 5 is unchanged — it remains the primary removal
+        // mechanism; this step only preserves the files so recovery can undo it.
+        if let pkg = packageFolder, !record.pkgReceiptIDs.isEmpty {
+            let receiptDir = "/var/db/receipts"
+            var backedUpCount = 0
+            for id in record.pkgReceiptIDs {
+                for ext in ["plist", "bom"] {
+                    let src = "\(receiptDir)/\(id).\(ext)"
+                    let dst = "\(pkg)/\(id).\(ext)"
+                    let cp = await runWithPassword(password: password,
+                                                  arguments: ["/bin/cp", src, dst])
+                    if cp.success {
+                        trashRecords.append(TrashRecord(originalPath: src, trashPath: dst))
+                        backedUpCount += 1
+                    }
+                }
+            }
+            if backedUpCount > 0 {
+                await logger.log("Backed up \(backedUpCount) receipt file(s) for recovery")
+            }
         }
 
         // ── Phase 4: Write manifest so Undo Uninstall knows Trash paths ───────
@@ -334,6 +453,15 @@ struct RollbackEngine {
                 break
             }
             alog.notice("[ATLAS-ROLLBACK] Phase5 forget \(forgetIndex + 1)/\(receiptIDsToForget.count): \(id, privacy: .public)")
+            // Safety: do not forget a receipt that is also claimed by another live record.
+            // Forgetting removes the pkgutil ownership record; doing so for a shared ID
+            // would corrupt the other product's uninstall.
+            if let claimant = otherRecords.first(where: { $0.id != record.id && $0.status == .success && $0.pkgReceiptIDs.contains(id) }) {
+                let claimantName = URL(fileURLWithPath: claimant.fileName).deletingPathExtension().lastPathComponent
+                await logger.log("⚠ Skipped forget — receipt \(id) also claimed by \"\(claimantName)\"")
+                alog.notice("[ATLAS-ROLLBACK] Phase5 skip forget — \(id, privacy: .public) claimed by \(claimantName, privacy: .public)")
+                continue
+            }
             // PKGReceiptScanner.forgetReceipt uses sudo + Thread.sleep — background thread.
             let forgot = await Task.detached { PKGReceiptScanner.forgetReceipt(id, password: password) }.value
             alog.notice("[ATLAS-ROLLBACK] Phase5 forget \(id, privacy: .public) result: \(forgot ? 1 : 0)")
@@ -470,6 +598,24 @@ struct RollbackEngine {
                 continue
             }
             guard !FileManager.default.fileExists(atPath: record.originalPath) else {
+                // Path already exists on disk. This happens when a child of this
+                // directory was restored first and mkdir -p recreated the parent shell.
+                // If the Trash item is also a directory, merge its top-level contents
+                // into the existing directory so nothing is silently abandoned.
+                var trashIsDir: ObjCBool = false
+                if FileManager.default.fileExists(atPath: record.trashPath, isDirectory: &trashIsDir),
+                   trashIsDir.boolValue {
+                    let items = (try? FileManager.default.contentsOfDirectory(atPath: record.trashPath)) ?? []
+                    for item in items {
+                        let src = (record.trashPath as NSString).appendingPathComponent(item)
+                        let dst = (record.originalPath as NSString).appendingPathComponent(item)
+                        guard !FileManager.default.fileExists(atPath: dst) else { continue }
+                        if (try? FileManager.default.moveItem(atPath: src, toPath: dst)) == nil {
+                            _ = await runWithPassword(password: password, arguments: ["/bin/mv", src, dst])
+                        }
+                    }
+                    await logger.log("✓ Merged: \(URL(fileURLWithPath: record.originalPath).lastPathComponent)")
+                }
                 restoredCount += 1
                 continue
             }
@@ -497,24 +643,22 @@ struct RollbackEngine {
         await logger.log("Recovery complete — \(restoredCount)/\(records.count) file(s) recovered")
 
         // ── Post-restore cleanup: remove ATLAS Uninstall Package if complete ──
-        // Identifies container roots referenced by this manifest. Removes the
-        // container only when nothing remains inside it — meaning every item was
-        // either successfully restored or is no longer present in Trash.
-        // If restore was partial, the container is preserved for remaining recovery.
-        var containerRoots = Set<String>()
+        // Identifies package roots referenced by this manifest. Removes the package
+        // folder only when no Trash items from this manifest remain inside it —
+        // meaning every item was either restored or is no longer present in Trash.
+        // Partial recoveries leave the package intact for a future retry.
+        var packageRoots = Set<String>()
         for rec in records {
-            if let root = uninstallContainerRoot(from: rec.trashPath) {
-                containerRoots.insert(root)
+            if let root = uninstallPackageRoot(from: rec.trashPath) {
+                packageRoots.insert(root)
             }
         }
-        for root in containerRoots {
+        for root in packageRoots {
             let anyRemaining = records.contains { rec in
-                guard let recRoot = uninstallContainerRoot(from: rec.trashPath) else { return false }
+                guard let recRoot = uninstallPackageRoot(from: rec.trashPath) else { return false }
                 return recRoot == root && FileManager.default.fileExists(atPath: rec.trashPath)
             }
             if !anyRemaining {
-                try? FileManager.default.removeItem(atPath: root + "/READ THIS.txt")
-                try? FileManager.default.removeItem(atPath: root + "/Files")
                 try? FileManager.default.removeItem(atPath: root)
                 await logger.log("Removed ATLAS Uninstall Package (recovery complete)")
             }
@@ -563,6 +707,40 @@ struct RollbackEngine {
         systemRoots.contains { path == $0 || path.hasPrefix($0 + "/") }
     }
 
+    // Returns true for paths that must never be deleted regardless of what the
+    // installation record says. Covers ATLAS's own files, Apple-namespaced plists,
+    // and preference files belonging to a different vendor than the product being
+    // uninstalled (detected by requiring at least one product-name token in the filename).
+    private static func isProtectedPath(_ path: String, productFileName: String) -> Bool {
+        let filename = URL(fileURLWithPath: path).lastPathComponent.lowercased()
+
+        // ATLAS self-protection
+        if filename.hasPrefix("com.atlas.atlas") { return true }
+        // System process plists that appear in ~/Library/Preferences during installs
+        if filename.hasPrefix("contextstoreagent") { return true }
+        // Apple-namespaced plists
+        if filename.hasPrefix("com.apple.") { return true }
+
+        // For preference files: require at least one product-name token in the filename
+        // so that unrelated-vendor plists captured by the filesystem diff are blocked.
+        let prefDir = (NSHomeDirectory() + "/Library/Preferences/").lowercased()
+        if path.lowercased().hasPrefix(prefDir) {
+            let tokens = productFileName
+                .replacingOccurrences(of: ".pkg", with: "")
+                .replacingOccurrences(of: ".dmg", with: "")
+                .replacingOccurrences(of: ".iso", with: "")
+                .components(separatedBy: CharacterSet(charactersIn: " _-."))
+                .map { $0.lowercased() }
+                .filter { $0.count >= 4 }
+            // If no product token appears in the preference filename, it belongs to
+            // a different vendor and must not be deleted.
+            if !tokens.isEmpty && !tokens.contains(where: { filename.contains($0) }) {
+                return true
+            }
+        }
+        return false
+    }
+
     // Derives a short vendor/product name from a filename like
     // MARK: - Trash manifest
 
@@ -596,6 +774,11 @@ struct RollbackEngine {
         "component", "vst3", "vst", "aaxplugin", "app",
         "framework", "plugin", "kext", "appex", "bundle",
     ]
+
+    // macOS-generated filesystem metadata — never installed by any product, never user content.
+    // Excluded from directory ownership and emptiness checks so these artifacts do not
+    // prevent ATLAS from removing product-specific directories it fully owns.
+    private static let fsMetadata: Set<String> = [".DS_Store", ".localized"]
 
     private static func bundleRoot(for path: String) -> String {
         // Walk all the way to root and return the OUTERMOST bundle ancestor.
@@ -652,7 +835,11 @@ struct RollbackEngine {
         ]
     }
 
-    private static func collapseByDirectory(_ paths: [String]) -> [String] {
+    // positivelyOwned: the bundle-collapsed set of paths that satisfy the ownership invariant
+    // (installedFiles or pkgReceiptIDs receipts). A directory may only be promoted to a single
+    // deletion candidate when every real non-metadata item in it is in this set. Count-matching
+    // alone is not sufficient — identity of each item must be verified.
+    private static func collapseByDirectory(_ paths: [String], positivelyOwned: Set<String>) -> [String] {
         let protected  = protectedDirs
         let aggregates = aggregateDirs
         var current    = Set(paths)
@@ -682,10 +869,12 @@ struct RollbackEngine {
             var next = keep
             for (parent, children) in byParent {
                 let allItems   = (try? FileManager.default.contentsOfDirectory(atPath: parent)) ?? []
-                let totalInDir = allItems.count
-                // Only collapse if ATLAS tracked every item in the directory — a single
-                // untracked file means user data or another app's data could be in there.
-                let fullyOwned = totalInDir > 0 && children.count >= totalInDir
+                let directItems = allItems.filter { !fsMetadata.contains($0) }
+                // Ownership invariant: every real item in the directory must be positively owned.
+                // Count-matching alone is not sufficient — identity of each item is verified.
+                let fullyOwned = !directItems.isEmpty && directItems.allSatisfy { item in
+                    positivelyOwned.contains((parent as NSString).appendingPathComponent(item))
+                }
                 let parentIsVendorRoot = aggregates.contains(
                     URL(fileURLWithPath: parent).deletingLastPathComponent().path
                 ) || aggregates.contains(parent)
@@ -789,64 +978,58 @@ struct RollbackEngine {
 
     // Groups individually approved loose files into a single ATLAS Trash container folder.
     // All ownership decisions were made before calling this — this is presentation routing only.
-    // Each file gets its own TrashRecord; originalPath is exact; trashPath points inside container.
-    // Falls back to individual trashItem() calls if the container cannot be created.
-    private static func trashGrouped(
-        paths: [String],
-        productLabel: String,
-        password: String
-    ) async -> [(originalPath: String, trashPath: String, result: RemoveResult)] {
-
-        let trashDir  = NSHomeDirectory() + "/.Trash"
-        let safeName  = productLabel
+    // Creates the ATLAS Uninstall Package folder in ~/.Trash/ and writes READ THIS.txt.
+    // Returns the package folder path on success, nil on failure (callers fall back to trashItem).
+    private static func createUninstallPackage(productLabel: String,
+                                               fileName: String,
+                                               password: String) -> String? {
+        let trashDir = NSHomeDirectory() + "/.Trash"
+        let safeName = productLabel
             .replacingOccurrences(of: "[^a-zA-Z0-9 _\\-]", with: "_", options: .regularExpression)
             .prefix(40)
-        let uuid8     = UUID().uuidString.prefix(8)
-        let container = uniqueTrashPath(
+        let uuid8 = UUID().uuidString.prefix(8)
+        let pkg = uniqueTrashPath(
             for: "\(trashDir)/ATLAS — \(safeName) — Uninstall Package — \(uuid8)",
             in: trashDir)
 
-        // Create the container directory. If this fails, fall back to individual trash.
-        let mkdir = await runWithPassword(password: password,
-                                          arguments: ["/bin/mkdir", "-p", container])
-        guard mkdir.success else {
-            var results: [(String, String, RemoveResult)] = []
-            for path in paths {
-                let (r, tp) = await trashItem(path: path, password: password, seconds: itemTimeout(path))
-                results.append((path, tp ?? "", r))
-            }
-            return results
+        guard (try? FileManager.default.createDirectory(atPath: pkg,
+                                                        withIntermediateDirectories: true)) != nil else {
+            return nil
         }
 
-        var results: [(String, String, RemoveResult)] = []
-        for path in paths {
-            // Destination preserves full original path inside the Files/ subdirectory.
-            // e.g. /Library/ArturiaSC/temp/soft_001.desc2
-            //   → ~/.Trash/ATLAS — … — Uninstall Package — UUID/Files/Library/ArturiaSC/temp/soft_001.desc2
-            let dest      = container + "/Files" + path   // path always starts with "/"
-            let parentDir = URL(fileURLWithPath: dest).deletingLastPathComponent().path
+        return pkg
+    }
 
-            let mkp = await runWithPassword(password: password,
-                                             arguments: ["/bin/mkdir", "-p", parentDir])
-            guard mkp.success else { results.append((path, "", .failed)); continue }
+    // Writes READ THIS.txt into the ATLAS Uninstall Package after the uninstall completes.
+    // Called once, after chown, so the folder is user-owned and trashRecords is final.
+    private static func writeUninstallReadme(to pkg: String,
+                                             productLabel: String,
+                                             trashRecords: [TrashRecord],
+                                             failedPaths: [String]) {
+        let packageID = URL(fileURLWithPath: pkg).lastPathComponent
+            .components(separatedBy: " — ").last ?? pkg
 
-            let mv = await runWithPassword(password: password,
-                                           arguments: ["/bin/mv", path, dest])
-            results.append((path, dest, mv.success ? .done : .failed))
-        }
-
-        // Fix ownership so the container appears under the user's account in Finder Trash.
-        let userName = NSUserName()
-        _ = await runWithPassword(password: password,
-                                   arguments: ["/usr/sbin/chown", "-R", userName, container])
-
-        // Write README after chown — container is now user-owned, so this user-space write succeeds.
-        // Written regardless of how many files succeeded or failed: a partial package still explains itself.
-        // Non-fatal: if this fails, uninstall and recovery continue normally.
         let formatter = DateFormatter()
         formatter.dateStyle = .long
-        formatter.timeStyle = .short
+        formatter.timeStyle = .medium
         let dateString = formatter.string(from: Date())
+
+        let inventoryLines = trashRecords
+            .map { "  \($0.originalPath)" }
+            .sorted()
+            .joined(separator: "\n")
+
+        var failedSection = ""
+        if !failedPaths.isEmpty {
+            let failedLines = failedPaths.sorted().map { "  \($0)" }.joined(separator: "\n")
+            failedSection = """
+
+
+            Items that could not be moved (\(failedPaths.count)):
+            \(failedLines)
+            """
+        }
+
         let readmeText = """
             --------------------------------
 
@@ -858,6 +1041,12 @@ struct RollbackEngine {
             Uninstall Date:
             \(dateString)
 
+            Uninstall Package ID:
+            \(packageID)
+
+            Items successfully moved (\(trashRecords.count)):
+            \(inventoryLines)\(failedSection)
+
             This folder contains files removed during the ATLAS uninstall process.
 
             ATLAS organized these files into this recovery package so they can be restored using:
@@ -867,24 +1056,53 @@ struct RollbackEngine {
             IMPORTANT:
             Do not rename, move, edit, or modify files inside this folder if you want ATLAS recovery to remain available.
 
-            The Files folder preserves the original directory structure.
-
             You may permanently delete this entire folder if you no longer need recovery.
 
             Created by ATLAS.
 
             --------------------------------
             """
-        try? readmeText.write(toFile: container + "/READ THIS.txt", atomically: true, encoding: .utf8)
-
-        return results
+        try? readmeText.write(toFile: pkg + "/READ THIS.txt", atomically: true, encoding: .utf8)
     }
 
-    // Extracts the ATLAS Uninstall Package root directory from a trashPath that includes "/Files/".
-    // Returns nil for paths not inside a container (e.g. individual trashItem() fallback paths).
-    private static func uninstallContainerRoot(from trashPath: String) -> String? {
-        guard let range = trashPath.range(of: "/Files/") else { return nil }
-        return String(trashPath[..<range.lowerBound])
+    // Moves a single item into the ATLAS Uninstall Package folder.
+    // If packageFolder is nil (creation failed), falls back to trashItem().
+    // Handles name conflicts inside the package folder with a timestamp suffix.
+    private static func moveIntoPackage(path: String,
+                                        packageFolder: String?,
+                                        password: String) async -> (RemoveResult, String?) {
+        guard let pkg = packageFolder else {
+            let (r, tp) = await trashItem(path: path, password: password, seconds: itemTimeout(path))
+            return (r, tp)
+        }
+
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        let dest = uniqueTrashPath(for: "\(pkg)/\(name)", in: pkg)
+
+        let mv = await runWithPassword(password: password, arguments: ["/bin/mv", path, dest])
+        if mv.success {
+            return (.done, dest)
+        }
+        // Fallback: try user-space move
+        if (try? FileManager.default.moveItem(atPath: path, toPath: dest)) != nil {
+            return (.done, dest)
+        }
+        return (.failed, nil)
+    }
+
+    // Extracts the ATLAS Uninstall Package root from a trashPath.
+    // Package items sit directly inside the package folder:
+    //   ~/.Trash/ATLAS — Product — Uninstall Package — UUID/itemname
+    // Returns nil for paths not inside a recognized package (e.g. fallback trashItem paths).
+    private static func uninstallPackageRoot(from trashPath: String) -> String? {
+        guard trashPath.contains("/ATLAS — ") && trashPath.contains(" — Uninstall Package — ") else {
+            return nil
+        }
+        // The package root is the parent directory of the item path.
+        let parent = URL(fileURLWithPath: trashPath).deletingLastPathComponent().path
+        // Verify it looks like ~/.Trash/ATLAS — … — Uninstall Package — UUID
+        guard URL(fileURLWithPath: parent).lastPathComponent.hasPrefix("ATLAS — ") else { return nil }
+        return parent
     }
 
     // Generates a unique destination path in trashDir to avoid overwriting existing items.
@@ -981,7 +1199,10 @@ struct RollbackEngine {
                 let abs: String
                 if p.hasPrefix("/") { abs = p }
                 else if location == "/" { abs = "/\(p)" }
-                else { abs = "\(location)/\(p)" }
+                else {
+                    let raw = "\(location)/\(p)"
+                    abs = raw.hasPrefix("/") ? raw : "/\(raw)"
+                }
                 guard !anchors.contains(abs) else { return nil }
                 // Drop plain directory entries — only keep files and bundle packages.
                 // pkgutil --files includes directory entries; trashing a plain directory
@@ -1043,8 +1264,13 @@ struct RollbackEngine {
         var cleaned: [String] = []
         for dir in parents.sorted(by: { $0.count > $1.count }) {
             guard FileManager.default.fileExists(atPath: dir) else { continue }
-            let contents = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
-            if contents.isEmpty {
+            // Treat a failed directory read as unreadable, not empty.
+            // Never call hardRemove if we cannot confirm the directory is actually empty.
+            guard let contents = try? FileManager.default.contentsOfDirectory(atPath: dir) else {
+                alog.notice("[ATLAS-ROLLBACK] cleanupEmptyDirs: cannot read directory, skipping: \(dir, privacy: .public)")
+                continue
+            }
+            if contents.filter({ !fsMetadata.contains($0) }).isEmpty {
                 if case .done = await hardRemove(path: dir, password: password, seconds: 4) {
                     cleaned.append(dir)
                 }

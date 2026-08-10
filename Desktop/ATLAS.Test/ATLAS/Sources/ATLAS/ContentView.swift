@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var appState = AppState.shared
     @StateObject private var logger = Logger()
     @StateObject private var historyStore = HistoryStore()
@@ -9,16 +10,6 @@ struct ContentView: View {
     @State private var isTargeted = false
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
                                            || !UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey)
-    @State private var needsPasswordSetup   = false
-    // Re-check real permission state on every launch — not just the onboarding flag.
-    // FDA + Accessibility are fast sync checks. Automation is async; we use the stored
-    // confirmation flag as an initial proxy then verify below.
-    @State private var needsPermissionsSetup: Bool = {
-        !PermissionsManager.hasCompletedOnboarding ||
-        !PermissionsManager.hasAccessibility ||
-        !PermissionsManager.hasFullDiskAccess ||
-        !PermissionsManager.automationManuallyConfirmed
-    }()
     // Live permission state for the in-app warning banner shown after onboarding.
     @State private var livePermsMissing: [String] = []
     @State private var permCheckTimer: Timer? = nil
@@ -29,6 +20,14 @@ struct ContentView: View {
     @State private var rollbackProgress: Double = 0.0
     @State private var rollbackStep: String = ""
     @State private var rollbackTask: Task<Void, Never>? = nil
+    @State private var rollbackStartTime: Date = Date()
+    @State private var rollbackPhase: String = ""
+    @State private var rollbackReceiptIndex: Int = 0
+    @State private var rollbackReceiptTotal: Int = 0
+    @State private var rollbackFileIndex: Int = 0
+    @State private var rollbackFileTotal: Int = 0
+    @State private var rollbackFilesFound: Int = 0
+    @State private var rollbackTimerTick: Date = Date()
     @State private var rollbackQueue: [InstallRecord] = []
     @State private var rollbackQueueTotal: Int = 0
     @State private var rollbackQueueDone: Int = 0
@@ -44,6 +43,8 @@ struct ContentView: View {
     @State private var showPluginScan = false
     @State private var pendingDemoAlerts: [DemoAlert] = []
     @State private var showDemoAlert = false
+    @State private var pendingActivationAlerts: [ActivationAlert] = []
+    @State private var showActivationAlert = false
     @State private var preInstallWarnings: [PreInstallWarning] = []
     @ObservedObject private var zipBroker = ZIPPasswordBroker.shared
     @ObservedObject private var widgetState  = WidgetStateManager.shared
@@ -66,13 +67,13 @@ struct ContentView: View {
     @State private var showStorageSelection = false
     @State private var pendingInstallURL: URL? = nil
     @State private var pendingScanResult: ScanResult? = nil
+    // Carries docInfo from the single-file scan path into the install completion handler
+    @State private var pendingDocInfo: InstallerDocInfo? = nil
     @AppStorage("atlasGreetingShown") private var greetingShown = false
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
+    @AppStorage("atlas.setupComplete") private var setupComplete = false
+    @State private var showPermissionsSheet = false
     @State private var showTour = false
-    @State private var feedbackProductName: String? = nil
-    @State private var feedbackRecord: InstallRecord? = nil
-    @State private var showFeedbackPrompt = false
-    private var feedbackTimer: Timer? = nil
     @State private var showAtlasSelfInstallAlert = false
     // TITAN CORE™ mission state
     @State private var activeTitanMission: TitanMission? = nil
@@ -103,16 +104,18 @@ struct ContentView: View {
                 }
             } else if !auth.subscriptionActive {
                 SubscriptionRequiredView()
-            } else if needsPermissionsSetup {
-                PermissionsSetupView {
-                    needsPermissionsSetup = false
-                    needsPasswordSetup = !KeychainManager.hasPassword()
+            } else if !setupComplete {
+                SetupWizardView {
+                    setupComplete = true
                 }
-            } else if needsPasswordSetup {
-                PasswordSetupView { needsPasswordSetup = false }
-                    .atlasBackground()
+                .transition(.opacity)
             } else {
                 mainLayout
+            }
+        }
+        .onAppear {
+            if !setupComplete && UserDefaults.standard.bool(forKey: "atlas.onboardingDone") {
+                setupComplete = true
             }
         }
         .background(widgetState.isWidgetMode ? Color.clear : nil)
@@ -128,6 +131,21 @@ struct ContentView: View {
         .onChange(of: pendingDemoAlerts.count) { count in
             if count > 0 && !showDemoAlert { showDemoAlert = true }
         }
+        .sheet(isPresented: $showActivationAlert, onDismiss: {
+            pendingActivationAlerts.removeFirst()
+            if !pendingActivationAlerts.isEmpty { showActivationAlert = true }
+        }) {
+            if let alert = pendingActivationAlerts.first {
+                ActivationInfoView(
+                    productName: alert.productName,
+                    docInfo: alert.docInfo,
+                    isPostInstallAlert: true
+                ) { showActivationAlert = false }
+            }
+        }
+        .onChange(of: pendingActivationAlerts.count) { count in
+            if count > 0 && !showActivationAlert { showActivationAlert = true }
+        }
         // ZIP password prompt — suspends install until user enters password or cancels
         .sheet(item: $zipBroker.pendingRequest) { request in
             ZIPPasswordView(request: request)
@@ -136,6 +154,9 @@ struct ContentView: View {
         // When user cancels the password prompt, stop the active install and go home
         .onChange(of: zipBroker.pendingRequest == nil) { _ in
             // The broker handles resuming the continuation; nothing else needed here
+        }
+        .sheet(isPresented: $showPermissionsSheet) {
+            PermissionsSetupView { showPermissionsSheet = false }
         }
         .sheet(isPresented: $showAbout) { AboutView() }
         .sheet(isPresented: $showUpgrade) {
@@ -260,34 +281,37 @@ struct ContentView: View {
                 VStack {
                     HStack(spacing: 10) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .foregroundColor(.white)
+                            .foregroundStyle(Color.atlasInfo)
+                            .font(.system(size: 14))
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Resume previous installs?")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
+                                .font(.atlasCallout)
+                                .foregroundStyle(Color.atlasLabel)
                             Text("\(queue.pendingResumeURLs.count) item\(queue.pendingResumeURLs.count == 1 ? "" : "s") from last session")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.75))
+                                .font(.atlasCaption)
+                                .foregroundStyle(Color.atlasSubtitle)
                         }
                         Spacer()
                         Button("Resume") {
                             queue.resumePersistedQueue()
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
+                        .buttonStyle(.atlasPrimary)
                         Button("Dismiss") {
                             queue.clearPersistedQueue()
                         }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.white.opacity(0.7))
-                        .font(.system(size: 12))
+                        .buttonStyle(.atlasGhost)
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .background(Color.atlasInfo.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                            .strokeBorder(Color.atlasInfo.opacity(0.28), lineWidth: 0.75)
+                    )
+                    .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.blue.opacity(0.85))
-                    .cornerRadius(10)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.top, 10)
                     Spacer()
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -295,31 +319,6 @@ struct ContentView: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: queue.pendingResumeURLs.isEmpty)
             }
 
-            // Post-install feedback prompt (bottom-right, 60s after success)
-            if showFeedbackPrompt, let product = feedbackProductName {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        InstallFeedbackPrompt(
-                            productName: product,
-                            steps: [],
-                            hostsEntries: [],
-                            installLog: "",
-                            installRecord: feedbackRecord,
-                            historyStore: historyStore,
-                            onDismiss: {
-                                withAnimation { showFeedbackPrompt = false }
-                            }
-                        )
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 56)
-                    }
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .zIndex(998)
-                .animation(.spring(response: 0.4, dampingFraction: 0.78), value: showFeedbackPrompt)
-            }
         }
         .onChange(of: historyStore.records.isEmpty) { isEmpty in
             if isEmpty { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
@@ -342,9 +341,10 @@ struct ContentView: View {
             handleFilesDrop(urls: [url])
         }
         .onAppear {
-            // Defer Keychain access until main app appears — avoids system prompt at launch
-            if !needsPasswordSetup {
-                needsPasswordSetup = !KeychainManager.hasPassword()
+            // Existing users: both flags present means they completed the old setup flow.
+            // Skip the new wizard and go directly to the homepage.
+            if !setupComplete && PermissionsManager.hasCompletedOnboarding && KeychainManager.hasPassword() {
+                setupComplete = true
             }
             widgetState.startIdleMonitoring()
             startPermissionPolling()
@@ -364,12 +364,10 @@ struct ContentView: View {
         }
         .task {
             // Automation check is slow (spawns osascript) — run non-blocking.
-            // If not granted, send back to permissions setup screen.
+            // Result feeds the live permission warning banner on the homepage only.
             PermissionsManager.checkAutomationPermission { granted in
                 if granted {
                     PermissionsManager.automationManuallyConfirmed = true
-                } else if !PermissionsManager.automationManuallyConfirmed {
-                    needsPermissionsSetup = true
                 }
                 checkLivePermissions()
             }
@@ -391,24 +389,29 @@ struct ContentView: View {
     var mainView: some View {
         VStack(spacing: 0) {
             titleBar
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 14)
+
+            // Hairline separator under title bar
+            Color.atlasBorderSubtle.opacity(0.65)
+                .frame(height: 0.5)
+                .padding(.horizontal, 20)
 
             // ── Update available banner ───────────────────────────────────
             if updateChecker.showBanner, let info = updateChecker.updateInfo {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: 13))
-                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .foregroundStyle(Color.atlasAccent)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("ATLAS \(info.version) is available")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color(hex: "#3ECFB2"))
+                            .font(.atlasCaptionBold)
+                            .foregroundStyle(Color.atlasAccent)
                         if !info.releaseNotes.isEmpty {
                             Text(info.releaseNotes)
-                                .font(.system(size: 10))
-                                .foregroundColor(Color(hex: "#3ECFB2").opacity(0.7))
+                                .font(.atlasMicro)
+                                .foregroundStyle(Color.atlasAccent.opacity(0.70))
                         }
                     }
                     Spacer()
@@ -416,25 +419,30 @@ struct ContentView: View {
                         updateChecker.openDownload()
                     } label: {
                         Text("Download")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(Color(hex: "#0A0A0B"))
+                            .font(.atlasMicroMedium)
+                            .foregroundStyle(Color(hex: "#081410"))
                             .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(Color(hex: "#3ECFB2"))
-                            .cornerRadius(6)
+                            .background(ATLASGradient.accentFill)
+                            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.xs, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     Button { updateChecker.dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(Color(hex: "#3ECFB2").opacity(0.6))
+                            .foregroundStyle(Color.atlasAccent.opacity(0.55))
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Color(hex: "#3ECFB2").opacity(0.08))
-                .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "#3ECFB2").opacity(0.2)), alignment: .bottom)
+                .padding(.horizontal, 14).padding(.vertical, 9)
+                .background(Color.atlasAccentMuted)
+                .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                        .strokeBorder(Color.atlasAccent.opacity(0.20), lineWidth: 0.75)
+                )
                 .padding(.horizontal, 16)
-                .padding(.bottom, 6)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
@@ -443,23 +451,28 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     Image(systemName: auth.isPro ? "star.fill" : "arrow.down.circle.fill")
                         .font(.system(size: 12))
-                        .foregroundColor(auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#8890B0"))
+                        .foregroundStyle(auth.isPro ? Color.atlasWarning : Color.atlasInfo)
                     Text(notice)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#8890B0"))
+                        .font(.atlasSubhead)
+                        .foregroundStyle(auth.isPro ? Color.atlasWarning : Color.atlasInfo)
                     Spacer()
                     Button { auth.planChangeNotice = nil } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(Color(hex: "#696E7C"))
+                            .foregroundStyle(Color.atlasTertiary)
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 9)
-                .background(auth.isPro ? Color(hex: "#F0A030").opacity(0.08) : Color(hex: "#1A1D2E"))
-                .cornerRadius(10)
-                .overlay(RoundedRectangle(cornerRadius: 10)
-                    .stroke(auth.isPro ? Color(hex: "#F0A030").opacity(0.2) : Color(hex: "#2A2D3E"), lineWidth: 1))
+                .background(auth.isPro ? Color.atlasWarning.opacity(0.07) : Color.atlasInfo.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                        .strokeBorder(
+                            auth.isPro ? Color.atlasWarning.opacity(0.22) : Color.atlasInfo.opacity(0.22),
+                            lineWidth: 0.75
+                        )
+                )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -580,7 +593,7 @@ struct ContentView: View {
         let busy = queue.isProcessing || rollbackInProgress
             || appState.phase == .installing || appState.phase == .processing
             || appState.phase == .verifying  || appState.phase == .cleanup
-        return HStack(spacing: 0) {
+        return HStack(spacing: 2) {
             // Settings — disabled while installing/uninstalling
             BottomBarIconButton(icon: "gearshape", tooltip: busy ? "Unavailable during install" : "Settings") {
                 showSettings = true
@@ -640,10 +653,21 @@ struct ContentView: View {
                 .padding(.trailing, 12)
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.atlasDeepBG)
+        .padding(.vertical, 4)
+        .background(
+            ZStack {
+                Color.atlasSessionHeader
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.white.opacity(0.012), location: 0),
+                        .init(color: Color.clear, location: 1),
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+            }
+        )
         .overlay(alignment: .top) {
-            Color.atlasBorderSubtle.frame(height: 0.5)
+            Color.atlasBorderSubtle.opacity(0.8).frame(height: 0.5)
         }
     }
 
@@ -653,10 +677,10 @@ struct ContentView: View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 13))
-                .foregroundColor(Color(hex: "#E05555"))
+                .foregroundStyle(Color.atlasDanger)
             Text("Payment failed — update your billing to keep access.")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(Color(hex: "#E05555"))
+                .font(.atlasSubhead)
+                .foregroundStyle(Color.atlasDanger)
             Spacer()
             Button("Update →") {
                 if let url = URL(string: "https://www.interlinked.digital/atlas/account") {
@@ -664,57 +688,65 @@ struct ContentView: View {
                 }
             }
             .font(.system(size: 11, weight: .bold))
-            .foregroundColor(Color(hex: "#E05555"))
+            .foregroundStyle(Color.atlasDanger)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color(hex: "#E05555").opacity(0.12))
-            .cornerRadius(7)
-            .overlay(RoundedRectangle(cornerRadius: 7)
-                .stroke(Color(hex: "#E05555").opacity(0.3), lineWidth: 1))
+            .background(Color.atlasDangerGlow)
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
+                    .strokeBorder(Color.atlasDanger.opacity(0.30), lineWidth: 0.75)
+            )
             .buttonStyle(.plain)
         }
         .padding(10)
-        .background(Color(hex: "#E05555").opacity(0.06))
-        .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10)
-            .stroke(Color(hex: "#E05555").opacity(0.25), lineWidth: 1))
+        .background(Color.atlasDanger.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                .strokeBorder(Color.atlasDanger.opacity(0.22), lineWidth: 0.75)
+        )
     }
 
     var permissionsBanner: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.shield.fill")
-                .foregroundColor(Color(hex: "#F0A030"))
+                .foregroundStyle(Color.atlasWarning)
                 .font(.system(size: 14))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Permission\(livePermsMissing.count == 1 ? "" : "s") required: \(livePermsMissing.joined(separator: ", "))")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(hex: "#F0A030"))
+                    .font(.atlasCaptionBold)
+                    .foregroundStyle(Color.atlasWarning)
                 Text("Installs will fail without these. Tap to fix.")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "#C8A060"))
+                    .font(.atlasMicro)
+                    .foregroundStyle(Color.atlasWarning.opacity(0.75))
             }
 
             Spacer()
 
             Button("Fix →") {
-                needsPermissionsSetup = true
+                showPermissionsSheet = true
             }
             .font(.system(size: 11, weight: .bold))
-            .foregroundColor(Color(hex: "#F0A030"))
+            .foregroundStyle(Color.atlasWarning)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color(hex: "#F0A030").opacity(0.12))
-            .cornerRadius(7)
-            .overlay(RoundedRectangle(cornerRadius: 7)
-                .stroke(Color(hex: "#F0A030").opacity(0.3), lineWidth: 1))
+            .background(Color.atlasWarningGlow)
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
+                    .strokeBorder(Color.atlasWarning.opacity(0.30), lineWidth: 0.75)
+            )
             .buttonStyle(.plain)
         }
         .padding(10)
-        .background(Color(hex: "#F0A030").opacity(0.06))
-        .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10)
-            .stroke(Color(hex: "#F0A030").opacity(0.25), lineWidth: 1))
+        .background(Color.atlasWarning.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                .strokeBorder(Color.atlasWarning.opacity(0.22), lineWidth: 0.75)
+        )
         .animation(.easeInOut(duration: 0.3), value: livePermsMissing)
     }
 
@@ -758,10 +790,22 @@ struct ContentView: View {
         return HStack(spacing: 12) {
             // Logo + ATLAS name — tap opens About
             Button { showAbout = true } label: {
-                HStack(spacing: 9) {
+                HStack(spacing: 6) {
+                    if let url = Bundle.module.url(forResource: "ATLAS", withExtension: "png"),
+                       let nsImage = NSImage(contentsOf: url) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: 36, height: 36)
+                    }
                     LiquidMetalView(size: 30)
                     VStack(alignment: .leading, spacing: 1) {
-                        AtlasTitleText(size: 20, tracking: 5)
+                        if colorScheme == .dark {
+                            AtlasTitleText(size: 20, tracking: 5)
+                        } else {
+                            AtlasTitleText(size: 20, tracking: 5)
+                                .colorInvert()
+                        }
                         Text("by InterLinked©")
                             .font(.system(size: 9.5, weight: .regular))
                             .foregroundStyle(Color.atlasTertiary)
@@ -824,7 +868,10 @@ struct ContentView: View {
                 isPresented: $showCancelConfirm,
                 titleVisibility: .visible
             ) {
-                Button(L(.cancelConfirmStop), role: .destructive) { performCancel() }
+                Button(L(.cancelConfirmStop), role: .destructive) {
+                    NSLog("[ATLAS-CANCEL] Stop confirmed by user — rollbackInProgress=%d", rollbackInProgress ? 1 : 0)
+                    performCancel()
+                }
                 Button(L(.cancelConfirmContinue), role: .cancel) {}
             } message: {
                 Text(L(.cancelConfirmMessage))
@@ -840,19 +887,13 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 statusDot
                 Text(appState.statusMessage)
-                    .font(.system(size: 12.5, weight: .medium))
+                    .font(.atlasCallout)
                     .foregroundStyle(Color.atlasLabel)
                 Spacer()
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color.atlasPanelBG)
-            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75)
-            )
-            .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+            .padding(.vertical, 11)
+            .atlasCardElevated()
         }
     }
 
@@ -920,24 +961,15 @@ struct ContentView: View {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
                             Text("\(rem) install\(rem == 1 ? "" : "s") remaining today")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.atlasSubhead)
                             Spacer()
                             Text("Standard")
-                                .font(.system(size: 9.5, weight: .semibold))
-                                .tracking(0.3)
-                                .foregroundStyle(Color(hex: "#7090B8"))
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Color(hex: "#7090B8").opacity(0.09))
-                                .clipShape(Capsule())
-                                .overlay(Capsule().strokeBorder(Color(hex: "#7090B8").opacity(0.25), lineWidth: 0.75))
+                                .atlasChip(color: Color.atlasInfo)
                         }
                         .foregroundStyle(Color.atlasSubtitle)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.atlasPanelBG)
-                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75))
+                        .padding(.vertical, 9)
+                        .atlasCard()
                     }
                 }
 
@@ -954,25 +986,22 @@ struct ContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "icloud.and.arrow.up")
                             .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#525260"))
+                            .foregroundStyle(Color.atlasTertiary)
                         Text("File Sharing")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(hex: "#525260"))
+                            .font(.atlasSubhead)
+                            .foregroundStyle(Color.atlasSubtitle)
                         Spacer()
                         Text("Coming Soon")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(Color(hex: "#3ECFB2"))
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color(hex: "#3ECFB2").opacity(0.10))
-                            .clipShape(Capsule())
-                            .overlay(Capsule().strokeBorder(Color(hex: "#3ECFB2").opacity(0.2), lineWidth: 0.75))
+                            .atlasChip(color: Color.atlasAccent)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.02))
-                    .clipShape(RoundedRectangle(cornerRadius: 9))
-                    .overlay(RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.75))
+                    .padding(.vertical, 9)
+                    .background(Color.atlasBorderSubtle.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
+                            .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75)
+                    )
                 }
             }
         }
@@ -981,26 +1010,27 @@ struct ContentView: View {
         ForEach(preInstallWarnings, id: \.message) { warning in
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(Color(hex: "#F0A030"))
+                    .foregroundStyle(Color.atlasWarning)
                     .font(.system(size: 12))
                 Text(warning.message)
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(hex: "#C8A060"))
+                    .font(.atlasCaption)
+                    .foregroundStyle(Color.atlasWarning.opacity(0.85))
                     .lineLimit(2)
                 Spacer()
                 Button { preInstallWarnings.removeAll { $0.message == warning.message } } label: {
                     Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color(hex: "#696E7C"))
+                        .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color(hex: "#1A1200"))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(hex: "#F0A030").opacity(0.25), lineWidth: 1))
-            .cornerRadius(8)
-            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(Color.atlasWarning.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
+                    .strokeBorder(Color.atlasWarning.opacity(0.25), lineWidth: 0.75)
+            )
             .transition(.opacity)
         }
 
@@ -1223,15 +1253,15 @@ struct ContentView: View {
         HStack(spacing: 12) {
             Image(systemName: "clock.badge.checkmark.fill")
                 .font(.system(size: 22))
-                .foregroundColor(Color(hex: "#3ECFB2"))
+                .foregroundStyle(Color.atlasAccent)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Pending installation ready")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color.atlasLabel)
+                    .font(.atlasCallout)
+                    .foregroundStyle(Color.atlasLabel)
                 Text("\(monthlyLimit.pendingURLs.count) file\(monthlyLimit.pendingURLs.count == 1 ? "" : "s") queued from previous session")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.atlasSubtitle)
+                    .font(.atlasCaption)
+                    .foregroundStyle(Color.atlasSubtitle)
             }
 
             Spacer()
@@ -1242,18 +1272,15 @@ struct ContentView: View {
                 for url in urls { queue.add(url: url) }
                 withAnimation { showDropZone = true }
             }
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(Color(hex: "#0D0F1A"))
-            .padding(.horizontal, 14).padding(.vertical, 7)
-            .background(Color(hex: "#3ECFB2"))
-            .cornerRadius(8)
-            .buttonStyle(.plain)
+            .buttonStyle(.atlasPrimary)
         }
         .padding(14)
-        .background(Color(hex: "#3ECFB2").opacity(0.07))
-        .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10)
-            .stroke(Color(hex: "#3ECFB2").opacity(0.25), lineWidth: 1))
+        .background(Color.atlasAccentMuted)
+        .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                .strokeBorder(Color.atlasAccent.opacity(0.22), lineWidth: 0.75)
+        )
     }
 
     // MARK: - TITAN CORE™ recovery notice
@@ -1265,14 +1292,14 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 Image(systemName: "cpu.fill")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "#3ECFB2"))
+                    .foregroundStyle(Color.atlasAccent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TITAN CORE™ recovered the installation")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .font(.atlasCaptionBold)
+                        .foregroundStyle(Color.atlasAccent)
                     Text(action.prefix(1).uppercased() + action.dropFirst())
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#3ECFB2").opacity(0.75))
+                        .font(.atlasMicro)
+                        .foregroundStyle(Color.atlasAccent.opacity(0.75))
                 }
                 Spacer()
                 Button {
@@ -1280,30 +1307,32 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 9))
-                        .foregroundColor(Color(hex: "#696E7C"))
+                        .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
             }
             .padding(10)
-            .background(Color(hex: "#3ECFB2").opacity(0.07))
-            .cornerRadius(10)
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(hex: "#3ECFB2").opacity(0.2), lineWidth: 1))
+            .background(Color.atlasAccentMuted)
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                    .strokeBorder(Color.atlasAccent.opacity(0.20), lineWidth: 0.75)
+            )
             .transition(.opacity.combined(with: .move(edge: .bottom)))
 
         case .guidance(let message):
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "cpu.fill")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "#F0A030"))
+                    .foregroundStyle(Color.atlasWarning)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TITAN CORE™ recommendation")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(hex: "#F0A030"))
+                        .font(.atlasCaptionBold)
+                        .foregroundStyle(Color.atlasWarning)
                     Text(message)
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#C8A060"))
+                        .font(.atlasCaption)
+                        .foregroundStyle(Color.atlasWarning.opacity(0.80))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
@@ -1312,15 +1341,17 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 9))
-                        .foregroundColor(Color(hex: "#696E7C"))
+                        .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
             }
             .padding(10)
-            .background(Color(hex: "#F0A030").opacity(0.07))
-            .cornerRadius(10)
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(hex: "#F0A030").opacity(0.2), lineWidth: 1))
+            .background(Color.atlasWarning.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                    .strokeBorder(Color.atlasWarning.opacity(0.20), lineWidth: 0.75)
+            )
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
@@ -1367,18 +1398,18 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundColor(Color(hex: "#3ECFB2"))
+                    .foregroundStyle(Color.atlasAccent)
                 Text(L(.installMore))
-                    .foregroundColor(Color.atlasLabel)
+                    .foregroundStyle(Color.atlasLabel)
             }
-            .font(.system(size: 14, weight: .medium))
+            .font(.atlasHeadline)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(Color.atlasPanelBG)
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color(hex: "#3ECFB2").opacity(0.4), lineWidth: 1)
+                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                    .strokeBorder(Color.atlasAccent.opacity(0.35), lineWidth: 0.75)
             )
         }
         .buttonStyle(.plain)
@@ -1420,22 +1451,22 @@ struct ContentView: View {
         if let ext = unsupportedExtension {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(Color(hex: "#F0A030"))
+                    .foregroundStyle(Color.atlasWarning)
                 Text(".\(ext) files are not supported yet.")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color.atlasLabel)
+                    .font(.atlasBody)
+                    .foregroundStyle(Color.atlasLabel)
                 Spacer()
                 Button("Dismiss") { unsupportedExtension = nil }
-                    .font(.system(size: 12))
-                    .foregroundColor(Color.atlasSubtitle)
+                    .font(.atlasSubhead)
+                    .foregroundStyle(Color.atlasSubtitle)
                     .buttonStyle(.plain)
             }
             .padding(12)
-            .background(Color(hex: "#F0A030").opacity(0.08))
-            .cornerRadius(10)
+            .background(Color.atlasWarning.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color(hex: "#F0A030").opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                    .strokeBorder(Color.atlasWarning.opacity(0.25), lineWidth: 0.75)
             )
         }
     }
@@ -1443,31 +1474,65 @@ struct ContentView: View {
     @ViewBuilder
     var rollbackBanner: some View {
         if rollbackInProgress {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    if rollbackQueueTotal > 1 {
-                        Text("Uninstalling \(rollbackQueueDone + 1) of \(rollbackQueueTotal)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(hex: "#E05555"))
-                    } else {
-                        Text("Uninstalling")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(hex: "#E05555"))
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                // Header row: label + product name + elapsed timer
+                HStack(spacing: 6) {
+                    Text(rollbackQueueTotal > 1
+                         ? "Uninstalling \(rollbackQueueDone + 1) of \(rollbackQueueTotal)"
+                         : "Uninstalling")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(hex: "#E05555"))
                     Text(rollingBack?.fileName ?? "")
-                        .font(.system(size: 12))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
+                    // Live elapsed time — updates via rollbackTimerTick
+                    let elapsed = rollbackTimerTick.timeIntervalSince(rollbackStartTime)
+                    Text(String(format: "%02d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(.secondary)
                 }
+                // Progress bar
                 ATLASProgressBar(
                     progress: rollbackProgress,
-                    stepLabel: rollbackStep.isEmpty ? "Preparing…" : rollbackStep,
+                    stepLabel: rollbackPhase.isEmpty ? "Preparing…" : rollbackPhase,
                     danger: true
                 )
+                // Phase and operation detail rows
+                if !rollbackPhase.isEmpty || !rollbackStep.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        if !rollbackPhase.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("Phase:")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text(rollbackPhase)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.atlasLabel)
+                                    .lineLimit(1)
+                            }
+                        }
+                        if !rollbackStep.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("Operation:")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text(rollbackStep)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.atlasLabel)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
+                    }
+                }
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
+            .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { tick in
+                if rollbackInProgress { rollbackTimerTick = tick }
+            }
         }
 
         // Single uninstall result
@@ -1524,15 +1589,8 @@ struct ContentView: View {
                 }
             }
             Button("Done") { resetAll() }
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color.atlasLabel)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.atlasElevated)
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(hex: "#2E3350"), lineWidth: 1))
-                .buttonStyle(.plain)
+                .buttonStyle(.atlasSecondary)
         }
         .padding(14)
         .atlasCard()
@@ -1783,7 +1841,16 @@ struct ContentView: View {
                 let plan = await InstallIntelligence.analyze(directory: finalScanDir, files: capturedAllFiles)
                 await MainActor.run { logger.log("TITAN CORE™: Plan has \(plan.orderedSteps.count) step(s), instructions=\(plan.instructions != nil)") }
 
+                // Scan for installer documentation while the volume is still mounted.
+                // Result is stored in pendingDocInfo so saveTitanRecordAsync can show
+                // the activation alert after a successful install.
+                let titanDocInfo = InstallerDocParser.scan(volumeURL: URL(fileURLWithPath: finalScanDir))
+                if let doc = titanDocInfo {
+                    await MainActor.run { logger.log("TITAN CORE™: DocParser found \(doc.licenseKeys.count) key(s), \(doc.steps.count) step(s) in \(doc.sourceFiles.joined(separator: ", "))") }
+                }
+
                 await MainActor.run {
+                    pendingDocInfo = titanDocInfo
                     let mission = TitanMission(mountPoint: finalScanDir, sourceURL: url)
                     mission.buildMission(plan: plan, scan: scan)
                     logger.log("TITAN CORE™: Mission built — \(mission.steps.count) step(s). Showing panel…")
@@ -1832,6 +1899,8 @@ struct ContentView: View {
 
     // Called from ScanResultView. Routes through storage selection then TITAN VSCAN™.
     private func beginInstallFromScan(url: URL, scanResult: ScanResult) {
+        // Preserve docInfo so the completion handler can fire the activation alert
+        pendingDocInfo = scanResult.docInfo
         if Features.smartStorage && scanResult.requiresStorageSelection {
             pendingInstallURL  = url
             pendingScanResult  = scanResult
@@ -1892,15 +1961,22 @@ struct ContentView: View {
                     title: L(.notifySuccessTitle),
                     body: "\(name) installed successfully.")
                 WidgetStateManager.shared.menuStatus = .success
+                // Show activation alert only when user must manually act (enter a key, visit a URL)
+                if let doc = pendingDocInfo, doc.requiresUserAction {
+                    pendingActivationAlerts.append(ActivationAlert(productName: name, docInfo: doc))
+                }
+                pendingDocInfo = nil
             case .failure(let reason):
                 ATLASNotification.send(
                     title: L(.notifyFailedTitle),
                     body: reason)
                 WidgetStateManager.shared.menuStatus = .failure
+                pendingDocInfo = nil
                 // TITAN CORE™ handles recovery automatically during install —
                 // no manual activate needed here
             case nil:
                 WidgetStateManager.shared.menuStatus = .idle
+                pendingDocInfo = nil
             }
             // Run plugin visibility scan after any successful install
             if let record = historyStore.records.first {
@@ -2004,6 +2080,8 @@ struct ContentView: View {
             let succeeded = queue.items.filter {
                 if case .success = $0.status { return true }
                 if case .demoWarning = $0.status { return true }
+                if case .activationRequired = $0.status { return true }
+                if case .verificationWarning = $0.status { return true }
                 return false }.count
             let demoCount = queue.items.filter {
                 if case .demoWarning = $0.status { return true }; return false }.count
@@ -2032,6 +2110,37 @@ struct ContentView: View {
             return
         }
         guard let item = queue.items.first(where: { $0.id == id }) else { return }
+
+        // TITAN VSCAN™ — Pro only. Run before install so threats are caught in batch mode.
+        // Blocking verdicts (.malware) halt this item; warnings are logged and install continues.
+        if Features.titanVScan {
+            queue.updateStatus(id: id, status: .scanning)
+            queue.updateProgress(id: id, progress: 0.05, step: "TITAN VSCAN™…")
+            if let vsResult = await titanVScan.scan(url: item.url) {
+                switch vsResult.verdict {
+                case .malware:
+                    logger.log("⛔ TITAN VSCAN™ — MALWARE BLOCKED: \(item.fileName) [\(vsResult.threats.map(\.name).joined(separator: ", "))]")
+                    queue.updateStatus(id: id, status: .failure("TITAN VSCAN™ blocked: \(vsResult.summaryLine)"))
+                    return
+                case .bundledThreat:
+                    logger.log("⚠ TITAN VSCAN™ — Bundled threat detected in \(item.fileName): \(vsResult.threats.map(\.name).joined(separator: ", "))")
+                case .suspicious:
+                    logger.log("⚠ TITAN VSCAN™ — Suspicious: \(item.fileName)")
+                case .licenseTool:
+                    logger.log("⚠ TITAN VSCAN™ — License tool detected: \(item.fileName)")
+                case .clean:
+                    break
+                }
+                // Store result so the VSCAN sheet can be shown if the user reviews the queue item
+                await MainActor.run {
+                    if vsResult.verdict != .clean {
+                        pendingVScanResult = vsResult
+                        pendingVScanURL    = item.url
+                    }
+                }
+            }
+        }
+
         // Record against daily limit per queued file (Standard only)
         await MainActor.run { monthlyLimit.recordInstall() }
         queue.updateStatus(id: id, status: .installing)
@@ -2072,6 +2181,8 @@ struct ContentView: View {
         var finalResult = result
         var demoWarnings: [DemoHit] = []
         var verifyPassed = false
+        var verifyActivationRequired = false
+        var verifyWarningMessage: String? = nil
         if case .success = result {
             queue.updateProgress(id: id, progress: 0.95, step: "Verifying install…")
             let verify = await TitanVerify.verify(
@@ -2081,9 +2192,16 @@ struct ContentView: View {
                 logger: logger)
             demoWarnings = verify.demoWarnings
             if !verify.passed {
+                // Hard failure: receipts or files missing — actual install failure
                 finalResult = .failure(reason: verify.summary)
             } else {
                 verifyPassed = true
+                // Soft outcomes — install succeeded, classify state
+                if verify.requiresActivation {
+                    verifyActivationRequired = true
+                } else if verify.hasVerificationWarnings {
+                    verifyWarningMessage = verify.verificationWarningSummary
+                }
             }
         }
 
@@ -2094,10 +2212,30 @@ struct ContentView: View {
             entries: logger.entries, result: finalResult,
             installedFiles: installedFiles, pkgReceiptIDs: receiptIDs,
             sessionID: sessionID)
-        record.titanVerified = verifyPassed && demoWarnings.isEmpty
-        record.demoDetected  = !demoWarnings.isEmpty
+        record.titanVerified       = verifyPassed && demoWarnings.isEmpty && !verifyActivationRequired && verifyWarningMessage == nil
+        record.demoDetected        = !demoWarnings.isEmpty
+        record.activationRequired  = verifyActivationRequired ? true : nil
+        record.verificationWarning = verifyWarningMessage
+        record.installerDocInfo    = item.scanResult?.docInfo
         if !runtimeCreatedPaths.isEmpty {
             record.runtimeCreatedPaths = runtimeCreatedPaths
+        }
+
+        // Log parsed installer documentation summary
+        if let doc = record.installerDocInfo, !doc.isEmpty {
+            logger.log("── INSTALLER DOC PARSER ───────────────────────")
+            logger.log("  📄 Sources: \(doc.sourceFiles.joined(separator: ", "))")
+            if !doc.licenseKeys.isEmpty {
+                for key in doc.licenseKeys {
+                    logger.log("  🔑 \(key.label): \(key.value)")
+                }
+            }
+            if !doc.steps.isEmpty {
+                logger.log("  📋 \(doc.steps.count) activation step(s) found")
+            }
+            if !doc.activationURLs.isEmpty {
+                logger.log("  🔗 URLs: \(doc.activationURLs.prefix(2).joined(separator: ", "))")
+            }
         }
 
         historyStore.add(record)
@@ -2129,9 +2267,24 @@ struct ContentView: View {
                 logger.log("  ⚠️ Installed with warning: Demo Mode detected (\(demoWarnings.count) signal(s))")
                 queue.updateStatus(id: id, status: .demoWarning(ATLASMessages.friendlyDemoWarning(keywords: demoWarnings.map { $0.keyword })))
                 await MainActor.run { pendingDemoAlerts.append(DemoAlert(productName: name, hits: demoWarnings)) }
+            } else if verifyActivationRequired {
+                logger.log("  ⚠️ Installed — Activation Required: open in your DAW and enter your license key")
+                queue.updateStatus(id: id, status: .activationRequired("Open in your DAW and activate with your license key."))
+            } else if let warnMsg = verifyWarningMessage {
+                logger.log("  ⚠️ Installed — Verification Warning: \(warnMsg)")
+                queue.updateStatus(id: id, status: .verificationWarning(warnMsg))
             } else {
                 logger.log("  ✓ Installed & TITAN VERIFIED™: \(name)")
             }
+            // Auto-present activation info sheet if installer docs contain useful content
+            if let doc = record.installerDocInfo, doc.requiresUserAction {
+                let alertName = name
+                await MainActor.run {
+                    pendingActivationAlerts.append(
+                        ActivationAlert(productName: alertName, docInfo: doc))
+                }
+            }
+
             if isPlugin && RosettaEngine.isAppleSilicon {
                 withAnimation { showRosetta = true }
             }
@@ -2139,18 +2292,12 @@ struct ContentView: View {
             if !newScanResults.isEmpty {
                 pluginScanResults.append(contentsOf: newScanResults)
             }
-            syncInstallLog(logType: demoWarnings.isEmpty ? "install" : "install-demo",
+            let logTypeSuffix = !demoWarnings.isEmpty ? "install-demo"
+                              : verifyActivationRequired ? "install-activation"
+                              : verifyWarningMessage != nil ? "install-warning"
+                              : "install"
+            syncInstallLog(logType: logTypeSuffix,
                            appName: name, fileName: item.fileName, content: logContent)
-            // Feedback prompt — ask user 60s after success
-            let feedbackName = name
-            let capturedRecord = record
-            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [self] in
-                guard !showFeedbackPrompt else { return }
-                guard !UserDefaults.standard.bool(forKey: "atlas.feedbackSubmitted.\(feedbackName)") else { return }
-                feedbackProductName = feedbackName
-                feedbackRecord = capturedRecord
-                withAnimation { showFeedbackPrompt = true }
-            }
         case .failure(let reason):
             let isCancelled = reason.lowercased() == "cancelled"
             queue.updateStatus(id: id, status: .failure(reason))
@@ -2198,6 +2345,7 @@ struct ContentView: View {
     // MARK: - Batch uninstall engine
 
     private func beginBatchUninstall(records: [InstallRecord]) {
+        NSLog("[ATLAS-UNINSTALL] ENTER beginBatchUninstall — records=%d rollbackInProgress=%d", records.count, rollbackInProgress ? 1 : 0)
         guard !rollbackInProgress else { return }
         let eligible = records.filter {
             $0.status == .success &&
@@ -2215,11 +2363,15 @@ struct ContentView: View {
     }
 
     private func runNextRollback(_ record: InstallRecord) {
+        NSLog("[ATLAS-UNINSTALL] ENTER runNextRollback — product=%@ receipts=%d files=%d", record.fileName, record.pkgReceiptIDs.count, record.installedFiles.count)
         appState.reset()
         rollingBack       = record
         rollbackInProgress = true
         rollbackProgress   = 0.0
         rollbackStep       = ""
+        rollbackPhase      = ""
+        rollbackStartTime  = Date()
+        rollbackTimerTick  = Date()
         WidgetStateManager.shared.menuStatus = .installing
         startWidgetTimer()
         logger.log(rollbackQueueTotal > 1
@@ -2234,7 +2386,15 @@ struct ContentView: View {
             ) { progress, step in
                 Task { @MainActor in
                     rollbackProgress = progress
-                    rollbackStep = step
+                    // Step strings encode "Phase|Operation" — split for separate display.
+                    // Plain strings (no pipe) are treated as operation only.
+                    let parts = step.components(separatedBy: "|")
+                    if parts.count == 2 {
+                        rollbackPhase = parts[0]
+                        rollbackStep  = parts[1]
+                    } else {
+                        rollbackStep = step
+                    }
                 }
             }
             await MainActor.run {
@@ -2345,10 +2505,28 @@ struct ContentView: View {
     }
 
     private func performCancel() {
+        NSLog("[ATLAS-CANCEL] performCancel() — rollbackInProgress=%d", rollbackInProgress ? 1 : 0)
         if rollbackInProgress {
+            // Signal the engine and Swift-cancel the task FIRST
             RollbackEngine.cancelRollback()
             rollbackTask?.cancel()
             rollbackTask = nil
+            // Immediately reset UI so the user sees the result without waiting for the
+            // background task to wind down through its current subprocess.
+            rollbackInProgress = false
+            rollbackProgress   = 0.0
+            rollbackStep       = ""
+            rollbackPhase      = ""
+            rollingBack        = nil
+            rollbackQueue      = []
+            rollbackQueueTotal = 0
+            rollbackQueueDone  = 0
+            batchRollbackResults = []
+            WidgetStateManager.shared.menuStatus = .idle
+            withAnimation { showDropZone = true }
+            NSLog("[ATLAS-CANCEL] UI reset complete — uninstall cancelled")
+            logger.log("⚠ Uninstall cancelled.")
+            return
         } else {
             InstallEngine.cancelCurrentInstall()
             queueTask?.cancel()
@@ -2521,13 +2699,9 @@ struct ContentView: View {
 
     private func saveTitanRecordAsync(mission: TitanMission) async {
         let sourceName = mission.sourceURL.lastPathComponent
-        // Only PKG installs are critical — script/binary failures don't mean the
-        // software wasn't installed (all receipts may still be present).
-        var hasFailed  = mission.steps.contains(where: {
-            guard $0.status == .failed else { return false }
-            if case .installPkg = $0.action { return true }
-            return false
-        })
+        // .failed is only assigned to critical steps (installPkg, UI automation) in execute().
+        // Non-critical failures (codesign, metadata) get .warning and never gate success.
+        var hasFailed = mission.steps.contains(where: { $0.status == .failed })
 
         // Build detailed log entries — include resultNote so failures are diagnosable
         var entries: [String] = mission.steps.map { step in
@@ -2535,13 +2709,9 @@ struct ContentView: View {
             return "[\(step.status)] \(step.title)\(note)"
         }
 
-        // First critical (PKG) failure reason for the log header
+        // First critical failure reason for the log header
         let failureReason: String = mission.steps
-            .first(where: { step in
-                guard step.status == .failed else { return false }
-                if case .installPkg = step.action { return true }
-                return false
-            })
+            .first(where: { $0.status == .failed })
             .map { "\($0.title): \($0.resultNote.isEmpty ? "Step failed" : $0.resultNote)" }
             ?? "One or more steps failed"
 
@@ -2554,7 +2724,8 @@ struct ContentView: View {
                 sourceURL: mission.sourceURL,
                 logger: logger)
             entries.append(contentsOf: verify.checks.map {
-                "[\($0.passed ? "verify-pass" : "verify-fail")] \($0.label): \($0.detail)"
+                let tag = $0.passed ? "verify-pass" : ($0.isBlocker ? "verify-fail" : "verify-warn")
+                return "[\(tag)] \($0.label): \($0.detail)"
             })
             titanDemoWarnings = verify.demoWarnings
             if !verify.passed {
@@ -2581,11 +2752,12 @@ struct ContentView: View {
 
         logger.log(hasFailed ? "⚠️ TITAN mission completed with failures — log saved" : "📋 TITAN mission saved")
 
+        let planSourceLabel = mission.plan?.planSource ?? "unknown"
         syncInstallLog(
             logType: hasFailed ? "failed" : "install",
             appName: sourceName,
             fileName: sourceName,
-            content: entries.joined(separator: "\n")
+            content: "[ATLAS] Plan source: \(planSourceLabel)\n" + entries.joined(separator: "\n")
         )
 
         if hasFailed {
@@ -2621,6 +2793,10 @@ struct ContentView: View {
             )
         }
 
+        if !mission.runtimeCreatedPaths.isEmpty {
+            fullRecord.runtimeCreatedPaths = mission.runtimeCreatedPaths
+        }
+
         historyStore.add(fullRecord)
 
         // ── ATLAS LEARN™ ──────────────────────────────────────────────────────
@@ -2644,6 +2820,18 @@ struct ContentView: View {
                 pendingDemoAlerts.append(DemoAlert(productName: sourceName, hits: titanDemoWarnings))
             }
         }
+
+        // Show activation alert only when user must manually act (enter a key, visit a URL)
+        if !hasFailed, let doc = pendingDocInfo, doc.requiresUserAction {
+            logger.log("🔑 Installer doc info found — presenting activation alert (\(doc.licenseKeys.count) key(s))")
+            await MainActor.run {
+                pendingActivationAlerts.append(ActivationAlert(productName: sourceName, docInfo: doc))
+                pendingDocInfo = nil
+            }
+        } else {
+            await MainActor.run { pendingDocInfo = nil }
+        }
+
         logger.log(Features.rollback ? "📋 TITAN mission saved to history — rollback available" : "📋 TITAN mission saved to history")
     }
 
@@ -2698,13 +2886,15 @@ struct BottomBarIconButton: View {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(hovered ? Color.atlasLabel : Color.atlasSubtitle)
-                .frame(width: 30, height: 30)
-                .background(hovered ? Color.atlasHover : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
+                        .fill(hovered ? Color.atlasHover : Color.clear)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .scaleEffect(hovered ? 1.05 : 1.0)
+        .scaleEffect(hovered ? 1.06 : 1.0)
         .animation(.atlasSnap, value: hovered)
         .onHover { hovered = $0 }
         .help(tooltip)

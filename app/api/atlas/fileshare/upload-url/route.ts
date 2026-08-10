@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const MAX_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB
+const MAX_BYTES = 50 * 1024 * 1024 // 50 MB — Supabase free tier limit; raise to 2 GB after upgrading to Supabase Pro
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (file_size > MAX_BYTES) {
+    const mb = (file_size / 1024 / 1024).toFixed(1)
     return NextResponse.json({
-      error: `File is too large to share. Maximum size is 2 GB — this file is ${(file_size / 1024 / 1024 / 1024).toFixed(2)} GB.`,
+      error: `File too large (${mb} MB). FileShare currently supports files up to 50 MB.`,
       code: 'FILE_TOO_LARGE',
     }, { status: 413 })
   }

@@ -10,11 +10,41 @@ struct KeychainManager {
     private static let service = "com.atlas.ATLAS"
     private static let account = "sudo-password"
 
+    // One-time migration: delete old Keychain items that have a restrictive ACL
+    // so they get recreated with the open-access policy on next save.
+    // Runs only once per install via a UserDefaults flag.
+    static func migrateAccessControlIfNeeded() {
+        let key = "atlas.keychain.aclMigrated.v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        // Delete all items — they will be re-created with open access on next write
+        for acct in [account, sessionAccount, offlineTokenAccount, lastVerifiedAccount, cachedProfileAccount] {
+            let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                     kSecAttrService as String: service,
+                                     kSecAttrAccount as String: acct]
+            SecItemDelete(q as CFDictionary)
+        }
+        // Clear caches so they get re-read from Keychain after re-auth
+        _cachedPassword    = nil
+        _cachedSession     = nil
+        _cachedOfflineToken = nil
+        _cachedLastVerified = nil
+        _cachedProfile     = nil
+    }
+
     // In-memory cache — read from Keychain once per app session.
     // Every call to loadPassword() hits the Security framework which can
     // trigger a macOS "allow this app to access Keychain" prompt each time
     // if the app is ad-hoc signed. Caching avoids repeated prompts.
     private static var _cachedPassword: String? = nil
+
+    // Creates a Keychain access object that allows all applications silently —
+    // avoids the "authenticity cannot be verified" prompt on unsigned/ad-hoc builds.
+    private static func openAccess(label: String) -> SecAccess? {
+        var access: SecAccess?
+        SecAccessCreate(label as CFString, nil, &access)
+        return access
+    }
 
     // Save password to Keychain and update the in-memory cache.
     static func savePassword(_ password: String) -> Bool {
@@ -28,13 +58,16 @@ struct KeychainManager {
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        let addQuery: [String: Any] = [
+        var addQuery: [String: Any] = [
             kSecClass as String:          kSecClassGenericPassword,
             kSecAttrService as String:    service,
             kSecAttrAccount as String:    account,
             kSecValueData as String:      data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
+        if let access = openAccess(label: "ATLAS Password") {
+            addQuery[kSecAttrAccess as String] = access
+        }
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         if status == errSecSuccess {
@@ -50,11 +83,12 @@ struct KeychainManager {
         if let cached = _cachedPassword { return cached }
 
         let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String:  true,
-            kSecMatchLimit as String:  kSecMatchLimitOne
+            kSecClass as String:                kSecClassGenericPassword,
+            kSecAttrService as String:          service,
+            kSecAttrAccount as String:          account,
+            kSecReturnData as String:           true,
+            kSecMatchLimit as String:           kSecMatchLimitOne,
+            kSecUseAuthenticationUI as String:  kSecUseAuthenticationUISkip
         ]
 
         var result: AnyObject?
@@ -87,81 +121,111 @@ struct KeychainManager {
 
     // MARK: - Session (Supabase auth token storage)
 
-    private static let sessionAccount = "atlas-session"
+    private static let sessionAccount   = "atlas-session"
+    private static var _cachedSession:  ATLASSession? = nil
 
     static func saveSession(_ session: ATLASSession) {
+        _cachedSession = session
         guard let data = try? JSONEncoder().encode(session) else { return }
         let del: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: sessionAccount]
         SecItemDelete(del as CFDictionary)
-        let add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+        var add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: sessionAccount,
                                    kSecValueData as String: data,
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
+        if let access = openAccess(label: "ATLAS Session") { add[kSecAttrAccess as String] = access }
         SecItemAdd(add as CFDictionary, nil)
     }
 
     static func loadSession() -> ATLASSession? {
+        if let cached = _cachedSession { return cached }
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: sessionAccount,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne]
+                                 kSecMatchLimit as String: kSecMatchLimitOne,
+                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
-        return try? JSONDecoder().decode(ATLASSession.self, from: data)
+        let session = try? JSONDecoder().decode(ATLASSession.self, from: data)
+        _cachedSession = session
+        return session
     }
 
     static func clearSession() {
+        _cachedSession = nil
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: sessionAccount]
         SecItemDelete(q as CFDictionary)
     }
 
-    // MARK: - Offline token (Phase 2)
+    // MARK: - Offline token / profile cache
 
     private static let offlineTokenAccount   = "atlas-offline-token"
     private static let lastVerifiedAccount   = "atlas-last-verified"
     private static let cachedProfileAccount  = "atlas-cached-profile"
 
+    private static var _cachedOfflineToken:  String? = nil
+    private static var _cachedLastVerified:  Date?   = nil
+    private static var _cachedProfile:       ATLASProfile? = nil
+
     static func saveOfflineToken(_ token: String) {
+        _cachedOfflineToken = token
         keychainSet(account: offlineTokenAccount, data: Data(token.utf8))
     }
 
     static func loadOfflineToken() -> String? {
+        if let cached = _cachedOfflineToken { return cached }
         guard let d = keychainGet(account: offlineTokenAccount) else { return nil }
-        return String(data: d, encoding: .utf8)
+        let token = String(data: d, encoding: .utf8)
+        _cachedOfflineToken = token
+        return token
     }
 
-    static func clearOfflineToken() { keychainDelete(account: offlineTokenAccount) }
+    static func clearOfflineToken() {
+        _cachedOfflineToken = nil
+        keychainDelete(account: offlineTokenAccount)
+    }
 
     static func saveLastVerified(_ date: Date) {
+        _cachedLastVerified = date
         var t = date.timeIntervalSince1970
         keychainSet(account: lastVerifiedAccount, data: Data(bytes: &t, count: MemoryLayout<Double>.size))
     }
 
     static func loadLastVerified() -> Date? {
+        if let cached = _cachedLastVerified { return cached }
         guard let d = keychainGet(account: lastVerifiedAccount),
               d.count == MemoryLayout<Double>.size else { return nil }
         let t = d.withUnsafeBytes { $0.load(as: Double.self) }
-        return Date(timeIntervalSince1970: t)
+        let date = Date(timeIntervalSince1970: t)
+        _cachedLastVerified = date
+        return date
     }
 
     static func saveProfile(_ profile: ATLASProfile) {
+        _cachedProfile = profile
         guard let data = try? JSONEncoder().encode(profile) else { return }
         keychainSet(account: cachedProfileAccount, data: data)
     }
 
     static func loadProfile() -> ATLASProfile? {
+        if let cached = _cachedProfile { return cached }
         guard let d = keychainGet(account: cachedProfileAccount) else { return nil }
-        return try? JSONDecoder().decode(ATLASProfile.self, from: d)
+        let profile = try? JSONDecoder().decode(ATLASProfile.self, from: d)
+        _cachedProfile = profile
+        return profile
     }
 
     static func clearOfflineData() {
+        _cachedOfflineToken = nil
+        _cachedLastVerified = nil
+        _cachedProfile      = nil
         keychainDelete(account: offlineTokenAccount)
         keychainDelete(account: lastVerifiedAccount)
         keychainDelete(account: cachedProfileAccount)
@@ -174,11 +238,12 @@ struct KeychainManager {
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: account]
         SecItemDelete(del as CFDictionary)
-        let add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+        var add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service,
                                    kSecAttrAccount as String: account,
                                    kSecValueData as String: data,
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
+        if let access = openAccess(label: "ATLAS") { add[kSecAttrAccess as String] = access }
         SecItemAdd(add as CFDictionary, nil)
     }
 
@@ -187,7 +252,8 @@ struct KeychainManager {
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: account,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne]
+                                 kSecMatchLimit as String: kSecMatchLimitOne,
+                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data

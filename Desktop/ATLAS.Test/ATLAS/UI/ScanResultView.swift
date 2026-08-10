@@ -6,7 +6,9 @@ struct ScanResultView: View {
     let onCancel: () -> Void
     var onShare: (() -> Void)? = nil
 
-    @State private var detailsExpanded = false
+    @State private var detailsExpanded      = false
+    @State private var showReplaceConfirm   = false
+    @State private var windowsExeDone       = false
 
     private var hasSecondaryDetails: Bool {
         !result.warnings.isEmpty ||
@@ -20,6 +22,227 @@ struct ScanResultView: View {
     }
 
     var body: some View {
+        if result.isWindowsExe {
+            windowsExePanel
+        } else {
+            mainPanel
+        }
+    }
+
+    // MARK: - Windows .exe guidance panel
+
+    private var windowsExePanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+
+            // Header
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(result.fileURL.lastPathComponent)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color.atlasLabel)
+                        .lineLimit(1).truncationMode(.middle)
+                    Text(result.isWindowsKeygen ? "Keygen / Activation Tool Detected" : "Windows Executable")
+                        .font(.system(size: 11))
+                        .foregroundColor(result.isWindowsKeygen ? Color(hex: "#E05555") : Color(hex: "#F0A030"))
+                }
+                Spacer()
+                Image(systemName: result.isWindowsKeygen ? "exclamationmark.shield.fill" : "slider.horizontal.2.square.on.square")
+                    .font(.system(size: 16))
+                    .foregroundColor(result.isWindowsKeygen ? Color(hex: "#E05555").opacity(0.7) : Color(hex: "#F0A030").opacity(0.6))
+            }
+            .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
+
+            Divider().background(Color.atlasSeparator)
+
+            VStack(alignment: .leading, spacing: 14) {
+
+                // Warning block
+                if result.isWindowsKeygen {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(Color(hex: "#E05555"))
+                                .font(.system(size: 13))
+                            Text("⚠ Warning: Keygen File Detected")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color(hex: "#E05555"))
+                        }
+
+                        Text("ATLAS has detected a file or activity associated with a key generator (\"keygen\").")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#F0F2FF"))
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("For legal, security, and compliance reasons, ATLAS cannot execute, interact with, or automate the use of keygens, software cracks, license bypass tools, or any process intended to circumvent software licensing or activation requirements.")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8890B0"))
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("If your intended use is legitimate (for example, working with software you are authorized to use, researching software security, or following vendor-approved procedures), ATLAS may be able to provide general informational guidance. However, all actions must be performed manually by you and in accordance with applicable laws, software license agreements, and organizational policies.")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8890B0"))
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(Color(hex: "#E05555").opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color(hex: "#E05555").opacity(0.3), lineWidth: 0.75))
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(Color(hex: "#F0A030"))
+                            .font(.system(size: 12))
+                        Text("This is a Windows executable and cannot run on macOS natively.")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#C8A060"))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(10)
+                    .background(Color(hex: "#F0A030").opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color(hex: "#F0A030").opacity(0.25), lineWidth: 0.75))
+                }
+
+                // Steps
+                VStack(alignment: .leading, spacing: 8) {
+                    stepRow(num: "1", text: "Watch the guide to set up Wine or Crossover on your Mac")
+                    stepRow(num: "2", text: "Run this file manually using Wine or Crossover")
+                    if result.isWindowsKeygen {
+                        stepRow(num: "3", text: "Complete all steps manually on your own")
+                        stepRow(num: "4", text: "Return to ATLAS and tap \"I'm Done\" to notify ATLAS you have finished")
+                    } else {
+                        stepRow(num: "3", text: "If an installer is produced, drop it into ATLAS")
+                    }
+                }
+
+                // YouTube guide link
+                Button {
+                    NSWorkspace.shared.open(
+                        URL(string: "https://www.youtube.com/watch?v=9yfCZlwhj1I")!)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#E05555"))
+                        Text("Watch: How to Run .exe Files on Mac")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(hex: "#F0F2FF"))
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.atlasSubtitle)
+                    }
+                    .padding(10)
+                    .background(Color(hex: "#E05555").opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color(hex: "#E05555").opacity(0.25), lineWidth: 0.75))
+                }
+                .buttonStyle(.plain)
+
+                Divider().background(Color.atlasSeparator)
+
+                // Actions
+                if result.isWindowsKeygen {
+                    if windowsExeDone {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                                .font(.system(size: 13))
+                            Text("Ready — drop your Mac installer into ATLAS to continue")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                        }
+                        .padding(10)
+                        .background(Color(hex: "#3ECFB2").opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(Color(hex: "#3ECFB2").opacity(0.25), lineWidth: 0.75))
+
+                        Button { onCancel() } label: {
+                            Text("Drop New File")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(hex: "#08090E"))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color(hex: "#3ECFB2"))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button {
+                            windowsExeDone = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle")
+                                    .font(.system(size: 11))
+                                Text("I'm Done — Ready to Continue")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(Color(hex: "#08090E"))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color(hex: "#F0A030"))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button { onCancel() } label: {
+                            Text("Cancel")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color.atlasSubtitle)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    Button { onCancel() } label: {
+                        Text("Dismiss")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.atlasSubtitle)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.atlasPanelBG)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(16)
+        }
+        .background(Color.atlasPanelBG)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75))
+    }
+
+    private func stepRow(num: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(num)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(Color(hex: "#F0A030"))
+                .frame(width: 18, height: 18)
+                .background(Color(hex: "#F0A030").opacity(0.12))
+                .clipShape(Circle())
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(Color.atlasSubtitle)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+    }
+
+    // MARK: - Main panel
+
+    @ViewBuilder
+    private var mainPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             // ── Identity row ──────────────────────────────────────────────
@@ -112,6 +335,14 @@ struct ScanResultView: View {
                             existingInstallRow(existing)
                         }
 
+                        if result.contentsFound.contains(where: { $0.type == .interactiveInstaller }) {
+                            noticeRow(
+                                icon: "person.crop.square",
+                                color: Color(hex: "#F0A030"),
+                                text: "This installer requires your input. ATLAS will open it for you — complete it, close the window, and ATLAS will record what was installed."
+                            )
+                        }
+
                         if result.isQuarantined {
                             noticeRow(
                                 icon: "lock.shield",
@@ -181,7 +412,12 @@ struct ScanResultView: View {
 
                 if result.canInstall {
                     Button {
-                        if !spaceCritical { onInstall() }
+                        if spaceCritical { return }
+                        if result.existingInstall != nil {
+                            showReplaceConfirm = true
+                        } else {
+                            onInstall()
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: spaceCritical
@@ -205,6 +441,7 @@ struct ScanResultView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(spaceCritical)
+                    .tourAnchor("installButton")
                 } else {
                     Text("Cannot install automatically")
                         .font(.system(size: 11))
@@ -217,6 +454,25 @@ struct ScanResultView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
             .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75))
+        .confirmationDialog(
+            replaceDialogTitle,
+            isPresented: $showReplaceConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Replace", role: .destructive) { onInstall() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let existing = result.existingInstall {
+                Text("\(existing.itemName) is already installed at \(existing.path). ATLAS will replace it with this version.")
+            }
+        }
+    }
+
+    private var replaceDialogTitle: String {
+        if let existing = result.existingInstall {
+            return "Replace \(existing.itemName)?"
+        }
+        return "Replace existing install?"
     }
 
     // MARK: - Sub-views
@@ -281,7 +537,7 @@ struct ScanResultView: View {
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            Text("Will reinstall")
+            Text("Confirmation required")
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#F0A030").opacity(0.6))
         }
@@ -431,6 +687,7 @@ struct ScanResultView: View {
     private func iconColor(_ type: FoundItemType) -> Color {
         switch type {
         case .app:                          return Color(hex: "#3B82F6")
+        case .interactiveInstaller:         return Color(hex: "#F0A030")
         case .pkg:                          return Color(hex: "#F0A030")
         case .component, .vst3, .vst, .aax: return Color(hex: "#7C3AED")
         case .script:                       return Color(hex: "#E05555")
@@ -453,6 +710,7 @@ struct ScanResultView: View {
         case .iso:                  return "ISO Disc Image"
         case .zip:                  return "ZIP Archive"
         case .app:                  return "Application Bundle"
+        case .interactiveInstaller: return "Interactive Installer"
         case .pkg:                  return "Package Installer"
         case .component:            return "Audio Unit"
         case .vst3:                 return "VST3 Plugin"

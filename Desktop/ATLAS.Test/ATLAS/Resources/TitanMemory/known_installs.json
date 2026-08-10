@@ -9,9 +9,9 @@
       "baby audio - smooth operator"
     ],
     "instructionGuide": {
-      "source": "0. Инструкция (Instruction).html",
+      "source": "0. \u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f (Instruction).html",
       "type": "typora-html",
-      "note": "HTML file with large Typora CSS stylesheet — strip <style> blocks before parsing or CSS selectors like body.typora and md-fences.mock will be mistaken for domains."
+      "note": "HTML file with large Typora CSS stylesheet \u2014 strip <style> blocks before parsing or CSS selectors like body.typora and md-fences.mock will be mistaken for domains."
     },
     "installSteps": [
       {
@@ -38,11 +38,789 @@
     "licenseSource": "BTCR/",
     "licenseFilePattern": "*.lcs",
     "rollback": {
-      "removeHostsEntries": ["babyaudio-activation.herokuapp.com", "activation.babyaud.io"],
+      "removeHostsEntries": [
+        "babyaudio-activation.herokuapp.com",
+        "activation.babyaud.io"
+      ],
       "removeLicenseDir": "~/Library/Application Support/af854ba56b229a56c422472ee764eba8"
     },
     "confirmedWorking": true,
     "confirmedDate": "2026-06-08",
     "confirmedBy": "manual test + ATLAS engine"
+  },
+  {
+    "id": "fabfilter-pro-q3",
+    "name": "FabFilter Pro-Q 3",
+    "matchPatterns": [
+      "fabfilter pro-q 3",
+      "fabfilter pro-q3",
+      "fabfilter_pro_q3",
+      "fabfilter pro q 3",
+      "fabfilter pro-q"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "FabFilter Pro-Q.*\\.pkg",
+        "note": "Standard PKG installer. Installs VST3/AU/AAX to system plugin folders automatically."
+      }
+    ],
+    "hostsEntries": [
+      "www.fabfilter.com",
+      "fabfilter.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.fabfilter.com",
+        "fabfilter.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern \u2014 FabFilter uses standard macOS PKG for all plugins"
+  },
+  {
+    "id": "fabfilter-pro-c2",
+    "name": "FabFilter Pro-C 2",
+    "matchPatterns": [
+      "fabfilter pro-c 2",
+      "fabfilter pro-c2",
+      "fabfilter pro c 2",
+      "fabfilter pro-c"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "FabFilter Pro-C.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.fabfilter.com",
+      "fabfilter.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.fabfilter.com",
+        "fabfilter.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "fabfilter-saturn2",
+    "name": "FabFilter Saturn 2",
+    "matchPatterns": [
+      "fabfilter saturn 2",
+      "fabfilter saturn2",
+      "fabfilter saturn"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "FabFilter Saturn.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.fabfilter.com",
+      "fabfilter.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.fabfilter.com",
+        "fabfilter.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "fabfilter-timeless3",
+    "name": "FabFilter Timeless 3",
+    "matchPatterns": [
+      "fabfilter timeless 3",
+      "fabfilter timeless3",
+      "fabfilter timeless"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "FabFilter Timeless.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.fabfilter.com",
+      "fabfilter.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.fabfilter.com",
+        "fabfilter.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "fabfilter-pro-mb",
+    "name": "FabFilter Pro-MB",
+    "matchPatterns": [
+      "fabfilter pro-mb",
+      "fabfilter pro mb"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "FabFilter Pro-MB.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.fabfilter.com",
+      "fabfilter.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.fabfilter.com",
+        "fabfilter.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "izotope-ozone",
+    "name": "iZotope Ozone",
+    "matchPatterns": [
+      "izotope ozone",
+      "ozone 12",
+      "ozone 11",
+      "ozone 10",
+      "ozone 9",
+      "izotope ozone 12",
+      "izotope ozone 11",
+      "izotope ozone 10"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": ".*[Oo]zone.*\\.pkg",
+        "note": "PKG installer. Installs plugin + application to standard locations. File may be named 'Ozone 12 Advanced Installer.pkg' without the iZotope prefix."
+      }
+    ],
+    "hostsEntries": [
+      "www.izotope.com",
+      "izotope.com",
+      "auth.izotope.com",
+      "license.izotope.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.izotope.com",
+        "izotope.com",
+        "auth.izotope.com",
+        "license.izotope.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern \u2014 iZotope uses PKG for individual plugin installs"
+  },
+  {
+    "id": "izotope-neutron",
+    "name": "iZotope Neutron",
+    "matchPatterns": [
+      "izotope neutron",
+      "neutron 4",
+      "neutron 3",
+      "izotope neutron 4"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "iZotope.*Neutron.*\\.pkg",
+        "note": "PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.izotope.com",
+      "izotope.com",
+      "auth.izotope.com",
+      "license.izotope.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.izotope.com",
+        "izotope.com",
+        "auth.izotope.com",
+        "license.izotope.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "izotope-rx",
+    "name": "iZotope RX",
+    "matchPatterns": [
+      "izotope rx",
+      "izotope rx 11",
+      "izotope rx 10",
+      "izotope rx audio editor",
+      "rx11",
+      "rx10"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "iZotope.*RX.*\\.pkg",
+        "note": "PKG installer. Installs standalone app + plugin formats."
+      }
+    ],
+    "hostsEntries": [
+      "www.izotope.com",
+      "izotope.com",
+      "auth.izotope.com",
+      "license.izotope.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.izotope.com",
+        "izotope.com",
+        "auth.izotope.com",
+        "license.izotope.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "izotope-nectar",
+    "name": "iZotope Nectar",
+    "matchPatterns": [
+      "izotope nectar",
+      "nectar 4",
+      "nectar 3",
+      "izotope nectar 4"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "iZotope.*Nectar.*\\.pkg",
+        "note": "PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.izotope.com",
+      "izotope.com",
+      "auth.izotope.com",
+      "license.izotope.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.izotope.com",
+        "izotope.com",
+        "auth.izotope.com",
+        "license.izotope.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "arturia-v-collection",
+    "name": "Arturia V Collection",
+    "matchPatterns": [
+      "arturia v collection",
+      "arturia v-collection",
+      "v collection 10",
+      "v collection 9",
+      "arturia v collection 10"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Arturia.*V.Collection.*\\.pkg",
+        "note": "PKG installer. Installs all included synths to /Library/Audio/Plug-Ins/."
+      }
+    ],
+    "hostsEntries": [
+      "www.arturia.com",
+      "arturia.com",
+      "my.arturia.com",
+      "activation.arturia.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.arturia.com",
+        "arturia.com",
+        "my.arturia.com",
+        "activation.arturia.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern \u2014 Arturia uses PKG for all plugin bundles"
+  },
+  {
+    "id": "arturia-pigments",
+    "name": "Arturia Pigments",
+    "matchPatterns": [
+      "arturia pigments",
+      "pigments 5",
+      "pigments 4",
+      "arturia pigments 5"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Arturia.*Pigments.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "www.arturia.com",
+      "arturia.com",
+      "my.arturia.com",
+      "activation.arturia.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.arturia.com",
+        "arturia.com",
+        "my.arturia.com",
+        "activation.arturia.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "soundtoys-bundle",
+    "name": "Soundtoys",
+    "matchPatterns": [
+      "soundtoys",
+      "soundtoys 5",
+      "soundtoys bundle",
+      "echoBoy",
+      "decapitator",
+      "radiator",
+      "crystalizer",
+      "little alterboy"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Soundtoys.*\\.pkg",
+        "note": "PKG installer. Installs all Soundtoys plugins to standard Audio Unit and VST3 folders."
+      }
+    ],
+    "hostsEntries": [
+      "www.soundtoys.com",
+      "soundtoys.com",
+      "authorize.soundtoys.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.soundtoys.com",
+        "soundtoys.com",
+        "authorize.soundtoys.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern \u2014 Soundtoys uses a single PKG for the entire bundle"
+  },
+  {
+    "id": "valhalla-room",
+    "name": "Valhalla Room",
+    "matchPatterns": [
+      "valhalla room",
+      "valhallaroom",
+      "valhalla_room"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "ValhallaRoom.*\\.pkg",
+        "note": "Standard PKG installer. Valhalla plugins are lightweight and install cleanly."
+      }
+    ],
+    "hostsEntries": [
+      "valhalladsp.com",
+      "www.valhalladsp.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "valhalladsp.com",
+        "www.valhalladsp.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern \u2014 Valhalla uses PKG for all reverb plugins"
+  },
+  {
+    "id": "valhalla-shimmer",
+    "name": "Valhalla Shimmer",
+    "matchPatterns": [
+      "valhalla shimmer",
+      "valhallashimmer",
+      "valhalla_shimmer"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "ValhallaShimmer.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "valhalladsp.com",
+      "www.valhalladsp.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "valhalladsp.com",
+        "www.valhalladsp.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "valhalla-supermassive",
+    "name": "Valhalla Supermassive",
+    "matchPatterns": [
+      "valhalla supermassive",
+      "valhallaSupermassive",
+      "valhalla_supermassive"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "ValhallaSupermassive.*\\.pkg",
+        "note": "Standard PKG installer."
+      }
+    ],
+    "hostsEntries": [
+      "valhalladsp.com",
+      "www.valhalladsp.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "valhalladsp.com",
+        "www.valhalladsp.com"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "known PKG pattern"
+  },
+  {
+    "id": "serum",
+    "name": "Xfer Serum",
+    "matchPatterns": [
+      "xfer serum",
+      "serum vst",
+      "xfer records serum",
+      "serum 2",
+      "xfer serum 2",
+      "serum_x64",
+      "serum mac",
+      "xfer_records_serum",
+      "serum v2",
+      "serum v1",
+      "xfer_serum",
+      "serum-2",
+      "serum-1",
+      "install_xfer_serum",
+      "xfer records serum"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": ".*[Ss]erum.*\\.pkg",
+        "note": "PKG installer. File may be named 'Install_Xfer_Serum2_x.x.x.pkg' \u2014 pattern matches any pkg containing 'serum'."
+      },
+      {
+        "order": 2,
+        "type": "appBundle",
+        "filePattern": ".*[Ss]erum.*patch.*\\.app",
+        "note": "Patch .app bundle \u2014 run after PKG to apply license. Launched and automated via AX UI. Contains 'patch' in the name."
+      }
+    ],
+    "hostsEntries": [
+      "xferrecords.com",
+      "www.xferrecords.com",
+      "license.xferrecords.com",
+      "104.28.21.50"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "xferrecords.com",
+        "www.xferrecords.com",
+        "license.xferrecords.com",
+        "104.28.21.50"
+      ]
+    },
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-22",
+    "confirmedBy": "user-confirmed install working 2026-07-22",
+    "knownReceiptPrefixes": [
+      "com.xfer.serum2",
+      "com.xfer.serum"
+    ]
+  },
+  {
+    "id": "sylenth1",
+    "name": "Sylenth1",
+    "matchPatterns": [
+      "sylenth1",
+      "sylenth 1",
+      "lennar digital sylenth"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Sylenth1.*\\.pkg",
+        "note": "PKG installer. Installs VST/AU/VST3. License keygen or patch binary typically included separately."
+      },
+      {
+        "order": 2,
+        "type": "binary",
+        "filePattern": "keygen|patch|crack|license",
+        "note": "Keygen or patch binary to generate or apply license. Run after PKG."
+      }
+    ],
+    "hostsEntries": [
+      "www.lennardigital.com",
+      "lennardigital.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.lennardigital.com",
+        "lennardigital.com"
+      ]
+    },
+    "confirmedWorking": false,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "needs test \u2014 pattern known, keygen step varies by release"
+  },
+  {
+    "id": "omnisphere",
+    "name": "Spectrasonics Omnisphere",
+    "matchPatterns": [
+      "omnisphere",
+      "spectrasonics omnisphere",
+      "omnisphere 2"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "manual",
+        "filePattern": ".*",
+        "note": "Omnisphere requires a massive STEAM library install (60GB+) plus the plugin installer. ATLAS coming soon \u2014 for now, follow the included instructions manually."
+      }
+    ],
+    "hostsEntries": [],
+    "confirmedWorking": false,
+    "dawComingSoon": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "deferred \u2014 STEAM library install too large/complex for current release"
+  },
+  {
+    "id": "kontakt",
+    "name": "Native Instruments Kontakt",
+    "matchPatterns": [
+      "native instruments kontakt",
+      "kontakt 7",
+      "kontakt 6",
+      "ni kontakt",
+      "kontakt player"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "manual",
+        "filePattern": ".*",
+        "note": "Kontakt installs through Native Access (NI's app manager). ATLAS coming soon \u2014 open Native Access and install from there."
+      }
+    ],
+    "hostsEntries": [],
+    "confirmedWorking": false,
+    "dawComingSoon": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "deferred \u2014 requires Native Access manager, complex NI ecosystem"
+  },
+  {
+    "id": "waves-plugins",
+    "name": "Waves Plugins",
+    "matchPatterns": [
+      "waves central",
+      "waves plugins",
+      "waves complete",
+      "waves horizon",
+      "waves mercury",
+      "waves gold",
+      "waves platinum",
+      "waves abbey road"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "manual",
+        "filePattern": ".*",
+        "note": "Waves requires their Waves Central app manager. ATLAS coming soon \u2014 open Waves Central and install from there."
+      }
+    ],
+    "hostsEntries": [],
+    "confirmedWorking": false,
+    "dawComingSoon": true,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "deferred \u2014 Waves Central manager required, proprietary install system"
+  },
+  {
+    "id": "slate-digital",
+    "name": "Slate Digital",
+    "matchPatterns": [
+      "slate digital",
+      "slate digital vmr",
+      "slate everything bundle",
+      "virtual mix rack",
+      "slate vmr"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Slate.*\\.pkg",
+        "note": "PKG installer for individual plugins. Some releases use their own hub \u2014 check the installer file extension."
+      }
+    ],
+    "hostsEntries": [
+      "slatedigital.com",
+      "www.slatedigital.com",
+      "plugin.slatedigital.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "slatedigital.com",
+        "www.slatedigital.com",
+        "plugin.slatedigital.com"
+      ]
+    },
+    "confirmedWorking": false,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "needs test \u2014 PKG pattern known for individual plugins"
+  },
+  {
+    "id": "xlnaudio-addictive-drums",
+    "name": "XLN Audio Addictive Drums 2",
+    "matchPatterns": [
+      "xlnaudio",
+      "addictive drums",
+      "addictive drums 2",
+      "xln audio addictive drums",
+      "addictive keys"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "pkg",
+        "filePattern": "Addictive.*\\.pkg",
+        "note": "PKG installer. Installs plugin + content library."
+      }
+    ],
+    "hostsEntries": [
+      "www.xlnaudio.com",
+      "xlnaudio.com",
+      "license.xlnaudio.com"
+    ],
+    "rollback": {
+      "removeHostsEntries": [
+        "www.xlnaudio.com",
+        "xlnaudio.com",
+        "license.xlnaudio.com"
+      ]
+    },
+    "confirmedWorking": false,
+    "confirmedDate": "2026-07-20",
+    "confirmedBy": "needs test"
+  },
+  {
+    "id": "ableton-live-suite",
+    "name": "Ableton Live Suite",
+    "matchPatterns": [
+      "ableton live",
+      "ableton live 11",
+      "ableton live 12",
+      "ableton live 10"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "dawInstall",
+        "filePattern": "ableton live.*\\.app",
+        "auzPattern": "authorize\\.auz",
+        "note": "Drag-to-Applications DAW install with full UI automation: copy app, authorize later, disable updates, apply .auz license, remove WebConnector."
+      }
+    ],
+    "hostsEntries": [],
+    "confirmedWorking": false,
+    "dawComingSoon": true,
+    "confirmedDate": "2026-07-13",
+    "confirmedBy": "deferred \u2014 UI automation too complex for current release"
+  },
+  {
+    "id": "logic-pro",
+    "name": "Logic Pro",
+    "matchPatterns": [
+      "logic pro",
+      "logic pro x",
+      "logic_pro",
+      "logic_pro_x"
+    ],
+    "installSteps": [
+      {
+        "order": 1,
+        "type": "dawInstall",
+        "filePattern": "logic pro.*\\.app",
+        "note": "Copy Logic Pro.app to /Applications and strip quarantine xattr so macOS does not block it as damaged."
+      }
+    ],
+    "hostsEntries": [],
+    "confirmedWorking": true,
+    "confirmedDate": "2026-07-13",
+    "confirmedBy": "manual analysis \u2014 copy + quarantine strip only, no license automation needed"
   }
 ]

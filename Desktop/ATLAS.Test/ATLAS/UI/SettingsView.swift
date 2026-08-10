@@ -48,10 +48,12 @@ struct SettingsView: View {
     @State private var showSignOutConfirm = false
     @State private var showSupport = false
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
+    @AppStorage("atlas.widgetEnabled") private var widgetEnabled = true
     @State private var gatekeeperFixRunning = false
     @State private var gatekeeperFixResult: String? = nil
     @State private var notificationsEnabled = false
     @State private var notifPermissionDenied = false
+    @State private var showTitanMemory = false
 
     private static let notifKey = "ATLAS.notificationsEnabled"
 
@@ -90,6 +92,41 @@ struct SettingsView: View {
                     sectionHeader("TITAN CORE™")
                     VStack(spacing: 0) {
                         titanToggleRow
+                    }
+                    .atlasCard()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+
+                    // ── Widget Mode ───────────────────────────────────
+                    sectionHeader("Widget Mode")
+                    VStack(spacing: 0) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 7)
+                                    .fill(Color(hex: "#7090B8").opacity(0.12))
+                                    .frame(width: 28, height: 28)
+                                Image(systemName: "rectangle.compress.vertical")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color(hex: "#7090B8"))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Widget Mode")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Color.atlasLabel)
+                                Text(widgetEnabled
+                                     ? "ATLAS will minimise to a compact widget when idle"
+                                     : "ATLAS stays full size — widget mode disabled")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color.atlasSubtitle)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $widgetEnabled)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .scaleEffect(0.85)
+                                .tint(Color(hex: "#7090B8"))
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 10)
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)
@@ -236,6 +273,96 @@ struct SettingsView: View {
 
                     Group {
 
+                    // ── Install Limits ────────────────────────────────
+                    sectionHeader("Install Limits")
+                    VStack(spacing: 0) {
+                        let isPro       = auth.isPro
+                        let planColor   = isPro ? Color(hex: "#3ECFB2") : Color(hex: "#7090B8")
+                        let monthlyLimit = MonthlyLimitManager.shared
+                        let dailyUsed    = monthlyLimit.installsToday
+                        let monthlyUsed  = monthlyLimit.installsThisPeriod
+                        let monthlyMax   = isPro ? MonthlyLimitManager.proLimit : MonthlyLimitManager.standardMonthlyLimit
+
+                        if !isPro {
+                            let dailyMax = MonthlyLimitManager.standardDailyLimit
+                            let dailyRem = max(0, dailyMax - dailyUsed)
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .fill(planColor.opacity(0.12))
+                                        .frame(width: 28, height: 28)
+                                    Image(systemName: "sun.max")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(planColor)
+                                }
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Daily Installations")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(Color.atlasLabel)
+                                        Spacer()
+                                        Text("\(dailyUsed) / \(dailyMax)")
+                                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                            .foregroundColor(dailyRem == 0 ? Color(hex: "#F0A030") : planColor)
+                                    }
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 3).fill(planColor.opacity(0.15)).frame(height: 4)
+                                            RoundedRectangle(cornerRadius: 3)
+                                                .fill(dailyRem == 0 ? Color(hex: "#F0A030") : planColor)
+                                                .frame(width: geo.size.width * min(1, Double(dailyUsed) / Double(dailyMax)), height: 4)
+                                        }
+                                    }
+                                    .frame(height: 4)
+                                    Text(dailyRem == 0 ? "Resets at midnight" : "\(dailyRem) remaining today")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(Color.atlasSubtitle)
+                                }
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 10)
+                            Divider().background(Color.atlasSeparator).padding(.leading, 44)
+                        }
+
+                        let monthlyRem = max(0, monthlyMax - monthlyUsed)
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 7)
+                                    .fill(planColor.opacity(0.12))
+                                    .frame(width: 28, height: 28)
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(planColor)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Monthly Installations")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(Color.atlasLabel)
+                                    Spacer()
+                                    Text("\(monthlyUsed) / \(monthlyMax)")
+                                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                        .foregroundColor(monthlyRem == 0 ? Color(hex: "#F0A030") : planColor)
+                                }
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 3).fill(planColor.opacity(0.15)).frame(height: 4)
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(monthlyRem == 0 ? Color(hex: "#F0A030") : planColor)
+                                            .frame(width: geo.size.width * min(1, Double(monthlyUsed) / Double(monthlyMax)), height: 4)
+                                    }
+                                }
+                                .frame(height: 4)
+                                Text(monthlyRem == 0 ? "Refills on billing date" : "\(monthlyRem) remaining this month")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.atlasSubtitle)
+                            }
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                    }
+                    .atlasCard()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+
                     // ── Notifications ─────────────────────────────────
                     sectionHeader("Notifications")
                     VStack(spacing: 0) {
@@ -308,7 +435,7 @@ struct SettingsView: View {
                             icon: "sparkle",
                             iconColor: Color(hex: "#3ECFB2"),
                             title: "ATLAS",
-                            subtitle: "Version 3.0 · by InterLinked©",
+                            subtitle: "ATLAS: Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") · by InterLinked®",
                             action: nil
                         )
                         Divider().background(Color.atlasSeparator).padding(.leading, 44)
@@ -325,6 +452,8 @@ struct SettingsView: View {
                     .padding(.bottom, 20)
 
                     } // end Group
+
+                    adminSection
                 }
                 .padding(.top, 12)
             }
@@ -348,10 +477,32 @@ struct SettingsView: View {
         .sheet(isPresented: $showSupport) {
             SupportView()
         }
+        .sheet(isPresented: $showTitanMemory) {
+            TitanMemoryViewer()
+        }
         .preferredColorScheme(appearance.override)
     }
 
     // MARK: - Account section
+
+    @ViewBuilder
+    private var adminSection: some View {
+        if auth.isAdmin {
+            sectionHeader("Admin")
+            VStack(spacing: 0) {
+                infoRow(
+                    icon: "brain.head.profile",
+                    iconColor: Color(hex: "#3ECFB2"),
+                    title: "TITAN MEMORY™",
+                    subtitle: "View all confirmed install patterns",
+                    action: { showTitanMemory = true }
+                )
+            }
+            .atlasCard()
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+        }
+    }
 
     @ViewBuilder
     private var accountSection: some View {

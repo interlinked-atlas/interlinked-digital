@@ -172,7 +172,7 @@ struct InstallLogger {
 
         lines.append("── Result ──────────────────────────────────")
         switch result {
-        case .success(let appName):
+        case .success(let appName, _):
             lines.append("STATUS:  ✓ SUCCESS")
             lines.append("APP:     \(appName)")
         case .failure(let reason):
@@ -198,7 +198,7 @@ struct InstallLogger {
         // Fire-and-forget: sync log to account dashboard
         let uploadAppName: String
         switch result {
-        case .success(let name): uploadAppName = name
+        case .success(let name, _): uploadAppName = name
         case .failure:           uploadAppName = fileURL.lastPathComponent
         }
         let uploadType = isFailed ? "failed" : "install"

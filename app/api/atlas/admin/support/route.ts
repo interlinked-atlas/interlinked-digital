@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const ADMIN_EMAIL = 'interlinked.digital@gmail.com'
+const ADMIN_EMAIL = 'titantinstaller@gmail.com'
 
 async function verifyAdmin(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '').trim()

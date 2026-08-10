@@ -150,8 +150,8 @@ final class AuthManager: ObservableObject {
                     accessToken: s.accessToken, userID: s.userID) {
                     let planChanged   = p.plan != self.profile?.plan
                     let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
-                    // Force sign-out immediately if subscription was cancelled
-                    if p.subscriptionStatus == "cancelled" {
+                    // Force sign-out immediately if subscription was cancelled or payment failed
+                    if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
                         await MainActor.run { self.signOut() }
                         return
                     }
@@ -209,12 +209,15 @@ final class AuthManager: ObservableObject {
         KeychainManager.saveSession(s)
         if let p = try? await SupabaseService.shared.getProfile(
             accessToken: s.accessToken, userID: s.userID) {
-            // Block cancelled accounts immediately at login
-            if p.subscriptionStatus == "cancelled" {
+            // Block cancelled or payment-failed accounts immediately at login
+            if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
+                let msg = p.subscriptionStatus == "payment_failed"
+                    ? "Your last payment failed. Visit interlinked.digital/atlas to update your billing info."
+                    : "Your subscription has been cancelled. Visit interlinked.digital/atlas to subscribe again."
                 await MainActor.run {
                     isLoadingProfile = false
                     session = nil
-                    authError = "Your subscription has been cancelled. Visit interlinked.digital/atlas to subscribe again."
+                    authError = msg
                 }
                 KeychainManager.clearSession()
                 try? await SupabaseService.shared.signOut(accessToken: s.accessToken)
