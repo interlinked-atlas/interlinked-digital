@@ -14,6 +14,7 @@ enum Features {
     static var trashInstaller: Bool { isPro }
     static var titanVScan:     Bool { isPro }
     static var fileShare:      Bool { false }  // Coming Soon — Pro only when released
+    static var enableDisable:  Bool { isPro }  // ATLAS Library: Enable/Disable plugin formats
 
     // New pipeline: PackageManifest → WorkflowRecognizer → RecipeComposer → InstallPlan.
     // Off by default — existing analyze() path runs unchanged when false.

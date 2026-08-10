@@ -842,8 +842,8 @@ struct ContentView: View {
 
             HStack(spacing: 5) {
                 AtlasLabelButton(
-                    icon: "clock",
-                    label: "History",
+                    icon: "books.vertical",
+                    label: "Library",
                     isActive: showHistory
                 ) {
                     withAnimation(.atlasSpring) { showHistory.toggle() }

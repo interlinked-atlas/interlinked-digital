@@ -111,6 +111,17 @@ struct RollbackEngine {
         // Nothing else qualifies. Built incrementally alongside candidates below.
         var positivelyOwnedPaths = Set<String>()
 
+        // Disabled format files in ATLAS storage — include them as uninstall candidates.
+        // These are stored at disabledStoragePath (not the original system path, which is empty).
+        // We record the originalPath in TrashRecord so recovery knows where to restore them.
+        if let disabledEntries = record.disabledFormats, !disabledEntries.isEmpty {
+            await logger.log("Disabled formats: \(disabledEntries.count) — including in uninstall")
+            for entry in disabledEntries {
+                candidates.insert(entry.disabledStoragePath)
+                positivelyOwnedPaths.insert(entry.disabledStoragePath)
+            }
+        }
+
         // Manifest path: add explicitly tracked files (license assets, ZIP-installed plugins, etc.)
         if !record.installedFiles.isEmpty {
             onProgress?(0.18, "Building uninstall plan|Assembling file list")
