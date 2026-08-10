@@ -96,7 +96,7 @@ struct PluginToggleEngine {
         }
 
         // Step 1 — move out of system dir (requires root)
-        let mvOut = shell(password: password, command: "mv '\(escapePath(destinationPath))' '\(escapePath(transitPath))'")
+        let mvOut = shell(password: password, command: "mv \(escapePath(destinationPath)) \(escapePath(transitPath))")
         guard mvOut.success else {
             return .failure(ToggleError("Could not remove plugin from system directory:\n\(mvOut.output)"))
         }
@@ -106,7 +106,7 @@ struct PluginToggleEngine {
             try FileManager.default.moveItem(atPath: transitPath, toPath: storagePath)
         } catch {
             // Rollback: try to move back from transit to system dir
-            _ = shell(password: password, command: "mv '\(escapePath(transitPath))' '\(escapePath(destinationPath))'")
+            _ = shell(password: password, command: "mv \(escapePath(transitPath)) \(escapePath(destinationPath))")
             return .failure(ToggleError("Could not move plugin to ATLAS disabled storage:\n\(error.localizedDescription)"))
         }
 
@@ -172,7 +172,7 @@ struct PluginToggleEngine {
         }
 
         // Step 2 — move into system dir (requires root)
-        let mvIn = shell(password: password, command: "mv '\(escapePath(transitPath))' '\(escapePath(entry.originalPath))'")
+        let mvIn = shell(password: password, command: "mv \(escapePath(transitPath)) \(escapePath(entry.originalPath))")
         guard mvIn.success else {
             // Rollback: move transit back to disabled storage
             do { try FileManager.default.moveItem(atPath: transitPath, toPath: entry.disabledStoragePath) } catch {}
