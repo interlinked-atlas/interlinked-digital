@@ -140,27 +140,8 @@ struct KeychainManager {
         SecItemAdd(add as CFDictionary, nil)
     }
 
-    // Replaces the Keychain ACL for the session item with a fresh open-access object.
-    // Stale ACL entries (e.g. from "Always Allow" clicks on a previous build binary)
-    // contain broken app references that cause macOS to show a repeated authenticity
-    // warning prompt. SecItemUpdate with a new SecAccess replaces the ACL in-place
-    // without touching kSecValueData — the session token is preserved.
-    private static func repairKeychainACLIfNeeded() {
-        var access: SecAccess?
-        guard SecAccessCreate("ATLAS Session" as CFString, nil, &access) == errSecSuccess,
-              let access else { return }
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: sessionAccount
-        ]
-        let update: [String: Any] = [kSecAttrAccess as String: access]
-        SecItemUpdate(query as CFDictionary, update as CFDictionary)
-    }
-
     static func loadSession() -> ATLASSession? {
         if let cached = _cachedSession { return cached }
-        repairKeychainACLIfNeeded()
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: sessionAccount,
