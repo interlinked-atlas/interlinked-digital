@@ -591,22 +591,6 @@ struct LibraryItemCard: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
-                    // Expand/collapse chevron
-                    if !formats.isEmpty || !record.installedFiles.isEmpty {
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isExpanded.toggle()
-                            }
-                        } label: {
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.6))
-                                .frame(width: 18, height: 18)
-                                .background(Color.atlasElevated)
-                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
                     // Remove button
                     Button(action: onRemove) {
                         Image(systemName: "xmark")
@@ -638,8 +622,8 @@ struct LibraryItemCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
 
-                // Tracked files summary + verify badges
-                HStack(spacing: 6) {
+                // Tracked files summary + format inline row + verify badge
+                HStack(spacing: 0) {
                     if !record.pkgReceiptIDs.isEmpty {
                         Text("\(record.pkgReceiptIDs.count) receipt(s) · \(record.installedFiles.count) files")
                             .font(.system(size: 10))
@@ -649,8 +633,8 @@ struct LibraryItemCard: View {
                             .font(.system(size: 10))
                             .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     }
-                    if !formats.isEmpty && !isExpanded {
-                        formatPills
+                    if !formats.isEmpty {
+                        formatInlineRow
                     }
                     Spacer()
                     verifyBadge
@@ -785,21 +769,45 @@ struct LibraryItemCard: View {
         }
     }
 
-    // MARK: - Format pills (collapsed summary)
+    // MARK: - Format inline row (collapsed summary — Concept A)
+    // Replaces pill badges. Format names appear as plain dot-separated metadata text.
+    // Disabled formats render muted/grey. "Formats ▾/▴" at the trailing end is the
+    // expansion trigger, moved here from the title row so the control is contextually
+    // adjacent to what it reveals.
 
     @ViewBuilder
-    private var formatPills: some View {
-        HStack(spacing: 3) {
+    private var formatInlineRow: some View {
+        HStack(spacing: 0) {
+            // Dot-separated format names
             ForEach(formats) { fmt in
                 let isDisabled = record.disabledFormats?.contains { $0.originalPath == fmt.destinationPath } ?? false
-                Text(fmt.label)
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundColor(isDisabled ? Color.atlasSubtitle.opacity(0.5) : Color(hex: "#3ECFB2").opacity(0.8))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background((isDisabled ? Color.atlasElevated : Color(hex: "#3ECFB2").opacity(0.08)))
-                    .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                Text(" · \(fmt.label)")
+                    .font(.system(size: 10))
+                    .foregroundColor(
+                        isDisabled
+                            ? Color.atlasSubtitle.opacity(0.35)
+                            : Color(hex: "#3ECFB2").opacity(0.75)
+                    )
             }
+
+            // "Formats ▾/▴" expansion button
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 2) {
+                    Text("  Formats")
+                        .font(.system(size: 10))
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 7, weight: .semibold))
+                }
+                .foregroundColor(Color.atlasSubtitle.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Plugin formats")
+            .accessibilityHint("Expand to show Enable, Disable, and Code-Sign controls for each format")
+            .help("Show format controls: Enable, Disable, Code-Sign")
         }
     }
 
