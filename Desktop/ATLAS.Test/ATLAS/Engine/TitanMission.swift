@@ -424,9 +424,6 @@ final class TitanMission: ObservableObject {
         // after completion to detect directories this specific install created at runtime.
         let libSnapshot = InstallEngine.snapshotLibraryTopLevel()
 
-        // Global auth watcher: auto-fills every "wants to make changes" dialog
-        let authWatcher = InstallEngine.startAuthWatcher(password: adminPassword)
-
         for i in steps.indices {
             // Capture step for execution (avoid passing inout to async)
             let step = steps[i]
@@ -467,8 +464,6 @@ final class TitanMission: ObservableObject {
                 }
             }
         }
-
-        authWatcher.terminate()
 
         // Record runtime-created paths only when the mission succeeded.
         // A failed install should not leave ownership claims on the filesystem.
@@ -592,6 +587,25 @@ final class TitanMission: ObservableObject {
             let installStart   = Date()
 
             _ = InstallEngine.runProcess(path: "/usr/bin/xattr", arguments: ["-cr", urlPath])
+
+            // Scoped SUDO_ASKPASS: write password to a temp file so any `sudo` calls
+            // inside PKG postinstall scripts get the password silently (no GUI dialog).
+            // No AppleScript watcher needed — installer itself uses sudo -S (stdin).
+            // Both temp files are cleaned up in the defer block below.
+            let tmpFile = NSTemporaryDirectory() + "atlas_aw_\(Int.random(in: 100000...999999))"
+            let askpassFile = NSTemporaryDirectory() + "atlas_askpass_\(Int.random(in: 100000...999999)).sh"
+            try? adminPassword.write(toFile: tmpFile, atomically: true, encoding: .utf8)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tmpFile)
+            let askpassScript = "#!/bin/sh\ncat \"\(tmpFile)\"\n"
+            try? askpassScript.write(toFile: askpassFile, atomically: true, encoding: .utf8)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: askpassFile)
+            setenv("SUDO_ASKPASS", askpassFile, 1)
+            defer {
+                try? FileManager.default.removeItem(atPath: askpassFile)
+                try? FileManager.default.removeItem(atPath: tmpFile)
+                unsetenv("SUDO_ASKPASS")
+            }
+
             let pwdLine = pwdEscaped.isEmpty ? "" : "echo '\(pwdEscaped)' | sudo -S "
             let script = "\(pwdLine)/usr/sbin/installer -pkg '\(urlPath)' -target / 2>&1"
             let r = InstallEngine.runShell(script)

@@ -48,6 +48,12 @@ struct ATLASApp: App {
                         withAnimation(.easeIn(duration: 0.4)) {
                             showSplash = false
                         }
+                        // Deferred until after splash: both calls read from Keychain
+                        // (via loadSession) and must not race the initial window render,
+                        // which would trigger the "ATLAS wants to use confidential info"
+                        // prompt before the splash is even visible.
+                        InstallLogger.captureCrashLogs()
+                        InstallLogger.syncExistingLogs()
                     }
                     .transition(.opacity)
                 } else {
@@ -92,8 +98,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ) { _, _ in }
 
         NSApp.activate(ignoringOtherApps: true)
-        InstallLogger.captureCrashLogs()
-        InstallLogger.syncExistingLogs()
         InstallEngine.cleanupStaleMounts()
         InstallEngine.killLeakedAuthWatchers()
         // Check for queue items that survived a crash or force-quit last session.

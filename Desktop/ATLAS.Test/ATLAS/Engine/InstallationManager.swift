@@ -116,13 +116,9 @@ struct InstallEngine {
                                                     click button "OK" of w
                                                 on error
                                                     try
-                                                        click button "Allow" of w
+                                                        click button "Unlock" of w
                                                     on error
-                                                        try
-                                                            click button "Unlock" of w
-                                                        on error
-                                                            keystroke return
-                                                        end try
+                                                        keystroke return
                                                     end try
                                                 end try
                                             end if
@@ -143,22 +139,29 @@ struct InstallEngine {
         p.standardError  = Pipe()
         try? p.run()
 
-        // Clean up askpass file when the watcher exits
+        // Clean up both temp files when the watcher exits
         p.terminationHandler = { _ in
             try? FileManager.default.removeItem(atPath: askpassFile)
+            try? FileManager.default.removeItem(atPath: tmpFile)
             unsetenv("SUDO_ASKPASS")
         }
 
         return p
     }
 
-    // Kills any leaked auth watcher osascript processes from previous ATLAS sessions.
-    // Called at app launch to ensure no stale watchers run after a crash.
+    // Kills any leaked auth watcher osascript processes from previous ATLAS sessions
+    // and removes orphaned atlas_aw_* password files from /tmp.
+    // Called at app launch to ensure no stale watchers or password files survive a crash.
     static func killLeakedAuthWatchers() {
-        let r = runProcess(path: "/usr/bin/pgrep", arguments: ["-f", "authorizationhost.*SecurityAgent"])
-        // Kill any osascript that mentions authorizationhost/SecurityAgent (our watcher pattern)
         _ = runProcess(path: "/usr/bin/pkill", arguments: ["-f", "repeat.*authorizationhost"])
         _ = runProcess(path: "/usr/bin/pkill", arguments: ["-f", "repeat.*SecurityAgent"])
+        // Clean up any atlas_aw_* password files orphaned by a previous crash
+        let tmpDir = NSTemporaryDirectory()
+        if let files = try? FileManager.default.contentsOfDirectory(atPath: tmpDir) {
+            for file in files where file.hasPrefix("atlas_aw_") {
+                try? FileManager.default.removeItem(atPath: tmpDir + file)
+            }
+        }
     }
 
     static func cancelCurrentInstall() {
