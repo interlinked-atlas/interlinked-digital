@@ -86,28 +86,17 @@ struct PluginToggleEngine {
             do { try FileManager.default.removeItem(atPath: storagePath) } catch {}
         }
 
-        // Two-step move:
-        // Step 1: sudo mv <systemPath> <transitPath>  (moves out of root-owned dir)
-        // Step 2: mv <transitPath> <storagePath>      (moves into user-owned dir)
-        let transitPath = NSTemporaryDirectory() + "atlas_disable_\(UUID().uuidString)"
-
         guard let password = KeychainManager.loadPassword() else {
             return .failure(ToggleError("No admin password stored. Set your Mac password in ATLAS Settings."))
         }
 
-        // Step 1 — move out of system dir (requires root)
-        let mvOut = shell(password: password, command: "mv \(escapePath(destinationPath)) \(escapePath(transitPath))")
-        guard mvOut.success else {
-            return .failure(ToggleError("Could not remove plugin from system directory:\n\(mvOut.output)"))
-        }
-
-        // Step 2 — move from transit into user Application Support
-        do {
-            try FileManager.default.moveItem(atPath: transitPath, toPath: storagePath)
-        } catch {
-            // Rollback: try to move back from transit to system dir
-            _ = shell(password: password, command: "mv \(escapePath(transitPath)) \(escapePath(destinationPath))")
-            return .failure(ToggleError("Could not move plugin to ATLAS disabled storage:\n\(error.localizedDescription)"))
+        // Single privileged move directly to disabled storage.
+        // Two-step transit (sudo mv → temp, then FileManager.moveItem → storage) fails
+        // because sudo mv preserves root:wheel ownership on the bundle; the subsequent
+        // unprivileged rename(2) is rejected by macOS for root-owned directories.
+        let mv = shell(password: password, command: "mv \(escapePath(destinationPath)) \(escapePath(storagePath))")
+        guard mv.success else {
+            return .failure(ToggleError("Could not move plugin to ATLAS disabled storage:\n\(mv.output)"))
         }
 
         // Verify
@@ -159,23 +148,10 @@ struct PluginToggleEngine {
             return .failure(ToggleError("No admin password stored. Set your Mac password in ATLAS Settings."))
         }
 
-        // Two-step move (reverse of disable):
-        // Step 1: mv <storagePath> <transitPath>      (moves out of user home)
-        // Step 2: sudo mv <transitPath> <systemPath>  (moves into root-owned dir)
-        let transitPath = NSTemporaryDirectory() + "atlas_enable_\(UUID().uuidString)"
-
-        // Step 1 — move out of user Application Support
-        do {
-            try FileManager.default.moveItem(atPath: entry.disabledStoragePath, toPath: transitPath)
-        } catch {
-            return .failure(ToggleError("Could not move plugin from ATLAS storage:\n\(error.localizedDescription)"))
-        }
-
-        // Step 2 — move into system dir (requires root)
-        let mvIn = shell(password: password, command: "mv \(escapePath(transitPath)) \(escapePath(entry.originalPath))")
+        // Single privileged move directly from disabled storage to the original system path.
+        // Symmetric with disable: no transit, no unprivileged rename of a root-owned bundle.
+        let mvIn = shell(password: password, command: "mv \(escapePath(entry.disabledStoragePath)) \(escapePath(entry.originalPath))")
         guard mvIn.success else {
-            // Rollback: move transit back to disabled storage
-            do { try FileManager.default.moveItem(atPath: transitPath, toPath: entry.disabledStoragePath) } catch {}
             return .failure(ToggleError("Could not restore plugin to system directory:\n\(mvIn.output)"))
         }
 
