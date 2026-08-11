@@ -547,6 +547,11 @@ struct LibraryItemCard: View {
     @State private var toggleError: String? = nil
     @State private var showDisableConfirm = false
     @State private var pendingDisableRow: PluginFormatRow? = nil
+    // Code-Sign state
+    @State private var isSigningFormat: String? = nil    // formatKey of in-progress signing
+    @State private var signSuccessFormat: String? = nil  // formatKey for transient ✓ Signed badge
+    @State private var signError: String? = nil
+    @State private var showSignError = false
 
     private var formats: [PluginFormatRow] { pluginFormats(for: record) }
 
@@ -764,6 +769,12 @@ struct LibraryItemCard: View {
                 Text("ATLAS will move \(record.fileName) (\(row.label)) out of its plugin folder. It will not appear in your DAW until re-enabled.\n\nYou can re-enable it at any time from ATLAS Library.")
             }
         }
+        // Code-Sign error alert
+        .alert("Code-Sign Failed", isPresented: $showSignError) {
+            Button("OK", role: .cancel) { signError = nil }
+        } message: {
+            Text(signError ?? "")
+        }
         .alert("\(lockedFeatureName) — Pro Feature", isPresented: $showUpgradeAlert) {
             Button("Upgrade to Pro") {
                 NSWorkspace.shared.open(URL(string: "https://interlinked.digital/account")!)
@@ -878,17 +889,72 @@ struct LibraryItemCard: View {
                                       color: Color(hex: "#3ECFB2")) {
                             Task { await performEnable(entry: disabledEntry!, fmt: fmt) }
                         }
+                        .disabled(isSigningFormat != nil)
                     } else {
                         compactButton(label: "Disable", icon: "minus.circle",
                                       color: Color(hex: "#E05555")) {
                             pendingDisableRow = fmt
                             showDisableConfirm = true
                         }
+                        .disabled(isSigningFormat != nil)
                     }
                 } else {
                     // Standard user — show locked Pro badge
                     Button {
                         lockedFeatureName = "Enable/Disable"
+                        showUpgradeAlert = true
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 7, weight: .semibold))
+                            Text("PRO")
+                                .font(.system(size: 7, weight: .bold))
+                        }
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.5))
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(Color.atlasElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Code-Sign button (Pro only)
+            if record.status == .success {
+                if Features.codeSign {
+                    let signingThis    = isSigningFormat == fmt.formatKey
+                    let successThis    = signSuccessFormat == fmt.formatKey
+                    let otherSigning   = isSigningFormat != nil && isSigningFormat != fmt.formatKey
+
+                    if signingThis {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .scaleEffect(0.5)
+                                .frame(width: 12, height: 12)
+                            Text("Signing…")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(Color.atlasSubtitle.opacity(0.7))
+                        }
+                    } else if successThis {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 8, weight: .semibold))
+                            Text("Signed!")
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                    } else {
+                        compactButton(label: "Sign", icon: "pencil",
+                                      color: Color(hex: "#3ECFB2")) {
+                            Task { await performCodeSign(fmt: fmt) }
+                        }
+                        .disabled(isTogglingFormat || otherSigning)
+                    }
+                } else {
+                    // Standard user — locked Pro badge for Code-Sign
+                    Button {
+                        lockedFeatureName = "Code-Sign"
                         showUpgradeAlert = true
                     } label: {
                         HStack(spacing: 3) {
@@ -967,6 +1033,37 @@ struct LibraryItemCard: View {
             store.markFormatEnabled(id: record.id, originalPath: entry.originalPath)
         case .failure(let err):
             toggleError = err.message
+        }
+    }
+
+    // MARK: - Code-Sign
+
+    @MainActor
+    private func performCodeSign(fmt: PluginFormatRow) async {
+        guard Features.codeSign else {
+            lockedFeatureName = "Code-Sign"
+            showUpgradeAlert = true
+            return
+        }
+        // Determine physical location: disabled storage path or installed path
+        let disabledEntry = record.disabledFormats?.first { $0.originalPath == fmt.destinationPath }
+        let targetPath = disabledEntry?.disabledStoragePath ?? fmt.destinationPath
+
+        isSigningFormat = fmt.formatKey
+        let result = await PluginCodeSignEngine.sign(pluginPath: targetPath, record: record)
+        isSigningFormat = nil
+
+        switch result {
+        case .success:
+            signSuccessFormat = fmt.formatKey
+            // Clear the success badge after ~2 seconds
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await MainActor.run { signSuccessFormat = nil }
+            }
+        case .failure(let err):
+            signError = err.message
+            showSignError = true
         }
     }
 
