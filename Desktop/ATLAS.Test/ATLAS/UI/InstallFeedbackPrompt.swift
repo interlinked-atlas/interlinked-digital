@@ -15,7 +15,7 @@ struct InstallFeedbackPrompt: View {
     var historyStore: HistoryStore? = nil
     let onDismiss: () -> Void
 
-    @State private var phase: Phase = .rating
+    @State private var phase: Phase = .question
     @State private var failureNote: String = ""
     @State private var titanSaved = false
     @State private var opacity: Double = 0
@@ -153,19 +153,19 @@ struct InstallFeedbackPrompt: View {
         }
     }
 
-    // MARK: - Question view (original Yes/No — now unreachable, kept for reference)
+    // MARK: - Question view (primary Yes/No)
 
     private var questionView: some View {
         VStack(alignment: .leading, spacing: 0) {
             header(title: "Quick check-in")
-            Text("Did **\(productName)** install correctly?")
+            Text("Did ATLAS solve the problem?")
                 .font(.system(size: 12))
                 .foregroundColor(Color(hex: "#D8DCF0"))
                 .padding(.horizontal, 14)
                 .padding(.bottom, 12)
             Divider().background(Color(hex: "#1E2132"))
             HStack(spacing: 8) {
-                atlasButton("No — Get Help", color: Color(hex: "#F06060"), filled: false) {
+                atlasButton("No", color: Color(hex: "#F06060"), filled: false) {
                     if isAdmin {
                         withAnimation(.spring(response: 0.3)) { phase = .adminChat }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { chatFocused = true }
@@ -173,7 +173,7 @@ struct InstallFeedbackPrompt: View {
                         withAnimation(.spring(response: 0.3)) { phase = .guidedStep1 }
                     }
                 }
-                atlasButton("Yes, it works!", color: Color(hex: "#3ECFB2"), filled: true) {
+                atlasButton("Yes", color: Color(hex: "#3ECFB2"), filled: true) {
                     TitanMemory.shared.recordConfirmedSuccess(productName: productName)
                     let dedupKey: String
                     if let url = sourceURL,
@@ -184,9 +184,7 @@ struct InstallFeedbackPrompt: View {
                         dedupKey = "atlas.feedbackSubmitted.\(productName)"
                     }
                     UserDefaults.standard.set(true, forKey: dedupKey)
-                    // Deferred runtime-path discovery: now that the user has launched
-                    // the app and confirmed it works, any first-launch Library folders
-                    // will exist. Merge them into the record for precise future uninstall.
+                    // Deferred runtime-path discovery
                     if let rec = installRecord, let store = historyStore {
                         Task.detached(priority: .background) {
                             let newPaths = InstallEngine.discoverPathsCreatedSince(date: rec.date)
@@ -197,11 +195,18 @@ struct InstallFeedbackPrompt: View {
                             }
                         }
                     }
+                    // Admin: auto-save to TITAN MEMORY™ without requiring manual confirmation
                     if isAdmin {
-                        withAnimation(.spring(response: 0.3)) { phase = .titanConfirm }
-                    } else {
-                        flashDone()
+                        TitanMemory.shared.saveAdminConfirmedPattern(
+                            productName: productName,
+                            fileName: productName,
+                            steps: steps,
+                            hostsEntries: hostsEntries,
+                            installLog: installLog
+                        )
+                        titanSaved = true
                     }
+                    flashDone()
                 }
             }
             .padding(.horizontal, 14)
