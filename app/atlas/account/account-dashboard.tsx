@@ -716,7 +716,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Recovery Kits ── */}
-        {isPro && (
+        {(isPro || (!cloudKitsLoading && cloudKits.length > 0)) && (
           <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
               <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>

@@ -10,13 +10,19 @@ const MONTHLY = {
   standard: {
     price: '$14.99', period: '/mo', priceId: 'atlas-standard',
     features: ['1 device', '10 installs / month', 'TITAN CORE™', 'Storage Manager', '3 Daily Installations', 'Notifications'],
-    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'Widget mode', 'Virus Scanner', 'File Sharing'],
+    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'Virus Scanner', 'File Sharing'],
   },
   pro: {
     price: '$29.99', period: '/mo', priceId: 'atlas-pro',
-    features: ['Up to 3 devices', '25 installs / month', 'TITAN CORE™', 'Storage Manager', 'Full install history', 'Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'Widget mode', 'Virus Scanner', 'File Sharing (Coming Soon)'],
+    features: ['Up to 3 devices', '25 installs / month', 'TITAN CORE™', 'Storage Manager', 'Full install history', 'Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Virus Scanner', 'File Sharing (Coming Soon)'],
     excluded: [],
   },
+}
+
+const PRO_FEATURE_DESCRIPTIONS: Record<string, string> = {
+  'ATLAS CLEANER™':       'Scan and remove leftover install files',
+  'ATLAS RECOVERY KIT™':  'Export an encrypted backup of your install library',
+  'Cloud Backup':          'Automatically sync your Recovery Kit to the cloud',
 }
 
 const ANNUAL = {
@@ -442,6 +448,11 @@ export default function PlansPage() {
                         {f.includes('Coming Soon') ? (
                           <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '11px' }}>Coming Soon</span></>
                         ) : f}
+                        {PRO_FEATURE_DESCRIPTIONS[f] && (
+                          <span style={{ display: 'block', color: '#525260', fontSize: '11px', lineHeight: 1.4, marginTop: '1px' }}>
+                            {PRO_FEATURE_DESCRIPTIONS[f]}
+                          </span>
+                        )}
                       </span>
                     </div>
                   ))}
