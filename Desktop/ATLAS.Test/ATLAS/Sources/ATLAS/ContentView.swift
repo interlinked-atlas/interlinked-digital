@@ -47,19 +47,15 @@ struct ContentView: View {
     @State private var showActivationAlert = false
     @State private var preInstallWarnings: [PreInstallWarning] = []
     @ObservedObject private var zipBroker = ZIPPasswordBroker.shared
-    @ObservedObject private var widgetState  = WidgetStateManager.shared
     @ObservedObject private var appearance   = AppearanceManager.shared
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
     @ObservedObject private var titanVScan      = TitanVScan.shared
-    @ObservedObject private var fileShare       = FileShareEngine.shared
+    @ObservedObject private var langMgr         = LanguageManager.shared
     @State private var showVScanSheet           = false
     @State private var pendingVScanURL:         URL? = nil
     @State private var pendingVScanResult:      VScanResult? = nil
-    @State private var showFileShare          = false
-    @State private var showFileShareUpload    = false
-    @State private var widgetTimer: Task<Void, Never>? = nil
     @State private var showSettings  = false
     @State private var showAbout     = false
     @State private var showUpgrade   = false
@@ -75,6 +71,10 @@ struct ContentView: View {
     @State private var showPermissionsSheet = false
     @State private var showTour = false
     @State private var showAtlasSelfInstallAlert = false
+    // Recovery Mode state
+    @State private var showRecoveryMode = false
+    @State private var recoveryEngine: RecoveryModeEngine? = nil
+
     // TITAN CORE™ mission state
     @State private var activeTitanMission: TitanMission? = nil
     @State private var showTitanMission            = false
@@ -118,7 +118,6 @@ struct ContentView: View {
                 setupComplete = true
             }
         }
-        .background(widgetState.isWidgetMode ? Color.clear : nil)
         .preferredColorScheme(appearance.override)
         .sheet(isPresented: $showDemoAlert, onDismiss: {
             pendingDemoAlerts.removeFirst()
@@ -222,115 +221,91 @@ struct ContentView: View {
 
     var mainLayout: some View {
         ZStack {
-            if !widgetState.isWidgetMode {
-                // Main content — always full window width, never resizes for history
-                mainView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .frame(minWidth: 420, minHeight: 360)
-                    .atlasBackground()
-
-                // History panel slides in as a trailing overlay — window never resizes.
-                // A thin scrim behind it dims the main content slightly for focus.
-                if showHistory {
-                    HStack(spacing: 0) {
-                        // Tap-to-close scrim
-                        Color.black.opacity(0.18)
-                            .onTapGesture { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } }
-                        HistoryPanelView(
-                            store: historyStore,
-                            logger: logger,
-                            onClose: { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } },
-                            onRollback: { record in
-                                if !Features.rollback {
-                                    upgradeFeature = "Uninstall & Rollback"
-                                    showUpgrade = true
-                                } else {
-                                    beginBatchUninstall(records: [record])
-                                }
-                            },
-                            onRestore: { record in
-                                if !Features.restore {
-                                    upgradeFeature = "Restore"
-                                    showUpgrade = true
-                                } else {
-                                    beginRestore(record: record)
-                                }
-                            },
-                            onBatchRollback: { records in
-                                if !Features.rollback {
-                                    upgradeFeature = "Uninstall & Rollback"
-                                    showUpgrade = true
-                                } else {
-                                    beginBatchUninstall(records: records)
-                                }
-                            }
-                        )
-                        .shadow(color: .black.opacity(0.25), radius: 16, x: -4, y: 0)
+            // Recovery Mode — full-window overlay, always above everything
+            if showRecoveryMode, let engine = recoveryEngine {
+                RecoveryModeView(
+                    engine: engine,
+                    onExit: {
+                        AppDelegate.mainWindow?.setContentSize(CGSize(width: 600, height: 620))
+                        AppDelegate.mainWindow?.minSize = CGSize(width: 560, height: 580)
+                        showRecoveryMode = false
+                        recoveryEngine = nil
+                    },
+                    onViewLibrary: {
+                        AppDelegate.mainWindow?.setContentSize(CGSize(width: 600, height: 620))
+                        AppDelegate.mainWindow?.minSize = CGSize(width: 560, height: 580)
+                        showRecoveryMode = false
+                        recoveryEngine = nil
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = true }
                     }
-                    .transition(.move(edge: .trailing))
-                    .zIndex(50)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showHistory)
+                )
+                .zIndex(100)
+            }
+
+            // Main content — always full window width, never resizes for history
+            mainView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 420, minHeight: 360)
+                .atlasBackground()
+
+            // History panel slides in as a trailing overlay — window never resizes.
+            // A thin scrim behind it dims the main content slightly for focus.
+            if showHistory {
+                HStack(spacing: 0) {
+                    // Tap-to-close scrim
+                    Color.black.opacity(0.18)
+                        .onTapGesture { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } }
+                    LibraryDashboardView(
+                        store: historyStore,
+                        logger: logger,
+                        onClose: { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } },
+                        onRollback: { record in
+                            if !Features.rollback {
+                                upgradeFeature = "Uninstall & Rollback"
+                                showUpgrade = true
+                            } else {
+                                beginBatchUninstall(records: [record])
+                            }
+                        },
+                        onRestore: { record in
+                            if !Features.restore {
+                                upgradeFeature = "Restore"
+                                showUpgrade = true
+                            } else {
+                                beginRestore(record: record)
+                            }
+                        },
+                        onBatchRollback: { records in
+                            if !Features.rollback {
+                                upgradeFeature = "Uninstall & Rollback"
+                                showUpgrade = true
+                            } else {
+                                beginBatchUninstall(records: records)
+                            }
+                        },
+                        onStartRecovery: { kit in
+                            showHistory = false
+                            recoveryEngine = RecoveryModeEngine(kit: kit, store: historyStore)
+                            showRecoveryMode = true
+                        }
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 16, x: -4, y: 0)
                 }
+                .transition(.move(edge: .trailing))
+                .zIndex(50)
+                .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showHistory)
             }
 
             // Tour overlay — injected via overlayPreferenceValue below
 
-
-            // Resume banner — shown when waiting queue items survived a crash/force-quit
-            if !queue.pendingResumeURLs.isEmpty {
-                VStack {
-                    HStack(spacing: 10) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .foregroundStyle(Color.atlasInfo)
-                            .font(.system(size: 14))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Resume previous installs?")
-                                .font(.atlasCallout)
-                                .foregroundStyle(Color.atlasLabel)
-                            Text("\(queue.pendingResumeURLs.count) item\(queue.pendingResumeURLs.count == 1 ? "" : "s") from last session")
-                                .font(.atlasCaption)
-                                .foregroundStyle(Color.atlasSubtitle)
-                        }
-                        Spacer()
-                        Button("Resume") {
-                            queue.resumePersistedQueue()
-                        }
-                        .buttonStyle(.atlasPrimary)
-                        Button("Dismiss") {
-                            queue.clearPersistedQueue()
-                        }
-                        .buttonStyle(.atlasGhost)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .background(Color.atlasInfo.opacity(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
-                            .strokeBorder(Color.atlasInfo.opacity(0.28), lineWidth: 0.75)
-                    )
-                    .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
-                    Spacer()
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(999)
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: queue.pendingResumeURLs.isEmpty)
-            }
-
         }
         .onChange(of: historyStore.records.isEmpty) { isEmpty in
-            if isEmpty { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
+            if isEmpty && historyStore.archivedRecords.isEmpty {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false }
+            }
         }
         .onChange(of: rollbackInProgress) { inProgress in
             if inProgress { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
-        }
-        .onChange(of: widgetState.idleCollapseRequested) { requested in
-            guard requested else { return }
-            widgetState.idleCollapseRequested = false
-            // Only collapse if the app is truly idle (no install, no queue, drop zone visible)
-            if isIdle { enterWidgetMode() }
         }
         .onChange(of: appState.pendingOpenURLs) { urls in
             guard !urls.isEmpty else { return }
@@ -346,7 +321,6 @@ struct ContentView: View {
             if !setupComplete && PermissionsManager.hasCompletedOnboarding && KeychainManager.hasPassword() {
                 setupComplete = true
             }
-            widgetState.startIdleMonitoring()
             startPermissionPolling()
             if !tourDismissed {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -359,7 +333,6 @@ struct ContentView: View {
             }
         }
         .onDisappear {
-            widgetState.stopIdleMonitoring()
             stopPermissionPolling()
         }
         .task {
@@ -374,7 +347,7 @@ struct ContentView: View {
         }
         // Resolve tour anchors into concrete CGRects and show tour overlay
         .overlayPreferenceValue(TourAnchorKey.self) { anchors in
-            if showTour && !widgetState.isWidgetMode {
+            if showTour {
                 GeometryReader { proxy in
                     let frames = anchors.mapValues { proxy[$0] }
                     TourView(isShowing: $showTour,
@@ -497,6 +470,45 @@ struct ContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // Resume banner — shown when waiting queue items survived a crash/force-quit
+            if !queue.pendingResumeURLs.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundStyle(Color.atlasInfo)
+                        .font(.system(size: 14))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Resume previous installs?")
+                            .font(.atlasCallout)
+                            .foregroundStyle(Color.atlasLabel)
+                        Text("\(queue.pendingResumeURLs.count) item\(queue.pendingResumeURLs.count == 1 ? "" : "s") from last session")
+                            .font(.atlasCaption)
+                            .foregroundStyle(Color.atlasSubtitle)
+                    }
+                    Spacer()
+                    Button("Resume") {
+                        queue.resumePersistedQueue()
+                    }
+                    .buttonStyle(.atlasPrimary)
+                    Button("Dismiss") {
+                        queue.clearPersistedQueue()
+                    }
+                    .buttonStyle(.atlasGhost)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+                .background(Color.atlasInfo.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                        .strokeBorder(Color.atlasInfo.opacity(0.28), lineWidth: 0.75)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: queue.pendingResumeURLs.isEmpty)
             }
 
             // Inline mission view replaces the scroll area during TITAN installs
@@ -629,22 +641,6 @@ struct ContentView: View {
             }
 
             Spacer()
-
-            // Widget mode button — disabled while installing/uninstalling
-            if Features.widget {
-                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: busy ? "Unavailable during install" : "Minimise to widget") {
-                    enterWidgetMode()
-                }
-                .disabled(busy)
-                .opacity(busy ? 0.3 : 1)
-                .tourAnchor("widget")
-            } else {
-                BottomBarIconButton(icon: "rectangle.compress.vertical", tooltip: "Widget — Pro only") {
-                    // show pro upsell
-                }
-                .opacity(0.3)
-                .tourAnchor("widget")
-            }
 
             // Appearance toggle — disabled while installing/uninstalling
             AppearanceToggle()
@@ -980,29 +976,6 @@ struct ContentView: View {
                     unsupportedExtension = ext
                 }
                 .tourAnchor("dropZone")
-
-                // FileSharing panel — Coming Soon
-                if Features.isPro {
-                    HStack(spacing: 8) {
-                        Image(systemName: "icloud.and.arrow.up")
-                            .font(.system(size: 10))
-                            .foregroundStyle(Color.atlasTertiary)
-                        Text("File Sharing")
-                            .font(.atlasSubhead)
-                            .foregroundStyle(Color.atlasSubtitle)
-                        Spacer()
-                        Text("Coming Soon")
-                            .atlasChip(color: Color.atlasAccent)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(Color.atlasBorderSubtle.opacity(0.4))
-                    .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: ATLASRadius.sm, style: .continuous)
-                            .strokeBorder(Color.atlasBorderSubtle, lineWidth: 0.75)
-                    )
-                }
             }
         }
 
@@ -1059,19 +1032,6 @@ struct ContentView: View {
                 onShare: nil
             )
             .tourAnchor("scanResult")
-            .sheet(isPresented: $fileShare.showDevicePicker) {
-                if let pendingURL = fileShare.pendingUploadURL {
-                    DevicePickerView(fileURL: pendingURL, arch: fileShare.pendingArch) {
-                        fileShare.showDevicePicker = false
-                        fileShare.pendingUploadURL = nil
-                        fileShare.pendingArch = nil
-                        Task { await fileShare.loadFiles() }
-                        showFileShare = true
-                    }
-                    .padding(20)
-                    .background(Color(hex: "#080809"))
-                }
-            }
             .sheet(isPresented: $showVScanSheet) {
                 if let vsResult = pendingVScanResult, let url = pendingVScanURL {
                     TitanVScanView(
@@ -1942,15 +1902,12 @@ struct ContentView: View {
         withAnimation { showDropZone = false }
         pluginScanResults = []
         showPluginScan = false
-        WidgetStateManager.shared.menuStatus = .installing
-        startWidgetTimer()
+        MenuBarStatusManager.shared.menuStatus = .installing
         InstallationManager.shared.install(
             url: url, appState: appState,
             logger: logger, historyStore: historyStore
         ) { isPlugin in
             InstallEngine.storageRoot = nil   // clear TITAN CORE™ storage routing
-            cancelWidgetTimer()
-            exitWidgetMode()
             if isPlugin && RosettaEngine.isAppleSilicon {
                 withAnimation { showRosetta = true }
             }
@@ -1959,8 +1916,8 @@ struct ContentView: View {
             case .success(let name, _):
                 ATLASNotification.send(
                     title: L(.notifySuccessTitle),
-                    body: "\(name) installed successfully.")
-                WidgetStateManager.shared.menuStatus = .success
+                    body: String(format: L(.notifySuccessBody), name))
+                MenuBarStatusManager.shared.menuStatus = .success
                 // Show activation alert only when user must manually act (enter a key, visit a URL)
                 if let doc = pendingDocInfo, doc.requiresUserAction {
                     pendingActivationAlerts.append(ActivationAlert(productName: name, docInfo: doc))
@@ -1970,12 +1927,12 @@ struct ContentView: View {
                 ATLASNotification.send(
                     title: L(.notifyFailedTitle),
                     body: reason)
-                WidgetStateManager.shared.menuStatus = .failure
+                MenuBarStatusManager.shared.menuStatus = .failure
                 pendingDocInfo = nil
                 // TITAN CORE™ handles recovery automatically during install —
                 // no manual activate needed here
             case nil:
-                WidgetStateManager.shared.menuStatus = .idle
+                MenuBarStatusManager.shared.menuStatus = .idle
                 pendingDocInfo = nil
             }
             // Run plugin visibility scan after any successful install
@@ -2004,8 +1961,7 @@ struct ContentView: View {
         queue.isProcessing = true
         InstallEngine.resetCancellation()
         logger.log("--- Queue started: \(queue.items.count) file(s) ---")
-        WidgetStateManager.shared.menuStatus = .installing
-        startWidgetTimer()
+        MenuBarStatusManager.shared.menuStatus = .installing
 
         // All items in this queue run share a session ID for batch-uninstall grouping
         let sessionID = UUID()
@@ -2071,8 +2027,6 @@ struct ContentView: View {
             queue.currentIndex = nil
             preInstallWarnings = []
             logger.log("--- Queue complete ---")
-            cancelWidgetTimer()
-            exitWidgetMode()
             if !pluginScanResults.isEmpty {
                 withAnimation { showPluginScan = true }
             }
@@ -2096,11 +2050,11 @@ struct ContentView: View {
                 return ""
             }()
             ATLASNotification.send(
-                title: "ATLAS — Queue Complete",
+                title: L(.notifyQueueCompleteTitle),
                 body: "\(succeeded) installed successfully\(demoNote)" +
                       (failed > 0 ? ", \(failed) failed." : ".") + rescanNote
             )
-            WidgetStateManager.shared.menuStatus = failed > 0 ? .failure : .success
+            MenuBarStatusManager.shared.menuStatus = failed > 0 ? .failure : .success
         }
     }
 
@@ -2372,8 +2326,7 @@ struct ContentView: View {
         rollbackPhase      = ""
         rollbackStartTime  = Date()
         rollbackTimerTick  = Date()
-        WidgetStateManager.shared.menuStatus = .installing
-        startWidgetTimer()
+        MenuBarStatusManager.shared.menuStatus = .installing
         logger.log(rollbackQueueTotal > 1
             ? "--- Uninstall \(rollbackQueueDone + 1) of \(rollbackQueueTotal): \(record.fileName) ---"
             : "--- Uninstall initiated ---")
@@ -2408,7 +2361,7 @@ struct ContentView: View {
                 if result.detail == "Cancelled." {
                     logger.log("⚠ Uninstall cancelled.")
                     resetAll()
-                    WidgetStateManager.shared.menuStatus = .idle
+                    MenuBarStatusManager.shared.menuStatus = .idle
                     return
                 }
 
@@ -2425,15 +2378,13 @@ struct ContentView: View {
 
                 if rollbackQueueTotal == 1 {
                     // Single uninstall — existing summary card
-                    cancelWidgetTimer()
-                    exitWidgetMode()
                     uninstallResult = result
                     ATLASNotification.send(
-                        title: result.success ? "Uninstall Complete" : "Uninstall Failed",
+                        title: result.success ? L(.notifyUninstallComplete) : L(.notifyUninstallFailed),
                         body:  result.success
                             ? "\(record.fileName) was removed successfully."
                             : "\(record.fileName): \(result.detail)")
-                    WidgetStateManager.shared.menuStatus = result.success ? .success : .failure
+                    MenuBarStatusManager.shared.menuStatus = result.success ? .success : .failure
                     rollingBack = nil
                 } else {
                     // Batch — accumulate result and continue
@@ -2443,15 +2394,13 @@ struct ContentView: View {
                         rollbackQueue.removeFirst()
                         runNextRollback(next)
                     } else {
-                        cancelWidgetTimer()
-                        exitWidgetMode()
                         let ok  = batchRollbackResults.filter {  $0.1.success }.count
                         let bad = batchRollbackResults.filter { !$0.1.success }.count
                         ATLASNotification.send(
                             title: "Session Uninstall Complete",
                             body:  "\(ok) item\(ok == 1 ? "" : "s") removed" +
                                    (bad > 0 ? ", \(bad) failed." : "."))
-                        WidgetStateManager.shared.menuStatus = bad > 0 ? .failure : .success
+                        MenuBarStatusManager.shared.menuStatus = bad > 0 ? .failure : .success
                     }
                 }
             }
@@ -2491,14 +2440,14 @@ struct ContentView: View {
                     historyStore.markRestored(id: record.id)
                     ATLASNotification.send(
                         title: "Restore Complete",
-                        body: "\(record.fileName) has been restored.")
-                    WidgetStateManager.shared.menuStatus = .success
+                        body: String(format: L(.notifyRestoreComplete), record.fileName))
+                    MenuBarStatusManager.shared.menuStatus = .success
                 } else {
                     logger.log("✗ Recovery failed: \(record.fileName)")
                     ATLASNotification.send(
                         title: "Restore Failed",
-                        body: "\(record.fileName) could not be restored.")
-                    WidgetStateManager.shared.menuStatus = .failure
+                        body: String(format: L(.notifyRestoreFailed), record.fileName))
+                    MenuBarStatusManager.shared.menuStatus = .failure
                 }
             }
         }
@@ -2522,7 +2471,7 @@ struct ContentView: View {
             rollbackQueueTotal = 0
             rollbackQueueDone  = 0
             batchRollbackResults = []
-            WidgetStateManager.shared.menuStatus = .idle
+            MenuBarStatusManager.shared.menuStatus = .idle
             withAnimation { showDropZone = true }
             NSLog("[ATLAS-CANCEL] UI reset complete — uninstall cancelled")
             logger.log("⚠ Uninstall cancelled.")
@@ -2546,8 +2495,6 @@ struct ContentView: View {
     }
 
     private func resetAll() {
-        cancelWidgetTimer()
-        exitWidgetMode()
         appState.reset()
         logger.clear()
         queue.items.removeAll()
@@ -2567,125 +2514,10 @@ struct ContentView: View {
         showPluginScan = false
         InstallEngine.resetCancellation()
         RollbackEngine.cancellationRequested = false
-        WidgetStateManager.shared.menuStatus = .idle
+        MenuBarStatusManager.shared.menuStatus = .idle
         TitanCore.shared.deactivate()
         InstallEngine.storageRoot = nil
         withAnimation { showDropZone = true }
-    }
-
-    // MARK: - Widget mode
-
-    private func startWidgetTimer() {
-        widgetTimer?.cancel()
-        widgetTimer = Task {
-            try? await Task.sleep(nanoseconds: 2 * 60 * 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                // Use the reference-type WidgetStateManager so the check
-                // reflects live state even after 2 minutes.
-                if WidgetStateManager.shared.menuStatus == .installing {
-                    enterWidgetMode()
-                }
-            }
-        }
-    }
-
-    private func cancelWidgetTimer() {
-        widgetTimer?.cancel()
-        widgetTimer = nil
-    }
-
-    private func enterWidgetMode() {
-        guard !widgetState.isWidgetMode else { return }
-        guard UserDefaults.standard.bool(forKey: "atlas.widgetEnabled") else { return }
-        widgetState.cancelIdleCollapse()
-        if showTour { showTour = false }
-        guard let mainWindow = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
-
-        // Fade out main window
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.18
-            mainWindow.animator().alphaValue = 0
-        }, completionHandler: {
-            mainWindow.orderOut(nil)
-            widgetState.isWidgetMode = true
-            AppDelegate.showWidgetPanel(appState: self.appState, queue: self.queue,
-                onExpand: { self.exitWidgetMode() },
-                onClose:  { self.exitWidgetMode(); AppDelegate.mainWindow?.orderOut(nil) })
-        })
-    }
-
-    private func exitWidgetMode() {
-        guard widgetState.isWidgetMode else { return }
-        widgetState.isWidgetMode = false
-        AppDelegate.closeWidgetPanel()
-        guard let window = AppDelegate.mainWindow else { return }
-        AppDelegate.centerWindow(window)
-        window.isOpaque = true
-        window.backgroundColor = .windowBackgroundColor
-        window.hasShadow = true
-        window.alphaValue = 0
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.28
-            window.animator().alphaValue = 1
-        }
-        widgetState.scheduleIdleCollapse()
-    }
-
-    private func resizeWindow(toWidget: Bool) {
-        guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
-
-        if toWidget {
-            let screen = window.screen ?? NSScreen.main ?? NSScreen.screens[0]
-            let pad: CGFloat = 20
-            let w: CGFloat = 320
-            let h: CGFloat = 92
-
-            window.level = .floating
-            window.minSize = CGSize(width: w, height: h)
-            window.maxSize = CGSize(width: w, height: h)
-            [NSWindow.ButtonType.closeButton,
-             .miniaturizeButton, .zoomButton].forEach {
-                window.standardWindowButton($0)?.isHidden = true
-            }
-            let x = screen.visibleFrame.maxX - w - pad
-            let y = screen.visibleFrame.minY + pad
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.38
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(
-                    NSRect(x: x, y: y, width: w, height: h), display: true)
-            }
-        } else {
-            window.isOpaque = true
-            window.backgroundColor = .windowBackgroundColor
-            window.hasShadow = true
-            window.level = .normal
-            window.contentView?.layer?.backgroundColor = nil
-            // Free all constraints so the animation target is reachable
-            window.minSize = CGSize(width: 1, height: 1)
-            window.maxSize = CGSize(width: 99999, height: 99999)
-            [NSWindow.ButtonType.closeButton,
-             .miniaturizeButton, .zoomButton].forEach {
-                window.standardWindowButton($0)?.isHidden = false
-            }
-            let w: CGFloat = 560
-            let h: CGFloat = 680
-            let screen = window.screen ?? NSScreen.main ?? NSScreen.screens[0]
-            let x = screen.visibleFrame.midX - w / 2
-            let y = screen.visibleFrame.midY - h / 2
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.40
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(
-                    NSRect(x: x, y: y, width: w, height: h), display: true)
-            }, completionHandler: {
-                // Restore proper minimum after animation settles
-                window.minSize = CGSize(width: 540, height: 460)
-            })
-        }
     }
 
     // Saves a history record after a completed TITAN CORE™ mission so the user

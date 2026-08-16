@@ -48,7 +48,6 @@ struct SettingsView: View {
     @State private var showSignOutConfirm = false
     @State private var showSupport = false
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
-    @AppStorage("atlas.widgetEnabled") private var widgetEnabled = true
     @State private var gatekeeperFixRunning = false
     @State private var gatekeeperFixResult: String? = nil
     @State private var notificationsEnabled = false
@@ -92,41 +91,6 @@ struct SettingsView: View {
                     sectionHeader("TITAN CORE™")
                     VStack(spacing: 0) {
                         titanToggleRow
-                    }
-                    .atlasCard()
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
-
-                    // ── Widget Mode ───────────────────────────────────
-                    sectionHeader("Widget Mode")
-                    VStack(spacing: 0) {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 7)
-                                    .fill(Color(hex: "#7090B8").opacity(0.12))
-                                    .frame(width: 28, height: 28)
-                                Image(systemName: "rectangle.compress.vertical")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(Color(hex: "#7090B8"))
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Widget Mode")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(Color.atlasLabel)
-                                Text(widgetEnabled
-                                     ? "ATLAS will minimise to a compact widget when idle"
-                                     : "ATLAS stays full size — widget mode disabled")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color.atlasSubtitle)
-                            }
-                            Spacer()
-                            Toggle("", isOn: $widgetEnabled)
-                                .labelsHidden()
-                                .toggleStyle(.switch)
-                                .scaleEffect(0.85)
-                                .tint(Color(hex: "#7090B8"))
-                        }
-                        .padding(.horizontal, 12).padding(.vertical, 10)
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)

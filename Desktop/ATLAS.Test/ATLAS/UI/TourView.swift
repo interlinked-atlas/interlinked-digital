@@ -28,9 +28,12 @@ let tourSteps: [TourStep] = [
     TourStep(icon: "gearshape.fill", title: "Settings",
              body: "Manage your account, devices, password, storage, and plan here. You can replay Tour ATLAS anytime from the Settings screen.",
              anchorID: "settings"),
-    TourStep(icon: "rectangle.compress.vertical", title: "Widget Mode",
-             body: "Tap the widget button in the bottom bar to shrink ATLAS into a compact overlay that floats above your desktop. It shows live install progress and lets you expand back with one tap.",
-             anchorID: "widget"),
+    TourStep(icon: "lifepreserver", title: "Recovery Kit",
+             body: "Export an ATLAS RECOVERY KIT™ from ATLAS Library — a portable snapshot of everything you've installed. Keep it safe so you can rebuild your rig on any Mac, any time.",
+             anchorID: "recoveryKitSection"),
+    TourStep(icon: "checklist", title: "Recovery Mode",
+             body: "Load a Recovery Kit on a new Mac and enter Recovery Mode. Drop your original installers for each product, then ATLAS reinstalls them one by one using the same verified pipeline.",
+             anchorID: "recoveryModeButton"),
 ]
 
 // MARK: - Arrow direction

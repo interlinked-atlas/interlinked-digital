@@ -108,7 +108,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         TitanMemory.shared.syncFromCloud()   // pull latest confirmed patterns from Supabase
         setupMenuBarIcon()
 
-        menuStatusCancellable = WidgetStateManager.shared.$menuStatus
+        menuStatusCancellable = MenuBarStatusManager.shared.$menuStatus
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.updateMenuBarIcon(status) }
 
@@ -143,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Show a warning if an install, uninstall, or TITAN mission is in progress.
-        guard WidgetStateManager.shared.menuStatus == .installing else {
+        guard MenuBarStatusManager.shared.menuStatus == .installing else {
             return .terminateNow
         }
 
@@ -194,7 +194,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             iconResetTask = Task {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 guard !Task.isCancelled else { return }
-                await MainActor.run { WidgetStateManager.shared.menuStatus = .idle }
+                await MainActor.run { MenuBarStatusManager.shared.menuStatus = .idle }
             }
         }
     }
@@ -262,12 +262,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Prefer the stored reference; fall back to the first app window.
         guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
 
-        // Cancel any pending idle-collapse so the window doesn't immediately
-        // re-collapse to widget mode the moment it appears.
-        WidgetStateManager.shared.cancelIdleCollapse()
-
-        // Reset all AppKit widget-mode properties before ordering the window front.
-        // Do this BEFORE makeKeyAndOrderFront so the layout is correct when visible.
         window.level = .normal
         window.isOpaque = true
         window.backgroundColor = .windowBackgroundColor
@@ -286,15 +280,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         // Fade in, then update SwiftUI state so mainLayout renders cleanly.
-        NSAnimationContext.runAnimationGroup({ ctx in
+        NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28
             window.animator().alphaValue = 1
-        }, completionHandler: {
-            // Set on main queue after the window is fully visible.
-            DispatchQueue.main.async {
-                WidgetStateManager.shared.isWidgetMode = false
-            }
-        })
+        }
     }
 
     /// Resets the window to the default ATLAS size and centers it on the
@@ -331,44 +320,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private static var widgetPanel: NSPanel?
-
-    static func showWidgetPanel(appState: AppState, queue: InstallQueue,
-                                 onExpand: @escaping () -> Void,
-                                 onClose: @escaping () -> Void) {
-        closeWidgetPanel()
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 280, height: 80),
-            styleMask: [.nonactivatingPanel, .titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false)
-        panel.title = ""
-        panel.titlebarAppearsTransparent = true
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.isMovableByWindowBackground = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-
-        let hostingView = NSHostingView(rootView:
-            WidgetView(appState: appState, queue: queue,
-                       onExpand: onExpand, onClose: onClose))
-        panel.contentView = hostingView
-
-        let mouseLocation = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main
-        if let screen = screen {
-            let sf = screen.visibleFrame
-            let origin = NSPoint(x: sf.maxX - 300, y: sf.maxY - 120)
-            panel.setFrameOrigin(origin)
-        }
-        panel.orderFront(nil)
-        widgetPanel = panel
-    }
-
-    static func closeWidgetPanel() {
-        widgetPanel?.orderOut(nil)
-        widgetPanel = nil
-    }
 }
 
 // MARK: - Notification Helper

@@ -418,7 +418,7 @@ final class TitanMission: ObservableObject {
         installedFiles       = []
         addedHostsEntries    = []
         runtimeCreatedPaths  = []
-        WidgetStateManager.shared.menuStatus = .installing
+        MenuBarStatusManager.shared.menuStatus = .installing
 
         // Snapshot Library dirs before any installation step runs, so we can diff
         // after completion to detect directories this specific install created at runtime.
@@ -473,7 +473,7 @@ final class TitanMission: ObservableObject {
         isRunning  = false
         isComplete = true
         currentNote = ""
-        WidgetStateManager.shared.menuStatus = .idle
+        MenuBarStatusManager.shared.menuStatus = .idle
     }
 
     // MARK: - Individual step execution
@@ -989,6 +989,17 @@ final class TitanMission: ObservableObject {
                     note: "macOS blocked \(appName) — Gatekeeper could not verify the developer. The component did not run.")
             }
         }
+
+        // Start a per-patcher authorization watcher using the patcher's own PID as the guard.
+        // This handles "wants to make changes" dialogs from GUI patchers that use
+        // Authorization Services instead of (or in addition to) shell-level sudo.
+        // The PID guard (kill -0 <appPID>) ensures the watcher stops the moment the
+        // patcher process exits — ATLAS never fills auth dialogs from unrelated processes.
+        let appPID = MacUIAutomator.findApp(named: appName)?.processIdentifier ?? 0
+        let authWatcher: Process? = appPID > 0
+            ? InstallEngine.startAuthWatcher(password: adminPassword, installerPID: appPID)
+            : nil
+        defer { authWatcher?.terminate() }
 
         // Wait up to 30 s for a visible window to appear
         var windowAppeared = false
