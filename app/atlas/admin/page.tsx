@@ -7,7 +7,7 @@ import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
-type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns"
+type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits"
 
 const planColor    = (p: string) => p === "pro" ? "#F0A030" : p === "advanced" ? "#A855F7" : "#5B8DEF"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "#6B7399"
@@ -64,6 +64,14 @@ export default function AdminPage() {
   const [promotingId, setPromotingId]       = useState<string | null>(null)
   const [toastMsg, setToastMsg]             = useState<string | null>(null)
 
+  // Recovery Kits admin state
+  const [rkSubscribers, setRkSubscribers]   = useState<any[]>([])
+  const [rkSubscribersLoading, setRkSubscribersLoading] = useState(false)
+  const [expandedRkUser, setExpandedRkUser] = useState<string | null>(null)
+  const [rkUserKits, setRkUserKits]         = useState<Record<string, any[]>>({})
+  const [rkUserKitsLoading, setRkUserKitsLoading] = useState<string | null>(null)
+  const [rkDownloading, setRkDownloading]   = useState<string | null>(null)
+
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -81,6 +89,56 @@ export default function AdminPage() {
   async function authHeader() {
     const { data: { session } } = await supabase.auth.getSession()
     return { Authorization: `Bearer ${session?.access_token ?? ""}` }
+  }
+
+  useEffect(() => {
+    if (tab === "recovery-kits" && rkSubscribers.length === 0 && !rkSubscribersLoading) {
+      loadRkSubscribers()
+    }
+  }, [tab])
+
+  async function loadRkSubscribers() {
+    setRkSubscribersLoading(true)
+    try {
+      const headers = await authHeader()
+      const res = await fetch("/api/atlas/recovery-kit/admin/subscribers", { headers })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setRkSubscribers(json.subscribers ?? [])
+    } catch { /* silently fail */ } finally {
+      setRkSubscribersLoading(false)
+    }
+  }
+
+  async function loadRkUserKits(userId: string) {
+    setRkUserKitsLoading(userId)
+    try {
+      const headers = await authHeader()
+      const res = await fetch(`/api/atlas/recovery-kit/admin/kits?user_id=${userId}`, { headers })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setRkUserKits(prev => ({ ...prev, [userId]: json.kits ?? [] }))
+    } catch { /* silently fail */ } finally {
+      setRkUserKitsLoading(null)
+    }
+  }
+
+  async function adminDownloadKit(kitId: string, fileType: "atlaskit" | "txt") {
+    setRkDownloading(`${kitId}-${fileType}`)
+    try {
+      const headers = await authHeader()
+      const res = await fetch(`/api/atlas/recovery-kit/admin/download?kit_id=${kitId}&file=${fileType}`, { headers })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileType === "atlaskit" ? "kit.atlaskit" : "kit.txt"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { /* silently fail */ } finally {
+      setRkDownloading(null)
+    }
   }
 
   async function loadAll() {
@@ -319,7 +377,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
-          {(["subscribers","devices","logs","support","failures","patterns"] as Tab[]).map(t => (
+          {(["subscribers","devices","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "#1E2240" : "transparent", color: tab === t ? "#E8ECFF" : "#353860", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
@@ -874,6 +932,84 @@ export default function AdminPage() {
                 })
               }
             </div>
+          </div>
+        )}
+
+        {/* ── RECOVERY KITS ── */}
+        {tab === "recovery-kits" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={{ fontSize: "11px", color: "#353860", margin: 0 }}>Subscribers with cloud-synced Recovery Kits.</p>
+              <button onClick={loadRkSubscribers} disabled={rkSubscribersLoading}
+                style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 12px", cursor: "pointer", opacity: rkSubscribersLoading ? 0.5 : 1 }}>
+                {rkSubscribersLoading ? "Loading…" : "Refresh"}
+              </button>
+            </div>
+
+            {rkSubscribers.length === 0 && !rkSubscribersLoading && (
+              <div style={{ background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "12px", padding: "32px", textAlign: "center", color: "#353860", fontSize: "12px" }}>
+                No subscribers with cloud Recovery Kits.{" "}
+                <button onClick={loadRkSubscribers} style={{ color: "#3ECFB2", background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}>Load</button>
+              </div>
+            )}
+
+            {rkSubscribers.map(sub => {
+              const isExpanded = expandedRkUser === sub.user_id
+              const kits = rkUserKits[sub.user_id] ?? []
+              return (
+                <div key={sub.user_id} style={{ background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "12px", overflow: "hidden" }}>
+                  <div
+                    onClick={() => {
+                      if (isExpanded) { setExpandedRkUser(null); return }
+                      setExpandedRkUser(sub.user_id)
+                      if (!rkUserKits[sub.user_id]) loadRkUserKits(sub.user_id)
+                    }}
+                    style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+                  >
+                    <div>
+                      <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{sub.email}</p>
+                      <p style={{ fontSize: "10px", color: "#353860", margin: "2px 0 0" }}>{sub.kit_count} kit{sub.kit_count !== 1 ? "s" : ""} · Latest {fmt(sub.latest_kit_date)}</p>
+                    </div>
+                    <span style={{ fontSize: "12px", color: "#353860" }}>{isExpanded ? "▲" : "▼"}</span>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: "1px solid #141629" }}>
+                      {rkUserKitsLoading === sub.user_id ? (
+                        <div style={{ padding: "16px 18px", color: "#353860", fontSize: "11px" }}>Loading kits…</div>
+                      ) : kits.length === 0 ? (
+                        <div style={{ padding: "16px 18px", color: "#353860", fontSize: "11px" }}>No kits found.</div>
+                      ) : kits.map((kit, i) => (
+                        <div key={kit.id} style={{ padding: "12px 18px", borderBottom: i < kits.length - 1 ? "1px solid #141629" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                          <div>
+                            <p style={{ fontSize: "11px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{fmtDateTime(kit.generated_at)}</p>
+                            <p style={{ fontSize: "10px", color: "#353860", margin: "2px 0 0" }}>
+                              {kit.record_count} items{kit.device_name ? ` · ${kit.device_name}` : ""} · ATLAS {kit.atlas_version}
+                            </p>
+                          </div>
+                          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                            <button
+                              onClick={() => adminDownloadKit(kit.id, "atlaskit")}
+                              disabled={rkDownloading === `${kit.id}-atlaskit`}
+                              style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
+                            >
+                              {rkDownloading === `${kit.id}-atlaskit` ? "…" : ".atlaskit"}
+                            </button>
+                            <button
+                              onClick={() => adminDownloadKit(kit.id, "txt")}
+                              disabled={rkDownloading === `${kit.id}-txt`}
+                              style={{ fontSize: "10px", fontWeight: 600, color: "#6B7399", background: "none", border: "1px solid #1A1D30", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
+                            >
+                              {rkDownloading === `${kit.id}-txt` ? "…" : ".txt"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

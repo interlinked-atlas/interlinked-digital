@@ -25,6 +25,17 @@ interface LogEntry {
   device_name: string | null; hardware_uuid: string | null
   created_at: string
 }
+interface CloudKit {
+  id: string
+  generated_at: string
+  atlas_version: string
+  kit_version: number
+  record_count: number
+  archived_count: number
+  device_name: string | null
+  atlaskit_size: number | null
+  txt_size: number | null
+}
 interface Props {
   user: User
   subscription: Subscription | null
@@ -56,10 +67,35 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [supportDone, setSupportDone] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradeError, setUpgradeError] = useState("")
+  const [cloudKits, setCloudKits] = useState<CloudKit[]>([])
+  const [cloudKitsLoading, setCloudKitsLoading] = useState(false)
+  const [cloudKitsError, setCloudKitsError] = useState("")
+  const [kitDownloading, setKitDownloading] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
+
+  const loadCloudKits = useCallback(async () => {
+    setCloudKitsLoading(true)
+    setCloudKitsError("")
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setCloudKitsLoading(false); return }
+      const res = await fetch("/api/atlas/recovery-kit/list", {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setCloudKits(json.kits ?? [])
+    } catch (e: any) {
+      setCloudKitsError(e?.message ?? "Failed to load Recovery Kits")
+    } finally {
+      setCloudKitsLoading(false)
+    }
+  }, [supabase])
+
+  useEffect(() => { loadCloudKits() }, [loadCloudKits])
 
   useEffect(() => {
     if (searchParams.get("welcome") === "1") {
@@ -142,6 +178,40 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   // Keep legacy name for any existing callers
   const handleUpgradeToPro = () => handleUpgrade("pro")
+
+  async function downloadKit(kitId: string, fileType: "atlaskit" | "txt") {
+    setKitDownloading(`${kitId}-${fileType}`)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch(`/api/atlas/recovery-kit/download?kit_id=${kitId}&file=${fileType}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileType === "atlaskit" ? "kit.atlaskit" : "kit.txt"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently fail — button re-enables
+    } finally {
+      setKitDownloading(null)
+    }
+  }
+
+  async function deleteKit(kitId: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    await fetch("/api/atlas/recovery-kit/delete", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ kit_id: kitId }),
+    })
+    setCloudKits(prev => prev.filter(k => k.id !== kitId))
+  }
 
   async function handleSignOut() {
     setLoading("signout")
@@ -644,6 +714,63 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </p>
           )}
         </section>
+
+        {/* ── Recovery Kits ── */}
+        {isPro && (
+          <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>
+              <p style={{ fontSize: "11px", color: "#353860", marginBottom: 0 }}>Your synced recovery plans — download anytime to restore your plugins.</p>
+            </div>
+            {cloudKitsLoading ? (
+              <div style={{ padding: "20px 22px", color: "#353860", fontSize: "12px" }}>Loading…</div>
+            ) : cloudKitsError ? (
+              <div style={{ padding: "20px 22px", color: "#E05555", fontSize: "12px" }}>{cloudKitsError}</div>
+            ) : cloudKits.length === 0 ? (
+              <div style={{ padding: "20px 22px", color: "#353860", fontSize: "12px" }}>No Recovery Kits synced yet. Export a kit in the ATLAS app and sync it to cloud.</div>
+            ) : (
+              <div>
+                {cloudKits.map((kit, i) => {
+                  const date = new Date(kit.generated_at)
+                  const label = date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                  const time  = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+                  return (
+                    <div key={kit.id} style={{ padding: "14px 22px", borderBottom: i < cloudKits.length - 1 ? "1px solid #141629" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+                      <div>
+                        <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{label} · {time}</p>
+                        <p style={{ fontSize: "11px", color: "#353860", margin: "2px 0 0" }}>
+                          {kit.record_count} items{kit.device_name ? ` · ${kit.device_name}` : ""} · ATLAS {kit.atlas_version}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => downloadKit(kit.id, "atlaskit")}
+                          disabled={kitDownloading === `${kit.id}-atlaskit`}
+                          style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
+                        >
+                          {kitDownloading === `${kit.id}-atlaskit` ? "…" : ".atlaskit"}
+                        </button>
+                        <button
+                          onClick={() => downloadKit(kit.id, "txt")}
+                          disabled={kitDownloading === `${kit.id}-txt`}
+                          style={{ fontSize: "10px", fontWeight: 600, color: "#6B7399", background: "none", border: "1px solid #1A1D30", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
+                        >
+                          {kitDownloading === `${kit.id}-txt` ? "…" : ".txt"}
+                        </button>
+                        <button
+                          onClick={() => { if (confirm("Delete this Recovery Kit? This cannot be undone.")) deleteKit(kit.id) }}
+                          style={{ fontSize: "10px", fontWeight: 600, color: "#E05555", background: "none", border: "none", cursor: "pointer", padding: "5px 4px" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "32px", paddingTop: "8px" }}>
