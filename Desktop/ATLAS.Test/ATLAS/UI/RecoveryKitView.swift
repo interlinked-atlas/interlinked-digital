@@ -199,7 +199,7 @@ struct RecoveryKitView: View {
         case .uploading:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Backing up…")
+                Text("Syncing…")
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
@@ -211,7 +211,7 @@ struct RecoveryKitView: View {
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
         case .error:
-            Text("Cloud backup unavailable")
+            Text("Cloud backup pending")
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555").opacity(0.8))
         }
@@ -250,18 +250,31 @@ struct RecoveryKitView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .buttonStyle(.plain)
             }
-        } else {
-            // .notFound or .error — show Back Up button
-            Button("Back Up") {
-                Task { await engine.uploadToCloud(store: store) }
+        } else if engine.lastGeneratedKitFolderURL != nil {
+            // .notFound or .error — only show retry when there's a local kit to upload
+            if case .error = engine.cloudState {
+                Button("Retry Cloud Backup") {
+                    Task { await engine.uploadToCloud(store: store) }
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color(hex: "#3ECFB2"))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .buttonStyle(.plain)
+            } else {
+                Button("Back Up") {
+                    Task { await engine.uploadToCloud(store: store) }
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color(hex: "#3ECFB2"))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .buttonStyle(.plain)
             }
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color(hex: "#3ECFB2"))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .buttonStyle(.plain)
         }
     }
 

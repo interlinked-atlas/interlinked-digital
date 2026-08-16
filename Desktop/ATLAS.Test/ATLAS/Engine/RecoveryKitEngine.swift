@@ -34,6 +34,9 @@ final class RecoveryKitEngine: ObservableObject {
     // Set after a successful export — uploadToCloud() reads actual files from here.
     private(set) var lastGeneratedKitFolderURL: URL? = nil
 
+    // Set after a successful cloud upload — prevents re-uploading the same kit.
+    private var lastUploadedKitFolderURL: URL? = nil
+
     // Test injection: set true in DEBUG to make .txt write throw
     #if DEBUG
     var injectTxtFailure: Bool = false
@@ -123,6 +126,14 @@ final class RecoveryKitEngine: ObservableObject {
 
             exportState = .complete(exportedAt: Date())
             lastGeneratedKitFolderURL = destFolderURL
+
+            // Automatically sync to cloud — only if Pro and signed in.
+            // uploadToCloud() is a no-op if already uploading or already synced this kit.
+            if Features.cloudRecoveryKit,
+               AuthManager.shared.isSignedIn,
+               AuthManager.shared.isPro {
+                await uploadToCloud(store: store)
+            }
         } catch {
             exportState = .failed(error.localizedDescription)
         }
@@ -406,6 +417,8 @@ extension RecoveryKitEngine {
     // Uploads the ACTUAL kit.atlaskit + kit.txt bytes from the last successful local export.
     // Must call export() first — errors if lastGeneratedKitFolderURL is nil.
     func uploadToCloud(store: HistoryStore) async {
+        // Prevent concurrent uploads
+        guard cloudState != .uploading else { return }
         guard let token = AuthManager.shared.session?.accessToken else {
             cloudState = .error("Not signed in.")
             return
@@ -414,6 +427,8 @@ extension RecoveryKitEngine {
             cloudState = .error("Export a Recovery Kit first, then sync to cloud.")
             return
         }
+        // Prevent re-uploading a kit that already synced successfully
+        guard folderURL != lastUploadedKitFolderURL else { return }
         let atlaskitURL = folderURL.appendingPathComponent("kit.atlaskit")
         let txtURL      = folderURL.appendingPathComponent("kit.txt")
         guard let atlaskitData = try? Data(contentsOf: atlaskitURL),
@@ -443,6 +458,7 @@ extension RecoveryKitEngine {
             )
             cloudMeta  = [meta] + cloudMeta
             cloudState = .found
+            lastUploadedKitFolderURL = folderURL   // mark synced — prevents duplicate upload
         } catch {
             cloudState = .error(error.localizedDescription)
         }
