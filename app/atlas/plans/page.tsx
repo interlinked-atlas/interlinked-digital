@@ -10,11 +10,11 @@ const MONTHLY = {
   standard: {
     price: '$14.99', period: '/mo', priceId: 'atlas-standard',
     features: ['1 device', '10 installs / month', 'TITAN CORE™', 'Storage Manager', '3 Daily Installations', 'Notifications'],
-    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'Virus Scanner', 'File Sharing'],
+    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Built-In Virus Scanner', 'File Sharing'],
   },
   pro: {
     price: '$29.99', period: '/mo', priceId: 'atlas-pro',
-    features: ['Up to 3 devices', '25 installs / month', 'TITAN CORE™', 'Storage Manager', 'Full install history', 'Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Virus Scanner', 'File Sharing (Coming Soon)'],
+    features: ['Up to 3 devices', '25 installs / month', 'TITAN CORE™', 'Storage Manager', 'Full install history', 'Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Built-In Virus Scanner', 'File Sharing (Coming Soon)'],
     excluded: [],
   },
 }
