@@ -103,6 +103,7 @@ struct InstallSummaryCard: View {
     var installerURL: URL? = nil
     var onDone: (() -> Void)? = nil
 
+    @ObservedObject private var langMgr = LanguageManager.shared
     @State private var detailsExpanded  = false  // collapsed by default — user expands when needed
     @State private var installerTrashed = false
     @State private var trashHovered     = false
@@ -218,7 +219,7 @@ struct InstallSummaryCard: View {
                         .background(Color.atlasSeparator)
                         .padding(.vertical, 2)
 
-                    Text("USER ACTION REQUIRED")
+                    Text(L(.userActionRequired))
                         .font(.system(size: 8.5, weight: .semibold))
                         .foregroundColor(Color(hex: "#F0A030").opacity(0.8))
                         .tracking(0.7)
@@ -402,7 +403,7 @@ struct InstallSummaryCard: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 11))
                                 .foregroundColor(Color.atlasSubtitle)
-                            Text("Installer moved to Trash")
+                            Text(L(.installerMovedToTrash))
                                 .font(.system(size: 12))
                                 .foregroundColor(Color.atlasSubtitle)
                         }
@@ -416,7 +417,7 @@ struct InstallSummaryCard: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "trash.fill").font(.system(size: 11))
-                                Text("Move Installer to Trash").font(.system(size: 12, weight: .semibold))
+                                Text(L(.moveInstallerToTrash)).font(.system(size: 12, weight: .semibold))
                             }
                             .foregroundColor(trashHovered ? Color(hex: "#E05555") : Color(hex: "#E05555").opacity(0.75))
                             .frame(maxWidth: .infinity)
@@ -436,7 +437,7 @@ struct InstallSummaryCard: View {
                     Button(action: onDone) {
                         HStack(spacing: 6) {
                             Image(systemName: "house.fill").font(.system(size: 11))
-                            Text("Back to Home").font(.system(size: 12, weight: .semibold))
+                            Text(L(.backToHome)).font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#08090E"))
                         .frame(maxWidth: .infinity)
@@ -547,6 +548,7 @@ struct UninstallSummaryCard: View {
     var onDone: (() -> Void)? = nil
     var onRecover: (() -> Void)? = nil
 
+    @ObservedObject private var langMgr = LanguageManager.shared
     @State private var detailsExpanded  = false  // collapsed by default
     @State private var failuresExpanded = false
 
@@ -633,7 +635,7 @@ struct UninstallSummaryCard: View {
                     // Primary files (apps, plugins)
                     if !primaryFiles.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("REMOVED")
+                            Text(L(.removed))
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(Color.atlasTertiary)
                                 .padding(.bottom, 1)
@@ -646,7 +648,7 @@ struct UninstallSummaryCard: View {
                     // Support/Library files
                     if !supportFiles.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("SUPPORT FILES")
+                            Text(L(.supportFiles))
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(Color.atlasTertiary)
                                 .padding(.bottom, 1)
@@ -659,7 +661,7 @@ struct UninstallSummaryCard: View {
                     // Failed files
                     if !failedFiles.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("COULD NOT REMOVE")
+                            Text(L(.couldNotRemove))
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(Color(hex: "#F0A030"))
                                 .padding(.bottom, 1)
@@ -689,7 +691,7 @@ struct UninstallSummaryCard: View {
                         Image(systemName: "trash")
                             .font(.system(size: 10))
                             .foregroundColor(Color.atlasSubtitle)
-                        Text("Files moved to Trash — empty Trash in Finder to free space.")
+                        Text(L(.filesMovedToTrash))
                             .font(.system(size: 10))
                             .foregroundColor(Color.atlasSubtitle)
                     }
@@ -707,7 +709,7 @@ struct UninstallSummaryCard: View {
                     Button(action: onRecover) {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.uturn.backward").font(.system(size: 11))
-                            Text("Recover").font(.system(size: 12, weight: .semibold))
+                            Text(L(.recover)).font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .frame(maxWidth: .infinity)
@@ -723,7 +725,7 @@ struct UninstallSummaryCard: View {
                     Button(action: onDone) {
                         HStack(spacing: 6) {
                             Image(systemName: "house.fill").font(.system(size: 11))
-                            Text("Back to Home").font(.system(size: 12, weight: .semibold))
+                            Text(L(.backToHome)).font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#08090E"))
                         .frame(maxWidth: .infinity)

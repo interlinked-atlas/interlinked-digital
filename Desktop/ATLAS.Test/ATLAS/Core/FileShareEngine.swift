@@ -218,8 +218,8 @@ final class FileShareEngine: ObservableObject {
                 for file in resp.files where !knownFileIDs.contains(file.id) {
                     let size = file.displaySize
                     ATLASNotification.send(
-                        title: "📦 New File Shared",
-                        body: "\(file.file_name) (\(size)) is ready to install."
+                        title: L(.fileShareNotifTitle),
+                        body: String(format: L(.fileShareNotifBodyFmt), file.file_name, size)
                     )
                 }
             }

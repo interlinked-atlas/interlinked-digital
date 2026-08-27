@@ -6,6 +6,7 @@ struct ScanResultView: View {
     let onCancel: () -> Void
     var onShare: (() -> Void)? = nil
 
+    @ObservedObject private var langMgr = LanguageManager.shared
     @State private var detailsExpanded      = false
     @State private var showReplaceConfirm   = false
     @State private var windowsExeDone       = false
@@ -22,7 +23,9 @@ struct ScanResultView: View {
     }
 
     var body: some View {
-        if result.isWindowsExe {
+        if let dawName = result.blockedDAWName {
+            DAWBlockedView(dawName: dawName, onBack: onCancel)
+        } else if result.isWindowsExe {
             windowsExePanel
         } else {
             mainPanel
@@ -41,7 +44,7 @@ struct ScanResultView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                         .lineLimit(1).truncationMode(.middle)
-                    Text(result.isWindowsKeygen ? "Keygen / Activation Tool Detected" : "Windows Executable")
+                    Text(result.isWindowsKeygen ? L(.keygenDetected) : L(.windowsExe))
                         .font(.system(size: 11))
                         .foregroundColor(result.isWindowsKeygen ? Color(hex: "#E05555") : Color(hex: "#F0A030"))
                 }
@@ -63,7 +66,7 @@ struct ScanResultView: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(Color(hex: "#E05555"))
                                 .font(.system(size: 13))
-                            Text("⚠ Warning: Keygen File Detected")
+                            Text(L(.keygenWarning))
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(Color(hex: "#E05555"))
                         }
@@ -153,7 +156,7 @@ struct ScanResultView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(Color(hex: "#3ECFB2"))
                                 .font(.system(size: 13))
-                            Text("Ready — drop your Mac installer into ATLAS to continue")
+                            Text(L(.readyDropInstaller))
                                 .font(.system(size: 12))
                                 .foregroundColor(Color(hex: "#3ECFB2"))
                         }
@@ -164,7 +167,7 @@ struct ScanResultView: View {
                             .strokeBorder(Color(hex: "#3ECFB2").opacity(0.25), lineWidth: 0.75))
 
                         Button { onCancel() } label: {
-                            Text("Drop New File")
+                            Text(L(.dropNewFile))
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(Color(hex: "#08090E"))
                                 .frame(maxWidth: .infinity)
@@ -180,7 +183,7 @@ struct ScanResultView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "checkmark.circle")
                                     .font(.system(size: 11))
-                                Text("I'm Done — Ready to Continue")
+                                Text(L(.imDoneReady))
                                     .font(.system(size: 12, weight: .semibold))
                             }
                             .foregroundColor(Color(hex: "#08090E"))
@@ -192,7 +195,7 @@ struct ScanResultView: View {
                         .buttonStyle(.plain)
 
                         Button { onCancel() } label: {
-                            Text("Cancel")
+                            Text(L(.cancel))
                                 .font(.system(size: 12))
                                 .foregroundColor(Color.atlasSubtitle)
                                 .frame(maxWidth: .infinity)
@@ -202,7 +205,7 @@ struct ScanResultView: View {
                     }
                 } else {
                     Button { onCancel() } label: {
-                        Text("Dismiss")
+                        Text(L(.cancel))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(Color.atlasSubtitle)
                             .frame(maxWidth: .infinity)
@@ -380,7 +383,7 @@ struct ScanResultView: View {
                 .padding(.top, hasSecondaryDetails ? 10 : 0)
 
             HStack(spacing: 10) {
-                Button("Cancel") { onCancel() }
+                Button(L(.cancel)) { onCancel() }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(Color.atlasSubtitle)
                     .padding(.horizontal, 14).padding(.vertical, 8)
@@ -395,7 +398,7 @@ struct ScanResultView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "icloud.and.arrow.up")
                                 .font(.system(size: 10))
-                            Text("Share")
+                            Text(L(.share))
                                 .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(Color(hex: "#3ECFB2"))
@@ -424,7 +427,7 @@ struct ScanResultView: View {
                                   ? "externaldrive.badge.exclamationmark"
                                   : "arrow.down.circle.fill")
                                 .font(.system(size: 11))
-                            Text(spaceCritical ? "Insufficient Space" : "Install")
+                            Text(spaceCritical ? L(.insufficientSpace) : L(.installAction))
                                 .font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundColor(spaceCritical
@@ -443,7 +446,7 @@ struct ScanResultView: View {
                     .disabled(spaceCritical)
                     .tourAnchor("installButton")
                 } else {
-                    Text("Cannot install automatically")
+                    Text(L(.cannotInstallAuto))
                         .font(.system(size: 11))
                         .foregroundColor(Color.atlasSubtitle)
                 }
@@ -459,8 +462,8 @@ struct ScanResultView: View {
             isPresented: $showReplaceConfirm,
             titleVisibility: .visible
         ) {
-            Button("Replace", role: .destructive) { onInstall() }
-            Button("Cancel", role: .cancel) {}
+            Button(L(.replace), role: .destructive) { onInstall() }
+            Button(L(.cancel), role: .cancel) {}
         } message: {
             if let existing = result.existingInstall {
                 Text("\(existing.itemName) is already installed at \(existing.path). ATLAS will replace it with this version.")
@@ -519,7 +522,7 @@ struct ScanResultView: View {
                 .font(.system(size: 13))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("Already installed")
+                    Text(L(.alreadyInstalled))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F0A030"))
                     if let ver = existing.version {
@@ -537,7 +540,7 @@ struct ScanResultView: View {
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            Text("Confirmation required")
+            Text(L(.confirmationRequired))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#F0A030").opacity(0.6))
         }
@@ -562,7 +565,7 @@ struct ScanResultView: View {
 
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Contents found")
+                Text(L(.contentsFound))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color.atlasSubtitle)
                 Spacer()

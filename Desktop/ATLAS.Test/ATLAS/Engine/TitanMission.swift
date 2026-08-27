@@ -952,8 +952,13 @@ final class TitanMission: ObservableObject {
                 let script = "\(pwdLine)'\(launcher.path)' --mode unattended 2>&1"
                 let r = InstallEngine.runShell(script)
                 let ok = r.success || r.output.lowercased().contains("finish") || r.output.lowercased().contains("success")
-                return StepResult(success: ok,
-                                  note: ok ? "Patch applied (unattended)" : r.output.prefix(300).description)
+                if ok {
+                    return StepResult(success: true, note: "Patch applied (unattended)")
+                }
+                // Unattended mode failed — fall through to GUI wizard path below.
+                // The wizard runs in user context so ATLAS's Accessibility API can control it.
+                log.info("[ATLAS] InstallBuilder unattended failed for \(appName, privacy: .public) — falling through to GUI wizard")
+                break
             }
         }
 
@@ -1031,69 +1036,19 @@ final class TitanMission: ObservableObject {
         return StepResult(success: true, note: "Patch applied")
     }
 
-    // Drives a wizard-style installer GUI by clicking through buttons automatically.
-    // Called when runAppBundle detects a visible window opened by the installer.
+    // Drives a wizard-style installer GUI through to completion.
+    // Acquires GUIInstallerQueue so only one wizard runs at a time across all paths.
+    // Delegates page detection, component selection, and button clicking to
+    // MacUIAutomator.driveWizard — state-aware, Accessibility API only, no coordinates.
     nonisolated private func driveInstallerWizard(appName: String, timeout: TimeInterval = 1800) async -> StepResult {
-        let deadline = Date().addingTimeInterval(timeout)
+        await GUIInstallerQueue.shared.acquire()
+        defer { Task { await GUIInstallerQueue.shared.release() } }
 
-        // Ordered label groups — click the highest-priority match found on each pass
-        let finishLabels  = ["Done", "Finish", "Finished", "Close", "Quit"]
-        let progressLabels = ["Install", "Next", "Continue", "Proceed", "OK"]
-        let agreeLabels   = ["I Agree", "I Accept", "Agree", "Accept"]
-
-        while Date() < deadline {
-            // App quit on its own → done
-            guard MacUIAutomator.findApp(named: appName) != nil else {
-                return StepResult(success: true, note: "Installer completed")
-            }
-
-            guard let app = MacUIAutomator.findApp(named: appName) else { break }
-            let ax  = MacUIAutomator.axApp(for: app)
-            guard let win = MacUIAutomator.frontWindow(of: ax) else {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                continue
-            }
-
-            // Accept any license-agreement checkboxes that aren't yet checked
-            for cb in MacUIAutomator.findCheckboxes(under: win) {
-                let lbl = MacUIAutomator.label(of: cb).lowercased()
-                if lbl.contains("agree") || lbl.contains("accept") || lbl.contains("terms") {
-                    if (MacUIAutomator.doubleValue(of: cb) ?? 0) == 0 {
-                        MacUIAutomator.press(cb)
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                    }
-                }
-            }
-
-            // Click finish buttons first (wizard may be on the final screen)
-            var clicked = false
-            for label in finishLabels {
-                if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
-                    clicked = true; break
-                }
-            }
-            if !clicked {
-                for label in agreeLabels {
-                    if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
-                        clicked = true; break
-                    }
-                }
-            }
-            if !clicked {
-                for label in progressLabels {
-                    if MacUIAutomator.clickButton(labeled: label, under: win, partial: false) {
-                        break
-                    }
-                }
-            }
-
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-        }
-
-        // Timed out — quit and report
-        await MacUIAutomator.quitApp(named: appName)
-        return StepResult(success: false,
-                          note: "Installer wizard timed out after \(Int(timeout / 60)) min")
+        let ok = await MacUIAutomator.driveWizard(appName: appName, timeout: timeout)
+        return StepResult(
+            success: ok,
+            note: ok ? "Installer completed" : "Installer wizard timed out after \(Int(timeout / 60)) min"
+        )
     }
 
     private func runScript(url: URL, adminPassword: String) async -> StepResult {

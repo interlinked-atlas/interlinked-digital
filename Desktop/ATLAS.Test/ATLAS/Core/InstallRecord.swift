@@ -26,6 +26,17 @@ struct InstallRecord: Codable, Identifiable {
     var disabledFormats: [DisabledFormatEntry]?
     // Date the user submitted feedback for this record. nil = no feedback submitted yet.
     var feedbackSubmittedAt: Date?
+    // Set when this record is moved to Archive. nil = active Library record.
+    var archivedAt: Date?
+    // Why the record was archived: "clear_all" | "removed"
+    var archiveReason: String?
+    // Set when this record was created through a Recovery Kit reinstall. nil for all normal installs.
+    // Runtime-only tracking: not exported to .atlaskit via SanitizedRecord.
+    var recoveryKitID: UUID? = nil
+    // Full path to the original installer file ATLAS received at install time.
+    // Provenance only — never refers to an installed product destination.
+    // nil for records created before this field was added.
+    var installerSourcePath: String? = nil
 
     enum InstallStatus: String, Codable {
         case success
@@ -78,6 +89,9 @@ struct InstallRecord: Codable, Identifiable {
         case addedHostsEntries, titanVerified, demoDetected, runtimeCreatedPaths
         case activationRequired, verificationWarning, installerDocInfo
         case disabledFormats, feedbackSubmittedAt
+        case archivedAt, archiveReason
+        case recoveryKitID
+        case installerSourcePath
     }
 
     init(id: UUID = UUID(), date: Date = Date(), fileName: String, fileType: String,
@@ -90,7 +104,11 @@ struct InstallRecord: Codable, Identifiable {
          installerDocInfo: InstallerDocInfo? = nil,
          runtimeCreatedPaths: [String]? = nil,
          disabledFormats: [DisabledFormatEntry]? = nil,
-         feedbackSubmittedAt: Date? = nil) {
+         feedbackSubmittedAt: Date? = nil,
+         archivedAt: Date? = nil,
+         archiveReason: String? = nil,
+         recoveryKitID: UUID? = nil,
+         installerSourcePath: String? = nil) {
         self.id = id
         self.date = date
         self.fileName = fileName
@@ -111,6 +129,10 @@ struct InstallRecord: Codable, Identifiable {
         self.runtimeCreatedPaths = runtimeCreatedPaths
         self.disabledFormats     = disabledFormats
         self.feedbackSubmittedAt = feedbackSubmittedAt
+        self.archivedAt          = archivedAt
+        self.archiveReason       = archiveReason
+        self.recoveryKitID       = recoveryKitID
+        self.installerSourcePath = installerSourcePath
     }
 
     init(from decoder: Decoder) throws {
@@ -135,6 +157,10 @@ struct InstallRecord: Codable, Identifiable {
         runtimeCreatedPaths  = try c.decodeIfPresent([String].self,                forKey: .runtimeCreatedPaths)
         disabledFormats      = try c.decodeIfPresent([DisabledFormatEntry].self,   forKey: .disabledFormats)
         feedbackSubmittedAt  = try c.decodeIfPresent(Date.self,                    forKey: .feedbackSubmittedAt)
+        archivedAt           = try c.decodeIfPresent(Date.self,                    forKey: .archivedAt)
+        archiveReason        = try c.decodeIfPresent(String.self,                  forKey: .archiveReason)
+        recoveryKitID        = try c.decodeIfPresent(UUID.self,                    forKey: .recoveryKitID)
+        installerSourcePath  = try c.decodeIfPresent(String.self,                  forKey: .installerSourcePath)
     }
 }
 

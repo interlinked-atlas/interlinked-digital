@@ -50,6 +50,15 @@ struct PluginCodeSignEngine {
             return .failure(CodeSignError("No admin password stored. Set your Mac password in ATLAS Settings."))
         }
 
+        // Remove .DS_Store from the bundle root before signing.
+        // Its presence causes codesign to report "unsealed contents present in the bundle root",
+        // which fails strict codesign -v verification.
+        let bundleRootDSStore = pluginPath + "/.DS_Store"
+        if FileManager.default.fileExists(atPath: bundleRootDSStore) {
+            _ = runWithPassword(password: password,
+                               arguments: ["/bin/rm", "-f", bundleRootDSStore])
+        }
+
         // Sign: sudo /usr/bin/codesign --force --deep --sign - <pluginPath>
         // Path is passed as a separate argument — no shell parsing, no quoting required.
         // Handles paths with spaces, apostrophes, and any other characters safely.

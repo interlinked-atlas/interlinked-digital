@@ -47,7 +47,76 @@ private func pluginFormats(for record: InstallRecord) -> [PluginFormatRow] {
 struct HistoryPanelView: View {
     @ObservedObject var store: HistoryStore
     @ObservedObject var logger: Logger
+    @ObservedObject private var langMgr = LanguageManager.shared
     var onClose: (() -> Void)? = nil
+    let onRollback: (InstallRecord) -> Void
+    let onRestore: (InstallRecord) -> Void
+    let onBatchRollback: ([InstallRecord]) -> Void
+
+    @State private var showClearConfirm = false
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+
+            // ── Header ────────────────────────────────────────────────
+            HStack(spacing: 8) {
+                Button { onClose?() } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color.atlasSubtitle)
+                        .frame(width: 24, height: 24)
+                        .background(Color.atlasElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Close ATLAS Library")
+
+                Text(L(.atlasLibrary))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color.atlasLabel)
+                Spacer()
+                if !store.records.isEmpty {
+                    Button(L(.clearAll)) { showClearConfirm = true }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "#E05555").opacity(0.85))
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+
+            Rectangle()
+                .fill(Color.atlasSeparator)
+                .frame(height: 1)
+
+            InstalledProductsSection(
+                store: store, logger: logger,
+                scrollable: true,
+                onRollback: onRollback,
+                onRestore: onRestore,
+                onBatchRollback: onBatchRollback
+            )
+        }
+        .frame(width: 320)
+        .background(Color.atlasSessionHeader)
+        .alert(L(.clearAtlasLibraryTitle), isPresented: $showClearConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.clearAll), role: .destructive) { store.clearAll() }
+        } message: {
+            Text(String(format: L(.clearLibraryMsgFmt), store.records.count))
+        }
+    }
+}
+
+// MARK: - Installed Products Section
+
+struct InstalledProductsSection: View {
+    @ObservedObject var store: HistoryStore
+    @ObservedObject var logger: Logger
+    var scrollable: Bool = true
+    var externalSearch: Binding<String> = .constant("")
     let onRollback: (InstallRecord) -> Void
     let onRestore: (InstallRecord) -> Void
     let onBatchRollback: ([InstallRecord]) -> Void
@@ -58,7 +127,6 @@ struct HistoryPanelView: View {
     @State private var showRestoreConfirm = false
     @State private var showRestoreUnavailable = false
     @State private var restoreUnavailableMsg = ""
-    @State private var showClearConfirm = false
     @State private var batchTarget: [InstallRecord] = []
     @State private var showBatchConfirm = false
     @State private var removeTarget: InstallRecord? = nil
@@ -66,15 +134,20 @@ struct HistoryPanelView: View {
     @State private var supportTarget: InstallRecord? = nil
     @State private var showSupport = false
     @State private var feedbackTarget: InstallRecord? = nil
+    @State private var showArchive = false
+    @State private var showPermanentDeleteArchivesConfirm = false
 
-    // Search (Phase 4)
     @State private var searchText = ""
-    // Filters (Phase 5)
     @State private var showFilters = false
     @State private var filterFormat = "All"
     @State private var filterStatus = "All"
     @State private var filterDate   = "All"
     @State private var filterEnableState = "All"
+
+    private var activeSearchText: String {
+        let ext = externalSearch.wrappedValue.trimmingCharacters(in: .whitespaces)
+        return ext.isEmpty ? searchText.trimmingCharacters(in: .whitespaces) : ext
+    }
 
     @ObservedObject private var auth = AuthManager.shared
 
@@ -107,8 +180,7 @@ struct HistoryPanelView: View {
     private var filteredGroups: [SessionGroup] {
         var records = store.records
 
-        // Search
-        let q = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        let q = activeSearchText.lowercased()
         if !q.isEmpty {
             records = records.filter { r in
                 r.fileName.lowercased().contains(q) ||
@@ -119,7 +191,6 @@ struct HistoryPanelView: View {
             }
         }
 
-        // Format filter
         if filterFormat != "All" {
             records = records.filter { r in
                 pluginFormats(for: r).contains { $0.label == filterFormat } ||
@@ -130,19 +201,16 @@ struct HistoryPanelView: View {
             }
         }
 
-        // Status filter
         if filterStatus != "All" {
             records = records.filter { $0.status.rawValue == filterStatus }
         }
 
-        // Enable state filter
         if filterEnableState == "Has Disabled" {
             records = records.filter { ($0.disabledFormats?.isEmpty == false) }
         } else if filterEnableState == "Fully Enabled" {
             records = records.filter { $0.disabledFormats == nil || $0.disabledFormats!.isEmpty }
         }
 
-        // Date filter
         if filterDate != "All" {
             let cutoff: Date
             if filterDate == "7d" {
@@ -164,43 +232,209 @@ struct HistoryPanelView: View {
     // MARK: - Body
 
     var body: some View {
+        Group {
+            if scrollable {
+                scrollableContent
+            } else {
+                embeddedContent
+            }
+        }
+        .alert(L(.removeFromLibraryTitle), isPresented: $showRemoveConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.remove), role: .destructive) {
+                if let t = removeTarget { store.remove(id: t.id) }
+            }
+        } message: {
+            if let record = removeTarget {
+                Text(String(format: L(.removeRecordMsgFmt), record.fileName))
+            }
+        }
+        .alert(L(.uninstallConfirmTitle), isPresented: $showRollbackConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.uninstall), role: .destructive) {
+                if let t = rollbackTarget { onRollback(t) }
+            }
+        } message: {
+            if let record = rollbackTarget {
+                let detail = !record.pkgReceiptIDs.isEmpty
+                    ? String(format: L(.receiptsAndFilesFmt), record.pkgReceiptIDs.count, record.installedFiles.count)
+                    : String(format: L(.filesTrackedFmt), record.installedFiles.count)
+                let disabledNote = (record.disabledFormats?.isEmpty == false)
+                    ? String(format: L(.disabledFormatsNoteFmt), record.disabledFormats!.count)
+                    : ""
+                Text(String(format: L(.uninstallConfirmMsgFmt), detail, record.fileName, disabledNote))
+            }
+        }
+        .alert(L(.recoverFilesTitle), isPresented: $showRestoreConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.recover)) {
+                if let t = restoreTarget { onRestore(t) }
+            }
+        } message: {
+            if let record = restoreTarget {
+                Text(String(format: L(.recoverFilesMsgFmt), record.fileName))
+            }
+        }
+        .alert(L(.recoveryNotAvailable), isPresented: $showRestoreUnavailable) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(restoreUnavailableMsg)
+        }
+        .alert(L(.uninstallSessionTitle), isPresented: $showBatchConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.uninstall), role: .destructive) {
+                onBatchRollback(batchTarget)
+                batchTarget = []
+            }
+        } message: {
+            Text(String(format: L(.uninstallSessionMsgFmt), batchTarget.count))
+        }
+        .alert(L(.deleteArchivesTitle), isPresented: $showPermanentDeleteArchivesConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.deleteAllArchivesBtn), role: .destructive) {
+                store.deleteAllArchivedRecords()
+            }
+        } message: {
+            Text(L(.deleteArchivesMsg))
+        }
+        .sheet(isPresented: $showSupport) {
+            SupportView(preselectedRecord: supportTarget, allRecords: store.records)
+        }
+        .sheet(item: $feedbackTarget) { record in
+            HistoryFeedbackSheet(record: record, store: store)
+        }
+    }
+
+    // MARK: - Scrollable layout (standalone panel — original HistoryPanelView behavior)
+
+    private var scrollableContent: some View {
         VStack(alignment: .leading, spacing: 0) {
+            searchAndFiltersBar
+            scrollableMainContent
+        }
+    }
 
-            // ── Header ────────────────────────────────────────────────
-            HStack(spacing: 8) {
-                Button { onClose?() } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color.atlasSubtitle)
-                        .frame(width: 24, height: 24)
-                        .background(Color.atlasElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .help("Close ATLAS Library")
-
-                Text("ATLAS Library")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color.atlasLabel)
-                Spacer()
-                if !store.records.isEmpty {
-                    Button("Clear All") { showClearConfirm = true }
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(Color(hex: "#E05555").opacity(0.85))
-                        .buttonStyle(.plain)
+    @ViewBuilder
+    private var scrollableMainContent: some View {
+        let groups = filteredGroups
+        if store.records.isEmpty && store.archivedRecords.isEmpty {
+            emptyLibraryView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if store.records.isEmpty {
+            Spacer()
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        } else if groups.isEmpty {
+            noResultsView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    cardList(groups: groups)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        }
+    }
 
-            Rectangle()
-                .fill(Color.atlasSeparator)
-                .frame(height: 1)
+    // MARK: - Embedded layout (inside parent ScrollView — dashboard use)
 
-            // ── Search + Filters (Phases 4 & 5) ──────────────────────
-            if !store.records.isEmpty {
-                VStack(spacing: 0) {
-                    HStack(spacing: 6) {
+    private var embeddedContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            searchAndFiltersBar
+            embeddedMainContent
+        }
+    }
+
+    @ViewBuilder
+    private var embeddedMainContent: some View {
+        let groups = filteredGroups
+        if store.records.isEmpty && store.archivedRecords.isEmpty {
+            emptyLibraryView
+                .padding(.vertical, 24)
+        } else if store.records.isEmpty {
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        } else if groups.isEmpty {
+            noResultsView
+                .padding(.vertical, 16)
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        } else {
+            LazyVStack(spacing: 0) {
+                cardList(groups: groups)
+            }
+            if !store.archivedRecords.isEmpty { archiveSectionView }
+        }
+    }
+
+    // MARK: - Shared card list
+
+    @ViewBuilder
+    private func cardList(groups: [SessionGroup]) -> some View {
+        ForEach(groups) { group in
+            if group.isBatch {
+                sessionHeaderView(group: group)
+            }
+            ForEach(group.records) { record in
+                LibraryItemCard(
+                    record: record,
+                    store: store,
+                    inSession: group.isBatch,
+                    onRollback: {
+                        rollbackTarget = record
+                        showRollbackConfirm = true
+                    },
+                    onRestore: {
+                        if let backupPath = record.rollbackBackupPath {
+                            if let data = try? Data(contentsOf: URL(fileURLWithPath: backupPath)),
+                               let trashRecords = try? JSONDecoder().decode([TrashRecord].self, from: data) {
+                                let anyInTrash = trashRecords.contains {
+                                    FileManager.default.fileExists(atPath: $0.trashPath)
+                                }
+                                if !anyInTrash {
+                                    let names = trashRecords
+                                        .map { URL(fileURLWithPath: $0.originalPath).lastPathComponent }
+                                        .joined(separator: "\n")
+                                    restoreUnavailableMsg = "The files uninstalled from \"\(record.fileName)\" were permanently deleted from Trash and can no longer be recovered.\n\n\(names)"
+                                    showRestoreUnavailable = true
+                                    return
+                                }
+                            } else {
+                                restoreUnavailableMsg = "Recovery data for \"\(record.fileName)\" could not be found."
+                                showRestoreUnavailable = true
+                                return
+                            }
+                        }
+                        restoreTarget = record
+                        showRestoreConfirm = true
+                    },
+                    onRemove: {
+                        removeTarget = record
+                        showRemoveConfirm = true
+                    },
+                    onSupport: {
+                        supportTarget = record
+                        showSupport = true
+                    },
+                    onFeedback: {
+                        feedbackTarget = record
+                    }
+                )
+                Rectangle()
+                    .fill(Color.atlasSeparator.opacity(0.6))
+                    .frame(height: 1)
+                    .padding(.leading, group.isBatch ? 28 : 0)
+            }
+        }
+    }
+
+    // MARK: - Search + Filters bar
+
+    @ViewBuilder
+    private var searchAndFiltersBar: some View {
+        if !store.records.isEmpty {
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    if scrollable {
                         HStack(spacing: 5) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 10, weight: .medium))
@@ -222,17 +456,18 @@ struct HistoryPanelView: View {
                         .padding(.vertical, 5)
                         .background(Color.atlasElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
 
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                showFilters.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "line.3.horizontal.decrease")
-                                    .font(.system(size: 9, weight: .semibold))
-                                Text(activeFilterCount > 0 ? "Filters · \(activeFilterCount)" : "Filters")
-                                    .font(.system(size: 10, weight: .medium))
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showFilters.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "line.3.horizontal.decrease")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text(activeFilterCount > 0 ? "Filters · \(activeFilterCount)" : "Filters")
+                                .font(.system(size: 10, weight: .medium))
                             }
                             .foregroundColor(activeFilterCount > 0 ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
                             .padding(.horizontal, 7)
@@ -280,171 +515,46 @@ struct HistoryPanelView: View {
                         .frame(height: 1)
                 }
             }
+    }
 
-            // ── Content ───────────────────────────────────────────────
-            if store.records.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "books.vertical")
-                        .font(.system(size: 24))
-                        .foregroundColor(Color.atlasSubtitle.opacity(0.4))
-                    Text("No installs yet")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.atlasSubtitle.opacity(0.6))
+    // MARK: - Empty states
+
+    private var emptyLibraryView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "books.vertical")
+                .font(.system(size: 24))
+                .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+            Text(L(.noInstallsYet))
+                .font(.system(size: 11))
+                .foregroundColor(Color.atlasSubtitle.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var noResultsView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 20))
+                .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+            Text(!activeSearchText.isEmpty
+                 ? "No results for \"\(activeSearchText)\""
+                 : "No items match these filters")
+                .font(.system(size: 11))
+                .foregroundColor(Color.atlasSubtitle.opacity(0.6))
+                .multilineTextAlignment(.center)
+            if !activeSearchText.isEmpty || activeFilterCount > 0 {
+                Button("Clear") {
+                    searchText = ""
+                    externalSearch.wrappedValue = ""
+                    filterFormat = "All"; filterStatus = "All"
+                    filterDate = "All"; filterEnableState = "All"
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                let groups = filteredGroups
-                if groups.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color.atlasSubtitle.opacity(0.4))
-                        Text(!searchText.isEmpty
-                             ? "No results for \"\(searchText)\""
-                             : "No items match these filters")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color.atlasSubtitle.opacity(0.6))
-                            .multilineTextAlignment(.center)
-                        if !searchText.isEmpty || activeFilterCount > 0 {
-                            Button("Clear") {
-                                searchText = ""
-                                filterFormat = "All"; filterStatus = "All"
-                                filterDate = "All"; filterEnableState = "All"
-                            }
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(Color(hex: "#3ECFB2"))
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(groups) { group in
-                                if group.isBatch {
-                                    sessionHeaderView(group: group)
-                                }
-                                ForEach(group.records) { record in
-                                    LibraryItemCard(
-                                        record: record,
-                                        store: store,
-                                        inSession: group.isBatch,
-                                        onRollback: {
-                                            rollbackTarget = record
-                                            showRollbackConfirm = true
-                                        },
-                                        onRestore: {
-                                            if let backupPath = record.rollbackBackupPath {
-                                                if let data = try? Data(contentsOf: URL(fileURLWithPath: backupPath)),
-                                                   let trashRecords = try? JSONDecoder().decode([TrashRecord].self, from: data) {
-                                                    let anyInTrash = trashRecords.contains {
-                                                        FileManager.default.fileExists(atPath: $0.trashPath)
-                                                    }
-                                                    if !anyInTrash {
-                                                        let names = trashRecords
-                                                            .map { URL(fileURLWithPath: $0.originalPath).lastPathComponent }
-                                                            .joined(separator: "\n")
-                                                        restoreUnavailableMsg = "The files uninstalled from \"\(record.fileName)\" were permanently deleted from Trash and can no longer be recovered.\n\n\(names)"
-                                                        showRestoreUnavailable = true
-                                                        return
-                                                    }
-                                                } else {
-                                                    restoreUnavailableMsg = "Recovery data for \"\(record.fileName)\" could not be found."
-                                                    showRestoreUnavailable = true
-                                                    return
-                                                }
-                                            }
-                                            restoreTarget = record
-                                            showRestoreConfirm = true
-                                        },
-                                        onRemove: {
-                                            removeTarget = record
-                                            showRemoveConfirm = true
-                                        },
-                                        onSupport: {
-                                            supportTarget = record
-                                            showSupport = true
-                                        },
-                                        onFeedback: {
-                                            feedbackTarget = record
-                                        }
-                                    )
-                                    Rectangle()
-                                        .fill(Color.atlasSeparator.opacity(0.6))
-                                        .frame(height: 1)
-                                        .padding(.leading, group.isBatch ? 28 : 0)
-                                }
-                            }
-                        }
-                    }
-                }
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(Color(hex: "#3ECFB2"))
+                .buttonStyle(.plain)
             }
         }
-        .frame(width: 320)
-        .background(Color.atlasSessionHeader)
-        // ── Dialogs ───────────────────────────────────────────────────
-        .alert("Remove from Library?", isPresented: $showRemoveConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) {
-                if let t = removeTarget { store.remove(id: t.id) }
-            }
-        } message: {
-            if let record = removeTarget {
-                Text("This removes '\(record.fileName)' from ATLAS Library. Installed files are not affected.")
-            }
-        }
-        .alert("Uninstall?", isPresented: $showRollbackConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Uninstall", role: .destructive) {
-                if let t = rollbackTarget { onRollback(t) }
-            }
-        } message: {
-            if let record = rollbackTarget {
-                let detail = !record.pkgReceiptIDs.isEmpty
-                    ? "\(record.pkgReceiptIDs.count) receipt(s) and associated files"
-                    : "\(record.installedFiles.count) file(s)"
-                let disabledNote = (record.disabledFormats?.isEmpty == false)
-                    ? "\n\nThis also includes \(record.disabledFormats!.count) disabled format(s) in ATLAS storage."
-                    : ""
-                Text("ATLAS will move \(detail) installed by \(record.fileName) to the Trash.\(disabledNote)\n\nYou can recover them from Trash or use the Recover button.")
-            }
-        }
-        .alert("Recover files?", isPresented: $showRestoreConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Recover") {
-                if let t = restoreTarget { onRestore(t) }
-            }
-        } message: {
-            if let record = restoreTarget {
-                Text("ATLAS will move the files trashed when \(record.fileName) was uninstalled back to their original locations.")
-            }
-        }
-        .alert("Recovery Not Available", isPresented: $showRestoreUnavailable) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(restoreUnavailableMsg)
-        }
-        .alert("Uninstall Session?", isPresented: $showBatchConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Uninstall All", role: .destructive) {
-                onBatchRollback(batchTarget)
-                batchTarget = []
-            }
-        } message: {
-            Text("ATLAS will uninstall \(batchTarget.count) item\(batchTarget.count == 1 ? "" : "s") from this session. Files will be moved to the Trash.")
-        }
-        .alert("Clear ATLAS Library?", isPresented: $showClearConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Clear All", role: .destructive) { store.clearAll() }
-        } message: {
-            Text("This removes all \(store.records.count) install records from ATLAS Library. Installed files are not affected.")
-        }
-        .sheet(isPresented: $showSupport) {
-            SupportView(preselectedRecord: supportTarget, allRecords: store.records)
-        }
-        .sheet(item: $feedbackTarget) { record in
-            HistoryFeedbackSheet(record: record, store: store)
-        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Filter row helper
@@ -489,7 +599,7 @@ struct HistoryPanelView: View {
             Image(systemName: "square.stack.3d.down.right.fill")
                 .font(.system(size: 9))
                 .foregroundColor(Color(hex: "#3ECFB2"))
-            Text("Session · \(group.records.count) · \(shortDate(group.date))")
+            Text(String(format: L(.sessionFmt), group.records.count, shortDate(group.date)))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(Color.atlasSubtitle)
             Spacer()
@@ -500,7 +610,7 @@ struct HistoryPanelView: View {
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "trash").font(.system(size: 8))
-                        Text("All").font(.system(size: 9, weight: .semibold))
+                        Text(L(.filterAll)).font(.system(size: 9, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "#E05555"))
                     .padding(.horizontal, 6)
@@ -523,6 +633,66 @@ struct HistoryPanelView: View {
         f.dateFormat = "MMM d"
         return f.string(from: date)
     }
+
+    // MARK: - Archive section
+
+    @ViewBuilder
+    private var archiveSectionView: some View {
+        Rectangle()
+            .fill(Color.atlasSeparator)
+            .frame(height: 1)
+
+        // Archive header row — expand/collapse + permanent delete
+        HStack(spacing: 0) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showArchive.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "archivebox")
+                        .font(.system(size: 9))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.6))
+                    Text(String(format: L(.archiveLabelFmt), store.archivedRecords.count))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.7))
+                    Image(systemName: showArchive ? "chevron.up" : "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+                }
+                .padding(.leading, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // Permanently Delete Archives — distinct destructive action
+            Button {
+                showPermanentDeleteArchivesConfirm = true
+            } label: {
+                Text(L(.deleteAll))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(Color(hex: "#E05555").opacity(0.6))
+            }
+            .buttonStyle(.plain)
+            .help("Permanently delete all archived records — Logs are not affected")
+            .padding(.trailing, 12)
+        }
+        .background(Color.atlasDeepBG)
+
+        if showArchive {
+            ForEach(store.archivedRecords) { record in
+                ArchiveItemCard(record: record, store: store, onRestore: { rec in
+                    restoreTarget = rec
+                    showRestoreConfirm = true
+                })
+                Rectangle()
+                    .fill(Color.atlasSeparator.opacity(0.6))
+                    .frame(height: 1)
+            }
+        }
+    }
 }
 
 // MARK: - Library Item Card
@@ -530,6 +700,7 @@ struct HistoryPanelView: View {
 struct LibraryItemCard: View {
     let record: InstallRecord
     @ObservedObject var store: HistoryStore
+    @ObservedObject private var langMgr = LanguageManager.shared
     var inSession: Bool = false
     let onRollback: () -> Void
     let onRestore: () -> Void
@@ -625,11 +796,11 @@ struct LibraryItemCard: View {
                 // Tracked files summary + format inline row + verify badge
                 HStack(spacing: 0) {
                     if !record.pkgReceiptIDs.isEmpty {
-                        Text("\(record.pkgReceiptIDs.count) receipt(s) · \(record.installedFiles.count) files")
+                        Text(String(format: L(.receiptsAndFilesFmt), record.pkgReceiptIDs.count, record.installedFiles.count))
                             .font(.system(size: 10))
                             .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     } else if !record.installedFiles.isEmpty {
-                        Text("\(record.installedFiles.count) file(s) tracked")
+                        Text(String(format: L(.filesTrackedFmt), record.installedFiles.count))
                             .font(.system(size: 10))
                             .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     }
@@ -645,24 +816,24 @@ struct LibraryItemCard: View {
                     HStack(spacing: 4) {
                         if canUninstall {
                             if Features.isPro {
-                                compactButton(label: "Uninstall", icon: "trash",
+                                compactButton(label: L(.uninstall), icon: "trash",
                                               color: Color(hex: "#E05555"), action: onRollback)
                             } else {
-                                compactButton(label: "Uninstall", icon: "lock.fill",
+                                compactButton(label: L(.uninstall), icon: "lock.fill",
                                               color: Color(hex: "#E05555")) {
-                                    lockedFeatureName = "Uninstall"
+                                    lockedFeatureName = L(.uninstall)
                                     showUpgradeAlert = true
                                 }
                             }
                         }
                         if canRestore {
                             if Features.isPro {
-                                compactButton(label: "Recover", icon: "arrow.uturn.backward",
+                                compactButton(label: L(.recover), icon: "arrow.uturn.backward",
                                               color: Color(hex: "#3ECFB2"), action: onRestore)
                             } else {
-                                compactButton(label: "Recover", icon: "lock.fill",
+                                compactButton(label: L(.recover), icon: "lock.fill",
                                               color: Color(hex: "#3ECFB2")) {
-                                    lockedFeatureName = "Recover"
+                                    lockedFeatureName = L(.recover)
                                     showUpgradeAlert = true
                                 }
                             }
@@ -671,7 +842,7 @@ struct LibraryItemCard: View {
                             HStack(spacing: 3) {
                                 Image(systemName: "trash.slash")
                                     .font(.system(size: 7, weight: .semibold))
-                                Text("Permanently deleted")
+                                Text(L(.permanentlyDeleted))
                                     .font(.system(size: 8, weight: .medium))
                                     .lineLimit(1)
                             }
@@ -690,7 +861,7 @@ struct LibraryItemCard: View {
                                 HStack(spacing: 3) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 8, weight: .semibold))
-                                    Text("Feedback ✓")
+                                    Text(L(.feedbackReceived))
                                         .font(.system(size: 9, weight: .semibold))
                                 }
                                 .foregroundColor(Color(hex: "#3ECFB2").opacity(0.6))
@@ -698,12 +869,42 @@ struct LibraryItemCard: View {
                                 .background(Color(hex: "#3ECFB2").opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                             } else {
-                                compactButton(label: "Feedback", icon: "brain.head.profile",
+                                compactButton(label: L(.feedback), icon: "brain.head.profile",
                                               color: Color(hex: "#3ECFB2")) { onFeedback?() }
                             }
                         }
-                        compactButton(label: "Support", icon: "questionmark.circle",
+                        compactButton(label: L(.support), icon: "questionmark.circle",
                                       color: Color(hex: "#696E7C")) { onSupport?() }
+                        // Formats ▾/▴ — collapsed by default; expands Enable/Disable/Sign panel
+                        if !formats.isEmpty {
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isExpanded.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Text(L(.formatsLabel))
+                                        .font(.system(size: 9, weight: .semibold))
+                                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 7, weight: .semibold))
+                                }
+                                .foregroundColor(isExpanded ? Color.atlasInfo : Color.atlasSubtitle.opacity(0.6))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(isExpanded
+                                    ? Color.atlasInfo.opacity(0.10)
+                                    : Color.atlasElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .strokeBorder(
+                                        isExpanded ? Color.atlasInfo.opacity(0.25) : Color.clear,
+                                        lineWidth: 0.75))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Plugin formats")
+                            .accessibilityHint("Expand to show Enable, Disable, and Code-Sign controls for each format")
+                            .help("Show format controls: Enable, Disable, Code-Sign")
+                        }
                         Spacer()
                     }
                 }
@@ -740,9 +941,9 @@ struct LibraryItemCard: View {
             Text(toggleError ?? "")
         }
         // Disable confirmation alert (Phase 8)
-        .alert("Disable \(pendingDisableRow?.label ?? "format")?", isPresented: $showDisableConfirm) {
-            Button("Cancel", role: .cancel) { pendingDisableRow = nil }
-            Button("Disable", role: .destructive) {
+        .alert(String(format: L(.disableFmtConfirmTitleFmt), pendingDisableRow?.label ?? ""), isPresented: $showDisableConfirm) {
+            Button(L(.cancel), role: .cancel) { pendingDisableRow = nil }
+            Button(L(.disable), role: .destructive) {
                 if let row = pendingDisableRow {
                     pendingDisableRow = nil
                     Task { await performDisable(row: row) }
@@ -750,7 +951,7 @@ struct LibraryItemCard: View {
             }
         } message: {
             if let row = pendingDisableRow {
-                Text("ATLAS will move \(record.fileName) (\(row.label)) out of its plugin folder. It will not appear in your DAW until re-enabled.\n\nYou can re-enable it at any time from ATLAS Library.")
+                Text(String(format: L(.disableFmtConfirmMsgFmt), record.fileName, row.label))
             }
         }
         // Code-Sign error alert
@@ -759,26 +960,22 @@ struct LibraryItemCard: View {
         } message: {
             Text(signError ?? "")
         }
-        .alert("\(lockedFeatureName) — Pro Feature", isPresented: $showUpgradeAlert) {
-            Button("Upgrade to Pro") {
+        .alert(String(format: L(.proFeatureAlertTitleFmt), lockedFeatureName), isPresented: $showUpgradeAlert) {
+            Button(L(.upgrade)) {
                 NSWorkspace.shared.open(URL(string: "https://interlinked.digital/account")!)
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L(.cancel), role: .cancel) {}
         } message: {
-            Text("\(lockedFeatureName) is available on the Pro plan.\n\nVisit interlinked.digital/account and sign in with the same email you use in the ATLAS app.")
+            Text(String(format: L(.proFeatureAlertMsgFmt), lockedFeatureName))
         }
     }
 
-    // MARK: - Format inline row (collapsed summary — Concept A)
-    // Replaces pill badges. Format names appear as plain dot-separated metadata text.
-    // Disabled formats render muted/grey. "Formats ▾/▴" at the trailing end is the
-    // expansion trigger, moved here from the title row so the control is contextually
-    // adjacent to what it reveals.
+    // MARK: - Format inline row (display-only — dot-separated format names, no toggle here)
+    // Trigger for expand/collapse moved to the action row next to Support.
 
     @ViewBuilder
     private var formatInlineRow: some View {
         HStack(spacing: 0) {
-            // Dot-separated format names
             ForEach(formats) { fmt in
                 let isDisabled = record.disabledFormats?.contains { $0.originalPath == fmt.destinationPath } ?? false
                 Text(" · \(fmt.label)")
@@ -786,28 +983,9 @@ struct LibraryItemCard: View {
                     .foregroundColor(
                         isDisabled
                             ? Color.atlasSubtitle.opacity(0.35)
-                            : Color(hex: "#3ECFB2").opacity(0.75)
+                            : Color.atlasInfo.opacity(0.75)   // informational → blue
                     )
             }
-
-            // "Formats ▾/▴" expansion button
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 2) {
-                    Text("  Formats")
-                        .font(.system(size: 10))
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 7, weight: .semibold))
-                }
-                .foregroundColor(Color.atlasSubtitle.opacity(0.5))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Plugin formats")
-            .accessibilityHint("Expand to show Enable, Disable, and Code-Sign controls for each format")
-            .help("Show format controls: Enable, Disable, Code-Sign")
         }
     }
 
@@ -860,7 +1038,7 @@ struct LibraryItemCard: View {
 
             // Path / state
             if isDisabled {
-                Text("Disabled")
+                Text(L(.disabled))
                     .font(.system(size: 9))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.6))
             } else {
@@ -893,13 +1071,13 @@ struct LibraryItemCard: View {
                             .scaleEffect(0.5)
                             .frame(width: 40, height: 16)
                     } else if isDisabled {
-                        compactButton(label: "Enable", icon: "checkmark.circle",
+                        compactButton(label: L(.enable), icon: "checkmark.circle",
                                       color: Color(hex: "#3ECFB2")) {
                             Task { await performEnable(entry: disabledEntry!, fmt: fmt) }
                         }
                         .disabled(isSigningFormat != nil)
                     } else {
-                        compactButton(label: "Disable", icon: "minus.circle",
+                        compactButton(label: L(.disable), icon: "minus.circle",
                                       color: Color(hex: "#E05555")) {
                             pendingDisableRow = fmt
                             showDisableConfirm = true
@@ -909,7 +1087,7 @@ struct LibraryItemCard: View {
                 } else {
                     // Standard user — show locked Pro badge
                     Button {
-                        lockedFeatureName = "Enable/Disable"
+                        lockedFeatureName = L(.enable) + "/" + L(.disable)
                         showUpgradeAlert = true
                     } label: {
                         HStack(spacing: 3) {
@@ -939,7 +1117,7 @@ struct LibraryItemCard: View {
                             ProgressView()
                                 .scaleEffect(0.5)
                                 .frame(width: 12, height: 12)
-                            Text("Signing…")
+                            Text(L(.signingLabel))
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                         }
@@ -947,13 +1125,13 @@ struct LibraryItemCard: View {
                         HStack(spacing: 3) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 8, weight: .semibold))
-                            Text("Signed!")
+                            Text(L(.signedLabel))
                                 .font(.system(size: 9, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .padding(.horizontal, 6).padding(.vertical, 3)
                     } else {
-                        compactButton(label: "Sign", icon: "pencil",
+                        compactButton(label: L(.sign), icon: "pencil",
                                       color: Color(hex: "#3ECFB2")) {
                             Task { await performCodeSign(fmt: fmt) }
                         }
@@ -962,7 +1140,7 @@ struct LibraryItemCard: View {
                 } else {
                     // Standard user — locked Pro badge for Code-Sign
                     Button {
-                        lockedFeatureName = "Code-Sign"
+                        lockedFeatureName = L(.sign)
                         showUpgradeAlert = true
                     } label: {
                         HStack(spacing: 3) {
@@ -1111,6 +1289,184 @@ struct LibraryItemCard: View {
             }
             DispatchQueue.main.async { trashFilesExist = exists }
         }
+    }
+}
+
+// MARK: - Archive Item Card
+
+private enum ArchiveFileStatus {
+    case present   // files still at original location
+    case inTrash   // files in Trash (recoverable)
+    case missing   // files cannot be found
+}
+
+private struct ArchiveItemCard: View {
+    let record: InstallRecord
+    @ObservedObject var store: HistoryStore
+    @ObservedObject private var langMgr = LanguageManager.shared
+    let onRestore: (InstallRecord) -> Void
+
+    @State private var fileStatus: ArchiveFileStatus? = nil
+    @State private var showDeleteConfirm = false
+
+    private var archivedDateStr: String {
+        guard let d = record.archivedAt else { return "" }
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f.string(from: d)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            // Title row
+            HStack(spacing: 7) {
+                Image(systemName: record.statusIcon)
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+                    .font(.system(size: 11))
+                Text(record.fileName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color.atlasLabel.opacity(0.55))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Text(record.fileType)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.45))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.atlasElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            }
+
+            // Date + file status row
+            HStack(spacing: 4) {
+                Text(String(format: L(.installedOnFmt), record.shortDate))
+                    .font(.system(size: 10))
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.5))
+                if !archivedDateStr.isEmpty {
+                    Text("·")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.3))
+                    Text(String(format: L(.archivedOnFmt), archivedDateStr))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.5))
+                }
+                Spacer()
+                if let status = fileStatus {
+                    fileStatusBadge(status)
+                }
+            }
+
+            // Actions
+            HStack(spacing: 4) {
+                Button {
+                    store.unarchive(id: record.id)
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.uturn.up.circle")
+                            .font(.system(size: 8, weight: .semibold))
+                        Text(L(.unArchive))
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "#3ECFB2"))
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(Color(hex: "#3ECFB2").opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .strokeBorder(Color(hex: "#3ECFB2").opacity(0.2), lineWidth: 0.75))
+                }
+                .buttonStyle(.plain)
+                .help("Move back to active Library (does not reinstall files)")
+
+                if fileStatus == .inTrash {
+                    Button { onRestore(record) } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 8, weight: .semibold))
+                            Text(L(.recover))
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(Color(hex: "#3ECFB2").opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .strokeBorder(Color(hex: "#3ECFB2").opacity(0.2), lineWidth: 0.75))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Restore files from Trash to their original locations")
+                }
+
+                Spacer()
+
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 9))
+                        .foregroundColor(Color(hex: "#E05555").opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .help("Permanently delete this archive record — no files are affected")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .onAppear { checkFileStatus() }
+        .alert(L(.deleteArchiveTitle), isPresented: $showDeleteConfirm) {
+            Button(L(.cancel), role: .cancel) {}
+            Button(L(.deleteAll), role: .destructive) {
+                store.deleteArchivedRecord(id: record.id)
+            }
+        } message: {
+            Text(String(format: L(.deleteArchiveMsgFmt), record.fileName))
+        }
+    }
+
+    @ViewBuilder
+    private func fileStatusBadge(_ status: ArchiveFileStatus) -> some View {
+        switch status {
+        case .present:
+            HStack(spacing: 3) {
+                Image(systemName: "checkmark.circle").font(.system(size: 7, weight: .semibold))
+                Text(L(.filesPresent)).font(.system(size: 8, weight: .medium))
+            }
+            .foregroundColor(Color(hex: "#2ECC8A").opacity(0.7))
+        case .inTrash:
+            HStack(spacing: 3) {
+                Image(systemName: "trash").font(.system(size: 7, weight: .semibold))
+                Text(L(.inTrash)).font(.system(size: 8, weight: .medium))
+            }
+            .foregroundColor(Color(hex: "#F0A030").opacity(0.8))
+        case .missing:
+            HStack(spacing: 3) {
+                Image(systemName: "xmark.circle").font(.system(size: 7, weight: .semibold))
+                Text(L(.filesGone)).font(.system(size: 8, weight: .medium))
+            }
+            .foregroundColor(Color.atlasSubtitle.opacity(0.45))
+        }
+    }
+
+    private func checkFileStatus() {
+        DispatchQueue.global(qos: .utility).async {
+            let status = detectFileStatus()
+            DispatchQueue.main.async { self.fileStatus = status }
+        }
+    }
+
+    private func detectFileStatus() -> ArchiveFileStatus {
+        let anyPresent = record.installedFiles.contains {
+            FileManager.default.fileExists(atPath: $0.destinationPath)
+        }
+        if anyPresent { return .present }
+
+        if let backupPath = record.rollbackBackupPath,
+           let data = try? Data(contentsOf: URL(fileURLWithPath: backupPath)),
+           let trashRecords = try? JSONDecoder().decode([TrashRecord].self, from: data) {
+            if trashRecords.contains(where: { FileManager.default.fileExists(atPath: $0.trashPath) }) {
+                return .inTrash
+            }
+        }
+
+        return .missing
     }
 }
 

@@ -122,6 +122,9 @@ struct InstallIntelligence {
             let name = url.lastPathComponent
             let ext  = url.pathExtension.lowercased()
 
+            // Plugin bundles are terminal installable units — do not crawl their internal contents.
+            if ["component", "vst3", "vst", "aaxplugin"].contains(ext) { enumerator.skipDescendants() }
+
             // Skip known-harmless types
             guard !["pkg", "mpkg", "app", "component", "vst3", "vst",
                     "aaxplugin", "dmg", "iso", "zip", "html", "htm",

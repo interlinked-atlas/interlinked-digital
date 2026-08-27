@@ -13,6 +13,7 @@ struct DemoAlert: Identifiable {
 struct DemoAlertView: View {
     let alert: DemoAlert
     let onDismiss: () -> Void
+    @ObservedObject private var langMgr = LanguageManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +30,7 @@ struct DemoAlertView: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("DEMO MODE DETECTED")
+                    Text(L(.demoModeDetected))
                         .font(.system(size: 10, weight: .bold)).tracking(2.5)
                         .foregroundColor(Color(hex: "#F0A030"))
 
@@ -56,7 +57,7 @@ struct DemoAlertView: View {
             // ── Signals found ────────────────────────────────────────────────
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("SIGNALS FOUND")
+                    Text(L(.demoSignalsFound))
                         .font(.system(size: 9, weight: .bold)).tracking(2)
                         .foregroundColor(Color(hex: "#353860"))
                         .padding(.bottom, 2)
@@ -102,14 +103,14 @@ struct DemoAlertView: View {
 
             // ── What to do ───────────────────────────────────────────────────
             VStack(alignment: .leading, spacing: 8) {
-                Text("WHAT THIS MEANS")
+                Text(L(.demoWhatThisMeans))
                     .font(.system(size: 9, weight: .bold)).tracking(2)
                     .foregroundColor(Color(hex: "#353860"))
 
                 VStack(alignment: .leading, spacing: 5) {
-                    tipRow(icon: "doc.badge.arrow.up", text: "The software was installed but may need a license file manually placed")
-                    tipRow(icon: "arrow.clockwise", text: "Try reinstalling — drop the same package again and ATLAS will re-run")
-                    tipRow(icon: "questionmark.circle", text: "Use the Support button in ATLAS Library to get help from the ATLAS team")
+                    tipRow(icon: "doc.badge.arrow.up", text: L(.demoTip1))
+                    tipRow(icon: "arrow.clockwise", text: L(.demoTip2))
+                    tipRow(icon: "questionmark.circle", text: L(.demoTip3))
                 }
             }
             .padding(20)
@@ -119,7 +120,7 @@ struct DemoAlertView: View {
             // ── Buttons ──────────────────────────────────────────────────────
             HStack(spacing: 10) {
                 Button(action: onDismiss) {
-                    Text("Dismiss")
+                    Text(L(.cancel))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color(hex: "#9EA6B4"))
                         .frame(maxWidth: .infinity)
@@ -135,7 +136,7 @@ struct DemoAlertView: View {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.left")
                             .font(.system(size: 10, weight: .semibold))
-                        Text("Back to ATLAS")
+                        Text(L(.backToAtlas))
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "#08090E"))

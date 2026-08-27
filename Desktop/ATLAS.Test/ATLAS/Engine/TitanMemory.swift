@@ -100,7 +100,7 @@ class TitanMemory {
     private init() {
         // 1. Load bundled entries (always available, no network needed)
         var bundled: [TitanMemoryEntry] = []
-        if let url = Bundle.module.url(forResource: "known_installs", withExtension: "json",
+        if let url = Bundle.atlasResources.url(forResource: "known_installs", withExtension: "json",
                                        subdirectory: "TitanMemory"),
            let data = try? Data(contentsOf: url),
            let decoded = try? JSONDecoder().decode([TitanMemoryEntry].self, from: data) {
@@ -139,7 +139,7 @@ class TitanMemory {
             // Merge into live entries (cloud wins on id conflict)
             self.queue.async(flags: .barrier) {
                 let bundled: [TitanMemoryEntry]
-                if let url2 = Bundle.module.url(forResource: "known_installs", withExtension: "json",
+                if let url2 = Bundle.atlasResources.url(forResource: "known_installs", withExtension: "json",
                                                 subdirectory: "TitanMemory"),
                    let d = try? Data(contentsOf: url2),
                    let decoded = try? JSONDecoder().decode([TitanMemoryEntry].self, from: d) {

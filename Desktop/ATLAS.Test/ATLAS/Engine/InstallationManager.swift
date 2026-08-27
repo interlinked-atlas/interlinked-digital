@@ -1,8 +1,35 @@
 import Foundation
+import Security
 
 typealias ProgressReporter = (Double, String) async -> Void
 
 // MARK: - InstallEngine
+
+// Ensures only one GUI installer wizard runs at a time across all queue paths.
+// Callers await acquire() before launching a GUI wizard; call release() when done.
+// FIFO ordering: waiters are resumed in the order they arrived.
+actor GUIInstallerQueue {
+    static let shared = GUIInstallerQueue()
+    private var isActive = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func acquire() async {
+        if !isActive { isActive = true; return }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+        isActive = true
+    }
+
+    func release() {
+        if let next = waiters.first {
+            waiters.removeFirst()
+            next.resume()
+        } else {
+            isActive = false
+        }
+    }
+}
 
 struct InstallEngine {
 
@@ -206,6 +233,16 @@ struct InstallEngine {
                             findFile(extension: "vst",       in: url.path) != nil ||
                             findFile(extension: "aaxplugin", in: url.path) != nil
             if hasPlugin {
+                // Pass the folder through the existing instruction parser so documentation
+                // files (Instructions.rtf, README.txt, etc.) can be evaluated.
+                // findAndParseInstructions applies its own scoring, depth limits, and
+                // safety checks — no new parser, no arbitrary instruction execution.
+                if let instructions = InstallIntelligence.findAndParseInstructions(in: url.path) {
+                    await logger.log("📋 Instructions found (\(instructions.sourceFileName)) — parsed by ATLAS.")
+                    for step in instructions.steps.prefix(3) {
+                        await logger.log("  · \(step)")
+                    }
+                }
                 await progress(0.2, "Installing audio plugins…")
                 let (r, f) = await PluginInstallEngine.installPlugins(in: url.path, logger: logger)
                 await progress(1.0, "")
@@ -224,6 +261,10 @@ struct InstallEngine {
         case .zip:
             (result, files, receipts, isPlugin) = await installZIP(url: url, logger: logger, progress: progress)
         case .app:
+            if case .blocked(let dawName) = DAWInstallationGate.check(appURL: url) {
+                await logger.log("DAW installation not supported: \(dawName) — user notified.")
+                return (.unsupportedDAWInstallation(dawName: dawName), [], [], false, [])
+            }
             (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, progress: progress)
         case .pkg:
             let (r, f, rc) = await installPKG(
@@ -274,7 +315,7 @@ struct InstallEngine {
                 isPlugin: Bool) {
 
         await logger.log("Starting installation: \(url.lastPathComponent)")
-        await progress(0.03, "Opening the disk image…")
+        await progress(0.03, "Verifying and mounting disk image…")
 
         // Reuse any existing mount from a previous crashed session.
         if let existing = findExistingMount(for: url.path) {
@@ -331,9 +372,19 @@ struct InstallEngine {
 
         await logger.log("Mounted at \(mountPoint)")
 
-        // Strip quarantine recursively from everything inside the volume
-        // so no app or PKG inside triggers a Gatekeeper dialog when run.
-        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", mountPoint])
+        // Strip quarantine recursively from everything inside the volume so no app
+        // or PKG inside triggers a Gatekeeper dialog when run.
+        // Route stdout+stderr to /dev/null: read-only DMG mounts (the common case)
+        // generate one "Read-only file system" error per file, which can exceed the
+        // 64 KB pipe buffer and permanently deadlock runProcess(). The output is never
+        // used, so discarding it is correct for both read-only and writable mounts.
+        let xattrProc = Process()
+        xattrProc.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+        xattrProc.arguments     = ["-cr", mountPoint]
+        xattrProc.standardOutput = FileHandle.nullDevice
+        xattrProc.standardError  = FileHandle.nullDevice
+        try? xattrProc.run()
+        xattrProc.waitUntilExit()
 
         await progress(0.07, "Reading what's inside…")
         return await installFromMountPoint(
@@ -367,6 +418,15 @@ struct InstallEngine {
                     findFile(extension: "mpkg", in: mountPoint) == nil
         let topLevelApps = (try? FileManager.default.contentsOfDirectory(atPath: mountPoint))?
             .filter { !$0.hasPrefix(".") && $0.hasSuffix(".app") } ?? []
+
+        // DAW gate — inspect all .app bundles in the mounted volume before any install action.
+        // Covers both the fast-path (single drag-to-install app) and the plan-based path.
+        let allAppURLsInMount = findAllFiles(extension: "app", in: mountPoint)
+        if case .blocked(let dawName) = DAWInstallationGate.checkCandidates(allAppURLsInMount) {
+            await logger.log("DAW installation not supported: \(dawName) — user notified.")
+            if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
+            return (.unsupportedDAWInstallation(dawName: dawName), [], [], false)
+        }
 
         if hasDragTarget && noPKG && topLevelApps.count == 1 {
             let appURL  = URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0])
@@ -450,8 +510,13 @@ struct InstallEngine {
                         if case .failure = result { lastResult = result }
                     } else if ext == "app" {
                         await stepProgress(0.2, "Applying patch...")
+                        let patchBefore = FilesystemSnapshot.take()
                         let ok = await runPatchApp(step.url, logger: logger)
                         if ok {
+                            let patchAfter   = FilesystemSnapshot.take()
+                            let patchChanged = FilesystemSnapshot.diff(before: patchBefore, after: patchAfter)
+                            let patchFiles   = FilesystemSnapshot.buildInstalledFiles(changedPaths: patchChanged)
+                            allFiles.append(contentsOf: patchFiles)
                             await stepProgress(1.0, "")
                         } else {
                             lastResult = .failure(reason: "Patch failed: \(step.url.lastPathComponent)")
@@ -732,6 +797,12 @@ struct InstallEngine {
 
         await logger.log("Starting PKG installation: \(url.lastPathComponent)")
 
+        // DAW gate — conservative filename-based check before running the PKG installer.
+        if case .blocked(let dawName) = DAWInstallationGate.checkPKG(url: url) {
+            await logger.log("DAW installation not supported: \(dawName) — user notified.")
+            return (.unsupportedDAWInstallation(dawName: dawName), [], [])
+        }
+
         guard let password = KeychainManager.loadPassword() else {
             return (.failure(reason: "No password stored."), [], [])
         }
@@ -929,6 +1000,14 @@ struct InstallEngine {
                                findAllFiles(extension: "component", in: tempDir.path) +
                                findAllFiles(extension: "vst3", in: tempDir.path)
 
+        // DAW gate — inspect .app bundles extracted from the archive before any install action.
+        let candidateAppsInZIP = findAllFiles(extension: "app", in: tempDir.path)
+        if case .blocked(let dawName) = DAWInstallationGate.checkCandidates(candidateAppsInZIP) {
+            await logger.log("DAW installation not supported: \(dawName) — user notified.")
+            try? FileManager.default.removeItem(at: tempDir)
+            return (.unsupportedDAWInstallation(dawName: dawName), [], [], false)
+        }
+
         if !allInstallableZIP.isEmpty {
             let plan = await InstallIntelligence.analyze(
                 directory: tempDir.path, files: allInstallableZIP)
@@ -982,8 +1061,16 @@ struct InstallEngine {
                         if case .failure = result { lastResult = result }
                     } else if ext == "app" {
                         await stepProgress(0.2, "Applying patch...")
+                        let patchBefore = FilesystemSnapshot.take()
                         let ok = await runPatchApp(step.url, logger: logger)
-                        if !ok { lastResult = .failure(reason: "Patch failed: \(step.url.lastPathComponent)") }
+                        if ok {
+                            let patchAfter   = FilesystemSnapshot.take()
+                            let patchChanged = FilesystemSnapshot.diff(before: patchBefore, after: patchAfter)
+                            let patchFiles   = FilesystemSnapshot.buildInstalledFiles(changedPaths: patchChanged)
+                            allFiles.append(contentsOf: patchFiles)
+                        } else {
+                            lastResult = .failure(reason: "Patch failed: \(step.url.lastPathComponent)")
+                        }
                         await stepProgress(1.0, "")
                     }
 
@@ -1063,6 +1150,44 @@ struct InstallEngine {
             return (result, files, [], true)
         }
 
+        // ZIP → DMG or ISO: extract the image and install via the normal DMG path.
+        let nestedImages = findAllFiles(extension: "dmg", in: tempDir.path) +
+                           findAllFiles(extension: "iso", in: tempDir.path)
+
+        if !nestedImages.isEmpty {
+            var allFiles:   [InstallRecord.InstalledFile] = []
+            var allReceipts: [String] = []
+            var lastResult: InstallResult = .success(appName: url.lastPathComponent)
+
+            let imgCount = Double(nestedImages.count)
+            for (index, imgURL) in nestedImages.enumerated() {
+                await logger.log("Nested image found in ZIP: \(imgURL.lastPathComponent)")
+                let base  = 0.15 + Double(index) / imgCount * 0.80
+                let slice = 0.80 / imgCount
+                // Clamp: installDMG reports 0.03/0.07/0.15 before calling copyApp,
+                // then copyApp restarts at 0.02 — without max() the bar jumps backward.
+                var seen  = base
+                let imgProgress: ProgressReporter = { value, label in
+                    let mapped = base + value * slice
+                    seen = max(mapped, seen)
+                    await progress(seen, label)
+                }
+                let (result, files, receipts, _) = await installDMG(
+                    url: imgURL, logger: logger, progress: imgProgress)
+                allFiles.append(contentsOf: files)
+                allReceipts.append(contentsOf: receipts)
+                if case .success = result {
+                    lastResult = result   // carry real app name, not ZIP filename
+                } else if case .failure = result {
+                    lastResult = result
+                }
+            }
+
+            try? FileManager.default.removeItem(at: tempDir)
+            await progress(1.0, "")
+            return (lastResult, allFiles, allReceipts, false)
+        }
+
         try? FileManager.default.removeItem(at: tempDir)
         return (.failure(reason: "No installable content found in ZIP."), [], [], false)
     }
@@ -1092,11 +1217,16 @@ struct InstallEngine {
 
         if looksLikePatch {
             await progress(0.2, "Applying patch…")
+            let patchBefore = FilesystemSnapshot.take()
             let ok = await runPatchApp(url, logger: logger)
             await progress(1.0, "")
-            return ok
-                ? (.success(appName: url.deletingPathExtension().lastPathComponent), [], [], false)
-                : (.failure(reason: "Patch failed: \(url.lastPathComponent)"), [], [], false)
+            if ok {
+                let patchAfter   = FilesystemSnapshot.take()
+                let patchChanged = FilesystemSnapshot.diff(before: patchBefore, after: patchAfter)
+                let patchFiles   = FilesystemSnapshot.buildInstalledFiles(changedPaths: patchChanged)
+                return (.success(appName: url.deletingPathExtension().lastPathComponent), patchFiles, [], false)
+            }
+            return (.failure(reason: "Patch failed: \(url.lastPathComponent)"), [], [], false)
         }
 
         let appName  = url.lastPathComponent
@@ -1377,6 +1507,137 @@ struct InstallEngine {
         """
     }
 
+    // MARK: - Installation authorization engine
+
+    // Pre-populates the Authorization Services credential cache for
+    // system.privilege.admin using the stored administrator password.
+    //
+    // After a successful call, signed installer binaries that call
+    // AuthorizationCopyRights() for this right within the default 5-minute
+    // session cache window are satisfied without showing a password dialog.
+    //
+    // Uses Security.framework's public AuthorizationCopyRights API with
+    // kAuthorizationEnvironmentPassword to supply credentials programmatically.
+    // The AuthorizationRef is freed after the call without destroying rights;
+    // the credential cache persists in authd for the session timeout duration.
+    //
+    // Hard limits: this only covers rights whose macOS policy permits credential
+    // caching. TCC permissions, SIP-protected operations, and revoked notarization
+    // tickets cannot be pre-authorized at runtime regardless of credentials.
+    @discardableResult
+    private static func preAuthorizeAdmin(password: String) -> Bool {
+        guard !password.isEmpty else { return false }
+        var authRef: AuthorizationRef?
+        guard AuthorizationCreate(nil, nil, AuthorizationFlags(rawValue: 0), &authRef) == errAuthorizationSuccess,
+              let ref = authRef else { return false }
+        // Free the ref when done — do NOT pass kAuthorizationFlagDestroyRights,
+        // which would clear the cache we just populated.
+        defer { AuthorizationFree(ref, AuthorizationFlags(rawValue: 0)) }
+
+        var acquired = false
+        let pwdUTF8 = Array(password.utf8)
+
+        // All C pointers must remain valid for the duration of AuthorizationCopyRights.
+        // Nested withUnsafeBytes / withCString closures guarantee lifetime safety.
+        pwdUTF8.withUnsafeBytes { rawBuf in
+            guard let pwdBase = rawBuf.baseAddress else { return }
+            kAuthorizationEnvironmentPassword.withCString { envNamePtr in
+                var envItem = AuthorizationItem(
+                    name: envNamePtr,
+                    valueLength: pwdUTF8.count,
+                    value: UnsafeMutableRawPointer(mutating: pwdBase),
+                    flags: 0
+                )
+                withUnsafeMutablePointer(to: &envItem) { envItemPtr in
+                    var env = AuthorizationEnvironment(count: 1, items: envItemPtr)
+                    "system.privilege.admin".withCString { rightNamePtr in
+                        var rightItem = AuthorizationItem(
+                            name: rightNamePtr, valueLength: 0, value: nil, flags: 0
+                        )
+                        withUnsafeMutablePointer(to: &rightItem) { rightItemPtr in
+                            var rights = AuthorizationRights(count: 1, items: rightItemPtr)
+                            // kAuthorizationFlagExtendRights (1<<1): acquire the right.
+                            // NOT kAuthorizationFlagInteractionAllowed: password is supplied
+                            // via environment; if wrong, fail silently, no dialog.
+                            let flags = AuthorizationFlags(rawValue: 1 << 1) // kAuthorizationFlagExtendRights
+                            let status = AuthorizationCopyRights(ref, &rights, &env, flags, nil)
+                            acquired = (status == errAuthorizationSuccess)
+                        }
+                    }
+                }
+            }
+        }
+        return acquired
+    }
+
+    // Determines whether an installer .app should be launched as root (true)
+    // or as the current user (false).
+    //
+    // Root context eliminates Authorization Services dialogs for the installer
+    // and all child processes, and satisfies ordinary filesystem permission
+    // requirements. It is appropriate for CLI-style installers.
+    //
+    // User context must be used for GUI installer apps: they access the user
+    // Keychain, write to ~/Library, use LaunchServices, and behave incorrectly
+    // as root. The pre-authorized credential cache (preAuthorizeAdmin) covers
+    // their internal Authorization Services calls.
+    //
+    // Detection signals (in priority order):
+    //   1. installbuilder.sh present → root (checks UID, simpler path as root)
+    //   2. NSPrincipalClass contains "Application" → user (GUI app)
+    //   3. Main executable links AppKit.framework → user (GUI app)
+    //   4. Unsigned binary imports _AuthorizationCopyRights → root
+    //      (macOS blocks this call for unsigned binaries; must bypass via root)
+    //   5. Default → try user context first, fall back to root if it fails
+    private static func prefersRootExecution(appURL: URL, exec: URL) -> Bool {
+        // Signal 1: installbuilder.sh
+        if exec.lastPathComponent == "installbuilder.sh" { return true }
+
+        // Signals 2 & 3: GUI app detection
+        let infoPlist = appURL.appendingPathComponent("Contents/Info.plist")
+        if let dict = NSDictionary(contentsOf: infoPlist),
+           let pc = dict["NSPrincipalClass"] as? String,
+           pc.contains("Application") { return false }
+
+        let macosDir = appURL.appendingPathComponent("Contents/MacOS")
+        let candidates = (try? FileManager.default.contentsOfDirectory(
+            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
+        for binary in candidates where binary.pathExtension.isEmpty {
+            let otool = runProcess(path: "/usr/bin/otool", arguments: ["-L", binary.path])
+            if otool.output.contains("/System/Library/Frameworks/AppKit.framework") {
+                return false  // GUI app — user context with pre-authorized cache
+            }
+        }
+
+        // Signal 4: unsigned AuthServices caller
+        if assessUnsignedAuthServicesUsage(in: macosDir) { return true }
+
+        // Default: try user context first (runPatchApp will fall back to root if needed)
+        return false
+    }
+
+    // Scans Contents/MacOS for any Mach-O binary that is (a) unsigned and
+    // (b) imports _AuthorizationCopyRights from the Security framework.
+    // On macOS 10.14+, unsigned binaries cannot complete that Authorization
+    // Services call — macOS shows "cannot be opened because the developer
+    // cannot be verified" before any password prompt appears.
+    // nm -u reads the dynamic import table (preserved even in stripped binaries)
+    // and fails cleanly for non-Mach-O files (shell scripts, plists, etc.).
+    private static func assessUnsignedAuthServicesUsage(in macosDir: URL) -> Bool {
+        let candidates = (try? FileManager.default.contentsOfDirectory(
+            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
+        for binary in candidates {
+            let nm = runProcess(path: "/usr/bin/nm", arguments: ["-u", binary.path])
+            guard nm.success, nm.output.contains("_AuthorizationCopyRights") else { continue }
+            let sig = runProcess(path: "/usr/bin/codesign", arguments: ["-dvv", binary.path])
+            let unsigned = !sig.success &&
+                (sig.output.contains("not signed at all") ||
+                 sig.output.contains("code object is not signed"))
+            if unsigned { return true }
+        }
+        return false
+    }
+
     // MARK: - Patch app runner
 
     // Runs a .app patch bundle in-place from its own Contents/MacOS/ directory.
@@ -1389,8 +1650,8 @@ struct InstallEngine {
         let candidates = (try? FileManager.default.contentsOfDirectory(
             at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
 
-        // Prefer installbuilder.sh — it selects the right arch binary and handles
-        // the runtime-name argument routing that the main binary alone requires.
+        // Prefer installbuilder.sh — selects the right arch binary and handles
+        // runtime-name argument routing that the main binary alone requires.
         let execURL: URL?
         if let sh = candidates.first(where: { $0.lastPathComponent == "installbuilder.sh" }) {
             execURL = sh
@@ -1406,10 +1667,69 @@ struct InstallEngine {
             return false
         }
 
-        // Strip quarantine in-place — do not copy
-        _ = runProcess(path: "/usr/bin/xattr", arguments: ["-cr", appURL.path])
-
         let password = KeychainManager.loadPassword() ?? ""
+
+        // ── Step 1: Per-item quarantine removal ──────────────────────────────
+        // Remove com.apple.quarantine from this specific installer if present.
+        // Prevents Gatekeeper from triggering policy assessment at exec() time.
+        // Scoped to this item only — no global Gatekeeper changes.
+        let quarantinePresent = runProcess(path: "/usr/bin/xattr",
+                                           arguments: ["-p", "com.apple.quarantine", appURL.path]).success
+        if quarantinePresent {
+            await logger.log("Removing quarantine from \(appName) before installation")
+            let qr = runProcess(path: "/usr/bin/xattr",
+                                arguments: ["-dr", "com.apple.quarantine", appURL.path])
+            if !qr.success {
+                await logger.log("⚠ Quarantine removal failed (read-only volume?): \(qr.output)")
+            }
+        }
+
+        // ── Step 2: Per-item Gatekeeper exception ("Open Anyway") ──────────────
+        // Programmatic equivalent of clicking "Open Anyway" in
+        // System Settings → Privacy & Security → General.
+        //
+        // When a .app lives inside a read-only DMG volume, quarantine xattrs on
+        // the .app itself cannot be removed (filesystem is read-only). Gatekeeper
+        // still runs its assessment at exec() time and blocks unsigned or
+        // unverified code, recording the block in Privacy & Security.
+        //
+        // spctl --add writes a per-item allow rule to /var/db/SystemPolicy — a
+        // system database on the writable boot volume, independent of the DMG.
+        // This is exactly the rule that "Open Anyway" creates. Gatekeeper then
+        // passes the assessment for this specific installer and allows the exec.
+        //
+        // Scope: this specific .app bundle only. Gatekeeper continues to enforce
+        // its policy for all other software. --master-disable is never used.
+        let escapedApp = appURL.path.replacingOccurrences(of: "'", with: "'\\''")
+        let escapedPwd = password.replacingOccurrences(of: "'", with: "'\\''")
+        let gatekeeperAssess = runProcess(path: "/usr/sbin/spctl",
+                                          arguments: ["--assess", "--type", "execute", appURL.path])
+        if !gatekeeperAssess.success {
+            await logger.log("Establishing Gatekeeper exception for \(appName)")
+            let spctlAdd = runProcess(path: "/bin/bash", arguments: ["-c",
+                "echo '\(escapedPwd)' | sudo -S /usr/sbin/spctl --add '\(escapedApp)'"])
+            if spctlAdd.success {
+                await logger.log("✓ Gatekeeper: per-item exception added for \(appName)")
+            } else {
+                await logger.log("⚠ Gatekeeper exception: \(spctlAdd.output.prefix(120))")
+            }
+        }
+
+        // ── Step 3: Authorization Services pre-authorization ─────────────────
+        // Acquire system.privilege.admin via the Security framework before launch.
+        // Populates the session-level Authorization Services credential cache.
+        // Signed installer binaries that subsequently call AuthorizationCopyRights
+        // for this right within the cache window are satisfied without a dialog.
+        let preAuthOK = preAuthorizeAdmin(password: password)
+        if preAuthOK {
+            await logger.log("Administrator authorization pre-established for \(appName)")
+        }
+
+        // ── Step 4: Execution strategy ───────────────────────────────────────
+        // Choose execution context based on the installer's actual properties.
+        // See prefersRootExecution for the full decision logic.
+        let useRoot = prefersRootExecution(appURL: appURL, exec: exec)
+
         let fullExec = exec.path.replacingOccurrences(of: "'", with: "'\\''")
         let dir      = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
         let pwd      = password.replacingOccurrences(of: "'", with: "'\\''")
@@ -1418,33 +1738,61 @@ struct InstallEngine {
 
         await logger.log("Applying patch: \(appName)")
 
-        // Try without sudo first — installbuilder.sh exits 0 as a regular user.
-        // Run via a Process so we can capture its PID for the auth watcher.
-        let patchProc = Process()
-        patchProc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        patchProc.arguments     = ["-c", "cd '\(dir)' && \(runner) --mode unattended 2>&1"]
-        let patchOut = Pipe()
-        patchProc.standardOutput = patchOut
-        patchProc.standardError  = patchOut
-        var patchPID: Int32 = 0
-        if (try? patchProc.run()) != nil {
-            patchPID = patchProc.processIdentifier
+        if useRoot {
+            // ── Root execution ────────────────────────────────────────────────
+            // Run as root — eliminates all Authorization Services dialogs for the
+            // installer and its child processes, and satisfies filesystem permission
+            // requirements without relying on the installer's own escalation path.
+            // Auth watcher is kept as a safety net for any unexpected dialog.
+            let sudoRunner = pwd.isEmpty ? runner : "echo '\(pwd)' | sudo -S \(runner)"
+            let rootProc   = Process()
+            rootProc.executableURL = URL(fileURLWithPath: "/bin/bash")
+            rootProc.arguments     = ["-c", "cd '\(dir)' && \(sudoRunner) --mode unattended 2>&1"]
+            let rootOut = Pipe()
+            rootProc.standardOutput = rootOut
+            rootProc.standardError  = rootOut
+            var rootPID: Int32 = 0
+            if (try? rootProc.run()) != nil { rootPID = rootProc.processIdentifier }
+            let rootWatcher = startAuthWatcher(password: password, installerPID: rootPID)
+            defer { rootWatcher.terminate() }
+            rootProc.waitUntilExit()
+            let out = (String(data: rootOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").lowercased()
+            let ok = rootProc.terminationStatus == 0
+                   || out.contains("finishing installation")
+                   || out.contains("successfully installed")
+                   || out.contains("success")
+            if ok { await logger.log("✓ Patch applied: \(appName)") }
+            else  { await logger.log("✗ Patch failed: \(out.prefix(200))") }
+            return ok
         }
 
-        // Auth watcher starts with the real patch process PID — stops automatically
-        // when that process exits, so it never touches dialogs from other apps.
-        let patchWatcher = startAuthWatcher(password: password, installerPID: patchPID)
-        defer { patchWatcher.terminate() }
-
-        patchProc.waitUntilExit()
-        let o1raw = String(data: patchOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let o1    = o1raw.lowercased()
-        if patchProc.terminationStatus == 0 || o1.contains("finishing installation") || o1.contains("successfully installed") {
+        // ── User-context execution ────────────────────────────────────────────
+        // Run as the current user. The pre-authorized credential cache covers
+        // Authorization Services calls from signed installer binaries.
+        // The auth watcher handles any dialog that appears despite pre-auth
+        // (e.g., a right not covered by system.privilege.admin, or cache miss).
+        let userProc = Process()
+        userProc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        userProc.arguments     = ["-c", "cd '\(dir)' && \(runner) --mode unattended 2>&1"]
+        let userOut = Pipe()
+        userProc.standardOutput = userOut
+        userProc.standardError  = userOut
+        var userPID: Int32 = 0
+        if (try? userProc.run()) != nil { userPID = userProc.processIdentifier }
+        let userWatcher = startAuthWatcher(password: password, installerPID: userPID)
+        defer { userWatcher.terminate() }
+        userProc.waitUntilExit()
+        let o1 = (String(data: userOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").lowercased()
+        if userProc.terminationStatus == 0 || o1.contains("finishing installation") || o1.contains("successfully installed") {
             await logger.log("✓ Patch applied: \(appName)")
             return true
         }
 
-        // Retry with sudo
+        // ── Root fallback ─────────────────────────────────────────────────────
+        // User-context execution failed — retry as root. Handles cases where the
+        // installer needs filesystem permissions not satisfied at user level, or
+        // where the pre-authorization cache was not sufficient.
+        await logger.log("Retrying \(appName) with administrator authorization...")
         let sudoRunner = pwd.isEmpty ? runner : "echo '\(pwd)' | sudo -S \(runner)"
         let sudoProc   = Process()
         sudoProc.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -1454,25 +1802,70 @@ struct InstallEngine {
         sudoProc.standardError  = sudoOut
         var sudoPID: Int32 = 0
         if (try? sudoProc.run()) != nil { sudoPID = sudoProc.processIdentifier }
-
-        // Restart watcher with new PID for the sudo retry
-        patchWatcher.terminate()
         let sudoWatcher = startAuthWatcher(password: password, installerPID: sudoPID)
         defer { sudoWatcher.terminate() }
-
         sudoProc.waitUntilExit()
         let o2 = (String(data: sudoOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").lowercased()
         let ok = sudoProc.terminationStatus == 0
                || o2.contains("finishing installation")
                || o2.contains("successfully installed")
                || o2.contains("success")
+        if ok { await logger.log("✓ Patch applied: \(appName)") }
+        else  { await logger.log("⚠ Unattended install failed — attempting GUI wizard: \(appName)") }
+        if ok { return true }
 
-        if ok {
-            await logger.log("✓ Patch applied: \(appName)")
-        } else {
-            await logger.log("✗ Patch failed: \(o2.prefix(200))")
+        // ── GUI wizard fallback ───────────────────────────────────────────────
+        // All headless attempts failed. Launch the .app in user context (no sudo) so
+        // ATLAS's Accessibility API can control the wizard window. The installer will
+        // request elevation on its own — the auth watcher fills any admin dialog.
+        // Only one GUI installer wizard may run at a time (GUIInstallerQueue).
+        guard exec.lastPathComponent == "installbuilder.sh" ||
+              exec.pathExtension.isEmpty else {
+            await logger.log("✗ Patch failed (no GUI wizard path for this installer type)")
+            return false
         }
-        return ok
+
+        await logger.log("Launching \(appName) GUI wizard (user context)...")
+        await GUIInstallerQueue.shared.acquire()
+        defer { Task { await GUIInstallerQueue.shared.release() } }
+
+        let processName = patchProcessName(for: appURL)
+        let openProc = Process()
+        openProc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        openProc.arguments = [appURL.path]
+        try? openProc.run()
+
+        // Wait for process to register (up to 30 s)
+        _ = await MacUIAutomator.waitFor(timeout: 30) {
+            MacUIAutomator.findApp(named: processName) != nil
+        }
+        guard MacUIAutomator.findApp(named: processName) != nil else {
+            await logger.log("✗ \(appName) did not launch within 30 s")
+            return false
+        }
+
+        // Bind auth watcher to this specific process (PID guard prevents cross-install pollution)
+        let guiPID = MacUIAutomator.findApp(named: processName)?.processIdentifier ?? 0
+        let guiWatcher = startAuthWatcher(password: password, installerPID: guiPID)
+        defer { guiWatcher.terminate() }
+
+        // Wait up to 30 s for a window to appear
+        _ = await MacUIAutomator.waitFor(timeout: 30) {
+            guard let a = MacUIAutomator.findApp(named: processName) else { return true }
+            return !MacUIAutomator.windows(of: MacUIAutomator.axApp(for: a)).isEmpty
+        }
+
+        // If it exited headlessly → success
+        guard MacUIAutomator.findApp(named: processName) != nil else {
+            await logger.log("✓ \(appName): headless exit after GUI launch")
+            return true
+        }
+
+        await logger.log("Driving \(appName) installer wizard...")
+        let wizardOK = await MacUIAutomator.driveWizard(appName: processName, timeout: 1800)
+        if wizardOK { await logger.log("✓ Patch applied via wizard: \(appName)") }
+        else        { await logger.log("✗ Wizard timed out or failed: \(appName)") }
+        return wizardOK
     }
 
     // Returns the process name System Events uses (CFBundleExecutable, not the .app filename).
@@ -2087,19 +2480,30 @@ struct InstallEngine {
         path: String, arguments: [String]
     ) -> (success: Bool, output: String) {
         let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
+        let pipe    = Pipe()
+        process.executableURL  = URL(fileURLWithPath: path)
+        process.arguments      = arguments
         process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardError  = pipe
+
+        // Drain the pipe on a background thread before waitUntilExit(). If the
+        // subprocess writes more than the macOS pipe buffer (~64 KB) and we read
+        // only after waitUntilExit(), the write side blocks and we deadlock.
+        var outputData = Data()
+        let sema = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .utility).async {
+            outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            sema.signal()
+        }
+
         do {
             try process.run()
             process.waitUntilExit()
         } catch {
             return (false, error.localizedDescription)
         }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return (process.terminationStatus == 0, String(data: data, encoding: .utf8) ?? "")
+        _ = sema.wait(timeout: .now() + 30)
+        return (process.terminationStatus == 0, String(data: outputData, encoding: .utf8) ?? "")
     }
 
     // MARK: - Library snapshot helpers
@@ -2296,6 +2700,19 @@ class InstallationManager: ObservableObject {
             }.value
             var remediationAttempted = false
 
+            // ── DAW gate early exit ───────────────────────────────────────
+            // Unsupported DAW installations are intentional refusals, not failures.
+            // No record, no history, no TITAN retry.
+            if case .unsupportedDAWInstallation(let dawName) = result {
+                logger.log("DAW installation not supported: \(dawName) — user notified.")
+                await MainActor.run {
+                    appState.phase = .idle
+                    appState.lastResult = .unsupportedDAWInstallation(dawName: dawName)
+                }
+                onComplete(false)
+                return
+            }
+
             // ── TITAN CORE™ Smart Recovery ────────────────────────────────
             if case .failure(let reason) = result {
                 if TitanCore.shared.isAvailable {
@@ -2398,6 +2815,9 @@ class InstallationManager: ObservableObject {
                 appState.lastResult = .failure(reason: reason)
                 logger.log("✗ Installation failed: \(reason)")
                 logger.log("📄 Log saved to ~/Library/Logs/ATLAS/")
+                onComplete(false)
+            case .unsupportedDAWInstallation:
+                // Handled by the early-exit guard above; unreachable here.
                 onComplete(false)
             }
         }

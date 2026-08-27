@@ -9,32 +9,23 @@ struct TourStep {
     let anchorID: String
 }
 
-let tourSteps: [TourStep] = [
-    TourStep(icon: "arrow.down.to.line.circle.fill", title: "Drop Zone",
-             body: "Drag any installer here — DMG, ZIP, PKG, RAR, VST3, or AAX. ATLAS reads the file and figures out exactly what's inside before touching your system.",
-             anchorID: "dropZone"),
-    TourStep(icon: "doc.text.magnifyingglass", title: "Scan Result",
-             body: "After scanning, ATLAS shows a full breakdown — what's inside, compatibility warnings, existing install detection, and a confidence score. Nothing installs until you say so.",
-             anchorID: "scanResult"),
-    TourStep(icon: "arrow.down.circle.fill", title: "Install Button",
-             body: "One tap installs everything. ATLAS handles admin permissions, quarantine removal, correct plugin paths, and Rosetta 2 compatibility automatically.",
-             anchorID: "installButton"),
-    TourStep(icon: "checkmark.shield.fill", title: "TITAN CORE™",
-             body: "After every install, TITAN CORE™ verifies the result — checks files landed in the right place, strips security flags, and confirms nothing is in demo or trial mode.",
-             anchorID: "titanCore"),
-    TourStep(icon: "books.vertical.fill", title: "ATLAS Library",
-             body: "Every install is saved in ATLAS Library. Search your installs, manage plugin formats, and Pro users can uninstall or roll back any install with one tap.",
-             anchorID: "history"),
-    TourStep(icon: "gearshape.fill", title: "Settings",
-             body: "Manage your account, devices, password, storage, and plan here. You can replay Tour ATLAS anytime from the Settings screen.",
-             anchorID: "settings"),
-    TourStep(icon: "lifepreserver", title: "Recovery Kit",
-             body: "Export an ATLAS RECOVERY KIT™ from ATLAS Library — a portable snapshot of everything you've installed. Keep it safe so you can rebuild your rig on any Mac, any time.",
-             anchorID: "recoveryKitSection"),
-    TourStep(icon: "checklist", title: "Recovery Mode",
-             body: "Load a Recovery Kit on a new Mac and enter Recovery Mode. Drop your original installers for each product, then ATLAS reinstalls them one by one using the same verified pipeline.",
-             anchorID: "recoveryModeButton"),
-]
+private func makeTourSteps() -> [TourStep] { [
+    TourStep(icon: "arrow.down.to.line.circle.fill",        title: L(.tourStep0Title), body: L(.tourStep0Body), anchorID: "dropZone"),
+    TourStep(icon: "books.vertical.fill",                   title: L(.tourStep1Title), body: L(.tourStep1Body), anchorID: "history"),
+    TourStep(icon: "square.stack.3d.down.right.fill",       title: L(.tourStep2Title), body: L(.tourStep2Body), anchorID: "installedProducts"),
+    TourStep(icon: "arrow.uturn.backward.circle.fill",      title: L(.tourStep3Title), body: L(.tourStep3Body), anchorID: "installedProducts"),
+    TourStep(icon: "sparkles",                              title: L(.tourStep4Title), body: L(.tourStep4Body), anchorID: "cleanerRow"),
+    TourStep(icon: "lifepreserver",                         title: L(.tourStep5Title), body: L(.tourStep5Body), anchorID: "recoveryKitSection"),
+    TourStep(icon: "gearshape.fill",                        title: L(.tourStep6Title), body: L(.tourStep6Body), anchorID: "settings"),
+    TourStep(icon: "arrow.down.to.line.circle.fill",        title: L(.tourStep7Title), body: L(.tourStep7Body), anchorID: "dropZone"),
+] }
+
+// MARK: - Card height preference (used for dynamic layout)
+
+private struct CardHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 300
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
 
 // MARK: - Arrow direction
 
@@ -46,27 +37,36 @@ struct TourView: View {
     @Binding var isShowing: Bool
     var frames: [String: CGRect]
     var containerSize: CGSize
+    var onLibraryOpen: (() -> Void)? = nil
+    var onTourEnd:     (() -> Void)? = nil
 
+    @ObservedObject private var langMgr = LanguageManager.shared
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
     @State private var step = 0
     @State private var dontShowAgain = false
     @State private var cardOpacity: Double = 0
     @State private var cardOffset: CGFloat = 12
+    @State private var cardHeight: CGFloat = 300
 
     private let cardW: CGFloat = 298
     private let arrowLen: CGFloat = 10
     private let gap: CGFloat = 14
     private let margin: CGFloat = 10
 
+    private var tourSteps: [TourStep] { makeTourSteps() }
     private var current: TourStep { tourSteps[step] }
     private var isLast:  Bool { step == tourSteps.count - 1 }
     private var isFirst: Bool { step == 0 }
 
     // Returns (card top-left origin, which side the arrow is on, arrow position along that edge)
+    // Uses measured cardHeight so the card never clips regardless of content length.
     private func layout() -> (CGPoint, ArrowSide, CGFloat) {
+        let ch_card = cardHeight   // real measured height (or conservative default on first frame)
+        let halfH   = ch_card / 2
+
         guard let rect = frames[current.anchorID], containerSize.width > 0 else {
             return (CGPoint(x: (containerSize.width - cardW) / 2,
-                            y: (containerSize.height - 260) / 2), .none, cardW / 2)
+                            y: (containerSize.height - ch_card) / 2), .none, cardW / 2)
         }
         let cw = containerSize.width
         let ch = containerSize.height
@@ -76,30 +76,30 @@ struct TourView: View {
         let spaceBelow = ch - rect.maxY
         let spaceAbove = rect.minY
 
-        // Right
+        // Right — prefer if there's room for the full card width + gap
         if spaceRight >= cardW + gap + margin {
             let x = rect.maxX + gap
-            let y = (rect.midY - 130).clamped(margin, ch - 260 - margin)
-            let arrowY = (rect.midY - y).clamped(20, 220)
+            let y = (rect.midY - halfH).clamped(margin, ch - ch_card - margin)
+            let arrowY = (rect.midY - y).clamped(20, ch_card - 20)
             return (CGPoint(x: x, y: y), .left, arrowY)
         }
         // Left
         if spaceLeft >= cardW + gap + margin {
             let x = rect.minX - gap - cardW
-            let y = (rect.midY - 130).clamped(margin, ch - 260 - margin)
-            let arrowY = (rect.midY - y).clamped(20, 220)
+            let y = (rect.midY - halfH).clamped(margin, ch - ch_card - margin)
+            let arrowY = (rect.midY - y).clamped(20, ch_card - 20)
             return (CGPoint(x: x, y: y), .right, arrowY)
         }
-        // Below
-        if spaceBelow >= 200 + gap + margin {
+        // Below — only if the full card fits below the anchor
+        if spaceBelow >= ch_card + gap + margin {
             let x = (rect.midX - cardW / 2).clamped(margin, cw - cardW - margin)
             let y = rect.maxY + gap
             let arrowX = (rect.midX - x).clamped(20, cardW - 20)
             return (CGPoint(x: x, y: y), .top, arrowX)
         }
-        // Above
+        // Above — clamp so card never goes below window bottom
         let x = (rect.midX - cardW / 2).clamped(margin, cw - cardW - margin)
-        let y = max(margin, rect.minY - gap - 260)
+        let y = (rect.minY - gap - ch_card).clamped(margin, ch - ch_card - margin)
         let arrowX = (rect.midX - x).clamped(20, cardW - 20)
         return (CGPoint(x: x, y: y), .bottom, arrowX)
     }
@@ -130,10 +130,16 @@ struct TourView: View {
             // Card + arrow
             cardView(arrowSide: arrowSide, arrowOffset: arrowOffset)
                 .frame(width: cardW)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: CardHeightKey.self, value: geo.size.height)
+                })
                 .offset(x: origin.x, y: origin.y)
                 .opacity(cardOpacity)
                 .offset(y: cardOffset)
                 .animation(.spring(response: 0.38, dampingFraction: 0.78), value: step)
+        }
+        .onPreferenceChange(CardHeightKey.self) { h in
+            if abs(h - cardHeight) > 1 { cardHeight = h }
         }
         .onAppear {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
@@ -156,10 +162,10 @@ struct TourView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack(spacing: 4) {
-                    Text("Tour ATLAS")
+                    Text(L(.tourAtlasTitle))
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(Color(hex: "#3ECFB2"))
-                    Text("· \(step + 1) of \(tourSteps.count)")
+                    Text("· \(String(format: L(.tourStepOfFmt), step + 1, tourSteps.count))")
                         .font(.system(size: 9))
                         .foregroundColor(Color(hex: "#696E7C"))
                     Spacer()
@@ -214,7 +220,7 @@ struct TourView: View {
                         Image(systemName: dontShowAgain ? "checkmark.square.fill" : "square")
                             .font(.system(size: 12))
                             .foregroundColor(dontShowAgain ? Color(hex: "#3ECFB2") : Color(hex: "#696E7C"))
-                        Text("Don't show this again")
+                        Text(L(.tourDontShowAgain))
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#696E7C"))
                         Spacer()
@@ -233,7 +239,7 @@ struct TourView: View {
                         Button { navigate(-1) } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.left").font(.system(size: 9, weight: .semibold))
-                                Text("Back").font(.system(size: 11, weight: .medium))
+                                Text(L(.tourBack)).font(.system(size: 11, weight: .medium))
                             }
                             .foregroundColor(Color(hex: "#696E7C"))
                             .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -248,7 +254,7 @@ struct TourView: View {
                         if isLast { if dontShowAgain { tourDismissed = true }; close() } else { navigate(1) }
                     } label: {
                         HStack(spacing: 4) {
-                            Text(isLast ? "Done" : "Next").font(.system(size: 11, weight: .semibold))
+                            Text(isLast ? L(.done) : L(.tourNext)).font(.system(size: 11, weight: .semibold))
                             if !isLast { Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold)) }
                         }
                         .foregroundColor(Color(hex: "#08090E"))
@@ -297,15 +303,27 @@ struct TourView: View {
     }
 
     private func navigate(_ dir: Int) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-            step = max(0, min(tourSteps.count - 1, step + dir))
+        let next = max(0, min(tourSteps.count - 1, step + dir))
+        // Stepping forward from step 1 → step 2 opens the Library panel first
+        if dir > 0 && step == 1 && next == 2 {
+            onLibraryOpen?()
+            withAnimation(.easeOut(duration: 0.15)) { cardOpacity = 0 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) { step = next }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) { cardOpacity = 1 }
+            }
+            return
         }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) { step = next }
     }
 
     private func close() {
         if dontShowAgain { tourDismissed = true }
         withAnimation(.easeOut(duration: 0.18)) { cardOpacity = 0; cardOffset = 8 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { isShowing = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            isShowing = false
+            onTourEnd?()
+        }
     }
 
     @ViewBuilder

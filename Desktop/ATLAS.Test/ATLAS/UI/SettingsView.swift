@@ -47,12 +47,14 @@ struct SettingsView: View {
     @State private var volumes: [VolumeInfo] = []
     @State private var showSignOutConfirm = false
     @State private var showSupport = false
-    @AppStorage("atlas.tourDismissed") private var tourDismissed = false
+    @AppStorage("atlas.tourDismissed")       private var tourDismissed       = false
+    @AppStorage("atlas.titanVScanEnabled")   private var titanVScanEnabled   = true
     @State private var gatekeeperFixRunning = false
     @State private var gatekeeperFixResult: String? = nil
     @State private var notificationsEnabled = false
     @State private var notifPermissionDenied = false
     @State private var showTitanMemory = false
+    @State private var isInternalNotifUpdate = false
 
     private static let notifKey = "ATLAS.notificationsEnabled"
 
@@ -65,7 +67,7 @@ struct SettingsView: View {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color(hex: "#3ECFB2"))
-                    Text("Settings")
+                    Text(L(.settings))
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                 }
@@ -91,6 +93,10 @@ struct SettingsView: View {
                     sectionHeader("TITAN CORE™")
                     VStack(spacing: 0) {
                         titanToggleRow
+                        if auth.isPro {
+                            Divider().background(Color.atlasSeparator).padding(.leading, 52)
+                            vscanToggleRow
+                        }
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)
@@ -135,7 +141,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Appearance ────────────────────────────────────
-                    sectionHeader("Appearance")
+                    sectionHeader(L(.appearance))
                     VStack(spacing: 0) {
                         appearanceRow
                     }
@@ -144,18 +150,18 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Account ───────────────────────────────────────
-                    sectionHeader("Account")
+                    sectionHeader(L(.account))
                     accountSection
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
 
                     // ── Support ───────────────────────────────────────
-                    sectionHeader("Support")
+                    sectionHeader(L(.supportLabel))
                     VStack(spacing: 0) {
                         infoRow(
                             icon: "questionmark.circle.fill",
                             iconColor: Color(hex: "#3ECFB2"),
-                            title: "Get Help",
+                            title: L(.getHelp),
                             subtitle: "Contact InterLinked support",
                             action: { showSupport = true }
                         )
@@ -163,8 +169,8 @@ struct SettingsView: View {
                         infoRow(
                             icon: "map.fill",
                             iconColor: Color(hex: "#7090B8"),
-                            title: "Tour ATLAS",
-                            subtitle: "Replay the ATLAS walkthrough",
+                            title: L(.tourAtlasTitle),
+                            subtitle: L(.replayWalkthrough),
                             action: {
                                 tourDismissed = false
                                 dismiss()
@@ -177,7 +183,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Tools ─────────────────────────────────────────
-                    sectionHeader("Tools")
+                    sectionHeader(L(.tools))
                     VStack(spacing: 0) {
                         // Gatekeeper fix
                         HStack(spacing: 12) {
@@ -190,10 +196,10 @@ struct SettingsView: View {
                                     .foregroundColor(Color(hex: "#F0A030"))
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Fix Blocked Plugins")
+                                Text(L(.fixBlockedPlugins))
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
-                                Text(gatekeeperFixResult ?? "Remove macOS security blocks from installed plugins")
+                                Text(gatekeeperFixResult ?? L(.removeSecurityBlocks))
                                     .font(.system(size: 11))
                                     .foregroundColor(gatekeeperFixResult != nil ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
                                     .lineLimit(2)
@@ -204,7 +210,7 @@ struct SettingsView: View {
                                     .scaleEffect(0.7)
                                     .frame(width: 24, height: 24)
                             } else {
-                                Button("Fix") {
+                                Button(L(.fix)) {
                                     gatekeeperFixRunning = true
                                     gatekeeperFixResult = nil
                                     Task {
@@ -238,7 +244,7 @@ struct SettingsView: View {
                     Group {
 
                     // ── Install Limits ────────────────────────────────
-                    sectionHeader("Install Limits")
+                    sectionHeader(L(.installLimits))
                     VStack(spacing: 0) {
                         let isPro       = auth.isPro
                         let planColor   = isPro ? Color(hex: "#3ECFB2") : Color(hex: "#7090B8")
@@ -261,7 +267,7 @@ struct SettingsView: View {
                                 }
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
-                                        Text("Daily Installations")
+                                        Text(L(.dailyInstallations))
                                             .font(.system(size: 12, weight: .medium))
                                             .foregroundColor(Color.atlasLabel)
                                         Spacer()
@@ -278,7 +284,7 @@ struct SettingsView: View {
                                         }
                                     }
                                     .frame(height: 4)
-                                    Text(dailyRem == 0 ? "Resets at midnight" : "\(dailyRem) remaining today")
+                                    Text(dailyRem == 0 ? L(.resetsAtMidnight) : String(format: L(.remainingTodayFmt), dailyRem))
                                         .font(.system(size: 10))
                                         .foregroundColor(Color.atlasSubtitle)
                                 }
@@ -299,7 +305,7 @@ struct SettingsView: View {
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("Monthly Installations")
+                                    Text(L(.monthlyInstallations))
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundColor(Color.atlasLabel)
                                     Spacer()
@@ -316,7 +322,7 @@ struct SettingsView: View {
                                     }
                                 }
                                 .frame(height: 4)
-                                Text(monthlyRem == 0 ? "Refills on billing date" : "\(monthlyRem) remaining this month")
+                                Text(monthlyRem == 0 ? L(.refillsOnBillingDate) : String(format: L(.remainingThisMonthFmt), monthlyRem))
                                     .font(.system(size: 10))
                                     .foregroundColor(Color.atlasSubtitle)
                             }
@@ -328,7 +334,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Notifications ─────────────────────────────────
-                    sectionHeader("Notifications")
+                    sectionHeader(L(.notificationsLabel))
                     VStack(spacing: 0) {
                         HStack(spacing: 12) {
                             ZStack {
@@ -340,12 +346,12 @@ struct SettingsView: View {
                                     .foregroundColor(Color(hex: "#E05555"))
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Install & Uninstall Alerts")
+                                Text(L(.installAlerts))
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
                                 Text(notifPermissionDenied
-                                     ? "Enable in System Settings → Notifications"
-                                     : (notificationsEnabled ? "On — you'll be notified when operations finish" : "Off"))
+                                     ? L(.enableInSystemSettings)
+                                     : (notificationsEnabled ? L(.notifOn) : L(.notifOff)))
                                     .font(.system(size: 11))
                                     .foregroundColor(notifPermissionDenied
                                                      ? Color(hex: "#F0A030")
@@ -358,6 +364,12 @@ struct SettingsView: View {
                                 .scaleEffect(0.85)
                                 .tint(Color(hex: "#3ECFB2"))
                                 .onChange(of: notificationsEnabled) { enabled in
+                                    print("[ATLAS-NOTIF-DIAG] onChange fired: enabled=\(enabled) isInternalNotifUpdate=\(isInternalNotifUpdate)")
+                                    guard !isInternalNotifUpdate else {
+                                        print("[ATLAS-NOTIF-DIAG] onChange: BLOCKED by isInternalNotifUpdate guard")
+                                        return
+                                    }
+                                    print("[ATLAS-NOTIF-DIAG] onChange: calling handleNotifToggle(\(enabled))")
                                     handleNotifToggle(enabled)
                                 }
                         }
@@ -368,7 +380,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Storage ───────────────────────────────────────
-                    sectionHeader("Storage")
+                    sectionHeader(L(.storageLabel))
                     VStack(spacing: 0) {
                         ForEach(Array(volumes.enumerated()), id: \.element.id) { idx, vol in
                             if idx > 0 {
@@ -381,7 +393,7 @@ struct SettingsView: View {
                                 Image(systemName: "internaldrive")
                                     .font(.system(size: 13))
                                     .foregroundColor(Color.atlasSubtitle)
-                                Text("No volumes found")
+                                Text(L(.noVolumesFound))
                                     .font(.system(size: 12))
                                     .foregroundColor(Color.atlasSubtitle)
                             }
@@ -393,7 +405,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── About ─────────────────────────────────────────
-                    sectionHeader("About")
+                    sectionHeader(L(.about))
                     VStack(spacing: 0) {
                         infoRow(
                             icon: "sparkle",
@@ -406,8 +418,8 @@ struct SettingsView: View {
                         infoRow(
                             icon: "doc.text.fill",
                             iconColor: Color.atlasSubtitle,
-                            title: "View Logs",
-                            subtitle: "Open install & uninstall log folder",
+                            title: L(.viewLogs),
+                            subtitle: L(.openLogFolder),
                             action: { InstallLogger.openLogsInFinder() }
                         )
                     }
@@ -432,11 +444,11 @@ struct SettingsView: View {
             Task { await auth.fetchDevices() }
             checkNotificationState()
         }
-        .confirmationDialog("Sign out of ATLAS?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
-            Button("Sign Out", role: .destructive) { auth.signOut() }
-            Button("Cancel", role: .cancel) {}
+        .confirmationDialog(L(.signOutTitle), isPresented: $showSignOutConfirm, titleVisibility: .visible) {
+            Button(L(.signOut), role: .destructive) { auth.signOut() }
+            Button(L(.cancel), role: .cancel) {}
         } message: {
-            Text("You will need to sign in again to use ATLAS.")
+            Text(L(.signOutConfirmMsg))
         }
         .sheet(isPresented: $showSupport) {
             SupportView()
@@ -637,7 +649,7 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#E05555"))
                     }
-                    Text("Sign Out")
+                    Text(L(.signOut))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Color(hex: "#E05555"))
                     Spacer()
@@ -747,6 +759,46 @@ struct SettingsView: View {
         .padding(.vertical, 10)
     }
 
+    // MARK: - TITAN VSCAN™ toggle row
+
+    @ViewBuilder
+    private var vscanToggleRow: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color(hex: "#3ECFB2").opacity(0.15))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(hex: "#3ECFB2"))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(L(.vscanSettingTitle))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.atlasLabel)
+                    Text("PRO")
+                        .font(.system(size: 8, weight: .black))
+                        .tracking(0.8)
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(Color(hex: "#3ECFB2").opacity(0.12))
+                        .cornerRadius(4)
+                }
+                Text(L(.vscanSettingSubtitle))
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.atlasSubtitle)
+            }
+            Spacer()
+            Toggle("", isOn: $titanVScanEnabled)
+                .toggleStyle(.switch)
+                .scaleEffect(0.8)
+                .frame(width: 44)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
     // MARK: - Appearance row
 
     @ViewBuilder
@@ -826,34 +878,114 @@ struct SettingsView: View {
 
     private func checkNotificationState() {
         let saved = UserDefaults.standard.bool(forKey: Self.notifKey)
+        print("[ATLAS-NOTIF-DIAG] checkNotificationState() called — saved(UserDefaults)=\(saved) current @State notificationsEnabled=\(notificationsEnabled)")
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
                 let granted = settings.authorizationStatus == .authorized ||
                               settings.authorizationStatus == .provisional
+                let statusName: String
+                switch settings.authorizationStatus {
+                case .notDetermined: statusName = "notDetermined"
+                case .denied:        statusName = "denied"
+                case .authorized:    statusName = "authorized"
+                case .provisional:   statusName = "provisional"
+                case .ephemeral:     statusName = "ephemeral"
+                @unknown default:    statusName = "unknown(\(settings.authorizationStatus.rawValue))"
+                }
+                print("[ATLAS-NOTIF-DIAG] checkNotificationState callback: status=\(statusName)(\(settings.authorizationStatus.rawValue)) saved=\(saved) granted=\(granted) → notificationsEnabled will be set to \(granted && saved)")
                 notifPermissionDenied = settings.authorizationStatus == .denied
                 notificationsEnabled  = granted && saved
+                print("[ATLAS-NOTIF-DIAG] checkNotificationState: notificationsEnabled ASSIGNED = \(notificationsEnabled)")
             }
         }
     }
 
     private func handleNotifToggle(_ enabled: Bool) {
-        guard !notifPermissionDenied else {
-            // Bounce user to System Settings since permission was explicitly denied
-            NSWorkspace.shared.open(
-                URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
-            notificationsEnabled = false
-            return
-        }
+        print("[ATLAS-NOTIF-DIAG] handleNotifToggle(\(enabled)) called — current @State notificationsEnabled=\(notificationsEnabled) UserDefaults=\(UserDefaults.standard.bool(forKey: Self.notifKey))")
         if enabled {
-            UNUserNotificationCenter.current().requestAuthorization(
-                options: [.alert, .sound, .badge]) { granted, _ in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
                 DispatchQueue.main.async {
-                    notificationsEnabled = granted
-                    notifPermissionDenied = !granted
-                    UserDefaults.standard.set(granted, forKey: Self.notifKey)
+                    let statusName: String
+                    switch settings.authorizationStatus {
+                    case .notDetermined: statusName = "notDetermined"
+                    case .denied:        statusName = "denied"
+                    case .authorized:    statusName = "authorized"
+                    case .provisional:   statusName = "provisional"
+                    case .ephemeral:     statusName = "ephemeral"
+                    @unknown default:    statusName = "unknown(\(settings.authorizationStatus.rawValue))"
+                    }
+                    print("[ATLAS-NOTIF-DIAG] handleNotifToggle(true) getNotificationSettings: status=\(statusName)(\(settings.authorizationStatus.rawValue))")
+
+                    switch settings.authorizationStatus {
+                    case .authorized, .provisional:
+                        // macOS has already granted permission — respect it directly.
+                        print("[ATLAS-NOTIF-DIAG] → .authorized branch: will set notificationsEnabled=true, UserDefaults=true (no requestAuthorization)")
+                        isInternalNotifUpdate = true
+                        notificationsEnabled = true
+                        notifPermissionDenied = false
+                        isInternalNotifUpdate = false
+                        UserDefaults.standard.set(true, forKey: Self.notifKey)
+                        print("[ATLAS-NOTIF-DIAG] → .authorized branch: notificationsEnabled ASSIGNED=\(notificationsEnabled) UserDefaults now=\(UserDefaults.standard.bool(forKey: Self.notifKey))")
+
+                    case .notDetermined:
+                        // First-time prompt: ask macOS, then re-check actual status.
+                        print("[ATLAS-NOTIF-DIAG] → .notDetermined branch: calling requestAuthorization")
+                        UNUserNotificationCenter.current().requestAuthorization(
+                            options: [.alert, .sound, .badge]) { granted, error in
+                            print("[ATLAS-NOTIF-DIAG] → requestAuthorization completed: granted=\(granted) error=\(String(describing: error))")
+                            UNUserNotificationCenter.current().getNotificationSettings { s in
+                                DispatchQueue.main.async {
+                                    let nowGranted = s.authorizationStatus == .authorized ||
+                                                     s.authorizationStatus == .provisional
+                                    let nowDenied  = s.authorizationStatus == .denied
+                                    let sName: String
+                                    switch s.authorizationStatus {
+                                    case .notDetermined: sName = "notDetermined"
+                                    case .denied:        sName = "denied"
+                                    case .authorized:    sName = "authorized"
+                                    case .provisional:   sName = "provisional"
+                                    case .ephemeral:     sName = "ephemeral"
+                                    @unknown default:    sName = "unknown(\(s.authorizationStatus.rawValue))"
+                                    }
+                                    print("[ATLAS-NOTIF-DIAG] → post-auth getNotificationSettings: status=\(sName)(\(s.authorizationStatus.rawValue)) nowGranted=\(nowGranted) nowDenied=\(nowDenied) currentUserDefaults=\(UserDefaults.standard.bool(forKey: Self.notifKey))")
+                                    print("[ATLAS-NOTIF-DIAG] → pre-assign: @State notificationsEnabled=\(notificationsEnabled) isInternalNotifUpdate=\(isInternalNotifUpdate)")
+                                    isInternalNotifUpdate = true
+                                    notificationsEnabled = nowGranted
+                                    notifPermissionDenied = nowDenied
+                                    isInternalNotifUpdate = false
+                                    print("[ATLAS-NOTIF-DIAG] → post-assign: @State notificationsEnabled=\(notificationsEnabled)")
+                                    if nowGranted {
+                                        UserDefaults.standard.set(true, forKey: Self.notifKey)
+                                        print("[ATLAS-NOTIF-DIAG] → UserDefaults written true")
+                                    } else {
+                                        print("[ATLAS-NOTIF-DIAG] → UserDefaults NOT written (nowGranted=false)")
+                                    }
+                                }
+                            }
+                        }
+
+                    case .denied:
+                        // User explicitly denied in System Settings — direct them there.
+                        print("[ATLAS-NOTIF-DIAG] → .denied branch: opening System Settings, notificationsEnabled=false")
+                        NSWorkspace.shared.open(
+                            URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+                        isInternalNotifUpdate = true
+                        notificationsEnabled = false
+                        notifPermissionDenied = true
+                        isInternalNotifUpdate = false
+
+                    default:
+                        // Unknown/ephemeral state — do not classify as denied.
+                        print("[ATLAS-NOTIF-DIAG] → default branch: status=\(settings.authorizationStatus.rawValue), setting notificationsEnabled=false")
+                        isInternalNotifUpdate = true
+                        notificationsEnabled = false
+                        isInternalNotifUpdate = false
+                    }
                 }
             }
         } else {
+            // User turned OFF — store preference, do nothing to macOS authorization.
+            print("[ATLAS-NOTIF-DIAG] handleNotifToggle(false): writing UserDefaults=false, no auth changes")
             UserDefaults.standard.set(false, forKey: Self.notifKey)
         }
     }

@@ -213,6 +213,36 @@ struct RollbackEngine {
             await logger.log("Receipt scan complete — \(candidates.count) raw candidate(s)")
         }
 
+        // Legacy name-based fallback: when no tracking data AND no PKG receipts exist,
+        // search standard audio/app install locations by product name.
+        // Only paths whose filename stem exactly matches the derived product name are included.
+        // This covers installers (e.g. InstallBuilder) that don't use Apple PKG receipts and
+        // were installed before ATLAS began tracking individual files.
+        if record.installedFiles.isEmpty && record.pkgReceiptIDs.isEmpty && candidates.isEmpty {
+            let productName = deriveProductName(from: record.fileName)
+            alog.notice("[ATLAS-ROLLBACK] LEGACY NAME SCAN — productName=\(productName, privacy: .public)")
+            await logger.log("No tracking data found. Searching installed locations for \"\(productName)\"...")
+            let found = legacyNameScan(productName: productName)
+            if found.isEmpty {
+                let msg = "No installed components found for \"\(productName)\". The software may already be uninstalled or may be installed to a non-standard location."
+                await logger.log("⚠ \(msg)")
+                alog.notice("[ATLAS-ROLLBACK] LEGACY NAME SCAN: nothing found")
+                return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: msg)
+            }
+            let foundNames = found.map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ")
+            await logger.log("Legacy scan found \(found.count) component(s): \(foundNames)")
+            alog.notice("[ATLAS-ROLLBACK] LEGACY NAME SCAN: found=\(found.count) paths=\(found.joined(separator: "; "), privacy: .public)")
+            let legacyBundleExts: Set<String> = ["component","vst3","vst","aaxplugin","app","framework","plugin","bundle"]
+            for path in found {
+                candidates.insert(path)
+                positivelyOwnedPaths.insert(path)
+                let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+                if legacyBundleExts.contains(ext) {
+                    runtimeTrustedPaths.insert(path)
+                }
+            }
+        }
+
         // Runtime-created paths (filesystem diff at install time) — diagnostic and deferred cleanup only.
         // These paths are NOT independently authorized for deletion.
         // Files: only deletable via installedFiles or pkgReceiptIDs (already in candidates above).
@@ -532,6 +562,86 @@ struct RollbackEngine {
             detail: detail,
             manifestPath: manifestPath
         )
+    }
+
+    // MARK: - Legacy name-based fallback (no tracking data, no PKG receipts)
+
+    // Strips version suffixes and separators from an installer filename to produce a
+    // human-readable product name suitable for filesystem matching.
+    // "Unison.Sound.Doctor.v1.3.19.dmg" → "Unison Sound Doctor"
+    // "Baby.Audio.Smooth.Operator.Pro.v2.1.pkg" → "Baby Audio Smooth Operator Pro"
+    private static func deriveProductName(from fileName: String) -> String {
+        var name = URL(fileURLWithPath: fileName).deletingPathExtension().lastPathComponent
+        // Strip trailing version suffix: .v1.2.3 / _v1.2 / -1.2.3 / ,v1.0.53 etc.
+        // Comma is included because some filenames use it as a separator before the version.
+        let versionPattern = #"[._\-,]v?\d+(\.\d+)*$"#
+        while let range = name.range(of: versionPattern, options: [.regularExpression, .backwards]) {
+            let stripped = String(name[name.startIndex..<range.lowerBound])
+            if stripped.isEmpty { break }
+            name = stripped
+        }
+        // Replace separators with spaces and collapse runs.
+        name = name
+            .replacingOccurrences(of: ".", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: ",", with: " ")
+        while name.contains("  ") { name = name.replacingOccurrences(of: "  ", with: " ") }
+        return name.trimmingCharacters(in: .whitespaces)
+    }
+
+    // Searches standard audio plugin and application directories for items belonging
+    // to the installation. Uses two independent signals — stem name and CFBundleName —
+    // requiring exact (case-insensitive) equality on the derived product name.
+    // Stem match: filesystem filename without extension matches derived product name.
+    // Bundle name match: CFBundleName in Info.plist matches derived product name exactly.
+    // Both signals require exact equality, never substring or partial matches.
+    private static func legacyNameScan(productName: String) -> [String] {
+        let home = NSHomeDirectory()
+        let searchDirs = [
+            "/Library/Audio/Plug-Ins/VST3",
+            "/Library/Audio/Plug-Ins/Components",
+            "/Library/Audio/Plug-Ins/VST",
+            "/Library/Audio/Plug-Ins/CLAP",
+            "/Library/Audio/Plug-Ins/AAX",
+            "/Library/Application Support/Avid/Audio/Plug-Ins",
+            "/Applications",
+            "\(home)/Library/Audio/Plug-Ins/VST3",
+            "\(home)/Library/Audio/Plug-Ins/Components",
+            "\(home)/Library/Audio/Plug-Ins/VST",
+            "\(home)/Library/Applications",
+        ]
+        let bundleExts: Set<String> = ["component", "vst3", "vst", "aaxplugin", "clap", "app", "bundle", "plugin"]
+        let lowerTarget = productName.lowercased()
+        var found: [String] = []
+        let fm = FileManager.default
+
+        for dir in searchDirs {
+            guard let items = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            for item in items {
+                let fullPath = "\(dir)/\(item)"
+                let itemURL  = URL(fileURLWithPath: item)
+                let stem     = itemURL.deletingPathExtension().lastPathComponent.lowercased()
+                let ext      = itemURL.pathExtension.lowercased()
+
+                // Signal 1: stem name matches exactly
+                if stem == lowerTarget {
+                    if !found.contains(fullPath) { found.append(fullPath) }
+                    continue
+                }
+
+                // Signal 2: CFBundleName matches exactly (for bundle types only)
+                // This covers cases where the plugin's declared name differs from the bundle filename.
+                guard bundleExts.contains(ext) else { continue }
+                let infoPlist = "\(fullPath)/Contents/Info.plist"
+                if let dict = NSDictionary(contentsOfFile: infoPlist),
+                   let bundleName = dict["CFBundleName"] as? String,
+                   bundleName.lowercased() == lowerTarget {
+                    if !found.contains(fullPath) { found.append(fullPath) }
+                }
+            }
+        }
+        return found
     }
 
     // MARK: - Hosts removal (TITAN CORE™ rollback, PRO only)
@@ -890,7 +1000,7 @@ struct RollbackEngine {
                     URL(fileURLWithPath: parent).deletingLastPathComponent().path
                 ) || aggregates.contains(parent)
 
-                if !protected.contains(parent) && !parentIsVendorRoot && fullyOwned {
+                if !protected.contains(parent) && !parentIsVendorRoot && fullyOwned && positivelyOwned.contains(parent) {
                     next.insert(parent)
                     changed = true
                 } else {

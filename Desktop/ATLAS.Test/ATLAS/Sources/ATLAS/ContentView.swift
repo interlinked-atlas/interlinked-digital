@@ -65,12 +65,17 @@ struct ContentView: View {
     @State private var pendingScanResult: ScanResult? = nil
     // Carries docInfo from the single-file scan path into the install completion handler
     @State private var pendingDocInfo: InstallerDocInfo? = nil
-    @AppStorage("atlasGreetingShown") private var greetingShown = false
+    @AppStorage("atlasGreetingShown")        private var greetingShown      = false
+    @AppStorage("atlas.titanVScanEnabled")   private var titanVScanEnabled  = true
     @AppStorage("atlas.tourDismissed") private var tourDismissed = false
     @AppStorage("atlas.setupComplete") private var setupComplete = false
     @State private var showPermissionsSheet = false
     @State private var showTour = false
     @State private var showAtlasSelfInstallAlert = false
+    @State private var showUninstallNotTracked = false
+    @State private var uninstallNotTrackedName = ""
+    @State private var showUnsupportedDAWAlert = false
+    @State private var unsupportedDAWName = ""
     // Recovery Mode state
     @State private var showRecoveryMode = false
     @State private var recoveryEngine: RecoveryModeEngine? = nil
@@ -84,6 +89,8 @@ struct ContentView: View {
     @State private var titanPreScanMount: String = ""  // ISO pre-scan mount point — unmounted on dismiss
     @State private var titanMountPoint: String = ""
     @State private var titanSourceURL: URL? = nil
+    // Scan generation token — incremented to invalidate stale async scan tasks
+    @State private var scanGeneration: Int = 0
 
     var body: some View {
         Group {
@@ -212,6 +219,16 @@ struct ContentView: View {
         } message: {
             Text("ATLAS cannot install or uninstall itself. Please drag a different installer file.")
         }
+        .alert("Cannot Uninstall", isPresented: $showUninstallNotTracked) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("ATLAS doesn't have file tracking data for \"\(uninstallNotTrackedName)\". This installation was completed before ATLAS began tracking individual files, so it cannot be automatically uninstalled.")
+        }
+        .alert("Unable to Install This DAW", isPresented: $showUnsupportedDAWAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("ATLAS cannot install \(unsupportedDAWName) in this version.\n\nPlease wait for a future ATLAS update for full DAW installation support. Coming soon!\n\nATLAS can still install compatible plugins, presets, and libraries for this DAW.")
+        }
         .alert("Files Permanently Deleted", isPresented: $showTrashEmptiedAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -287,7 +304,8 @@ struct ContentView: View {
                             showHistory = false
                             recoveryEngine = RecoveryModeEngine(kit: kit, store: historyStore)
                             showRecoveryMode = true
-                        }
+                        },
+                        activeRecoveryEngine: recoveryEngine
                     )
                     .shadow(color: .black.opacity(0.25), radius: 16, x: -4, y: 0)
                 }
@@ -352,7 +370,21 @@ struct ContentView: View {
                     let frames = anchors.mapValues { proxy[$0] }
                     TourView(isShowing: $showTour,
                              frames: frames,
-                             containerSize: proxy.size)
+                             containerSize: proxy.size,
+                             onLibraryOpen: {
+                                 if !showHistory {
+                                     withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                                         showHistory = true
+                                     }
+                                 }
+                             },
+                             onTourEnd: {
+                                 if showHistory {
+                                     withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                                         showHistory = false
+                                     }
+                                 }
+                             })
                         .transition(.opacity)
                 }
             }
@@ -525,6 +557,13 @@ struct ContentView: View {
                         appState.reset()
                         detachTitanPreScanMount()
                         withAnimation { showDropZone = true }
+                    },
+                    onCancel: {
+                        showTitanMission = false
+                        activeTitanMission = nil
+                        appState.reset()
+                        detachTitanPreScanMount()
+                        withAnimation { showDropZone = true }
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -560,10 +599,9 @@ struct ContentView: View {
                     ) && !queue.isProcessing
 
                     if isSingleInstall {
-                        ATLASInstallOverlayView(
+                        StandardInstallProgressView(
                             appState: appState,
-                            logger:   logger,
-                            fileName: appState.selectedFileURL?.lastPathComponent ?? ""
+                            logger:   logger
                         )
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
                     } else if !queue.isProcessing {
@@ -787,7 +825,7 @@ struct ContentView: View {
             // Logo + ATLAS name — tap opens About
             Button { showAbout = true } label: {
                 HStack(spacing: 6) {
-                    if let url = Bundle.module.url(forResource: "ATLAS", withExtension: "png"),
+                    if let url = Bundle.atlasResources.url(forResource: "ATLAS", withExtension: "png"),
                        let nsImage = NSImage(contentsOf: url) {
                         Image(nsImage: nsImage)
                             .resizable()
@@ -938,11 +976,113 @@ struct ContentView: View {
 
     // MARK: - Main content
 
+    private var blockedDAWNameFromPhase: String? {
+        guard case .dawBlocked(let name) = appState.phase else { return nil }
+        return name
+    }
+
+    // Extracted to keep mainContent below the Swift type-checker complexity limit.
+    @ViewBuilder
+    private var scanStateContent: some View {
+        if appState.phase == .scanning { scanningIndicator }
+
+        if let dawName = blockedDAWNameFromPhase {
+            DAWBlockedView(dawName: dawName) {
+                appState.reset()
+                withAnimation { showDropZone = true }
+            }
+        }
+
+        if appState.phase == .scanned,
+           let scanResult = appState.scanResult,
+           !queue.hasItems {
+            ScanResultView(
+                result: scanResult,
+                onInstall: { beginInstallFromScan(url: scanResult.fileURL, scanResult: scanResult) },
+                onCancel: {
+                    appState.reset()
+                    logger.clear()
+                    withAnimation { showDropZone = true }
+                },
+                onShare: nil
+            )
+            .tourAnchor("scanResult")
+            .sheet(isPresented: $showVScanSheet) {
+                if let vsResult = pendingVScanResult, let url = pendingVScanURL {
+                    TitanVScanView(
+                        result: vsResult,
+                        onProceed: {
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            beginInstall(url: url)
+                        },
+                        onQuarantine: {
+                            let types  = vsResult.threats.map(\.type.rawValue)
+                            let names  = vsResult.threats.map(\.name)
+                            let notes  = vsResult.threats.map(\.detail).joined(separator: "\n")
+                            _ = QuarantineManager.shared.quarantine(
+                                fileURL: url,
+                                verdict: vsResult.verdict.rawValue,
+                                threatTypes: types,
+                                threatNames: names,
+                                notes: notes
+                            )
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
+                            withAnimation { showDropZone = true }
+                            ATLASNotification.send(
+                                title: "TITAN VSCAN™ — Quarantined",
+                                body: String(format: L(.vscanQuarantineNotifBody), url.lastPathComponent)
+                            )
+                        },
+                        onDelete: {
+                            try? FileManager.default.removeItem(at: url)
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
+                            withAnimation { showDropZone = true }
+                            ATLASNotification.send(
+                                title: "TITAN VSCAN™ — Deleted",
+                                body: String(format: L(.vscanDeletedNotifBody), url.lastPathComponent)
+                            )
+                        },
+                        onStripAndInstall: {
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            beginInstall(url: url)
+                        },
+                        onCancel: {
+                            showVScanSheet = false
+                            pendingVScanURL = nil
+                            pendingVScanResult = nil
+                            appState.reset(); logger.clear()
+                            withAnimation { showDropZone = true }
+                        }
+                    )
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     var mainContent: some View {
         // Standard plan: pending files ready to continue after lock expires
         if !auth.isPro && monthlyLimit.hasPendingFiles && !monthlyLimit.isLocked && showDropZone {
             pendingFilesPanel
+        }
+
+        if queue.hasItems {
+            QueueView(
+                queue: queue,
+                onStartQueue: { startQueue() },
+                onRemove: { id in queue.remove(id: id) },
+                onRetry: { id in queue.retrySingle(id: id) }
+            )
         }
 
         if showDropZone && !rollbackInProgress {
@@ -1007,93 +1147,7 @@ struct ContentView: View {
             .transition(.opacity)
         }
 
-        if queue.hasItems {
-            QueueView(
-                queue: queue,
-                onStartQueue: { startQueue() },
-                onRemove: { id in queue.remove(id: id) },
-                onRetry: { id in queue.retrySingle(id: id) }
-            )
-        }
-
-        if appState.phase == .scanning { scanningIndicator }
-
-        if appState.phase == .scanned,
-           let scanResult = appState.scanResult,
-           !queue.hasItems {
-            ScanResultView(
-                result: scanResult,
-                onInstall: { beginInstallFromScan(url: scanResult.fileURL, scanResult: scanResult) },
-                onCancel: {
-                    appState.reset()
-                    logger.clear()
-                    withAnimation { showDropZone = true }
-                },
-                onShare: nil
-            )
-            .tourAnchor("scanResult")
-            .sheet(isPresented: $showVScanSheet) {
-                if let vsResult = pendingVScanResult, let url = pendingVScanURL {
-                    TitanVScanView(
-                        result: vsResult,
-                        onProceed: {
-                            showVScanSheet = false
-                            pendingVScanURL = nil
-                            pendingVScanResult = nil
-                            beginInstall(url: url)
-                        },
-                        onQuarantine: {
-                            let types  = vsResult.threats.map(\.type.rawValue)
-                            let names  = vsResult.threats.map(\.name)
-                            let notes  = vsResult.threats.map(\.detail).joined(separator: "\n")
-                            _ = QuarantineManager.shared.quarantine(
-                                fileURL: url,
-                                verdict: vsResult.verdict.rawValue,
-                                threatTypes: types,
-                                threatNames: names,
-                                notes: notes
-                            )
-                            showVScanSheet = false
-                            pendingVScanURL = nil
-                            pendingVScanResult = nil
-                            appState.reset(); logger.clear()
-                            withAnimation { showDropZone = true }
-                            ATLASNotification.send(
-                                title: "TITAN VSCAN™ — Quarantined",
-                                body: "\(url.lastPathComponent) moved to ATLAS Quarantine."
-                            )
-                        },
-                        onDelete: {
-                            try? FileManager.default.removeItem(at: url)
-                            showVScanSheet = false
-                            pendingVScanURL = nil
-                            pendingVScanResult = nil
-                            appState.reset(); logger.clear()
-                            withAnimation { showDropZone = true }
-                            ATLASNotification.send(
-                                title: "TITAN VSCAN™ — Deleted",
-                                body: "\(url.lastPathComponent) permanently deleted."
-                            )
-                        },
-                        onStripAndInstall: {
-                            // For now: proceed — strip logic runs inside InstallationManager
-                            // based on the vscan result stored on appState
-                            showVScanSheet = false
-                            pendingVScanURL = nil
-                            pendingVScanResult = nil
-                            beginInstall(url: url)
-                        },
-                        onCancel: {
-                            showVScanSheet = false
-                            pendingVScanURL = nil
-                            pendingVScanResult = nil
-                            appState.reset(); logger.clear()
-                            withAnimation { showDropZone = true }
-                        }
-                    )
-                }
-            }
-        }
+        scanStateContent
 
         if appState.phase == .success || appState.phase == .failure {
             resultBanner
@@ -1322,11 +1376,15 @@ struct ContentView: View {
                 .progressViewStyle(.circular)
                 .scaleEffect(0.8)
                 .tint(Color(hex: "#3ECFB2"))
-            Text("Scanning \(appState.selectedFileURL?.lastPathComponent ?? "")...")
+            Text(appState.scanStep.isEmpty
+                 ? "Scanning \(appState.selectedFileURL?.lastPathComponent ?? "")..."
+                 : appState.scanStep)
                 .font(.system(size: 13))
                 .foregroundColor(Color.atlasSubtitle)
+                .animation(.easeInOut(duration: 0.2), value: appState.scanStep)
             Spacer()
             Button {
+                scanGeneration += 1
                 appState.reset()
                 withAnimation { showDropZone = true }
             } label: {
@@ -1434,8 +1492,9 @@ struct ContentView: View {
     @ViewBuilder
     var rollbackBanner: some View {
         if rollbackInProgress {
-            VStack(alignment: .leading, spacing: 8) {
-                // Header row: label + product name + elapsed timer
+            VStack(spacing: 0) {
+
+                // Header: product name + elapsed timer
                 HStack(spacing: 6) {
                     Text(rollbackQueueTotal > 1
                          ? "Uninstalling \(rollbackQueueDone + 1) of \(rollbackQueueTotal)"
@@ -1448,46 +1507,57 @@ struct ContentView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
-                    // Live elapsed time — updates via rollbackTimerTick
                     let elapsed = rollbackTimerTick.timeIntervalSince(rollbackStartTime)
                     Text(String(format: "%02d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
-                // Progress bar
-                ATLASProgressBar(
-                    progress: rollbackProgress,
-                    stepLabel: rollbackPhase.isEmpty ? "Preparing…" : rollbackPhase,
-                    danger: true
-                )
-                // Phase and operation detail rows
-                if !rollbackPhase.isEmpty || !rollbackStep.isEmpty {
-                    VStack(alignment: .leading, spacing: 3) {
-                        if !rollbackPhase.isEmpty {
-                            HStack(spacing: 4) {
-                                Text("Phase:")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                Text(rollbackPhase)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color.atlasLabel)
-                                    .lineLimit(1)
-                            }
-                        }
-                        if !rollbackStep.isEmpty {
-                            HStack(spacing: 4) {
-                                Text("Operation:")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                Text(rollbackStep)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color.atlasLabel)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                            }
-                        }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 10)
+
+                // Uninstall animation: Mac → files → Trash
+                ATLASTransferAnimation(mode: .uninstall, isAnimating: rollbackInProgress)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 8)
+
+                // Progress bar (danger/red)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Color(hex: "#1A0808"))
+                            .frame(height: 7)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(LinearGradient(
+                                colors: [Color(hex: "#E05555").opacity(0.75), Color(hex: "#E05555")],
+                                startPoint: .leading, endPoint: .trailing))
+                            .frame(width: max(14, geo.size.width * rollbackProgress), height: 7)
+                            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: rollbackProgress)
                     }
                 }
+                .frame(height: 7)
+                .padding(.horizontal, 32)
+                .padding(.top, 4)
+
+                // Phase / operation text
+                HStack {
+                    let stepLabel = rollbackPhase.isEmpty
+                        ? (rollbackStep.isEmpty ? "Preparing…" : rollbackStep)
+                        : rollbackPhase
+                    Text(stepLabel)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: "#8A6070"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .animation(.easeInOut(duration: 0.2), value: stepLabel)
+                    Spacer()
+                    Text("\(Int(rollbackProgress * 100))%")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(Color(hex: "#4A2030"))
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 6)
+                .padding(.bottom, 16)
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
             .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { tick in
@@ -1643,6 +1713,11 @@ struct ContentView: View {
         let isPluginBundle = ["vst3", "component", "vst", "aaxplugin"].contains(ext)
 
         if TitanCore.shared.isAvailable && (isMountable || isFolder) && !isPluginBundle {
+            // Capture generation token before launching the task so stale completions
+            // can be discarded if the user cancels or drops a new file.
+            scanGeneration += 1
+            let capturedGeneration = scanGeneration
+
             // Run on a background thread — hdiutil attach is a blocking call that would
             // freeze the UI if called on the MainActor (Task {} inherits MainActor).
             Task.detached(priority: .userInitiated) {
@@ -1652,6 +1727,7 @@ struct ContentView: View {
                 await MainActor.run {
                     logger.log("TITAN CORE™: Analyzing \(url.lastPathComponent)…")
                     appState.phase = .scanning
+                    appState.scanStep = "Mounting installer…"
                 }
 
                 if isMountable {
@@ -1678,29 +1754,98 @@ struct ContentView: View {
                     }
                 }
 
+                // ── Stage 1: Fast identity scan + DAW gate ───────────────────
+                // Inspect only the mount root (and one level deeper if needed)
+                // to identify blocked DAWs BEFORE the expensive titanScan().
+                await MainActor.run { appState.scanStep = "Checking installer identity…" }
+                let rootURL = URL(fileURLWithPath: scanDir)
+                var candidateApps: [URL] = []
+                var candidatePKGs: [URL] = []
+                if let rootEntries = try? FileManager.default.contentsOfDirectory(
+                    at: rootURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                    for entry in rootEntries {
+                        let entryExt = entry.pathExtension.lowercased()
+                        if entryExt == "app" { candidateApps.append(entry) }
+                        else if entryExt == "pkg" || entryExt == "mpkg" { candidatePKGs.append(entry) }
+                    }
+                    // One level deeper when root has no .app or .pkg candidates
+                    if candidateApps.isEmpty && candidatePKGs.isEmpty {
+                        for entry in rootEntries {
+                            var isDir: ObjCBool = false
+                            guard FileManager.default.fileExists(atPath: entry.path, isDirectory: &isDir),
+                                  isDir.boolValue else { continue }
+                            if let subEntries = try? FileManager.default.contentsOfDirectory(
+                                at: entry, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                                for sub in subEntries {
+                                    let subExt = sub.pathExtension.lowercased()
+                                    if subExt == "app" { candidateApps.append(sub) }
+                                    else if subExt == "pkg" || subExt == "mpkg" { candidatePKGs.append(sub) }
+                                }
+                            }
+                        }
+                    }
+                }
+                var dawBlockedName: String? = nil
+                if case .blocked(let name) = DAWInstallationGate.checkCandidates(candidateApps) {
+                    dawBlockedName = name
+                }
+                if dawBlockedName == nil {
+                    for pkgURL in candidatePKGs {
+                        if case .blocked(let name) = DAWInstallationGate.checkPKG(url: pkgURL) {
+                            dawBlockedName = name; break
+                        }
+                    }
+                }
+                if let blockedName = dawBlockedName {
+                    // Owned by this task — detach before handing off to UI.
+                    if !mountedAt.isEmpty {
+                        _ = InstallEngine.runProcess(path: "/usr/bin/hdiutil",
+                                                     arguments: ["detach", mountedAt, "-quiet", "-force"])
+                    }
+                    await MainActor.run {
+                        guard capturedGeneration == scanGeneration else { return }
+                        logger.log("TITAN CORE™: DAW gate blocked — \(blockedName)")
+                        appState.scanStep = ""
+                        appState.phase = .dawBlocked(dawName: blockedName)
+                        withAnimation { showDropZone = false }
+                    }
+                    return  // titanScan() never runs
+                }
+                // ── End Stage 1 ──────────────────────────────────────────────
+
                 let capturedScanDir = scanDir
-                await MainActor.run { logger.log("TITAN CORE™: Scanning \(capturedScanDir)…") }
+                await MainActor.run {
+                    logger.log("TITAN CORE™: Scanning \(capturedScanDir)…")
+                    appState.scanStep = "Analyzing installer contents…"
+                }
                 let scan = InstallIntelligence.titanScan(directory: capturedScanDir)
                 await MainActor.run {
                     logger.log("TITAN CORE™: isComplex=\(scan.isComplex) scripts=\(scan.scripts.count) binaries=\(scan.binaries.count) hasInstructions=\(scan.hasInstructions)")
                 }
 
-                // Not complex — run the normal InstallerScanner flow
+                // Not complex — run the normal InstallerScanner flow.
+                // This task owns mountedAt; detach it before falling back to InstallerScanner.
                 guard scan.isComplex else {
                     if !mountedAt.isEmpty {
                         _ = InstallEngine.runProcess(path: "/usr/bin/hdiutil",
                                                      arguments: ["detach", mountedAt, "-quiet"])
                     }
+                    // Stale-task guard — read scanGeneration on MainActor, then continue on background
+                    let isStale = await MainActor.run { capturedGeneration != scanGeneration }
+                    guard !isStale else { return }
                     await MainActor.run {
                         appState.selectedFileURL = url
                         appState.phase = .scanning
+                        appState.scanStep = ""
                         logger.log("File selected: \(url.lastPathComponent)")
                         logger.log("Scanning contents...")
                     }
                     let result = await InstallerScanner.scan(url: url)
                     await MainActor.run {
+                        guard capturedGeneration == scanGeneration else { return }
                         appState.scanResult = result
                         appState.phase = .scanned
+                        appState.scanStep = ""
                         logger.log("Scan complete — \(result.installerType)")
                         for item in result.contentsFound {
                             logger.log("  Found: \(item.name) (\(item.type.label))")
@@ -1798,6 +1943,7 @@ struct ContentView: View {
                 }
                 // ────────────────────────────────────────────────────────────
 
+                await MainActor.run { appState.scanStep = "Building installation plan…" }
                 let plan = await InstallIntelligence.analyze(directory: finalScanDir, files: capturedAllFiles)
                 await MainActor.run { logger.log("TITAN CORE™: Plan has \(plan.orderedSteps.count) step(s), instructions=\(plan.instructions != nil)") }
 
@@ -1810,13 +1956,25 @@ struct ContentView: View {
                 }
 
                 await MainActor.run {
+                    // Stale-task guard — discard if a newer scan has started
+                    guard capturedGeneration == scanGeneration else {
+                        // We still own finalMountedAt; detach before discarding
+                        Task.detached(priority: .background) {
+                            if !finalMountedAt.isEmpty {
+                                _ = InstallEngine.runProcess(path: "/usr/bin/hdiutil",
+                                                             arguments: ["detach", finalMountedAt, "-quiet", "-force"])
+                            }
+                        }
+                        return
+                    }
+                    appState.scanStep = ""
                     pendingDocInfo = titanDocInfo
                     let mission = TitanMission(mountPoint: finalScanDir, sourceURL: url)
                     mission.buildMission(plan: plan, scan: scan)
                     logger.log("TITAN CORE™: Mission built — \(mission.steps.count) step(s). Showing panel…")
                     activeTitanMission  = mission
                     titanMountPoint     = finalScanDir
-                    titanPreScanMount   = finalMountedAt
+                    titanPreScanMount   = finalMountedAt  // ownership transferred to ContentView
                     titanSourceURL      = url
 
                     let fileNames = capturedAllFiles.map { $0.lastPathComponent }.filter { !$0.hasPrefix(".") }
@@ -1837,6 +1995,8 @@ struct ContentView: View {
             return
         }
 
+        scanGeneration += 1
+        let capturedGenB = scanGeneration
         appState.selectedFileURL = url
         appState.phase = .scanning
         logger.log("File selected: \(url.lastPathComponent)")
@@ -1844,6 +2004,7 @@ struct ContentView: View {
         Task {
             let result = await InstallerScanner.scan(url: url)
             await MainActor.run {
+                guard capturedGenB == scanGeneration else { return }
                 appState.scanResult = result
                 appState.phase = .scanned
                 logger.log("Scan complete — \(result.installerType)")
@@ -1865,8 +2026,8 @@ struct ContentView: View {
             pendingInstallURL  = url
             pendingScanResult  = scanResult
             showStorageSelection = true
-        } else if Features.titanVScan {
-            // TITAN VSCAN™ — Pro only
+        } else if Features.titanVScan && titanVScanEnabled {
+            // TITAN VSCAN™ — Pro only, runs only when user has enabled the scanner
             pendingVScanURL = url
             Task {
                 appState.phase = .scanning
@@ -1931,6 +2092,11 @@ struct ContentView: View {
                 pendingDocInfo = nil
                 // TITAN CORE™ handles recovery automatically during install —
                 // no manual activate needed here
+            case .unsupportedDAWInstallation(let dawName):
+                MenuBarStatusManager.shared.menuStatus = .idle
+                unsupportedDAWName = dawName
+                showUnsupportedDAWAlert = true
+                pendingDocInfo = nil
             case nil:
                 MenuBarStatusManager.shared.menuStatus = .idle
                 pendingDocInfo = nil
@@ -2065,9 +2231,9 @@ struct ContentView: View {
         }
         guard let item = queue.items.first(where: { $0.id == id }) else { return }
 
-        // TITAN VSCAN™ — Pro only. Run before install so threats are caught in batch mode.
+        // TITAN VSCAN™ — Pro only, runs only when user has enabled the scanner.
         // Blocking verdicts (.malware) halt this item; warnings are logged and install continues.
-        if Features.titanVScan {
+        if Features.titanVScan && titanVScanEnabled {
             queue.updateStatus(id: id, status: .scanning)
             queue.updateProgress(id: id, progress: 0.05, step: "TITAN VSCAN™…")
             if let vsResult = await titanVScan.scan(url: item.url) {
@@ -2192,6 +2358,18 @@ struct ContentView: View {
             }
         }
 
+        // Unsupported DAW — intentional refusal, not an install failure.
+        // No record, no history, no ATLAS LEARN™ upload.
+        if case .unsupportedDAWInstallation(let dawName) = finalResult {
+            logger.log("DAW installation not supported: \(dawName) — user notified.")
+            queue.updateStatus(id: id, status: .failure("DAW not supported in this version"))
+            await MainActor.run {
+                unsupportedDAWName = dawName
+                showUnsupportedDAWAlert = true
+            }
+            return
+        }
+
         historyStore.add(record)
 
         // ── ATLAS LEARN™ — upload verified clean installs as learned patterns ──
@@ -2275,6 +2453,9 @@ struct ContentView: View {
                     appState.reset()
                 }
             }
+        case .unsupportedDAWInstallation:
+            // Handled by the early-exit guard above historyStore.add(); unreachable here.
+            break
         }
     }
 
@@ -2300,11 +2481,11 @@ struct ContentView: View {
 
     private func beginBatchUninstall(records: [InstallRecord]) {
         NSLog("[ATLAS-UNINSTALL] ENTER beginBatchUninstall — records=%d rollbackInProgress=%d", records.count, rollbackInProgress ? 1 : 0)
-        guard !rollbackInProgress else { return }
-        let eligible = records.filter {
-            $0.status == .success &&
-            (!$0.installedFiles.isEmpty || !$0.pkgReceiptIDs.isEmpty)
+        guard !rollbackInProgress else {
+            NSLog("[ATLAS-UNINSTALL] Guard: already in progress — ignoring request")
+            return
         }
+        let eligible = records.filter { $0.status == .success }
         guard !eligible.isEmpty else { return }
 
         rollbackQueue     = Array(eligible.dropFirst())
@@ -2382,7 +2563,7 @@ struct ContentView: View {
                     ATLASNotification.send(
                         title: result.success ? L(.notifyUninstallComplete) : L(.notifyUninstallFailed),
                         body:  result.success
-                            ? "\(record.fileName) was removed successfully."
+                            ? String(format: L(.notifyUninstallSuccessBody), record.fileName)
                             : "\(record.fileName): \(result.detail)")
                     MenuBarStatusManager.shared.menuStatus = result.success ? .success : .failure
                     rollingBack = nil
@@ -2397,7 +2578,7 @@ struct ContentView: View {
                         let ok  = batchRollbackResults.filter {  $0.1.success }.count
                         let bad = batchRollbackResults.filter { !$0.1.success }.count
                         ATLASNotification.send(
-                            title: "Session Uninstall Complete",
+                            title: L(.notifyBatchUninstallTitle),
                             body:  "\(ok) item\(ok == 1 ? "" : "s") removed" +
                                    (bad > 0 ? ", \(bad) failed." : "."))
                         MenuBarStatusManager.shared.menuStatus = bad > 0 ? .failure : .success
@@ -2439,13 +2620,13 @@ struct ContentView: View {
                     logger.log("✓ Recovery complete: \(record.fileName)")
                     historyStore.markRestored(id: record.id)
                     ATLASNotification.send(
-                        title: "Restore Complete",
+                        title: L(.notifyRestoreCompleteTitle),
                         body: String(format: L(.notifyRestoreComplete), record.fileName))
                     MenuBarStatusManager.shared.menuStatus = .success
                 } else {
                     logger.log("✗ Recovery failed: \(record.fileName)")
                     ATLASNotification.send(
-                        title: "Restore Failed",
+                        title: L(.notifyRestoreFailedTitle),
                         body: String(format: L(.notifyRestoreFailed), record.fileName))
                     MenuBarStatusManager.shared.menuStatus = .failure
                 }
@@ -2495,6 +2676,7 @@ struct ContentView: View {
     }
 
     private func resetAll() {
+        scanGeneration += 1          // invalidate any in-flight scan task
         appState.reset()
         logger.clear()
         queue.items.removeAll()
@@ -2517,6 +2699,12 @@ struct ContentView: View {
         MenuBarStatusManager.shared.menuStatus = .idle
         TitanCore.shared.deactivate()
         InstallEngine.storageRoot = nil
+        showTitanMission = false
+        activeTitanMission = nil
+        showMultipleProductsGate = false
+        detachTitanPreScanMount()
+        titanMountPoint = ""
+        titanSourceURL = nil
         withAnimation { showDropZone = true }
     }
 

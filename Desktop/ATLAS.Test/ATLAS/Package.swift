@@ -18,7 +18,8 @@ let package = Package(
             path: ".",
             exclude: [
                 "ATLAS.entitlements",
-                "Sources/ATLAS/Assets.xcassets"
+                "Sources/ATLAS/Assets.xcassets",
+                "Tests"
             ],
             sources: [
                 "Sources/ATLAS",
@@ -43,6 +44,11 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@loader_path/../lib"])
             ]
+        ),
+        .testTarget(
+            name: "RecoveryKitTests",
+            dependencies: [],
+            path: "Tests/RecoveryKitTests"
         )
     ]
 )

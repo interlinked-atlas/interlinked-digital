@@ -27,7 +27,7 @@ struct ATLASApp: App {
 
     private static func registerFont(resource: String, ext: String) {
         let candidates: [URL?] = [
-            Bundle.module.url(forResource: resource, withExtension: ext),
+            Bundle.atlasResources.url(forResource: resource, withExtension: ext),
             Bundle.main.url(forResource: resource, withExtension: ext),
             Bundle.main.resourceURL.map { $0.appendingPathComponent("\(resource).\(ext)") },
         ]
@@ -72,7 +72,7 @@ struct ATLASApp: App {
 // Handles menu bar icon via NSStatusItem (works on macOS 12+)
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNotificationCenterDelegate {
     var statusItem: NSStatusItem?
     private var menuStatusCancellable: AnyCancellable?
     private var iconResetTask: Task<Void, Never>?
@@ -93,6 +93,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("[ATLAS-NOTIF-DIAG] === APP IDENTITY ===")
+        print("[ATLAS-NOTIF-DIAG] bundleIdentifier: \(Bundle.main.bundleIdentifier ?? "nil")")
+        print("[ATLAS-NOTIF-DIAG] bundlePath: \(Bundle.main.bundlePath)")
+        print("[ATLAS-NOTIF-DIAG] executablePath: \(Bundle.main.executablePath ?? "nil")")
+        print("[ATLAS-NOTIF-DIAG] isRunningFromApplications: \(Bundle.main.bundlePath.hasPrefix("/Applications/"))")
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let statusName: String
+            switch settings.authorizationStatus {
+            case .notDetermined: statusName = "notDetermined"
+            case .denied:        statusName = "denied"
+            case .authorized:    statusName = "authorized"
+            case .provisional:   statusName = "provisional"
+            case .ephemeral:     statusName = "ephemeral"
+            @unknown default:    statusName = "unknown(\(settings.authorizationStatus.rawValue))"
+            }
+            print("[ATLAS-NOTIF-DIAG] launch notif status: \(statusName)(\(settings.authorizationStatus.rawValue)) alert=\(settings.alertSetting.rawValue) sound=\(settings.soundSetting.rawValue) badge=\(settings.badgeSetting.rawValue)")
+        }
+        UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .sound, .badge]
         ) { _, _ in }
@@ -129,6 +147,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    // UNUserNotificationCenterDelegate — deliver banners and sound while ATLAS is frontmost.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
     // NSWindowDelegate — intercept red-X: fade out and hide instead of closing.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -148,11 +175,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let alert = NSAlert()
-        alert.messageText = "Installation in Progress"
-        alert.informativeText = "ATLAS is currently performing an installation or operation. Quitting now may leave files in an incomplete state.\n\nAre you sure you want to quit?"
+        alert.messageText = L(.quitInstallAlertTitle)
+        alert.informativeText = L(.quitInstallAlertBody)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Quit Anyway")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: L(.quitAnyway))
+        alert.addButton(withTitle: L(.cancel))
 
         let response = alert.runModal()
         return response == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
@@ -221,24 +248,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(
-            title: "Open ATLAS",
+            title: L(.menuOpenAtlas),
             action: #selector(openMainWindow),
             keyEquivalent: "o"))
 
         menu.addItem(NSMenuItem(
-            title: "View Logs",
+            title: L(.viewLogs),
             action: #selector(openLogs),
             keyEquivalent: ""))
 
         menu.addItem(NSMenuItem(
-            title: "Check for Updates",
+            title: L(.checkForUpdates),
             action: #selector(checkForUpdates),
             keyEquivalent: ""))
 
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(
-            title: "Quit ATLAS",
+            title: L(.menuQuitAtlas),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"))
 
@@ -269,8 +296,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
          .miniaturizeButton, .zoomButton].forEach {
             window.standardWindowButton($0)?.isHidden = false
         }
-        window.minSize = CGSize(width: 560, height: 580)
-        window.maxSize = CGSize(width: 99999, height: 99999)
+        window.styleMask.remove(.resizable)
+        window.minSize = CGSize(width: 760, height: 500)
+        window.maxSize = CGSize(width: 760, height: 500)
         AppDelegate.centerWindow(window)
 
         // Order front and activate BEFORE updating SwiftUI state — this ensures
@@ -289,7 +317,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Resets the window to the default ATLAS size and centers it on the
     /// screen the user is currently working on (where the cursor is).
     static func centerWindow(_ window: NSWindow) {
-        let defaultSize = NSSize(width: 600, height: 620)
+        let fixedSize = NSSize(width: 760, height: 500)
+        window.styleMask.remove(.resizable)
+        window.minSize = fixedSize
+        window.maxSize = fixedSize
         let mouseLocation = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
                   ?? NSScreen.main
@@ -297,13 +328,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let screen = screen {
             let sf = screen.visibleFrame
             let origin = NSPoint(
-                x: sf.midX - defaultSize.width  / 2,
-                y: sf.midY - defaultSize.height / 2
+                x: sf.midX - fixedSize.width  / 2,
+                y: sf.midY - fixedSize.height / 2
             )
-            window.setFrame(NSRect(origin: origin, size: defaultSize),
+            window.setFrame(NSRect(origin: origin, size: fixedSize),
                             display: true, animate: false)
         } else {
-            window.setContentSize(defaultSize)
+            window.setContentSize(fixedSize)
             window.center()
         }
     }
@@ -329,7 +360,12 @@ struct ATLASNotification {
 
     static func send(title: String, body: String) {
         // Respect the toggle in Settings — only send if user enabled notifications
-        guard UserDefaults.standard.bool(forKey: notifKey) else { return }
+        let prefEnabled = UserDefaults.standard.bool(forKey: notifKey)
+        guard prefEnabled else {
+            print("[ATLAS-NOTIF-DIAG] ATLASNotification.send() BLOCKED — ATLAS.notificationsEnabled=false in UserDefaults")
+            return
+        }
+        print("[ATLAS-NOTIF-DIAG] ATLASNotification.send() PROCEEDING — title='\(title)' pref=true")
 
         let content = UNMutableNotificationContent()
         content.title = title
@@ -342,5 +378,6 @@ struct ATLASNotification {
             trigger: nil
         )
         UNUserNotificationCenter.current().add(request)
+        print("[ATLAS-NOTIF-DIAG] ATLASNotification.send() — add(request) called (no completion handler; errors not surfaced)")
     }
 }

@@ -5,6 +5,7 @@ struct SupportView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject private var auth       = AuthManager.shared
     @ObservedObject private var appearance = AppearanceManager.shared
+    @ObservedObject private var langMgr    = LanguageManager.shared
 
     // Optional pre-selected product passed from the history row that was tapped.
     var preselectedRecord: InstallRecord? = nil
@@ -93,10 +94,10 @@ struct SupportView: View {
     private var headerView: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("GET SUPPORT")
+                Text(L(.getSupport))
                     .font(.system(size: 9, weight: .bold)).tracking(2.5)
                     .foregroundColor(sectionColor)
-                Text("We'll reply within 24 hours")
+                Text(L(.replyWithin24))
                     .font(.system(size: 12))
                     .foregroundColor(labelColor)
             }
@@ -121,11 +122,11 @@ struct SupportView: View {
             VStack(alignment: .leading, spacing: 18) {
 
                 // Product picker
-                sectionLabel("PRODUCT")
+                sectionLabel(L(.product))
                 productPickerSection
 
                 // Issue type
-                sectionLabel("ISSUE TYPE")
+                sectionLabel(L(.issueType))
                 Picker("Issue", selection: $issueType) {
                     ForEach(issueTypes, id: \.self) { Text($0).tag($0) }
                 }
@@ -137,7 +138,7 @@ struct SupportView: View {
                     .stroke(border, lineWidth: 1))
 
                 // Message
-                sectionLabel("DESCRIBE YOUR ISSUE")
+                sectionLabel(L(.describeIssue))
                 TextEditor(text: $message)
                     .font(.system(size: 12))
                     .foregroundColor(textBody)
@@ -226,7 +227,7 @@ struct SupportView: View {
 
     private var logAttachSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("ATTACH A LOG (OPTIONAL)")
+            sectionLabel(L(.attachLog))
             ForEach(recentLogs) { log in
                 Button { selectedLog = selectedLog?.id == log.id ? nil : log } label: {
                     HStack(spacing: 10) {
@@ -278,7 +279,7 @@ struct SupportView: View {
                 if submitting {
                     ProgressView().scaleEffect(0.7).frame(width: 14, height: 14)
                 }
-                Text(submitting ? "Sending…" : "Send Support Request")
+                Text(submitting ? L(.sending) : L(.sendRequest))
                     .font(.system(size: 13, weight: .semibold))
             }
             .foregroundColor(canSubmit ? Color(hex: "#08090E") : Color(hex: "#696E7C"))
@@ -312,16 +313,16 @@ struct SupportView: View {
                 }
 
                 VStack(spacing: 8) {
-                    Text("Thank You!")
+                    Text(L(.thankYou))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(textPrimary)
 
-                    Text("Your support request has been received.")
+                    Text(L(.requestReceived))
                         .font(.system(size: 13))
                         .foregroundColor(labelColor)
                         .multilineTextAlignment(.center)
 
-                    Text("Our support team will be with you shortly.\nWe'll reply to \(auth.userEmail) within 24 hours.")
+                    Text(String(format: L(.supportTeamReplyFmt), auth.userEmail))
                         .font(.system(size: 12))
                         .foregroundColor(sectionColor)
                         .multilineTextAlignment(.center)
@@ -361,7 +362,7 @@ struct SupportView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.left")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("Back to ATLAS")
+                    Text(L(.backToAtlas))
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundColor(Color(hex: "#08090E"))

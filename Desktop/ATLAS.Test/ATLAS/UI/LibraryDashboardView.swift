@@ -8,6 +8,9 @@ struct LibraryDashboardView: View {
     let onRestore: (InstallRecord) -> Void
     let onBatchRollback: ([InstallRecord]) -> Void
     var onStartRecovery: ((AtlasKit) -> Void)? = nil
+    // Observed so LibraryDashboardView can detect when Recovery Mode completes.
+    // ContentView passes its recoveryEngine; LibraryDashboardView watches isComplete.
+    var activeRecoveryEngine: RecoveryModeEngine? = nil
 
     @StateObject private var viewModel: LibraryDashboardViewModel
     @StateObject private var cleanerEngine = ATLASCleanerEngine()
@@ -27,7 +30,8 @@ struct LibraryDashboardView: View {
          onRollback: @escaping (InstallRecord) -> Void,
          onRestore: @escaping (InstallRecord) -> Void,
          onBatchRollback: @escaping ([InstallRecord]) -> Void,
-         onStartRecovery: ((AtlasKit) -> Void)? = nil) {
+         onStartRecovery: ((AtlasKit) -> Void)? = nil,
+         activeRecoveryEngine: RecoveryModeEngine? = nil) {
         self.store = store
         self.logger = logger
         self.onClose = onClose
@@ -35,6 +39,7 @@ struct LibraryDashboardView: View {
         self.onRestore = onRestore
         self.onBatchRollback = onBatchRollback
         self.onStartRecovery = onStartRecovery
+        self.activeRecoveryEngine = activeRecoveryEngine
         _viewModel = StateObject(wrappedValue: LibraryDashboardViewModel(store: store))
     }
 
@@ -69,87 +74,110 @@ struct LibraryDashboardView: View {
             Rectangle().fill(Color.atlasSeparator).frame(height: 1)
 
             // Scrollable dashboard
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    LibraryOverviewSection(viewModel: viewModel)
+            GeometryReader { geo in
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        LibraryOverviewSection(viewModel: viewModel)
 
-                    // Collapsible Installed Products accordion — collapsed by default
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                            showInstalledProducts.toggle()
+                        // Collapsible Installed Products accordion — collapsed by default
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                                showInstalledProducts.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.stack.3d.down.right.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.55))
+                                Text(installedProductsHeaderText)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.75))
+                                Spacer()
+                                Image(systemName: showInstalledProducts ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
                         }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "square.stack.3d.down.right.fill")
-                                .font(.system(size: 9))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.55))
-                            Text(installedProductsHeaderText)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.75))
-                            Spacer()
-                            Image(systemName: showInstalledProducts ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color.atlasDeepBG)
+                        .buttonStyle(.plain)
+                        .background(Color.atlasDeepBG)
+                        .tourAnchor("installedProducts")
 
-                    if showInstalledProducts {
-                        if !store.records.isEmpty {
-                            productSearchField
-                        }
-                        InstalledProductsSection(
-                            store: store, logger: logger,
-                            scrollable: false,
-                            externalSearch: $productSearchText,
-                            onRollback: onRollback,
-                            onRestore: onRestore,
-                            onBatchRollback: onBatchRollback
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-
-                    sectionLabel("STORAGE")
-                    ATLASStorageSectionView(
-                        store: store,
-                        engine: cleanerEngine,
-                        onReviewCleaner: { showCleaner = true },
-                        onUpgradeCleaner: { showUpgradeForCleaner = true },
-                        onQuickScan: { showQuickScan = true }
-                    )
-
-                    // Collapsible Recovery Kit accordion — collapsed by default
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                            showRecoveryKit.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "lifepreserver")
-                                .font(.system(size: 9))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.55))
-                            Text("RECOVERY KIT")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.75))
-                            Spacer()
-                            Image(systemName: showRecoveryKit ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(Color.atlasSubtitle.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color.atlasDeepBG)
-                    .tourAnchor("recoveryKitSection")
-
-                    if showRecoveryKit {
-                        RecoveryKitView(engine: kitEngine, store: store, onStartRecovery: onStartRecovery)
+                        if showInstalledProducts {
+                            if !store.records.isEmpty {
+                                productSearchField
+                            }
+                            InstalledProductsSection(
+                                store: store, logger: logger,
+                                scrollable: false,
+                                externalSearch: $productSearchText,
+                                onRollback: onRollback,
+                                onRestore: onRestore,
+                                onBatchRollback: onBatchRollback
+                            )
                             .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        // Collapsible Recovery Kit accordion — directly below Products
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                                showRecoveryKit.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lifepreserver")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.55))
+                                Text("RECOVERY KIT")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.75))
+                                Spacer()
+                                Image(systemName: showRecoveryKit ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(Color.atlasSubtitle.opacity(0.4))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                        }
+                        .buttonStyle(.plain)
+                        .background(Color.atlasDeepBG)
+                        .tourAnchor("recoveryKitSection")
+
+                        if showRecoveryKit {
+                            RecoveryKitView(engine: kitEngine, store: store, onStartRecovery: onStartRecovery)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        // ATLAS Cleaner — directly below Recovery Kit
+                        sectionLabel("ATLAS CLEANER")
+                        ATLASStorageSectionView(
+                            store: store,
+                            engine: cleanerEngine,
+                            onReviewCleaner: { showCleaner = true },
+                            onUpgradeCleaner: { showUpgradeForCleaner = true },
+                            onQuickScan: { showQuickScan = true },
+                            showDiskSpace: false,
+                            showCleaner: true
+                        )
+
+                        // Flexible space — pushes Storage to the bottom of the panel.
+                        // Collapses to zero when content overflows (scroll takes over).
+                        Spacer(minLength: 0)
+
+                        // Storage — pinned to the absolute bottom of the Library panel
+                        sectionLabel("STORAGE")
+                        ATLASStorageSectionView(
+                            store: store,
+                            engine: cleanerEngine,
+                            onReviewCleaner: { showCleaner = true },
+                            onUpgradeCleaner: { showUpgradeForCleaner = true },
+                            onQuickScan: { showQuickScan = true },
+                            showDiskSpace: true,
+                            showCleaner: false
+                        )
                     }
+                    .frame(minHeight: geo.size.height)
                 }
             }
         }
@@ -171,6 +199,10 @@ struct LibraryDashboardView: View {
         }
         .onChange(of: showInstalledProducts) { open in
             if !open { productSearchText = "" }
+        }
+        .onChange(of: activeRecoveryEngine?.isComplete) { complete in
+            guard complete == true, let eng = activeRecoveryEngine else { return }
+            kitEngine.markRecovered(successCount: eng.successCount)
         }
         .alert("ATLAS CLEANER™ — Pro Feature", isPresented: $showUpgradeForCleaner) {
             Button("Upgrade to Pro") {

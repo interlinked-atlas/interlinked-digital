@@ -50,30 +50,48 @@ struct KeychainManager {
     static func savePassword(_ password: String) -> Bool {
         let data = password.data(using: .utf8)!
 
-        // Delete any existing entry from either keychain before adding
-        let deleteQuery: [String: Any] = [
+        // Update the existing item's data only — never delete/recreate.
+        // SecItemDelete has no kSecUseAuthenticationUISkip equivalent and always
+        // triggers a Keychain authorization dialog when the item has a restrictive ACL.
+        // SecItemUpdate with kSecValueData only preserves the existing ACL and all
+        // other attributes, and triggers the item-access dialog (which includes
+        // "Always Allow") only if the calling binary is not yet trusted for this item.
+        let updateQuery: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        var addQuery: [String: Any] = [
-            kSecClass as String:          kSecClassGenericPassword,
-            kSecAttrService as String:    service,
-            kSecAttrAccount as String:    account,
-            kSecValueData as String:      data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-        if let access = openAccess(label: "ATLAS Password") {
-            addQuery[kSecAttrAccess as String] = access
-        }
-
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status == errSecSuccess {
+        let updateStatus = SecItemUpdate(updateQuery as CFDictionary,
+                                         [kSecValueData as String: data] as CFDictionary)
+        if updateStatus == errSecSuccess {
             _cachedPassword = password
             return true
         }
+
+        // Item does not exist yet — create it with an open ACL so any ATLAS binary
+        // can read and update it silently on future launches and version updates.
+        if updateStatus == errSecItemNotFound {
+            var addQuery: [String: Any] = [
+                kSecClass as String:          kSecClassGenericPassword,
+                kSecAttrService as String:    service,
+                kSecAttrAccount as String:    account,
+                kSecValueData as String:      data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            ]
+            if let access = openAccess(label: "ATLAS Password") {
+                addQuery[kSecAttrAccess as String] = access
+            }
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            if addStatus == errSecSuccess {
+                _cachedPassword = password
+                return true
+            }
+        }
+
+        // Keychain write failed (e.g. old restrictive-ACL item, user denied dialog).
+        // Keep password in memory so this session's installations work normally.
+        // The Keychain item will be fixed when the user re-enters their password.
+        _cachedPassword = password
         return false
     }
 

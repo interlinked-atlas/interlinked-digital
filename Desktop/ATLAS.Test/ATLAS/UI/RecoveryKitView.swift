@@ -5,6 +5,7 @@ struct RecoveryKitView: View {
     @ObservedObject var store: HistoryStore
     var onStartRecovery: ((AtlasKit) -> Void)? = nil
     @ObservedObject private var auth = AuthManager.shared
+    @ObservedObject private var langMgr = LanguageManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -75,13 +76,13 @@ struct RecoveryKitView: View {
     private var exportSubtitle: some View {
         switch engine.exportState {
         case .idle:
-            Text("Portable install snapshot")
+            Text(L(.portableSnapshot))
                 .font(.system(size: 10))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.5))
         case .exporting:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Generating…")
+                Text(L(.generating))
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
@@ -90,7 +91,7 @@ struct RecoveryKitView: View {
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#3ECFB2"))
         case .failed:
-            Text("Export failed")
+            Text(L(.exportFailed))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555").opacity(0.8))
         }
@@ -101,7 +102,7 @@ struct RecoveryKitView: View {
         if case .exporting = engine.exportState {
             EmptyView()
         } else if auth.isPro {
-            Button("Generate") {
+            Button(L(.generate)) {
                 Task { await engine.export(store: store) }
             }
             .font(.system(size: 10, weight: .semibold))
@@ -112,7 +113,7 @@ struct RecoveryKitView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .buttonStyle(.plain)
         } else {
-            Button("Upgrade") {
+            Button(L(.upgrade)) {
                 NSWorkspace.shared.open(URL(string: "https://interlinked.digital/account")!)
             }
             .font(.system(size: 10, weight: .semibold))
@@ -136,7 +137,7 @@ struct RecoveryKitView: View {
                     .frame(width: 18)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Cloud Backup")
+                    Text(L(.cloudBackupLabel))
                         .font(.system(size: 11))
                         .foregroundColor(Color.atlasLabel.opacity(0.8))
                     cloudBackupSubtitle
@@ -167,20 +168,34 @@ struct RecoveryKitView: View {
         case .idle, .loading:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Checking…")
+                Text(L(.checking))
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.45))
             }
         case .notFound:
-            Text("Not backed up")
+            Text(L(.notBackedUp))
                 .font(.system(size: 10))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.45))
         case .found:
             if let meta = engine.cloudMeta.first {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Last backed up \(shortDate(meta.generatedAt))")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#3ECFB2"))
+                    // Show recovery result if this specific backup was the one recovered
+                    if let result = engine.lastRecoveryResult, result.kitId == meta.id {
+                        switch result {
+                        case .success:
+                            Text("Recovered \(shortDate(meta.generatedAt)) ✓")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                        case .withIssues:
+                            Text("Recovery completed with issues")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#F0A030"))
+                        }
+                    } else {
+                        Text("Last backed up \(shortDate(meta.generatedAt))")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#3ECFB2"))
+                    }
                     if let name = meta.deviceName {
                         Text("\(meta.recordCount) items · \(name)")
                             .font(.system(size: 10))
@@ -199,21 +214,19 @@ struct RecoveryKitView: View {
         case .uploading:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Syncing…")
+                Text(L(.syncing))
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
         case .downloading:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Restoring…")
+                Text(L(.restoring))
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
         case .error:
-            Text("Cloud backup pending")
-                .font(.system(size: 10))
-                .foregroundColor(Color(hex: "#E05555").opacity(0.8))
+            EmptyView()  // error banner below the row already shows the actual message
         }
     }
 
@@ -226,34 +239,63 @@ struct RecoveryKitView: View {
             EmptyView()
         } else if engine.cloudState == .found {
             HStack(spacing: 6) {
-                Button("Update") {
-                    Task { await engine.uploadToCloud(store: store) }
-                }
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(Color.atlasSubtitle.opacity(0.7))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(Color.atlasElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .buttonStyle(.plain)
-
-                Button("Restore") {
-                    if let kitId = engine.cloudMeta.first?.id {
-                        Task { await engine.downloadFromCloud(kitId: kitId) }
+                // Update requires a locally-generated kit this session to upload
+                if engine.lastGeneratedKitFolderURL != nil {
+                    Button(L(.update)) {
+                        Task { await engine.uploadToCloud(store: store) }
                     }
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.7))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.atlasElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .buttonStyle(.plain)
                 }
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(Color(hex: "#3ECFB2"))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .buttonStyle(.plain)
+
+                let currentMetaId = engine.cloudMeta.first?.id
+                let recoveredThisBackup = engine.lastRecoveryResult.map { $0.kitId == currentMetaId } ?? false
+
+                if case .success = engine.lastRecoveryResult, recoveredThisBackup {
+                    // Full success — no recovery action needed
+                    Text("Recovered ✓")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#3ECFB2"))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                } else if case .withIssues = engine.lastRecoveryResult, recoveredThisBackup {
+                    // Completed with issues — retry the same already-downloaded kit (no re-download)
+                    if let kit = engine.importedKit {
+                        Button("Try Recovery Again") {
+                            onStartRecovery?(kit)
+                        }
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "#F0A030"))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    Button(L(.recover)) {
+                        if let kitId = engine.cloudMeta.first?.id {
+                            Task { await engine.downloadFromCloud(kitId: kitId) }
+                        }
+                    }
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color(hex: "#3ECFB2"))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .buttonStyle(.plain)
+                }
             }
         } else if engine.lastGeneratedKitFolderURL != nil {
             // .notFound or .error — only show retry when there's a local kit to upload
             if case .error = engine.cloudState {
-                Button("Retry Cloud Backup") {
+                Button(L(.retryCloudBackup)) {
                     Task { await engine.uploadToCloud(store: store) }
                 }
                 .font(.system(size: 10, weight: .semibold))
@@ -264,7 +306,7 @@ struct RecoveryKitView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .buttonStyle(.plain)
             } else {
-                Button("Back Up") {
+                Button(L(.backUp)) {
                     Task { await engine.uploadToCloud(store: store) }
                 }
                 .font(.system(size: 10, weight: .semibold))
@@ -288,7 +330,7 @@ struct RecoveryKitView: View {
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Load Recovery Kit")
+                Text(L(.loadRecoveryKit))
                     .font(.system(size: 11))
                     .foregroundColor(Color.atlasLabel.opacity(0.8))
                 importSubtitle
@@ -305,26 +347,26 @@ struct RecoveryKitView: View {
     private var importSubtitle: some View {
         switch engine.importState {
         case .idle:
-            Text("Open a .atlaskit file")
+            Text(L(.openKitFile))
                 .font(.system(size: 10))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.45))
         case .importing:
             HStack(spacing: 4) {
                 ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
-                Text("Loading…")
+                Text(L(.loading))
                     .font(.system(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
         case .loaded:
-            Text("Kit loaded — ready to enter Recovery Mode")
+            Text(L(.kitLoaded))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#3ECFB2"))
         case .hashMismatch:
-            Text("File rejected — tampered or corrupted")
+            Text(L(.fileRejected))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555").opacity(0.8))
         case .failed:
-            Text("Could not load file")
+            Text(L(.couldNotLoad))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555").opacity(0.8))
         }
@@ -335,7 +377,7 @@ struct RecoveryKitView: View {
         if case .importing = engine.importState {
             EmptyView()
         } else {
-            Button(engine.importState == .loaded ? "Replace" : "Open") {
+            Button(engine.importState == .loaded ? L(.replace) : L(.open)) {
                 Task { await engine.importKit() }
             }
             .font(.system(size: 10, weight: .semibold))
@@ -365,12 +407,12 @@ struct RecoveryKitView: View {
                 }
 
                 HStack(spacing: 12) {
-                    kitStat(label: "Installed", value: "\(kit.records.count)")
-                    kitStat(label: "Archived", value: "\(kit.archivedRecords.count)")
+                    kitStat(label: L(.queueStatusInstalled), value: "\(kit.records.count)")
+                    kitStat(label: L(.archived), value: "\(kit.archivedRecords.count)")
                 }
 
                 if !kit.records.isEmpty {
-                    Text("Products: " + kit.records.prefix(3).map { $0.fileName }.joined(separator: ", ")
+                    Text(L(.products) + ": " + kit.records.prefix(3).map { $0.fileName }.joined(separator: ", ")
                          + (kit.records.count > 3 ? " +\(kit.records.count - 3) more" : ""))
                         .font(.system(size: 10))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.55))
@@ -385,33 +427,90 @@ struct RecoveryKitView: View {
 
             // Recovery Mode entry point — gated via extracted pure function (testable without AuthManager)
             if RecoveryModeEngine.canStartRecovery(isPro: auth.isPro) {
-                Button {
-                    onStartRecovery?(kit)
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 10, weight: .semibold))
-                        Text("BEGIN ATLAS RECOVERY")
-                            .font(.system(size: 10, weight: .bold))
+                // Show result state if this specific downloaded backup was already recovered
+                let alreadyRecovered = engine.downloadedKitId != nil
+                    && engine.lastRecoveryResult?.kitId == engine.downloadedKitId
+
+                if alreadyRecovered, let result = engine.lastRecoveryResult {
+                    switch result {
+                    case .success:
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                            Text("Recovery Complete ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Color(hex: "#3ECFB2"))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color(hex: "#3ECFB2").opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .padding(.horizontal, 12)
+
+                    case .withIssues:
+                        VStack(spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(hex: "#F0A030"))
+                                Text("Recovery Completed with Issues")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(Color(hex: "#F0A030"))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(Color(hex: "#F0A030").opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                            Button {
+                                onStartRecovery?(kit)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.system(size: 10, weight: .semibold))
+                                    Text("Try Recovery Again")
+                                        .font(.system(size: 10, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color(hex: "#F0A030"))
+                                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color(hex: "#3ECFB2"))
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                } else {
+                    Button {
+                        onStartRecovery?(kit)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(L(.beginRecovery))
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color(hex: "#3ECFB2"))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .tourAnchor("recoveryModeButton")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .tourAnchor("recoveryModeButton")
             } else {
                 HStack(spacing: 6) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 9))
                         .foregroundColor(Color(hex: "#3ECFB2"))
-                    Text("Recovery Mode is a Pro feature — ")
+                    Text(L(.recoveryModeProNote))
                         .font(.system(size: 10))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.6))
-                    Button("Upgrade") {
+                    Button(L(.upgrade)) {
                         NSWorkspace.shared.open(URL(string: "https://interlinked.digital/account")!)
                     }
                     .font(.system(size: 10, weight: .semibold))
@@ -442,7 +541,7 @@ struct RecoveryKitView: View {
             Image(systemName: "info.circle")
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#3ECFB2"))
-            Text("Exported from another Mac — all file paths are shown for reference only.")
+            Text(L(.crossMacKitNote))
                 .font(.system(size: 10))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
@@ -461,7 +560,7 @@ struct RecoveryKitView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555"))
-            Text("This Recovery Kit file has been modified or corrupted and cannot be loaded.")
+            Text(L(.hashMismatchNote))
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#E05555").opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)

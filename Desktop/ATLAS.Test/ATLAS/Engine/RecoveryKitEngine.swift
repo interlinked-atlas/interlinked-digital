@@ -19,6 +19,19 @@ enum RecoveryKitImportState: Equatable {
     case failed(String)
 }
 
+// MARK: - Cloud recovery result
+
+enum CloudKitRecoveryResult: Equatable {
+    case success(kitId: UUID)
+    case withIssues(kitId: UUID)
+
+    var kitId: UUID {
+        switch self {
+        case .success(let id), .withIssues(let id): return id
+        }
+    }
+}
+
 // MARK: - RecoveryKitEngine
 
 @MainActor
@@ -31,11 +44,38 @@ final class RecoveryKitEngine: ObservableObject {
     @Published private(set) var cloudState:   CloudKitState = .idle
     @Published private(set) var cloudMeta:    [CloudKitMeta] = []
 
+    // The UUID of the cloud kit most recently downloaded this session.
+    // Set in downloadFromCloud() and used by markRecovered() — never references cloudMeta.first.
+    private(set) var downloadedKitId: UUID? = nil
+
+    // Persisted recovery result for the most recently recovered backup.
+    @Published private(set) var lastRecoveryResult: CloudKitRecoveryResult? = nil
+
     // Set after a successful export — uploadToCloud() reads actual files from here.
     private(set) var lastGeneratedKitFolderURL: URL? = nil
 
     // Set after a successful cloud upload — prevents re-uploading the same kit.
     private var lastUploadedKitFolderURL: URL? = nil
+
+    init() {
+        // Restore persisted recovery result across relaunches
+        if let idStr = UserDefaults.standard.string(forKey: "atlas.lastRecoveredKitId"),
+           let kitId = UUID(uuidString: idStr) {
+            let outcome = UserDefaults.standard.string(forKey: "atlas.lastRecoveredKitResult")
+            lastRecoveryResult = outcome == "withIssues" ? .withIssues(kitId: kitId) : .success(kitId: kitId)
+        }
+    }
+
+    // Called by ContentView when RecoveryModeEngine.isComplete becomes true.
+    // successCount comes from RecoveryModeEngine.successCount at that moment.
+    // Always uses downloadedKitId — never cloudMeta.first — so it stamps the correct backup.
+    func markRecovered(successCount: Int) {
+        guard let kitId = downloadedKitId else { return }
+        let result: CloudKitRecoveryResult = successCount > 0 ? .success(kitId: kitId) : .withIssues(kitId: kitId)
+        lastRecoveryResult = result
+        UserDefaults.standard.set(kitId.uuidString, forKey: "atlas.lastRecoveredKitId")
+        UserDefaults.standard.set(successCount > 0 ? "success" : "withIssues", forKey: "atlas.lastRecoveredKitResult")
+    }
 
     // Test injection: set true in DEBUG to make .txt write throw
     #if DEBUG
@@ -399,7 +439,8 @@ extension RecoveryKitEngine {
     func loadCloudKitMetadata() async {
         guard Features.cloudRecoveryKit,
               let token = AuthManager.shared.session?.accessToken else {
-            cloudState = .idle
+            // No valid token — exit spinner immediately rather than staying in .idle forever
+            cloudState = .notFound
             cloudMeta  = []
             return
         }
@@ -493,6 +534,7 @@ extension RecoveryKitEngine {
                     !file.destinationPath.hasPrefix("/Applications")
                 }
             }
+            downloadedKitId = kitId   // stamp the specific backup that was downloaded
             importedKit   = kit
             isCrossMacKit = isCrossMac
             importState   = .loaded

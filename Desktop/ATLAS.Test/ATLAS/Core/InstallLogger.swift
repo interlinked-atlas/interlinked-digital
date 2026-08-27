@@ -105,6 +105,7 @@ struct InstallLogger {
         switch result {
         case .success: isFailed = false; status = .success
         case .failure(let reason): isFailed = true; status = .failure; failureReason = reason
+        case .unsupportedDAWInstallation: isFailed = true; status = .failure
         }
 
         let dir = isFailed ? failedLogsDir : installedLogsDir
@@ -182,6 +183,9 @@ struct InstallLogger {
                 lines.append("")
                 lines.append("  ATLAS did not attempt automatic remediation.")
             }
+        case .unsupportedDAWInstallation(let dawName):
+            lines.append("STATUS:  ⛔ DAW NOT SUPPORTED")
+            lines.append("DAW:     \(dawName)")
         }
 
         if remediationAttempted && !isFailed {
@@ -199,7 +203,8 @@ struct InstallLogger {
         let uploadAppName: String
         switch result {
         case .success(let name, _): uploadAppName = name
-        case .failure:           uploadAppName = fileURL.lastPathComponent
+        case .failure:              uploadAppName = fileURL.lastPathComponent
+        case .unsupportedDAWInstallation: uploadAppName = fileURL.lastPathComponent
         }
         let uploadType = isFailed ? "failed" : "install"
         let uploadFilename = filename
@@ -230,7 +235,8 @@ struct InstallLogger {
             status: status,
             failureReason: failureReason,
             logFileName: filename,
-            sessionID: sessionID
+            sessionID: sessionID,
+            installerSourcePath: fileURL.path
         )
     }
 
