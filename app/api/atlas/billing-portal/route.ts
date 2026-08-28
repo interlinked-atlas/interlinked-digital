@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: 'https://www.interlinked.digital/atlas/account',
+    configuration: 'bpc_1Tr2qTA1Bm2dPCGcziZYlzD7',
   })
 
   return NextResponse.json({ url: session.url })

@@ -120,6 +120,19 @@ async function handleCancellation(customerId: string, stripeEvent: string) {
   const userId = await getUserByEmail(email)
   if (!userId) return
 
+  // Idempotency guard: if already cancelled, skip writes and emails.
+  // Prevents duplicates when cancel_at_period_end triggers an early cancellation
+  // and customer.subscription.deleted fires again at period end.
+  const { data: currentProfile } = await supabase
+    .from('profiles')
+    .select('subscription_status')
+    .eq('id', userId)
+    .single()
+  if (currentProfile?.subscription_status === 'cancelled') {
+    console.log(`[ATLAS] handleCancellation: already cancelled for ${email} — skipping`)
+    return
+  }
+
   await supabase
     .from('profiles')
     .update({ subscription_status: 'cancelled', plan: 'free' })
@@ -154,21 +167,10 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('stripe-signature') ?? ''
 
   let event: Stripe.Event
-  const secrets = [
-    process.env.STRIPE_WEBHOOK_SECRET,
-    process.env.STRIPE_WEBHOOK_SECRET_TEST,
-  ].filter(Boolean) as string[]
-
-  let verified = false
-  for (const secret of secrets) {
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, secret)
-      verified = true
-      break
-    } catch {}
-  }
-  if (!verified) {
-    console.error('[ATLAS] Webhook signature failed against all known secrets')
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
+  } catch (err: any) {
+    console.error('[ATLAS] Webhook signature verification failed:', err.message)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -245,6 +247,14 @@ export async function POST(req: NextRequest) {
           userId, sub.customer as string, sub.id,
           plan, sub.status, sub.current_period_end, sub.cancel_at_period_end
         )
+
+        // ATLAS policy: cancel_at_period_end === true means immediate access revocation.
+        // Portal/admin cancellations that defer to period end must not grant continued access.
+        // handleCancellation is idempotent — customer.subscription.deleted at period end is a no-op.
+        if (sub.cancel_at_period_end) {
+          await handleCancellation(sub.customer as string, event.type)
+          break
+        }
 
         // Only log/notify if the plan price actually changed
         const prevPriceId = (prevSub?.items as any)?.data?.[0]?.price?.id
