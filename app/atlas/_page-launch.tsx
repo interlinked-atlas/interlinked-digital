@@ -4,28 +4,16 @@ import { useState, useEffect, useRef } from 'react'
 
 const PLANS = [
   {
-    id: 'standard',
-    name: 'Standard',
-    price: '$14.99',
-    period: '/mo',
-    color: '#8A8A96',
-    accentColor: '#5E6AD2',
-    recommended: false,
-    features: ['1 device', '3 installs per day', 'Install history', 'Notifications'],
-    excluded: ['Bulk installation', 'Uninstall & Rollback', 'TITAN CORE™', 'Smart Storage'],
-    stripeUrl: 'https://buy.stripe.com/7sYcN4b66b0l3VJ1judjO00',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$29.99',
+    id: 'atlas',
+    name: 'ATLAS',
+    price: '$30',
     period: '/mo',
     color: '#3ECFB2',
     accentColor: '#3ECFB2',
     recommended: true,
     features: [
       'Up to 3 devices',
-      'Unlimited installs',
+      '25 installs per month',
       'Bulk installation',
       'Uninstall & Rollback',
       'TITAN CORE™',
@@ -33,7 +21,7 @@ const PLANS = [
       'Full install history',
     ],
     excluded: [],
-    stripeUrl: 'https://buy.stripe.com/aFafZg7TUc4p0Jx7HSdjO01',
+    stripeUrl: 'https://www.interlinked.digital/atlas/checkout?plan=atlas',
   },
 ]
 
@@ -91,7 +79,7 @@ Piracy, license circumvention, keygen use, or any unlicensed use of software thr
 ATLAS requests Full Disk Access, Accessibility, and Automation permissions solely to perform installations you initiate. Your admin password, if provided, is stored securely in the macOS Keychain and is never transmitted externally.
 
 8. SUBSCRIPTION & BILLING
-ATLAS is available on Standard and Pro plans. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
+ATLAS is available via an ATLAS subscription at $30/month or $300/year. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
 
 9. CHANGES
 InterLinked® reserves the right to update these terms at any time. Continued use of ATLAS constitutes acceptance of the current terms.

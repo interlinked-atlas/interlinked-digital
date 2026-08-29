@@ -11,6 +11,10 @@ const supabase = createClient(
 )
 
 const PRICE_IDS: Record<string, string> = {
+  // Current ATLAS single plan
+  'atlas':           'price_1U9uOBA1Bm2dPCGc73d3ZbA5',
+  'atlas-annual':    'price_1U9uOCA1Bm2dPCGcjRbOpXii',
+  // Legacy prices — kept for backward compat, all map to ATLAS tier
   standard:          'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
   pro:               'price_1TdIbOA1Bm2dPCGcpLFkuAea',
   'standard-annual': 'price_1TnTWwA1Bm2dPCGchzhfeeZy',
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!customerId) {
-    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=${targetPlan}` }, { status: 404 })
   }
 
   // Get active subscription if not already known
@@ -63,17 +67,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (!stripeSubId) {
-    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=atlas-${targetPlan}` }, { status: 404 })
+    return NextResponse.json({ error: 'NO_STRIPE_CUSTOMER', redirectTo: `/atlas/checkout?plan=${targetPlan}` }, { status: 404 })
   }
 
   const sub = await stripe.subscriptions.retrieve(stripeSubId)
   const item = sub.items.data[0]
-  const isDowngrade = profile.plan === 'pro' && targetPlan === 'standard'
-
+  // All plan changes are treated as upgrades (monthly → annual is the primary use case)
   const updatedSub = await stripe.subscriptions.update(sub.id, {
     items: [{ id: item.id, price: priceId }],
-    proration_behavior: isDowngrade ? 'none' : 'always_invoice',
-    billing_cycle_anchor: isDowngrade ? 'unchanged' : 'now',
+    proration_behavior: 'always_invoice',
+    billing_cycle_anchor: 'now',
   })
 
   await supabase.from('profiles')
@@ -92,7 +95,7 @@ export async function POST(req: NextRequest) {
   const renewDate = updatedSub.current_period_end
     ? new Date(updatedSub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : ''
-  await sendEmail({ to: profile.email, template: 'subscription-confirmed', data: { plan: targetPlan, renewDate } })
+  await sendEmail({ to: profile.email, template: 'subscription-confirmed', data: { renewDate } })
 
   return NextResponse.json({ ok: true })
 }

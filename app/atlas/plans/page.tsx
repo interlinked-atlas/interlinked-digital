@@ -7,50 +7,42 @@ import { createClient } from '@/lib/supabase/client'
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 const MONTHLY = {
-  standard: {
-    price: '$14.99', period: '/mo', priceId: 'atlas-standard',
-    features: ['1 device', '10 installs / month', 'TITAN CORE™', 'Storage Manager', '3 Daily Installations', 'Notifications'],
-    excluded: ['Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Built-In Virus Scanner', 'File Sharing'],
-  },
-  pro: {
-    price: '$29.99', period: '/mo', priceId: 'atlas-pro',
-    features: ['Up to 3 devices', '25 installs / month', 'TITAN CORE™', 'Storage Manager', 'Full install history', 'Bulk installation', 'Uninstall & Rollback', 'Trash install file', 'ATLAS CLEANER™', 'ATLAS RECOVERY KIT™', 'Cloud Backup', 'Built-In Virus Scanner', 'File Sharing (Coming Soon)'],
-    excluded: [],
-  },
-}
-
-const PRO_FEATURE_DESCRIPTIONS: Record<string, string> = {
-  'ATLAS CLEANER™':       'Scan and remove leftover install files',
-  'ATLAS RECOVERY KIT™':  'Export an encrypted backup of your install library',
-  'Cloud Backup':          'Automatically sync your Recovery Kit to the cloud',
+  price: '$30', period: '/mo', priceId: 'atlas',
+  features: [
+    'Up to 3 devices',
+    '25 installs / month',
+    'TITAN CORE™',
+    'Smart Storage',
+    'Full install history',
+    'Bulk installation',
+    'Uninstall & Rollback',
+    'Trash install file',
+    'ATLAS CLEANER™',
+    'ATLAS RECOVERY KIT™',
+    'Cloud Backup',
+    'Built-In Virus Scanner',
+    'File Sharing (Coming Soon)',
+  ],
 }
 
 const ANNUAL = {
-  standard: {
-    price: '$12.50', period: '/mo', billed: '$150 billed annually', save: 'Save $30', priceId: 'atlas-standard-annual',
-    features: MONTHLY.standard.features,
-    excluded: MONTHLY.standard.excluded,
-  },
-  pro: {
-    price: '$25.00', period: '/mo', billed: '$300 billed annually', save: 'Save $60', priceId: 'atlas-pro-annual',
-    features: MONTHLY.pro.features,
-    excluded: MONTHLY.pro.excluded,
-  },
+  price: '$25', period: '/mo', billed: '$300 billed annually', save: 'Save $60', priceId: 'atlas-annual',
+  features: MONTHLY.features,
 }
 
 const COMPARE_ROWS = [
-  { label: 'Cost per file installed',   titan: '$30–$80+ per file',   pro: 'Flat monthly rate' },
-  { label: 'Annual cost estimate',       titan: '$1,440+ / year',      pro: '$359.88 / year' },
-  { label: 'Wait time',                  titan: 'Long queue — hours',  pro: 'Instant, on your schedule' },
-  { label: 'Installation speed',         titan: 'Slow & manual',       pro: 'Automated & intelligent' },
-  { label: 'Remote access required',     titan: 'Yes — AnyDesk',       pro: 'Never' },
-  { label: 'Privacy',                    titan: 'Stranger on your PC', pro: 'Fully local & private' },
-  { label: 'Uninstall & Rollback',       titan: 'Not included',        pro: 'Built-in' },
-  { label: 'Virus scanning',             titan: 'Not included',        pro: 'Included (VirusTotal)' },
-  { label: 'Install history',            titan: 'None',                pro: 'Full audit trail' },
-  { label: 'Bulk installation',          titan: 'Charged per file',    pro: 'Included' },
-  { label: 'Works 24/7',                 titan: 'Depends on tech',     pro: 'Always available' },
-  { label: 'Scales with your library',   titan: 'Cost grows fast',     pro: 'Same price always' },
+  { label: 'Cost per file installed',   titan: '$30–$80+ per file',   atlas: 'Flat monthly rate' },
+  { label: 'Annual cost estimate',       titan: '$1,440+ / year',      atlas: '$300 / year' },
+  { label: 'Wait time',                  titan: 'Long queue — hours',  atlas: 'Instant, on your schedule' },
+  { label: 'Installation speed',         titan: 'Slow & manual',       atlas: 'Automated & intelligent' },
+  { label: 'Remote access required',     titan: 'Yes — AnyDesk',       atlas: 'Never' },
+  { label: 'Privacy',                    titan: 'Stranger on your PC', atlas: 'Fully local & private' },
+  { label: 'Uninstall & Rollback',       titan: 'Not included',        atlas: 'Built-in' },
+  { label: 'Virus scanning',             titan: 'Not included',        atlas: 'Included (VirusTotal)' },
+  { label: 'Install history',            titan: 'None',                atlas: 'Full audit trail' },
+  { label: 'Bulk installation',          titan: 'Charged per file',    atlas: 'Included' },
+  { label: 'Works 24/7',                 titan: 'Depends on tech',     atlas: 'Always available' },
+  { label: 'Scales with your library',   titan: 'Cost grows fast',     atlas: 'Same price always' },
 ]
 
 // ─── Scroll-animate hook ──────────────────────────────────────────────────────
@@ -98,7 +90,6 @@ export default function PlansPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Delay hint appearance slightly so it feels intentional, not janky
     const t = setTimeout(() => setHeroIn(true), 80)
     const hintTimer = setTimeout(() => setHintVisible(true), 900)
 
@@ -107,7 +98,6 @@ export default function PlansPage() {
       setLoggedIn(!!data.session)
     })
 
-    // Hide hint once user reaches comparison section
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setHintVisible(false) },
       { threshold: 0.1 }
@@ -134,8 +124,7 @@ export default function PlansPage() {
     compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const std = annual ? ANNUAL.standard : MONTHLY.standard
-  const pro = annual ? ANNUAL.pro      : MONTHLY.pro
+  const plan = annual ? ANNUAL : MONTHLY
 
   return (
     <>
@@ -166,7 +155,7 @@ export default function PlansPage() {
           50%  { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
-        .pro-chrome-text {
+        .atlas-chrome-text {
           background: linear-gradient(90deg,
             #C0C0C0, #FFFFFF, #A8A8A8, #E8E8E8,
             #3ECFB2, #FFFFFF, #B0B0B0, #F0F0F0, #C0C0C0
@@ -194,7 +183,7 @@ export default function PlansPage() {
         .scroll-hint-bar:hover { opacity: 0.85 !important; }
       `}</style>
 
-      {/* ── Fixed bottom scroll hint — always visible until comparison reached ── */}
+      {/* ── Fixed bottom scroll hint ── */}
       <button
         onClick={scrollToCompare}
         className="scroll-hint-bar"
@@ -266,7 +255,7 @@ export default function PlansPage() {
         </nav>
 
         {/* Hero */}
-        <section style={{ maxWidth: '860px', margin: '0 auto', padding: '32px 24px 20px', textAlign: 'center' }}>
+        <section style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px 20px', textAlign: 'center' }}>
           <div style={{
             opacity: heroIn ? 1 : 0,
             transform: heroIn ? 'translateY(0)' : 'translateY(20px)',
@@ -299,7 +288,7 @@ export default function PlansPage() {
             </div>
 
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.40)', marginBottom: '20px' }}>
-              Pick a plan. Start installing.
+              One plan. Everything included.
             </p>
 
             {/* Billing toggle */}
@@ -335,152 +324,81 @@ export default function PlansPage() {
                   background: '#F0A030', color: '#080809',
                   fontSize: '8px', fontWeight: 800, letterSpacing: '1px',
                   padding: '2px 6px', borderRadius: '50px',
-                }}>SAVE</span>
+                }}>SAVE $60</span>
               </button>
             </div>
           </div>
         </section>
 
-        {/* Plan cards */}
-        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '0 24px 80px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-
-            {/* Standard */}
-            <FadeUp delay={0}>
-              <div className="plan-card" style={{
-                background: '#0E0E10',
-                borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.07)',
-                overflow: 'hidden',
-                display: 'flex', flexDirection: 'column',
-                height: '100%',
-              }}>
-                <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ color: '#5E6AD2', fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Standard
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{std.price}</span>
-                    <span style={{ color: '#525260', fontSize: '12px' }}>{std.period}</span>
-                  </div>
-                  {annual && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#525260', fontSize: '12px' }}>{(std as typeof ANNUAL.standard).billed}</span>
-                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
-                        {(std as typeof ANNUAL.standard).save}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {std.features.map(f => (
-                    <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#5E6AD2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                      <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>{f}</span>
-                    </div>
-                  ))}
-                  {std.excluded.map(f => (
-                    <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
-                      <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '13px', lineHeight: 1.4 }}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ padding: '0 12px 12px' }}>
-                  <button
-                    onClick={() => handleSelectPlan(std.priceId)}
-                    className="cta-btn"
-                    style={{
-                      width: '100%', padding: '10px',
-                      borderRadius: '9px',
-                      border: '1px solid rgba(94,106,210,0.35)',
-                      background: 'rgba(94,106,210,0.10)',
-                      color: '#5E6AD2', fontSize: '13px', fontWeight: 700,
-                      cursor: 'pointer', letterSpacing: '-0.01em',
-                    }}
-                  >
-                    Get Standard →
-                  </button>
-                </div>
+        {/* Plan card */}
+        <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 80px' }}>
+          <FadeUp delay={0}>
+            <div className="plan-card" style={{
+              background: '#0E0E10',
+              borderRadius: '16px',
+              border: '1px solid rgba(62,207,178,0.25)',
+              overflow: 'hidden',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 0 40px rgba(62,207,178,0.06)',
+            }}>
+              {/* Most popular banner */}
+              <div style={{ background: 'rgba(62,207,178,0.08)', borderBottom: '1px solid rgba(62,207,178,0.15)', padding: '5px 0', textAlign: 'center', color: '#3ECFB2', fontSize: '10px', fontWeight: 800, letterSpacing: '2.5px' }}>
+                EVERYTHING INCLUDED
               </div>
-            </FadeUp>
 
-            {/* Pro */}
-            <FadeUp delay={80}>
-              <div className="plan-card" style={{
-                background: '#0E0E10',
-                borderRadius: '16px',
-                border: '1px solid rgba(62,207,178,0.25)',
-                overflow: 'hidden',
-                display: 'flex', flexDirection: 'column',
-                height: '100%',
-                boxShadow: '0 0 40px rgba(62,207,178,0.06)',
-              }}>
-                <div style={{ background: 'rgba(62,207,178,0.08)', borderBottom: '1px solid rgba(62,207,178,0.15)', padding: '5px 0', textAlign: 'center', color: '#3ECFB2', fontSize: '10px', fontWeight: 800, letterSpacing: '2.5px' }}>
-                  MOST POPULAR
+              <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  <span className="atlas-chrome-text">ATLAS</span>
                 </div>
-
-                <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    <span className="pro-chrome-text">Pro</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
+                  <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{plan.price}</span>
+                  <span style={{ color: '#525260', fontSize: '12px' }}>{plan.period}</span>
+                </div>
+                {annual && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: '#525260', fontSize: '12px' }}>{(plan as typeof ANNUAL).billed}</span>
+                    <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
+                      {(plan as typeof ANNUAL).save}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{pro.price}</span>
-                    <span style={{ color: '#525260', fontSize: '12px' }}>{pro.period}</span>
-                  </div>
-                  {annual && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#525260', fontSize: '12px' }}>{(pro as typeof ANNUAL.pro).billed}</span>
-                      <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
-                        {(pro as typeof ANNUAL.pro).save}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {pro.features.map(f => (
-                    <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                      <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>
-                        {f.includes('Coming Soon') ? (
-                          <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '11px' }}>Coming Soon</span></>
-                        ) : f}
-                        {PRO_FEATURE_DESCRIPTIONS[f] && (
-                          <span style={{ display: 'block', color: '#525260', fontSize: '11px', lineHeight: 1.4, marginTop: '1px' }}>
-                            {PRO_FEATURE_DESCRIPTIONS[f]}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ padding: '0 12px 12px' }}>
-                  <button
-                    onClick={() => handleSelectPlan(pro.priceId)}
-                    className="cta-btn"
-                    style={{
-                      width: '100%', padding: '10px',
-                      borderRadius: '9px', border: 'none',
-                      background: '#3ECFB2',
-                      color: '#080809', fontSize: '13px', fontWeight: 700,
-                      cursor: 'pointer', letterSpacing: '-0.01em',
-                      boxShadow: '0 0 20px rgba(62,207,178,0.22)',
-                    }}
-                  >
-                    Get Pro →
-                  </button>
-                </div>
+                )}
               </div>
-            </FadeUp>
-          </div>
 
-          {/* Footer note under plan cards */}
-          <FadeUp delay={160}>
-            <div style={{ textAlign: 'center' }}>
+              <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {plan.features.map(f => (
+                  <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
+                    <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>
+                      {f.includes('Coming Soon') ? (
+                        <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '11px' }}>Coming Soon</span></>
+                      ) : f}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding: '0 12px 12px' }}>
+                <button
+                  onClick={() => handleSelectPlan(plan.priceId)}
+                  className="cta-btn"
+                  style={{
+                    width: '100%', padding: '10px',
+                    borderRadius: '9px', border: 'none',
+                    background: '#3ECFB2',
+                    color: '#080809', fontSize: '13px', fontWeight: 700,
+                    cursor: 'pointer', letterSpacing: '-0.01em',
+                    boxShadow: '0 0 20px rgba(62,207,178,0.22)',
+                  }}
+                >
+                  {annual ? 'Get ATLAS Annual →' : 'Get ATLAS →'}
+                </button>
+              </div>
+            </div>
+          </FadeUp>
+
+          {/* Footer note */}
+          <FadeUp delay={80}>
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
               <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', marginBottom: '4px' }}>
                 Secure payment via Stripe · Cancel anytime · Annual plans billed as a single payment
               </p>
@@ -500,10 +418,10 @@ export default function PlansPage() {
                 </p>
                 <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '10px' }}>
                   Remote Installation vs{' '}
-                  <span className="pro-chrome-text" style={{ fontSize: '26px', fontWeight: 700 }}>ATLAS Pro</span>
+                  <span className="atlas-chrome-text" style={{ fontSize: '26px', fontWeight: 700 }}>ATLAS</span>
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
-                  Remote install services charge per file and require handing over access to your machine. ATLAS Pro handles everything — privately, instantly, for one flat rate.
+                  Remote install services charge per file and require handing over access to your machine. ATLAS handles everything — privately, instantly, for one flat rate.
                 </p>
               </div>
             </FadeUp>
@@ -513,6 +431,8 @@ export default function PlansPage() {
                 borderRadius: '16px',
                 border: '1px solid rgba(255,255,255,0.07)',
                 overflow: 'hidden',
+                maxWidth: '860px',
+                margin: '0 auto',
               }}>
                 {/* Table header */}
                 <div style={{
@@ -532,7 +452,7 @@ export default function PlansPage() {
                   </div>
                   <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid rgba(62,207,178,0.15)', background: 'rgba(62,207,178,0.04)' }}>
                     <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
-                      <span className="pro-chrome-text">✦ ATLAS Pro</span>
+                      <span className="atlas-chrome-text">✦ ATLAS</span>
                     </div>
                     <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>Intelligent Installer</div>
                   </div>
@@ -570,7 +490,7 @@ export default function PlansPage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     }}>
                       <span style={{ fontSize: '11px' }}>✓</span>
-                      {row.pro}
+                      {row.atlas}
                     </div>
                   </div>
                 ))}
@@ -584,7 +504,7 @@ export default function PlansPage() {
                   Stop paying per file. One plan, everything included.
                 </p>
                 <button
-                  onClick={() => handleSelectPlan(annual ? 'atlas-pro-annual' : 'atlas-pro')}
+                  onClick={() => handleSelectPlan(annual ? 'atlas-annual' : 'atlas')}
                   className="cta-btn"
                   style={{
                     padding: '13px 32px',
@@ -596,7 +516,7 @@ export default function PlansPage() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Get ATLAS Pro →
+                  Get ATLAS →
                 </button>
               </div>
             </FadeUp>

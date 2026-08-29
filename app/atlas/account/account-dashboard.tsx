@@ -135,16 +135,17 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     return () => { supabase.removeChannel(ch) }
   }, [user.id, supabase, doRefresh])
 
-  const currentPlan = profile?.plan ?? subscription?.plan ?? "standard"
-  const isPro   = currentPlan === "pro"
+  const currentPlan = profile?.plan ?? subscription?.plan ?? "free"
+  const isSubscribed = ["atlas","pro","standard"].includes(currentPlan)
+  const isPro = isSubscribed // backward-compat alias — do not use for new logic
   const isMonthly = (profile?.billing_interval ?? "monthly") === "monthly"
   const isActive = profile?.subscription_status === "active" || subscription?.status === "active" || subscription?.status === "trialing"
   const isCancelled = profile?.subscription_status === "cancelled" || subscription?.status === "canceled"
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
-  const maxDevices = isPro ? 3 : 1
-  const planName  = isPro ? "Pro" : "Standard"
-  const planPrice = isPro ? "$29.99" : "$14.99"
-  const monthlyInstallLimit = isPro ? 25 : 10
+  const maxDevices = 3
+  const planName  = "ATLAS"
+  const planPrice = isMonthly ? "$30" : "$300"
+  const monthlyInstallLimit = 25
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
@@ -360,47 +361,31 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "18px", fontWeight: 700, color: isPro ? "#F0A030" : "#5B8DEF" }}>
-                    <span className="atlas-text" style={{ fontSize: "14px", letterSpacing: "4px", marginRight: "6px" }}>ATLAS</span>{planName}
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "#3ECFB2" }}>
+                    <span className="atlas-text" style={{ fontSize: "14px", letterSpacing: "4px", marginRight: "6px" }}>ATLAS</span>
                   </span>
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                 </div>
                 <p style={{ fontSize: "12px", color: "#6B7399" }}>
-                  {planPrice}/month{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
+                  {isMonthly ? "$30/month" : "$300/year"}{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
                 </p>
               </div>
               <div style={{
                 padding: "4px 10px", borderRadius: "8px", fontSize: "10px", fontWeight: 800, letterSpacing: "2px",
-                border: `1px solid ${isPro ? "rgba(240,160,48,0.3)" : "rgba(91,141,239,0.3)"}`,
-                background: isPro ? "rgba(240,160,48,0.07)" : "rgba(91,141,239,0.07)",
-                color: isPro ? "#F0A030" : "#5B8DEF",
-              }}>{planName.toUpperCase()}</div>
+                border: "1px solid rgba(62,207,178,0.3)",
+                background: "rgba(62,207,178,0.07)",
+                color: "#3ECFB2",
+              }}>ATLAS</div>
             </div>
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-            {!isPro && isActive && !isCancelled && (
-              <button onClick={() => handleUpgrade("pro")} disabled={upgradeLoading} style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px",
-                background: upgradeLoading ? "rgba(240,160,48,0.4)" : "linear-gradient(135deg, #F0A030, #E07820)",
-                color: "#07080F", fontSize: "11px", fontWeight: 700, cursor: upgradeLoading ? "not-allowed" : "pointer", border: "none",
-              }}>{upgradeLoading ? "Switching…" : "↑ Upgrade to Pro — $29.99/mo"}</button>
-            )}
-            {isPro && isActive && !isCancelled && (
-              <button onClick={() => handleUpgrade("standard")} disabled={upgradeLoading} style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
-                fontSize: "11px", background: "none", cursor: upgradeLoading ? "not-allowed" : "pointer",
-              }}>{upgradeLoading ? "Switching…" : "↓ Downgrade to Standard — $14.99/mo"}</button>
-            )}
             {isActive && !isCancelled && isMonthly && (
-              <button onClick={() => handleUpgrade(isPro ? "pro-annual" : "standard-annual")} disabled={upgradeLoading} style={{
+              <button onClick={() => handleUpgrade("atlas-annual")} disabled={upgradeLoading} style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
                 background: upgradeLoading ? "rgba(62,207,178,0.3)" : "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
                 color: "#07080F", fontSize: "11px", fontWeight: 700, cursor: upgradeLoading ? "not-allowed" : "pointer", border: "none",
-              }}>{upgradeLoading ? "Switching…" : `⭐ Switch to Annual — ${isPro ? "$299.99" : "$149.99"}/yr`}</button>
+              }}>{upgradeLoading ? "Switching…" : "⭐ Switch to Annual — $300/yr (save $60)"}</button>
             )}
             {isCancelled && (
               <Link href="/atlas" style={{
@@ -458,20 +443,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Your Plan Features</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-            <FeatureCell label="Devices"            value={isPro ? "Up to 3" : "1 device"}   active />
-            <FeatureCell label="Monthly Installs"   value={`${monthlyInstallLimit}/month`} active />
-            <FeatureCell label="Bulk Queue"         value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
-            <FeatureCell label="Uninstall & Rollback" value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
-            <FeatureCell label="TITAN CORE™"        value="Enabled" active />
-            <FeatureCell label="Smart Storage"      value={isPro ? "Enabled" : "Unavailable"} active={isPro} />
+            <FeatureCell label="Devices"              value="Up to 3"          active />
+            <FeatureCell label="Monthly Installs"     value="25/month"         active />
+            <FeatureCell label="Bulk Queue"           value="Enabled"          active />
+            <FeatureCell label="Uninstall & Rollback" value="Enabled"          active />
+            <FeatureCell label="TITAN CORE™"          value="Enabled"          active />
+            <FeatureCell label="Smart Storage"        value="Enabled"          active />
           </div>
-          {!isPro && isActive && (
-            <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "10px", background: "rgba(240,160,48,0.05)", border: "1px solid rgba(240,160,48,0.15)" }}>
-              <p style={{ fontSize: "12px", color: "rgba(240,160,48,0.8)" }}>
-                Upgrade to <strong>Pro</strong> for unlimited installs, bulk queue, rollback, Smart Storage, and up to 3 devices.
-              </p>
-            </div>
-          )}
         </section>
 
         {/* ── Activated Devices ── */}
@@ -482,7 +460,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <div style={{ display: "flex", gap: "4px" }}>
                   {Array.from({ length: maxDevices }).map((_, i) => (
-                    <div key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: i < devices.length ? (isPro ? "#F0A030" : "#5B8DEF") : "#1E2240" }} />
+                    <div key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: i < devices.length ? "#3ECFB2" : "#1E2240" }} />
                   ))}
                 </div>
                 <span style={{ fontSize: "11px", color: "#4A5280", fontWeight: 600 }}>{devices.length} / {maxDevices}</span>
@@ -716,7 +694,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Recovery Kits ── */}
-        {(isPro || (!cloudKitsLoading && cloudKits.length > 0)) && (
+        {(isSubscribed || (!cloudKitsLoading && cloudKits.length > 0)) && (
           <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
               <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>

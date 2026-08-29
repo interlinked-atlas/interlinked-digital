@@ -55,8 +55,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check activation limits
-    const maxActivations = subscription.plan === 'pro' ? 3 : 1
+    // Check activation limits — flat 3 for all ATLAS subscribers
+    const maxActivations = 3
     
     const { data: existingActivations, error: activationsError } = await supabaseAdmin
       .from('device_activations')
@@ -213,25 +213,13 @@ async function generateEntitlementToken(userId: string, plan: string, machineUui
   return token
 }
 
-function getPlanFeatures(plan: string) {
-  const features = {
-    basic: {
-      unlimited_installs: false,
-      daily_install_limit: 3,
-      bulk_queue: false,
-      uninstall_manager: false,
-      recovery_system: false,
-      max_devices: 1,
-    },
-    pro: {
-      unlimited_installs: true,
-      daily_install_limit: null,
-      bulk_queue: true,
-      uninstall_manager: true,
-      recovery_system: true,
-      max_devices: 3,
-    },
+function getPlanFeatures(_plan: string) {
+  return {
+    monthly_install_limit: 25,
+    daily_install_limit: null,
+    bulk_queue: true,
+    uninstall_manager: true,
+    recovery_system: true,
+    max_devices: 3,
   }
-  
-  return features[plan as keyof typeof features] || features.basic
 }
