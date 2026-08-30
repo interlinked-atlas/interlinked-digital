@@ -107,7 +107,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* ── ATLAS / account pages (unchanged) ── */
+  /* ── ATLAS / account pages — dark (default) ── */
   --background:     #07080F;
   --foreground:     #E8ECFF;
   --card:           #0C0E1C;
@@ -122,6 +122,23 @@
   --warning:        #F0A030;
   --success:        #2ECC8A;
 
+  /* ── ATLAS page-level theme vars — dark (default) ── */
+  --atlas-bg:              #07080F;
+  --atlas-fg:              #E8ECFF;
+  --atlas-text-sub:        rgba(255,255,255,0.38);
+  --atlas-text-dim:        rgba(255,255,255,0.18);
+  --atlas-header-bg:       rgba(7,8,15,0.92);
+  --atlas-nav-bg:          rgba(8,8,9,0.85);
+  --atlas-nav-hover:       #FFFFFF;
+  --atlas-border-color:    #1E2240;
+  --atlas-border-faint:    rgba(255,255,255,0.06);
+  --atlas-toggle-wrap-bg:  rgba(255,255,255,0.04);
+  --atlas-toggle-wrap-bd:  rgba(255,255,255,0.08);
+  --atlas-toggle-on:       rgba(255,255,255,0.10);
+  --atlas-toggle-off:      transparent;
+  --atlas-toggle-text-on:  #FFFFFF;
+  --atlas-toggle-text-off: #8A8A96;
+
   /* ── interlinked.digital homepage — dark mode ── */
   --il-bg:           #00000f;
   --il-text:         #ffffff;
@@ -134,9 +151,53 @@
   --il-glow:         rgba(58,71,103,0.10);
 }
 
+/* ── Light mode overrides (class-based, set by ThemeProvider) ── */
+html.light {
+  /* ATLAS core */
+  --background:     #F0F2FF;
+  --foreground:     #0D1035;
+  --card:           #FFFFFF;
+  --border:         #DDE2F5;
+  --text-primary:   #0D1035;
+  --text-secondary: #3A4575;
+  --text-muted:     #6B7399;
+  --text-dim:       #B0B8D8;
+  --error:          #CC3333;
+  --warning:        #C07820;
+  --success:        #1A9960;
+
+  /* ATLAS page-level */
+  --atlas-bg:              #F2F4FF;
+  --atlas-fg:              #0D1035;
+  --atlas-text-sub:        #4A5280;
+  --atlas-text-dim:        #8A94B8;
+  --atlas-header-bg:       rgba(240,242,255,0.92);
+  --atlas-nav-bg:          rgba(242,244,255,0.90);
+  --atlas-nav-hover:       #0D1035;
+  --atlas-border-color:    #DDE2F5;
+  --atlas-border-faint:    rgba(0,0,0,0.07);
+  --atlas-toggle-wrap-bg:  rgba(0,0,0,0.04);
+  --atlas-toggle-wrap-bd:  rgba(0,0,0,0.10);
+  --atlas-toggle-on:       rgba(0,0,0,0.08);
+  --atlas-toggle-off:      transparent;
+  --atlas-toggle-text-on:  #0D1035;
+  --atlas-toggle-text-off: #6B7399;
+
+  /* InterLinked homepage */
+  --il-bg:           #f0f0ff;
+  --il-text:         #000000;
+  --il-primary:      #22262a;
+  --il-secondary:    #2b3037;
+  --il-accent:       #b6c8f7;
+  --il-card-bg:      #e6e6f8;
+  --il-border:       rgba(182,200,247,0.50);
+  --il-border-hover: rgba(182,200,247,0.85);
+  --il-glow:         rgba(182,200,247,0.18);
+}
+
+/* System preference fallback (before JS hydrates) */
 @media (prefers-color-scheme: light) {
-  :root {
-    /* ── interlinked.digital homepage — light mode ── */
+  html:not(.dark):not(.light) {
     --il-bg:           #f0f0ff;
     --il-text:         #000000;
     --il-primary:      #22262a;

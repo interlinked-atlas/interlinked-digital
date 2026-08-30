@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -136,11 +137,11 @@ export default function PlansPage() {
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
-        body { background: #080809; color: #FFFFFF; }
+        body { background: var(--atlas-bg); color: var(--atlas-fg); }
         ::selection { background: rgba(62,207,178,0.25); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 3px; }
         .plan-card { transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease; }
         .plan-card:hover { transform: translateY(-3px); }
         .cta-btn { transition: opacity 0.15s, transform 0.15s cubic-bezier(0.16,1,0.3,1); }
@@ -148,7 +149,9 @@ export default function PlansPage() {
         .cta-btn:active { transform: scale(0.98); }
         .toggle-btn { transition: background 0.2s, color 0.2s; }
         .nav-link { transition: color 0.12s; }
-        .nav-link:hover { color: #FFFFFF !important; }
+        .nav-link:hover { color: var(--atlas-nav-hover) !important; }
+        .compare-row:nth-child(odd) { background: rgba(255,255,255,0.015); }
+        .compare-row:hover { background: rgba(62,207,178,0.04); }
 
         @keyframes chrome-shift {
           0%   { background-position: 0% 50%; }
@@ -173,9 +176,6 @@ export default function PlansPage() {
           50%       { transform: translateY(5px); }
         }
         .bounce-arrow { animation: bounce-down 1.5s ease-in-out infinite; display: inline-block; }
-
-        .compare-row:nth-child(odd) { background: rgba(255,255,255,0.015); }
-        .compare-row:hover { background: rgba(62,207,178,0.04); }
 
         .scroll-hint-bar {
           transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1);
@@ -220,7 +220,7 @@ export default function PlansPage() {
 
       <main style={{
         minHeight: '100vh',
-        background: '#080809',
+        background: 'var(--atlas-bg)',
         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         WebkitFontSmoothing: 'antialiased',
       }}>
@@ -228,9 +228,9 @@ export default function PlansPage() {
         {/* Nav */}
         <nav style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(8,8,9,0.85)',
+          background: 'var(--atlas-nav-bg)',
           backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid var(--atlas-border-faint)',
           padding: '0 24px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '52px',
@@ -245,13 +245,16 @@ export default function PlansPage() {
             </svg>
             Back to ATLAS
           </a>
-          <a
-            href="/atlas/account"
-            className="nav-link"
-            style={{ color: '#8A8A96', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
-          >
-            My Account
-          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <ThemeToggle />
+            <a
+              href="/atlas/account"
+              className="nav-link"
+              style={{ color: '#8A8A96', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
+            >
+              My Account
+            </a>
+          </div>
         </nav>
 
         {/* Hero */}
@@ -282,20 +285,20 @@ export default function PlansPage() {
               }}>
                 ATLAS
               </h1>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.20)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '10px', color: 'var(--atlas-text-dim)', letterSpacing: '2px', textTransform: 'uppercase' }}>
                 by InterLinked®
               </span>
             </div>
 
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.40)', marginBottom: '20px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--atlas-text-sub)', marginBottom: '20px' }}>
               One plan. Everything included.
             </p>
 
             {/* Billing toggle */}
             <div style={{
               display: 'inline-flex', alignItems: 'center',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--atlas-toggle-wrap-bg)',
+              border: '1px solid var(--atlas-toggle-wrap-bd)',
               borderRadius: '50px', padding: '3px',
             }}>
               <button
@@ -303,8 +306,8 @@ export default function PlansPage() {
                 onClick={() => setAnnual(false)}
                 style={{
                   padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
-                  background: !annual ? 'rgba(255,255,255,0.10)' : 'transparent',
-                  color: !annual ? '#FFFFFF' : '#8A8A96',
+                  background: !annual ? 'var(--atlas-toggle-on)' : 'var(--atlas-toggle-off)',
+                  color: !annual ? 'var(--atlas-toggle-text-on)' : 'var(--atlas-toggle-text-off)',
                   fontSize: '13px', fontWeight: !annual ? 600 : 400,
                 }}
               >Monthly</button>
@@ -313,8 +316,8 @@ export default function PlansPage() {
                 onClick={() => setAnnual(true)}
                 style={{
                   padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
-                  background: annual ? 'rgba(255,255,255,0.10)' : 'transparent',
-                  color: annual ? '#FFFFFF' : '#8A8A96',
+                  background: annual ? 'var(--atlas-toggle-on)' : 'var(--atlas-toggle-off)',
+                  color: annual ? 'var(--atlas-toggle-text-on)' : 'var(--atlas-toggle-text-off)',
                   fontSize: '13px', fontWeight: annual ? 600 : 400,
                   display: 'flex', alignItems: 'center', gap: '6px',
                 }}
@@ -399,10 +402,10 @@ export default function PlansPage() {
           {/* Footer note */}
           <FadeUp delay={80}>
             <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', marginBottom: '4px' }}>
+              <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', marginBottom: '4px' }}>
                 Secure payment via Stripe · Cancel anytime · Annual plans billed as a single payment
               </p>
-              <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px' }}>
+              <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px' }}>
                 Already subscribed?{' '}
                 <a href="/atlas/account" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Manage your account →</a>
               </p>
@@ -413,14 +416,14 @@ export default function PlansPage() {
           <div ref={compareRef} style={{ scrollMarginTop: '72px', paddingTop: '64px' }}>
             <FadeUp delay={0}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '12px' }}>
+                <p style={{ color: 'var(--atlas-text-dim)', fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '12px' }}>
                   Why ATLAS?
                 </p>
-                <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '10px' }}>
+                <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '10px', color: 'var(--atlas-fg)' }}>
                   Remote Installation vs{' '}
                   <span className="atlas-chrome-text" style={{ fontSize: '26px', fontWeight: 700 }}>ATLAS</span>
                 </h2>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
+                <p style={{ color: 'var(--atlas-text-sub)', fontSize: '14px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
                   Remote install services charge per file and require handing over access to your machine. ATLAS handles everything — privately, instantly, for one flat rate.
                 </p>
               </div>
@@ -430,6 +433,7 @@ export default function PlansPage() {
               <div style={{
                 borderRadius: '16px',
                 border: '1px solid rgba(255,255,255,0.07)',
+                background: '#0E0E10',
                 overflow: 'hidden',
                 maxWidth: '860px',
                 margin: '0 auto',
@@ -500,7 +504,7 @@ export default function PlansPage() {
             {/* CTA after table */}
             <FadeUp delay={120}>
               <div style={{ textAlign: 'center', marginTop: '32px', marginBottom: '16px' }}>
-                <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: '13px', marginBottom: '16px' }}>
+                <p style={{ color: 'var(--atlas-text-sub)', fontSize: '13px', marginBottom: '16px' }}>
                   Stop paying per file. One plan, everything included.
                 </p>
                 <button
@@ -523,8 +527,8 @@ export default function PlansPage() {
           </div>
         </div>
 
-        <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '24px', textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px', letterSpacing: '0.02em' }}>
+        <footer style={{ borderTop: '1px solid var(--atlas-border-faint)', padding: '24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', letterSpacing: '0.02em' }}>
             InterLinked® · All rights reserved
           </p>
         </footer>

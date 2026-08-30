@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface Subscription {
   id: string; plan: string; status: string
@@ -290,15 +291,15 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   return (
     <div className="min-h-screen" style={{
-      background: "#07080F", color: "#E8ECFF",
+      background: "var(--atlas-bg)", color: "var(--atlas-fg)",
       opacity: mounted ? 1 : 0,
       transform: mounted ? "translateY(0)" : "translateY(16px)",
       transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)",
     }}>
       {/* ── Header ── */}
       <header style={{
-        borderBottom: "1px solid #1E2240", position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(7,8,15,0.92)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid var(--atlas-border-color)", position: "sticky", top: 0, zIndex: 50,
+        background: "var(--atlas-header-bg)", backdropFilter: "blur(12px)",
       }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/atlas" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
@@ -326,6 +327,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 {syncing ? "SYNCING" : "LIVE"}
               </span>
             </div>
+            <ThemeToggle />
             <button onClick={handleSignOut} disabled={loading === "signout"}
               style={{ fontSize: "11px", color: "#353860", background: "none", border: "none", cursor: "pointer" }}>
               Sign Out
