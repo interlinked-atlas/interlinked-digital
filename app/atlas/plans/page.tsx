@@ -181,6 +181,11 @@ export default function PlansPage() {
           transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1);
         }
         .scroll-hint-bar:hover { opacity: 0.85 !important; }
+        html.light .plans-atlas-title {
+          background: none;
+          -webkit-text-fill-color: #0D1035;
+          color: #0D1035;
+        }
       `}</style>
 
       {/* ── Fixed bottom scroll hint ── */}
@@ -270,7 +275,7 @@ export default function PlansPage() {
                 alt="ATLAS"
                 style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(62,207,178,0.25))' }}
               />
-              <h1 style={{
+              <h1 className="plans-atlas-title" style={{
                 fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
                 fontSize: '32px',
                 fontWeight: 'normal',
