@@ -304,7 +304,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/atlas" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
             <span className="atlas-text" style={{ fontSize: "18px", letterSpacing: "6px" }}>ATLAS</span>
-            <span style={{ fontSize: "10px", color: "#252845", letterSpacing: "2px" }}>by InterLinked</span>
+            <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", letterSpacing: "2px" }}>by InterLinked</span>
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             {isAdmin && (
@@ -315,7 +315,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 background: "rgba(240,160,48,0.06)",
               }}>ADMIN</Link>
             )}
-            <span style={{ fontSize: "11px", color: "#4A5280" }}>{user.email}</span>
+            <span style={{ fontSize: "11px", color: "var(--atlas-text-mid)" }}>{user.email}</span>
             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
               <div style={{
                 width: "6px", height: "6px", borderRadius: "50%",
@@ -329,7 +329,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
             <ThemeToggle />
             <button onClick={handleSignOut} disabled={loading === "signout"}
-              style={{ fontSize: "11px", color: "#353860", background: "none", border: "none", cursor: "pointer" }}>
+              style={{ fontSize: "11px", color: "var(--atlas-text-label)", background: "none", border: "none", cursor: "pointer" }}>
               Sign Out
             </button>
           </div>
@@ -354,12 +354,12 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <button onClick={() => setShowWelcome(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#3ECFB2", fontSize: "16px", lineHeight: 1 }}>×</button>
           </div>
         )}
-        <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#C0C8E8", marginBottom: "4px" }}>Account</h1>
+        <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: "4px" }}>Account</h1>
 
         {/* ── Subscription ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
-          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "10px" }}>Subscription</p>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
+          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "10px" }}>Subscription</p>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
@@ -368,7 +368,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                   </span>
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                 </div>
-                <p style={{ fontSize: "12px", color: "#6B7399" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                   {isMonthly ? "$30/month" : "$300/year"}{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
                 </p>
               </div>
@@ -411,10 +411,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
         {/* ── Payment & Billing ── */}
         {subscription && !subscription.stripe_customer_id?.startsWith("admin") && (
-          <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Payment & Billing</p>
+          <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Payment & Billing</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <p style={{ fontSize: "12px", color: "#6B7399", lineHeight: 1.6 }}>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.6 }}>
                 Manage your payment method, view invoices, and update billing information through the Stripe customer portal.
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
@@ -442,8 +442,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         )}
 
         {/* ── Plan Features ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Your Plan Features</p>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Your Plan Features</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
             <FeatureCell label="Devices"              value="Up to 3"          active />
             <FeatureCell label="Monthly Installs"     value="25/month"         active />
@@ -455,20 +455,20 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Activated Devices ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
-          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
+          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase" }}>Activated Devices</p>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase" }}>Activated Devices</p>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <div style={{ display: "flex", gap: "4px" }}>
                   {Array.from({ length: maxDevices }).map((_, i) => (
-                    <div key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: i < devices.length ? "#3ECFB2" : "#1E2240" }} />
+                    <div key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: i < devices.length ? "#3ECFB2" : "var(--atlas-border-color)" }} />
                   ))}
                 </div>
-                <span style={{ fontSize: "11px", color: "#4A5280", fontWeight: 600 }}>{devices.length} / {maxDevices}</span>
+                <span style={{ fontSize: "11px", color: "var(--atlas-text-mid)", fontWeight: 600 }}>{devices.length} / {maxDevices}</span>
               </div>
             </div>
-            <p style={{ fontSize: "11px", color: "#252845", marginTop: "2px" }}>
+            <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "2px" }}>
               Each device is identified by its unique Mac hardware ID.
               {devices.length >= maxDevices && <span style={{ color: "rgba(240,160,48,0.6)" }}> Limit reached — remove a device to activate a new one.</span>}
             </p>
@@ -476,66 +476,66 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           <div>
             {devices.length === 0 ? (
               <div style={{ padding: "32px 22px", textAlign: "center" }}>
-                <p style={{ fontSize: "13px", color: "#353860" }}>No devices activated yet.</p>
-                <p style={{ fontSize: "11px", color: "#252845", marginTop: "4px" }}>Download ATLAS and sign in to activate this Mac.</p>
+                <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>No devices activated yet.</p>
+                <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "4px" }}>Download ATLAS and sign in to activate this Mac.</p>
               </div>
             ) : devices.map((device, idx) => (
-              <div key={device.id} style={{ padding: "14px 22px", display: "flex", alignItems: "flex-start", gap: "14px", borderBottom: "1px solid #0F1020" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#0A0D1C", border: "1px solid #1E2240", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A5280" strokeWidth="1.5">
+              <div key={device.id} style={{ padding: "14px 22px", display: "flex", alignItems: "flex-start", gap: "14px", borderBottom: "1px solid var(--atlas-divider-subtle)" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "var(--atlas-icon-bg)", border: "1px solid var(--atlas-border-color)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-text-mid)" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
                   </svg>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 500, color: "#D0D8F0" }}>{device.device_name || "Unknown Mac"}</p>
-                    {idx === 0 && <span style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px", borderRadius: "3px", background: "#0A0D1C", border: "1px solid #1E2240", color: "#353860" }}>MOST RECENT</span>}
+                    <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--atlas-text-body)" }}>{device.device_name || "Unknown Mac"}</p>
+                    {idx === 0 && <span style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px", borderRadius: "3px", background: "var(--atlas-icon-bg)", border: "1px solid var(--atlas-border-color)", color: "var(--atlas-text-label)" }}>MOST RECENT</span>}
                   </div>
-                  <p style={{ fontSize: "11px", color: "#353860", fontFamily: "monospace", marginTop: "2px" }}>
+                  <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", fontFamily: "monospace", marginTop: "2px" }}>
                     ID: {device.hardware_uuid.slice(0, 8).toUpperCase()}···
                   </p>
-                  <p style={{ fontSize: "11px", color: "#252845", marginTop: "2px" }}>
+                  <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "2px" }}>
                     Last active {new Date(device.last_seen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     {" · "}Registered {new Date(device.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
                 <button onClick={() => handleRemoveDevice(device.id)} disabled={loading === device.id}
-                  style={{ fontSize: "11px", color: "#252845", background: "none", border: "none", cursor: "pointer", flexShrink: 0, marginTop: "2px" }}
+                  style={{ fontSize: "11px", color: "var(--atlas-text-faint)", background: "none", border: "none", cursor: "pointer", flexShrink: 0, marginTop: "2px" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#E05555")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#252845")}>
+                  onMouseLeave={e => (e.currentTarget.style.color = "var(--atlas-text-faint)")}>
                   {loading === device.id ? "Removing…" : "Remove"}
                 </button>
               </div>
             ))}
           </div>
-          <div style={{ padding: "10px 22px", borderTop: "1px solid #0F1020", background: "rgba(255,255,255,0.005)" }}>
-            <p style={{ fontSize: "10px", color: "#1E2240", lineHeight: 1.6 }}>
+          <div style={{ padding: "10px 22px", borderTop: "1px solid var(--atlas-divider-subtle)", background: "var(--atlas-row-footer-bg)" }}>
+            <p style={{ fontSize: "10px", color: "var(--atlas-text-ghost)", lineHeight: 1.6 }}>
               When you sign in to ATLAS, your Mac&apos;s hardware identifier is registered here. ATLAS will not open on a new Mac if your plan&apos;s device limit is reached. Remove an existing device to free up a slot.
             </p>
           </div>
         </section>
 
         {/* ── Installation Logs ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
-          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
+          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", margin: 0 }}>Installation Logs</p>
-              {logs.length > 0 && <span style={{ fontSize: "10px", color: "#252845" }}>{filteredLogs.length !== logs.length ? `${filteredLogs.length} of ${logs.length}` : `${logs.length} total`}</span>}
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", margin: 0 }}>Installation Logs</p>
+              {logs.length > 0 && <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)" }}>{filteredLogs.length !== logs.length ? `${filteredLogs.length} of ${logs.length}` : `${logs.length} total`}</span>}
             </div>
             {logs.length > 0 && (<>
               <input
                 type="text" placeholder="Search by app name…" value={logSearch}
                 onChange={e => setLogSearch(e.target.value)}
-                style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "7px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none", boxSizing: "border-box", marginBottom: "10px" }}
+                style={{ width: "100%", background: "var(--atlas-log-bg)", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", padding: "7px 12px", fontSize: "12px", color: "var(--atlas-text-body)", outline: "none", boxSizing: "border-box", marginBottom: "10px" }}
               />
               <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {["all","install","uninstall","failed","crashed"].map(t => (
                   <button key={t} onClick={() => setLogTypeFilter(t)} style={{
                     fontSize: "9px", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase",
                     padding: "3px 9px", borderRadius: "5px", border: "none", cursor: "pointer",
-                    background: logTypeFilter === t ? (t === "all" ? "#1E2240" : logTypeBg(t)) : "transparent",
-                    color: logTypeFilter === t ? (t === "all" ? "#E8ECFF" : logTypeColor(t)) : "#353860",
-                    outline: logTypeFilter === t ? `1px solid ${t === "all" ? "#3E4270" : logTypeColor(t)}44` : "none",
+                    background: logTypeFilter === t ? (t === "all" ? "var(--atlas-border-color)" : logTypeBg(t)) : "transparent",
+                    color: logTypeFilter === t ? (t === "all" ? "#E8ECFF" : logTypeColor(t)) : "var(--atlas-text-label)",
+                    outline: logTypeFilter === t ? `1px solid ${t === "all" ? "var(--atlas-text-mid)" : logTypeColor(t)}` : "none",
                   }}>{t === "all" ? "ALL" : t.toUpperCase()}</button>
                 ))}
               </div>
@@ -543,19 +543,19 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           </div>
           {logs.length === 0 ? (
             <div style={{ padding: "32px 22px", textAlign: "center" }}>
-              <p style={{ fontSize: "13px", color: "#353860" }}>No logs synced yet.</p>
-              <p style={{ fontSize: "11px", color: "#252845", marginTop: "4px" }}>
+              <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>No logs synced yet.</p>
+              <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "4px" }}>
                 ATLAS syncs your installation logs automatically when you&apos;re connected.
               </p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div style={{ padding: "24px 22px", textAlign: "center" }}>
-              <p style={{ fontSize: "12px", color: "#353860" }}>No logs match your filter.</p>
+              <p style={{ fontSize: "12px", color: "var(--atlas-text-label)" }}>No logs match your filter.</p>
             </div>
           ) : (
             <div>
               {filteredLogs.map(log => (
-                <div key={log.id} style={{ borderBottom: "1px solid #0F1020" }}>
+                <div key={log.id} style={{ borderBottom: "1px solid var(--atlas-divider-subtle)" }}>
                   {/* Log header row */}
                   <button
                     onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
@@ -571,16 +571,16 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                     }}>
                       {log.log_type.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: "12px", color: "#A8B4D0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {log.app_name || log.filename}
                     </span>
                     {log.device_name && (
-                      <span style={{ fontSize: "10px", color: "#252845", flexShrink: 0 }}>{log.device_name}</span>
+                      <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", flexShrink: 0 }}>{log.device_name}</span>
                     )}
-                    <span style={{ fontSize: "10px", color: "#252845", flexShrink: 0 }}>
+                    <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", flexShrink: 0 }}>
                       {new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
-                    <span style={{ fontSize: "10px", color: expandedLog === log.id ? "#3ECFB2" : "#252845", transition: "color 0.15s", flexShrink: 0 }}>
+                    <span style={{ fontSize: "10px", color: expandedLog === log.id ? "#3ECFB2" : "var(--atlas-text-faint)", transition: "color 0.15s", flexShrink: 0 }}>
                       {expandedLog === log.id ? "▲" : "▼"}
                     </span>
                   </button>
@@ -588,11 +588,11 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                   {expandedLog === log.id && (
                     <pre style={{
                       margin: 0, padding: "14px 22px",
-                      background: "#07080F", color: "#6B7399",
+                      background: "var(--atlas-log-bg)", color: "var(--text-muted)",
                       fontSize: "10px", lineHeight: 1.65,
                       overflowX: "auto", whiteSpace: "pre-wrap",
                       wordBreak: "break-word", maxHeight: "360px",
-                      overflowY: "auto", borderTop: "1px solid #13151F",
+                      overflowY: "auto", borderTop: "1px solid var(--atlas-divider-code)",
                     }}>
                       {log.content}
                     </pre>
@@ -604,10 +604,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Get Help ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
-          <div style={{ padding: "18px 22px 16px", borderBottom: "1px solid #1A1D30" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "4px" }}>Get Help</p>
-            <p style={{ fontSize: "11px", color: "#252845" }}>We&apos;ll reply to {user.email} within 24 hours</p>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
+          <div style={{ padding: "18px 22px 16px", borderBottom: "1px solid var(--atlas-divider)" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "4px" }}>Get Help</p>
+            <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)" }}>We&apos;ll reply to {user.email} within 24 hours</p>
           </div>
           <div style={{ padding: "18px 22px" }}>
             {supportDone ? (
@@ -618,25 +618,25 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             ) : (<>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div>
-                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Issue Type</p>
-                  <select value={supportIssue} onChange={e => setSupportIssue(e.target.value)} style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "8px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none" }}>
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "6px" }}>Issue Type</p>
+                  <select value={supportIssue} onChange={e => setSupportIssue(e.target.value)} style={{ width: "100%", background: "var(--atlas-log-bg)", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", padding: "8px 12px", fontSize: "12px", color: "var(--atlas-text-body)", outline: "none" }}>
                     {["Install Failed","Uninstall Issue","App Not Opening","Subscription Issue","Performance Issue","Feature Request","Other"].map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
                 <div>
-                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Message</p>
-                  <textarea value={supportMsg} onChange={e => setSupportMsg(e.target.value)} placeholder="Describe your issue in detail…" rows={4} style={{ width: "100%", background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", padding: "10px 12px", fontSize: "12px", color: "#D0D8F0", outline: "none", resize: "vertical", boxSizing: "border-box" }} />
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "6px" }}>Message</p>
+                  <textarea value={supportMsg} onChange={e => setSupportMsg(e.target.value)} placeholder="Describe your issue in detail…" rows={4} style={{ width: "100%", background: "var(--atlas-log-bg)", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", padding: "10px 12px", fontSize: "12px", color: "var(--atlas-text-body)", outline: "none", resize: "vertical", boxSizing: "border-box" }} />
                 </div>
                 {logs.filter(l => l.log_type === "failed" || l.log_type === "crashed").length > 0 && (
                   <div>
-                    <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "6px" }}>Attach a Log (optional)</p>
+                    <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "6px" }}>Attach a Log (optional)</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {logs.filter(l => l.log_type === "failed" || l.log_type === "crashed").slice(0,5).map(log => (
-                        <label key={log.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", background: supportAttachId === log.id ? "rgba(62,207,178,0.06)" : "#07080F", borderRadius: "8px", border: `1px solid ${supportAttachId === log.id ? "rgba(62,207,178,0.3)" : "#1E2240"}`, cursor: "pointer" }}>
+                        <label key={log.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", background: supportAttachId === log.id ? "rgba(62,207,178,0.06)" : "var(--atlas-log-bg)", borderRadius: "8px", border: `1px solid ${supportAttachId === log.id ? "rgba(62,207,178,0.3)" : "var(--atlas-border-color)"}`, cursor: "pointer" }}>
                           <input type="radio" name="attachLog" checked={supportAttachId === log.id} onChange={() => setSupportAttachId(supportAttachId === log.id ? null : log.id)} style={{ accentColor: "#3ECFB2" }} />
                           <span style={{ fontSize: "8px", fontWeight: 800, padding: "2px 6px", borderRadius: "3px", background: logTypeBg(log.log_type), color: logTypeColor(log.log_type) }}>{log.log_type.toUpperCase()}</span>
-                          <span style={{ fontSize: "11px", color: "#A8B4D0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.app_name ?? log.filename}</span>
-                          <span style={{ fontSize: "10px", color: "#252845", flexShrink: 0 }}>{new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                          <span style={{ fontSize: "11px", color: "var(--text-secondary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.app_name ?? log.filename}</span>
+                          <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", flexShrink: 0 }}>{new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                         </label>
                       ))}
                     </div>
@@ -644,7 +644,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 )}
                 <button onClick={handleSupportSubmit} disabled={!supportMsg.trim() || supportSubmitting} style={{
                   padding: "11px", borderRadius: "9px", border: "none", cursor: supportMsg.trim() ? "pointer" : "default",
-                  background: supportMsg.trim() ? "#3ECFB2" : "#141A30", color: supportMsg.trim() ? "#08090E" : "#6B7399",
+                  background: supportMsg.trim() ? "#3ECFB2" : "var(--atlas-support-btn-off)", color: supportMsg.trim() ? "#08090E" : "var(--text-muted)",
                   fontSize: "13px", fontWeight: 700, transition: "all 0.2s",
                 }}>
                   {supportSubmitting ? "Sending…" : "Send Support Request"}
@@ -655,8 +655,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Notifications ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Notifications</p>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Notifications</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <NotifRow label="Renewal reminders" description="Email when your subscription renews" enabled={emailNotifs} onChange={setEmailNotifs} />
             <NotifRow label="Payment alerts" description="Email if a payment fails" enabled={true} onChange={() => {}} locked />
@@ -664,32 +664,32 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         </section>
 
         {/* ── Download ── */}
-        <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", padding: "18px 22px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "14px" }}>Download ATLAS</p>
+        <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Download ATLAS</p>
           {isActive && !isCancelled ? (
             <a href="/downloads/ATLAS-latest.dmg" download="ATLAS.dmg" style={{
               display: "flex", alignItems: "center", gap: "14px",
-              padding: "14px 16px", background: "#07080F", borderRadius: "10px",
+              padding: "14px 16px", background: "var(--atlas-log-bg)", borderRadius: "10px",
               border: "1px solid #1E2240", textDecoration: "none",
               transition: "border-color 0.15s",
             }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(62,207,178,0.3)")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#1E2240")}>
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--atlas-border-color)")}>
               <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "rgba(62,207,178,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3ECFB2" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
               </div>
               <div>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "#D0D8F0" }}>ATLAS for macOS</p>
-                <p style={{ fontSize: "11px", color: "#353860", marginTop: "2px" }}>Version 3.0 · Universal · Intel &amp; Apple Silicon</p>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--atlas-text-body)" }}>ATLAS for macOS</p>
+                <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "2px" }}>Version 3.0 · Universal · Intel &amp; Apple Silicon</p>
               </div>
-              <div style={{ marginLeft: "auto", fontSize: "10px", color: "#252845", fontWeight: 600, letterSpacing: "1px" }}>
+              <div style={{ marginLeft: "auto", fontSize: "10px", color: "var(--atlas-text-faint)", fontWeight: 600, letterSpacing: "1px" }}>
                 ↓ DMG
               </div>
             </a>
           ) : (
-            <p style={{ fontSize: "13px", color: "#353860" }}>
+            <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>
               {isCancelled ? "Re-subscribe to download ATLAS." : "Subscribe to download ATLAS."}
             </p>
           )}
@@ -697,17 +697,17 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
         {/* ── Recovery Kits ── */}
         {(isSubscribed || (!cloudKitsLoading && cloudKits.length > 0)) && (
-          <section style={{ background: "#0C0E1C", borderRadius: "14px", border: "1px solid #1E2240", overflow: "hidden" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid #1A1D30" }}>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>
-              <p style={{ fontSize: "11px", color: "#353860", marginBottom: 0 }}>Your synced recovery plans — download anytime to restore your plugins.</p>
+          <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>
+              <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginBottom: 0 }}>Your synced recovery plans — download anytime to restore your plugins.</p>
             </div>
             {cloudKitsLoading ? (
-              <div style={{ padding: "20px 22px", color: "#353860", fontSize: "12px" }}>Loading…</div>
+              <div style={{ padding: "20px 22px", color: "var(--atlas-text-label)", fontSize: "12px" }}>Loading…</div>
             ) : cloudKitsError ? (
               <div style={{ padding: "20px 22px", color: "#E05555", fontSize: "12px" }}>{cloudKitsError}</div>
             ) : cloudKits.length === 0 ? (
-              <div style={{ padding: "20px 22px", color: "#353860", fontSize: "12px" }}>No Recovery Kits synced yet. Export a kit in the ATLAS app and sync it to cloud.</div>
+              <div style={{ padding: "20px 22px", color: "var(--atlas-text-label)", fontSize: "12px" }}>No Recovery Kits synced yet. Export a kit in the ATLAS app and sync it to cloud.</div>
             ) : (
               <div>
                 {cloudKits.map((kit, i) => {
@@ -715,10 +715,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                   const label = date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
                   const time  = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
                   return (
-                    <div key={kit.id} style={{ padding: "14px 22px", borderBottom: i < cloudKits.length - 1 ? "1px solid #141629" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+                    <div key={kit.id} style={{ padding: "14px 22px", borderBottom: i < cloudKits.length - 1 ? "1px solid var(--atlas-divider-faint)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
                       <div>
-                        <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{label} · {time}</p>
-                        <p style={{ fontSize: "11px", color: "#353860", margin: "2px 0 0" }}>
+                        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--atlas-fg)", margin: 0 }}>{label} · {time}</p>
+                        <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
                           {kit.record_count} items{kit.device_name ? ` · ${kit.device_name}` : ""} · ATLAS {kit.atlas_version}
                         </p>
                       </div>
@@ -726,14 +726,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                         <button
                           onClick={() => downloadKit(kit.id, "atlaskit")}
                           disabled={kitDownloading === `${kit.id}-atlaskit`}
-                          style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
+                          style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid var(--atlas-kit-btn-border)", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
                         >
                           {kitDownloading === `${kit.id}-atlaskit` ? "…" : ".atlaskit"}
                         </button>
                         <button
                           onClick={() => downloadKit(kit.id, "txt")}
                           disabled={kitDownloading === `${kit.id}-txt`}
-                          style={{ fontSize: "10px", fontWeight: 600, color: "#6B7399", background: "none", border: "1px solid #1A1D30", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
+                          style={{ fontSize: "10px", fontWeight: 600, color: "var(--text-muted)", background: "none", border: "1px solid #1A1D30", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: kitDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
                         >
                           {kitDownloading === `${kit.id}-txt` ? "…" : ".txt"}
                         </button>
@@ -754,11 +754,11 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "32px", paddingTop: "8px" }}>
-          <p style={{ fontSize: "10px", color: "#1A1D30", letterSpacing: "1px" }}>INTERLINKED© · ALL RIGHTS RESERVED</p>
+          <p style={{ fontSize: "10px", color: "var(--atlas-text-ghost)", letterSpacing: "1px" }}>INTERLINKED© · ALL RIGHTS RESERVED</p>
           <button onClick={handleSignOut} disabled={loading === "signout"}
-            style={{ fontSize: "11px", color: "#252845", background: "none", border: "none", cursor: "pointer" }}
+            style={{ fontSize: "11px", color: "var(--atlas-text-faint)", background: "none", border: "none", cursor: "pointer" }}
             onMouseEnter={e => (e.currentTarget.style.color = "#E05555")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#252845")}>
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--atlas-text-faint)")}>
             Sign Out
           </button>
         </div>
@@ -771,7 +771,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
         }}>
           <div className="modal-enter" style={{
-            background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "16px",
+            background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "16px",
             width: "100%", maxWidth: "360px", padding: "24px", boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
           }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "rgba(224,85,85,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
@@ -779,14 +779,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
               </svg>
             </div>
-            <h2 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "6px", color: "#E8ECFF" }}>Cancel subscription?</h2>
-            <p style={{ fontSize: "12px", color: "#6B7399", marginBottom: "20px", lineHeight: 1.6 }}>
-              Your subscription will be cancelled <strong style={{ color: "#A8B4D0" }}>immediately</strong>. You will lose access to ATLAS. You can re-subscribe at any time.
+            <h2 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "6px", color: "var(--atlas-fg)" }}>Cancel subscription?</h2>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px", lineHeight: 1.6 }}>
+              Your subscription will be cancelled <strong style={{ color: "var(--text-secondary)" }}>immediately</strong>. You will lose access to ATLAS. You can re-subscribe at any time.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={() => setShowCancelConfirm(false)} style={{
                 flex: 1, padding: "10px", borderRadius: "10px",
-                border: "1px solid #1E2240", color: "#A8B4D0",
+                border: "1px solid var(--atlas-border-color)", color: "var(--text-secondary)",
                 fontSize: "12px", background: "none", cursor: "pointer",
               }}>Keep Subscription</button>
               <button onClick={handleCancelSubscription} disabled={loading === "cancel"} style={{
@@ -808,11 +808,11 @@ function FeatureCell({ label, value, active }: { label: string; value: string; a
   return (
     <div style={{
       padding: "12px 14px", borderRadius: "10px",
-      background: active ? "#0A0D1C" : "transparent",
-      border: `1px solid ${active ? "#1E2240" : "#0F1020"}`,
+      background: active ? "var(--atlas-icon-bg)" : "transparent",
+      border: `1px solid ${active ? "var(--atlas-border-color)" : "var(--atlas-divider-subtle)"}`,
     }}>
-      <p style={{ fontSize: "9px", color: "#353860", marginBottom: "4px", letterSpacing: "1px", textTransform: "uppercase" }}>{label}</p>
-      <p style={{ fontSize: "12px", fontWeight: 600, color: active ? "#D0D8F0" : "#1E2240" }}>{value}</p>
+      <p style={{ fontSize: "9px", color: "var(--atlas-text-label)", marginBottom: "4px", letterSpacing: "1px", textTransform: "uppercase" }}>{label}</p>
+      <p style={{ fontSize: "12px", fontWeight: 600, color: active ? "var(--atlas-text-body)" : "var(--atlas-text-ghost)" }}>{value}</p>
     </div>
   )
 }
@@ -823,17 +823,17 @@ function NotifRow({ label, description, enabled, onChange, locked }: {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "4px 0" }}>
       <div>
-        <p style={{ fontSize: "12px", fontWeight: 500, color: "#D0D8F0" }}>{label}</p>
-        <p style={{ fontSize: "11px", color: "#353860", marginTop: "1px" }}>{description}</p>
+        <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--atlas-text-body)" }}>{label}</p>
+        <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "1px" }}>{description}</p>
       </div>
       {locked ? (
-        <span style={{ fontSize: "9px", color: "#252845", letterSpacing: "1px" }}>ALWAYS ON</span>
+        <span style={{ fontSize: "9px", color: "var(--atlas-text-faint)", letterSpacing: "1px" }}>ALWAYS ON</span>
       ) : (
         <button onClick={() => onChange(!enabled)}
           style={{
             position: "relative", flexShrink: 0, borderRadius: "11px",
             width: "40px", height: "22px", border: "none", cursor: "pointer",
-            background: enabled ? "#3ECFB2" : "#1E2240",
+            background: enabled ? "#3ECFB2" : "var(--atlas-border-color)",
             transition: "background 0.2s",
           }}>
           <span style={{

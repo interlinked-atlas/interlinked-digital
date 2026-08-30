@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function ATLASWaitlistPage() {
   const [email, setEmail]           = useState('')
@@ -146,11 +147,11 @@ export default function ATLASWaitlistPage() {
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { background: #080809; }
+        body, html { background: var(--atlas-bg); }
 
         .page {
           min-height: 100vh;
-          background: #080809;
+          background: var(--atlas-bg);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -199,7 +200,7 @@ export default function ATLASWaitlistPage() {
           height: 72px;
           border-radius: 18px;
           overflow: hidden;
-          background: #0A0A0C;
+          background: var(--atlas-icon-bg);
         }
         .logo-video {
           width: 100%;
@@ -213,7 +214,7 @@ export default function ATLASWaitlistPage() {
           font-size: 30px;
           font-weight: normal;
           letter-spacing: 14px;
-          color: #ffffff;
+          color: var(--atlas-fg);
           text-transform: uppercase;
           padding-left: 4px;
           line-height: 1;
@@ -222,7 +223,7 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 11px;
           font-weight: 500;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           letter-spacing: 0.01em;
           text-align: center;
           margin-top: 4px;
@@ -231,8 +232,8 @@ export default function ATLASWaitlistPage() {
         /* ── Card ── */
         .card {
           width: 100%;
-          background: #111113;
-          border: 1px solid rgba(255,255,255,0.07);
+          background: var(--atlas-card-alt);
+          border: 1px solid var(--atlas-border-subtle);
           border-radius: 20px;
           overflow: hidden;
           box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
@@ -255,8 +256,8 @@ export default function ATLASWaitlistPage() {
           display: flex;
           align-items: center;
           gap: 9px;
-          background: #0C0C0E;
-          border: 1px solid rgba(255,255,255,0.08);
+          background: var(--atlas-input-bg);
+          border: 1px solid var(--atlas-input-border);
           border-radius: 10px;
           padding: 7px 14px;
           transition: border-color 0.2s;
@@ -267,7 +268,7 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
           font-weight: 600;
-          color: #8A8A96;
+          color: var(--text-muted);
           letter-spacing: -0.01em;
         }
 
@@ -278,7 +279,7 @@ export default function ATLASWaitlistPage() {
           font-weight: 600;
           letter-spacing: 3px;
           text-transform: uppercase;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           margin-bottom: 10px;
         }
         .heading {
@@ -287,20 +288,20 @@ export default function ATLASWaitlistPage() {
           font-weight: 700;
           letter-spacing: -0.035em;
           line-height: 1.2;
-          color: #ffffff;
+          color: var(--atlas-fg);
           margin-bottom: 10px;
         }
         .subtext {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           line-height: 1.6;
           letter-spacing: -0.005em;
           margin-bottom: 18px;
         }
         .divider {
           height: 1px;
-          background: rgba(255,255,255,0.06);
+          background: var(--atlas-border-faint);
           margin: 18px 0;
         }
 
@@ -310,18 +311,18 @@ export default function ATLASWaitlistPage() {
 
         .email-input {
           flex: 1;
-          background: #0C0C0E;
-          border: 1px solid rgba(255,255,255,0.08);
+          background: var(--atlas-input-bg);
+          border: 1px solid var(--atlas-input-border);
           border-radius: 10px;
           padding: 12px 16px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #ffffff;
+          color: var(--atlas-fg);
           outline: none;
           transition: border-color 0.2s;
           min-width: 0;
         }
-        .email-input::placeholder { color: #3A3A48; }
+        .email-input::placeholder { color: var(--atlas-text-label); }
         .email-input:focus { border-color: rgba(62,207,178,0.4); }
 
         .submit-btn {
@@ -346,13 +347,13 @@ export default function ATLASWaitlistPage() {
         .login-btn {
           width: 100%;
           background: transparent;
-          border: 1px solid rgba(255,255,255,0.08);
+          border: 1px solid var(--atlas-input-border);
           border-radius: 10px;
           padding: 11px 20px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
           font-weight: 500;
-          color: #8A8A96;
+          color: var(--text-muted);
           cursor: pointer;
           text-align: center;
           text-decoration: none;
@@ -360,7 +361,7 @@ export default function ATLASWaitlistPage() {
           transition: border-color 0.2s, color 0.2s;
           letter-spacing: -0.01em;
         }
-        .login-btn:hover { border-color: rgba(255,255,255,0.16); color: #ffffff; }
+        .login-btn:hover { border-color: rgba(255,255,255,0.16); color: var(--atlas-nav-hover); }
 
         .error-msg {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -392,13 +393,13 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 15px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--atlas-fg);
           letter-spacing: -0.02em;
         }
         .success-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           line-height: 1.6;
         }
 
@@ -439,7 +440,7 @@ export default function ATLASWaitlistPage() {
         .counter-label {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           letter-spacing: -0.01em;
         }
         .counter-num {
@@ -538,7 +539,7 @@ export default function ATLASWaitlistPage() {
           font-size: 26px;
           font-weight: 700;
           letter-spacing: -0.035em;
-          color: #ffffff;
+          color: var(--atlas-fg);
           text-align: center;
           line-height: 1.2;
           margin-top: 4px;
@@ -546,7 +547,7 @@ export default function ATLASWaitlistPage() {
         .demo-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           text-align: center;
           line-height: 1.6;
           max-width: 380px;
@@ -568,15 +569,15 @@ export default function ATLASWaitlistPage() {
         .demo-divider {
           width: 100%;
           height: 1px;
-          background: rgba(255,255,255,0.05);
+          background: var(--atlas-border-faint);
         }
         .demo-back-btn {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
           font-weight: 600;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           background: transparent;
-          border: 1px solid rgba(255,255,255,0.08);
+          border: 1px solid var(--atlas-input-border);
           border-radius: 8px;
           padding: 8px 16px;
           cursor: pointer;
@@ -587,7 +588,7 @@ export default function ATLASWaitlistPage() {
           transition: color 0.2s, border-color 0.2s;
           align-self: flex-start;
         }
-        .demo-back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+        .demo-back-btn:hover { color: var(--atlas-nav-hover); border-color: rgba(255,255,255,0.2); }
 
         /* ── Code verification ── */
         .verify-state {
@@ -612,13 +613,13 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 15px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--atlas-fg);
           letter-spacing: -0.02em;
         }
         .verify-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           line-height: 1.6;
           margin-bottom: 16px;
         }
@@ -629,7 +630,7 @@ export default function ATLASWaitlistPage() {
         }
         .code-input {
           flex: 1;
-          background: #0C0C0E;
+          background: var(--atlas-input-bg);
           border: 1px solid rgba(62,207,178,0.3);
           border-radius: 10px;
           padding: 12px 16px;
@@ -637,13 +638,13 @@ export default function ATLASWaitlistPage() {
           font-size: 18px;
           font-weight: 700;
           letter-spacing: 0.18em;
-          color: #ffffff;
+          color: var(--atlas-fg);
           outline: none;
           transition: border-color 0.2s;
           min-width: 0;
           text-align: center;
         }
-        .code-input::placeholder { color: #2A2A38; letter-spacing: 0.1em; font-weight: 400; font-size: 14px; }
+        .code-input::placeholder { color: var(--atlas-text-label); letter-spacing: 0.1em; font-weight: 400; font-size: 14px; }
         .code-input:focus { border-color: rgba(62,207,178,0.6); }
         .resend-btn {
           background: transparent;
@@ -651,19 +652,19 @@ export default function ATLASWaitlistPage() {
           padding: 0;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           cursor: pointer;
           text-decoration: underline;
           text-underline-offset: 2px;
           margin-top: 8px;
         }
-        .resend-btn:hover { color: #8A8A96; }
+        .resend-btn:hover { color: var(--text-muted); }
 
         /* ── Share section ── */
         .share-section {
           width: 100%;
-          background: #111113;
-          border: 1px solid rgba(255,255,255,0.07);
+          background: var(--atlas-card-alt);
+          border: 1px solid var(--atlas-border-subtle);
           border-radius: 16px;
           padding: 22px 24px;
           display: flex;
@@ -674,13 +675,13 @@ export default function ATLASWaitlistPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--atlas-fg);
           letter-spacing: -0.02em;
         }
         .share-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 12px;
-          color: #525260;
+          color: var(--atlas-text-subtle);
           line-height: 1.5;
           margin-top: -4px;
         }
@@ -690,18 +691,18 @@ export default function ATLASWaitlistPage() {
         }
         .share-input {
           flex: 1;
-          background: #0C0C0E;
-          border: 1px solid rgba(255,255,255,0.08);
+          background: var(--atlas-input-bg);
+          border: 1px solid var(--atlas-input-border);
           border-radius: 10px;
           padding: 11px 14px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 13px;
-          color: #ffffff;
+          color: var(--atlas-fg);
           outline: none;
           transition: border-color 0.2s;
           min-width: 0;
         }
-        .share-input::placeholder { color: #3A3A48; }
+        .share-input::placeholder { color: var(--atlas-text-label); }
         .share-input:focus { border-color: rgba(62,207,178,0.4); }
         .share-btn {
           background: transparent;
@@ -741,15 +742,15 @@ export default function ATLASWaitlistPage() {
           font-size: 10px;
           letter-spacing: 2.5px;
           text-transform: uppercase;
-          color: #1E1E28;
+          color: var(--atlas-text-ghost);
         }
         .footer-link {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 11px;
-          color: #252530;
+          color: var(--atlas-text-faint);
           text-decoration: none;
         }
-        .footer-link:hover { color: #3A3A48; }
+        .footer-link:hover { color: var(--atlas-text-subtle); }
 
         @media (max-width: 480px) {
           .card-body { padding: 20px 18px 22px; }
@@ -759,6 +760,10 @@ export default function ATLASWaitlistPage() {
           .submit-btn { width: 100%; }
         }
       `}</style>
+
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+        <ThemeToggle />
+      </div>
 
       <div className="page">
         <div className="glow" />
@@ -802,7 +807,7 @@ export default function ATLASWaitlistPage() {
                     <rect x="12" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
                   </svg>
                   <span className="platform-label">Windows</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: '#525260', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 5px', marginLeft: 4 }}>SOON</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--atlas-text-subtle)', background: 'var(--atlas-border-faint)', border: '1px solid var(--atlas-input-border)', borderRadius: 4, padding: '1px 5px', marginLeft: 4 }}>SOON</span>
                 </div>
               </div>
 
@@ -820,10 +825,10 @@ export default function ATLASWaitlistPage() {
                   <p className="success-heading">You're on the list.</p>
                   <p className="success-sub">
                     We sent your welcome email to{' '}
-                    <strong style={{ color: '#8A8A96', fontWeight: 600 }}>{email}</strong>.
+                    <strong style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{email}</strong>.
                   </p>
-                  <p className="success-sub" style={{ marginTop: 8, color: '#3A3A48', fontSize: 12 }}>
-                    Don't see it? Check your <strong style={{ color: '#525260' }}>spam or junk folder</strong>.
+                  <p className="success-sub" style={{ marginTop: 8, fontSize: 12 }}>
+                    Don't see it? Check your <strong style={{ color: 'var(--atlas-text-subtle)' }}>spam or junk folder</strong>.
                   </p>
                 </div>
               ) : status === 'verifying' || status === 'confirming' ? (
@@ -831,7 +836,7 @@ export default function ATLASWaitlistPage() {
                   <div className="verify-icon">✉️</div>
                   <p className="verify-heading">Check your inbox.</p>
                   <p className="verify-sub">
-                    We sent a 5-digit code to <strong style={{ color: '#8A8A96' }}>{email}</strong>. Enter it below to confirm your spot.
+                    We sent a 5-digit code to <strong style={{ color: 'var(--text-muted)' }}>{email}</strong>. Enter it below to confirm your spot.
                   </p>
                   <form className="form" style={{ width: '100%' }} onSubmit={handleVerify}>
                     <div className="code-row">

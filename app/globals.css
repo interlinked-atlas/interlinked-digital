@@ -132,12 +132,47 @@
   --atlas-nav-hover:       #FFFFFF;
   --atlas-border-color:    #1E2240;
   --atlas-border-faint:    rgba(255,255,255,0.06);
+  --atlas-border-subtle:   rgba(255,255,255,0.07);
   --atlas-toggle-wrap-bg:  rgba(255,255,255,0.04);
   --atlas-toggle-wrap-bd:  rgba(255,255,255,0.08);
   --atlas-toggle-on:       rgba(255,255,255,0.10);
   --atlas-toggle-off:      transparent;
   --atlas-toggle-text-on:  #FFFFFF;
   --atlas-toggle-text-off: #8A8A96;
+  /* ── ATLAS structural colors — dark ── */
+  --atlas-card:            #0C0E1C;
+  --atlas-card-alt:        #111113;
+  --atlas-input-bg:        #0C0C0E;
+  --atlas-log-bg:          #07080F;
+  --atlas-input-border:    rgba(255,255,255,0.08);
+  --atlas-divider:         #1A1D30;
+  --atlas-divider-subtle:  #0F1020;
+  --atlas-divider-faint:   #141629;
+  --atlas-divider-code:    #13151F;
+  --atlas-icon-bg:         #0A0D1C;
+  --atlas-row-footer-bg:   rgba(255,255,255,0.005);
+  /* ── ATLAS text hierarchy — dark ── */
+  --atlas-text-body:       #D0D8F0;
+  --atlas-text-mid:        #4A5280;
+  --atlas-text-label:      #353860;
+  --atlas-text-faint:      #252845;
+  --atlas-text-ghost:      #1E1E28;
+  --atlas-text-subtle:     #525260;
+  /* ── Plans page — dark ── */
+  --atlas-plans-card:      #0E0E10;
+  --atlas-plans-card-text: #FFFFFF;
+  --atlas-plans-card-dim:  #CCCCCC;
+  --atlas-plans-sub:       #525260;
+  --atlas-plans-billing-sub: rgba(255,255,255,0.35);
+  --atlas-scroll-hint-bg:  rgba(14,14,16,0.92);
+  --atlas-scroll-hint-text: rgba(255,255,255,0.55);
+  --atlas-scroll-hint-sub: rgba(255,255,255,0.25);
+  --atlas-table-label:     rgba(255,255,255,0.30);
+  --atlas-table-row:       rgba(255,255,255,0.60);
+  --atlas-table-remote:    rgba(255,255,255,0.25);
+  /* ── Support / kit — dark ── */
+  --atlas-support-btn-off: #141A30;
+  --atlas-kit-btn-border:  #1E3830;
 
   /* ── interlinked.digital homepage — dark mode ── */
   --il-bg:           #00000f;
@@ -176,12 +211,47 @@ html.light {
   --atlas-nav-hover:       #0D1035;
   --atlas-border-color:    #DDE2F5;
   --atlas-border-faint:    rgba(0,0,0,0.07);
+  --atlas-border-subtle:   rgba(0,0,0,0.08);
   --atlas-toggle-wrap-bg:  rgba(0,0,0,0.04);
   --atlas-toggle-wrap-bd:  rgba(0,0,0,0.10);
   --atlas-toggle-on:       rgba(0,0,0,0.08);
   --atlas-toggle-off:      transparent;
   --atlas-toggle-text-on:  #0D1035;
   --atlas-toggle-text-off: #6B7399;
+  /* ATLAS structural colors — light */
+  --atlas-card:            #FFFFFF;
+  --atlas-card-alt:        #F8F9FF;
+  --atlas-input-bg:        #ECEEF8;
+  --atlas-log-bg:          #F0F2FF;
+  --atlas-input-border:    rgba(0,0,0,0.12);
+  --atlas-divider:         #E4E7F5;
+  --atlas-divider-subtle:  #EEF0FA;
+  --atlas-divider-faint:   #EEF0FA;
+  --atlas-divider-code:    #E4E7F5;
+  --atlas-icon-bg:         #EEF0FA;
+  --atlas-row-footer-bg:   rgba(0,0,0,0.015);
+  /* ATLAS text hierarchy — light */
+  --atlas-text-body:       #1A2060;
+  --atlas-text-mid:        #4A5280;
+  --atlas-text-label:      #7A88B8;
+  --atlas-text-faint:      #9AA4CC;
+  --atlas-text-ghost:      #C0C8E0;
+  --atlas-text-subtle:     #4A5280;
+  /* Plans page — light */
+  --atlas-plans-card:      #FFFFFF;
+  --atlas-plans-card-text: #0D1035;
+  --atlas-plans-card-dim:  #2A3060;
+  --atlas-plans-sub:       #4A5280;
+  --atlas-plans-billing-sub: #6B7399;
+  --atlas-scroll-hint-bg:  rgba(240,242,255,0.92);
+  --atlas-scroll-hint-text: #4A5280;
+  --atlas-scroll-hint-sub: #8A94B8;
+  --atlas-table-label:     #7A88B8;
+  --atlas-table-row:       #2A3060;
+  --atlas-table-remote:    #7A88B8;
+  /* Support / kit — light */
+  --atlas-support-btn-off: #E0E4F8;
+  --atlas-kit-btn-border:  rgba(62,207,178,0.3);
 
   /* InterLinked homepage */
   --il-bg:           #f0f0ff;

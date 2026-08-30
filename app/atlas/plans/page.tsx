@@ -150,7 +150,7 @@ export default function PlansPage() {
         .toggle-btn { transition: background 0.2s, color 0.2s; }
         .nav-link { transition: color 0.12s; }
         .nav-link:hover { color: var(--atlas-nav-hover) !important; }
-        .compare-row:nth-child(odd) { background: rgba(255,255,255,0.015); }
+        .compare-row:nth-child(odd) { background: var(--atlas-row-footer-bg); }
         .compare-row:hover { background: rgba(62,207,178,0.04); }
 
         @keyframes chrome-shift {
@@ -195,7 +195,7 @@ export default function PlansPage() {
           zIndex: 100,
           opacity: hintVisible ? 1 : 0,
           pointerEvents: hintVisible ? 'auto' : 'none',
-          background: 'rgba(14,14,16,0.92)',
+          background: 'var(--atlas-scroll-hint-bg)',
           backdropFilter: 'blur(16px)',
           border: '1px solid rgba(62,207,178,0.22)',
           borderRadius: '50px',
@@ -205,10 +205,10 @@ export default function PlansPage() {
           boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(62,207,178,0.08)',
         }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', fontWeight: 500, fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--atlas-scroll-hint-text)', fontSize: '13px', fontWeight: 500, fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
           Why not just hire someone?
         </span>
-        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--atlas-scroll-hint-sub)', fontSize: '12px', fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>
           See the breakdown
         </span>
         <span className="bounce-arrow">
@@ -337,7 +337,7 @@ export default function PlansPage() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 80px' }}>
           <FadeUp delay={0}>
             <div className="plan-card" style={{
-              background: '#0E0E10',
+              background: 'var(--atlas-plans-card)',
               borderRadius: '16px',
               border: '1px solid rgba(62,207,178,0.25)',
               overflow: 'hidden',
@@ -349,17 +349,17 @@ export default function PlansPage() {
                 EVERYTHING INCLUDED
               </div>
 
-              <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--atlas-border-faint)' }}>
                 <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
                   <span className="atlas-chrome-text">ATLAS</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
-                  <span style={{ color: '#FFFFFF', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{plan.price}</span>
-                  <span style={{ color: '#525260', fontSize: '12px' }}>{plan.period}</span>
+                  <span style={{ color: 'var(--atlas-plans-card-text)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{plan.price}</span>
+                  <span style={{ color: 'var(--atlas-plans-sub)', fontSize: '12px' }}>{plan.period}</span>
                 </div>
                 {annual && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#525260', fontSize: '12px' }}>{(plan as typeof ANNUAL).billed}</span>
+                    <span style={{ color: 'var(--atlas-plans-sub)', fontSize: '12px' }}>{(plan as typeof ANNUAL).billed}</span>
                     <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
                       {(plan as typeof ANNUAL).save}
                     </span>
@@ -371,7 +371,7 @@ export default function PlansPage() {
                 {plan.features.map(f => (
                   <div key={f} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                    <span style={{ color: '#CCCCCC', fontSize: '13px', lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--atlas-plans-card-dim)', fontSize: '13px', lineHeight: 1.4 }}>
                       {f.includes('Coming Soon') ? (
                         <>{f.replace(' (Coming Soon)', '')} <span style={{ color: '#F0A030', fontSize: '11px' }}>Coming Soon</span></>
                       ) : f}
@@ -432,8 +432,8 @@ export default function PlansPage() {
             <FadeUp delay={80}>
               <div style={{
                 borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.07)',
-                background: '#0E0E10',
+                border: '1px solid var(--atlas-border-subtle)',
+                background: 'var(--atlas-plans-card)',
                 overflow: 'hidden',
                 maxWidth: '860px',
                 margin: '0 auto',
@@ -442,23 +442,23 @@ export default function PlansPage() {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr 1fr',
-                  background: '#0E0E10',
-                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--atlas-plans-card)',
+                  borderBottom: '1px solid var(--atlas-input-border)',
                 }}>
-                  <div style={{ padding: '16px 20px', color: 'rgba(255,255,255,0.30)', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                  <div style={{ padding: '16px 20px', color: 'var(--atlas-table-label)', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                     Feature
                   </div>
-                  <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid var(--atlas-border-faint)' }}>
                     <div style={{ color: '#E05555', fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
                       ⚠ Remote Installation
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>AnyDesk / Hired Tech</div>
+                    <div style={{ color: 'var(--atlas-table-remote)', fontSize: '11px' }}>AnyDesk / Hired Tech</div>
                   </div>
                   <div style={{ padding: '16px 20px', textAlign: 'center', borderLeft: '1px solid rgba(62,207,178,0.15)', background: 'rgba(62,207,178,0.04)' }}>
                     <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>
                       <span className="atlas-chrome-text">✦ ATLAS</span>
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>Intelligent Installer</div>
+                    <div style={{ color: 'var(--atlas-table-remote)', fontSize: '11px' }}>Intelligent Installer</div>
                   </div>
                 </div>
 
@@ -474,7 +474,7 @@ export default function PlansPage() {
                       transition: 'background 0.12s',
                     }}
                   >
-                    <div style={{ padding: '13px 20px', color: 'rgba(255,255,255,0.60)', fontSize: '13px', fontWeight: 500 }}>
+                    <div style={{ padding: '13px 20px', color: 'var(--atlas-table-row)', fontSize: '13px', fontWeight: 500 }}>
                       {row.label}
                     </div>
                     <div style={{
