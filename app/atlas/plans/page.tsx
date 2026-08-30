@@ -182,8 +182,8 @@ export default function PlansPage() {
         }
         .scroll-hint-bar:hover { opacity: 0.85 !important; }
         html.light .plans-atlas-title {
-          background: none;
-          -webkit-text-fill-color: #0D1035;
+          background: none !important;
+          -webkit-text-fill-color: #0D1035 !important;
           color: #0D1035;
         }
       `}</style>
