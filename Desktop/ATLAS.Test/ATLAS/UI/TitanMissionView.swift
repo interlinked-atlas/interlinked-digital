@@ -134,7 +134,15 @@ struct TitanMissionView: View {
                     Button("Begin Install") {
                         hasStarted = true
                         let pw = adminPassword
-                        Task { await mission.execute(adminPassword: pw) }
+                        Task {
+                            let (allowed, _) = await MonthlyLimitManager.shared.checkWithServer()
+                            guard allowed else {
+                                await MainActor.run { hasStarted = false }
+                                return
+                            }
+                            MonthlyLimitManager.shared.syncAfterServerGate()
+                            await mission.execute(adminPassword: pw)
+                        }
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(Color(hex: "#08090E"))
