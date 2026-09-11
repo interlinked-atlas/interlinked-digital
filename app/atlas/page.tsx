@@ -18,6 +18,9 @@ export default function ATLASWaitlistPage() {
   const [coinAnim, setCoinAnim]     = useState(false)
   const [demoUnlocked, setDemo]     = useState(true)
   const [unlocking, setUnlocking]   = useState(false)
+  const [gateOpen, setGateOpen]     = useState(false)
+  const [gatePw, setGatePw]         = useState('')
+  const [gateError, setGateError]   = useState('')
   const prevCount                   = useRef<number | null>(null)
   const demoRef                     = useRef<HTMLDivElement>(null)
 
@@ -762,8 +765,8 @@ export default function ATLASWaitlistPage() {
       `}</style>
 
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <a
-          href="/auth/login"
+        <button
+          onClick={() => { setGatePw(''); setGateError(''); setGateOpen(true) }}
           style={{
             display: 'inline-block',
             padding: '5px 12px',
@@ -774,7 +777,7 @@ export default function ATLASWaitlistPage() {
             fontSize: 12,
             fontWeight: 500,
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-            textDecoration: 'none',
+            cursor: 'pointer',
             letterSpacing: '-0.01em',
             lineHeight: '20px',
             transition: 'border-color 0.2s, color 0.2s',
@@ -789,7 +792,84 @@ export default function ATLASWaitlistPage() {
           }}
         >
           Login
-        </a>
+        </button>
+
+        {gateOpen && (
+          <div
+            onClick={() => setGateOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(8,8,9,0.82)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#0E0E10',
+                border: '1px solid rgba(255,255,255,0.09)',
+                borderRadius: 16,
+                padding: '28px 28px 24px',
+                width: '100%', maxWidth: 360,
+                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                <div>
+                  <p style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                    Testing Access
+                  </p>
+                  <p style={{ color: '#525260', fontSize: 12 }}>Enter the testing password to continue.</p>
+                </div>
+                <button
+                  onClick={() => setGateOpen(false)}
+                  style={{ background: 'none', border: 'none', color: '#44444E', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 0 0 12px' }}
+                >×</button>
+              </div>
+              <form onSubmit={e => {
+                e.preventDefault()
+                if (gatePw.toLowerCase() === 'ptxt226') {
+                  sessionStorage.setItem('atlas_gate', '1')
+                  window.location.href = '/auth/login'
+                } else {
+                  setGateError('Incorrect password. Please try again.')
+                  setGatePw('')
+                }
+              }}>
+                {gateError && (
+                  <div style={{
+                    background: 'rgba(224,85,85,0.08)',
+                    border: '1px solid rgba(224,85,85,0.20)',
+                    borderRadius: 9, padding: '8px 12px',
+                    color: '#E05555', fontSize: 12, marginBottom: 10,
+                  }}>{gateError}</div>
+                )}
+                <input
+                  type="password"
+                  placeholder="Testing password"
+                  value={gatePw}
+                  onChange={e => setGatePw(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%', padding: '11px 14px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.09)',
+                    borderRadius: 9, color: '#FFFFFF', fontSize: 13,
+                    outline: 'none', boxSizing: 'border-box', marginBottom: 10,
+                  }}
+                />
+                <button type="submit" style={{
+                  width: '100%', padding: '11px', border: 'none', borderRadius: 9,
+                  background: 'linear-gradient(135deg, #3ECFB2, #2ABEAA)',
+                  color: '#080809', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                }}>
+                  Continue →
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
         <ThemeToggle />
       </div>
 

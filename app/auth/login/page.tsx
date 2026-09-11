@@ -23,6 +23,9 @@ function EyeOffIcon() {
 }
 
 function LoginContent() {
+  const [gateCleared, setGateCleared] = useState(false)
+  const [gatePw, setGatePw] = useState('')
+  const [gateError, setGateError] = useState('')
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,6 +36,10 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? ''
   const supabase = createClient()
+
+  useEffect(() => {
+    if (sessionStorage.getItem('atlas_gate') === '1') setGateCleared(true)
+  }, [])
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
 
@@ -56,6 +63,74 @@ function LoginContent() {
     const dest = redirect && redirect.startsWith('/') ? redirect : '/atlas/account'
     router.push(dest)
     router.refresh()
+  }
+
+  if (!gateCleared) {
+    return (
+      <main style={{
+        minHeight: '100vh', background: '#080809', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: '32px 20px',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        WebkitFontSmoothing: 'antialiased',
+      }}>
+        <div style={{ width: '100%', maxWidth: 360 }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <a href="/atlas" style={{ display: 'inline-block', textDecoration: 'none' }}>
+              <h1 style={{
+                fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
+                fontSize: 52, fontWeight: 'normal', letterSpacing: 14, textIndent: 14, lineHeight: 1, marginBottom: 10,
+                background: 'linear-gradient(160deg, #FFFFFF 30%, rgba(255,255,255,0.55) 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>ATLAS</h1>
+            </a>
+            <p style={{ color: '#44444E', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase' }}>by InterLinked©</p>
+          </div>
+          <div style={{ background: '#0E0E10', borderRadius: 16, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <h2 style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginBottom: 4 }}>Testing Access</h2>
+              <p style={{ color: '#525260', fontSize: 12 }}>Enter the testing password to continue.</p>
+            </div>
+            <form onSubmit={e => {
+              e.preventDefault()
+              if (gatePw.toLowerCase() === 'ptxt226') {
+                sessionStorage.setItem('atlas_gate', '1')
+                setGateCleared(true)
+              } else {
+                setGateError('Incorrect password. Please try again.')
+                setGatePw('')
+              }
+            }} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {gateError && (
+                <div style={{
+                  background: 'rgba(224,85,85,0.08)', border: '1px solid rgba(224,85,85,0.20)',
+                  borderRadius: 9, padding: '8px 12px', color: '#E05555', fontSize: 12,
+                }}>{gateError}</div>
+              )}
+              <input
+                type="password"
+                placeholder="Testing password"
+                value={gatePw}
+                onChange={e => setGatePw(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%', padding: '11px 14px',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: 9, color: '#FFFFFF', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <button type="submit" style={{
+                width: '100%', padding: 12, border: 'none', borderRadius: 10,
+                background: 'linear-gradient(135deg, #3ECFB2, #2ABEAA)',
+                color: '#080809', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}>Continue →</button>
+            </form>
+          </div>
+          <p style={{ textAlign: 'center', marginTop: 20 }}>
+            <a href="/atlas" style={{ color: '#44444E', fontSize: 12, textDecoration: 'none' }}>← Back to Home</a>
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (
