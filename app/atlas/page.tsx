@@ -761,7 +761,35 @@ export default function ATLASWaitlistPage() {
         }
       `}</style>
 
-      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <a
+          href="/auth/login"
+          style={{
+            display: 'inline-block',
+            padding: '5px 12px',
+            borderRadius: 7,
+            background: 'none',
+            border: '1px solid var(--atlas-border-color)',
+            color: 'var(--atlas-text-sub)',
+            fontSize: 12,
+            fontWeight: 500,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            textDecoration: 'none',
+            letterSpacing: '-0.01em',
+            lineHeight: '20px',
+            transition: 'border-color 0.2s, color 0.2s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'rgba(62,207,178,0.4)'
+            e.currentTarget.style.color = '#3ECFB2'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--atlas-border-color)'
+            e.currentTarget.style.color = 'var(--atlas-text-sub)'
+          }}
+        >
+          Login
+        </a>
         <ThemeToggle />
       </div>
 

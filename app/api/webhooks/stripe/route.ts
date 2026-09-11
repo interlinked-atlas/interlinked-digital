@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         if (session.mode === 'subscription' && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string)
           const priceId = sub.items.data[0]?.price.id ?? ''
-          const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
+          const plan = PRICE_PLAN[priceId] ?? { profile: 'atlas', subscription: 'atlas' }
 
           // Prefer matching by Supabase user ID (set via dynamic checkout), fall back to email
           const supabaseUserId = session.client_reference_id ?? session.metadata?.supabase_user_id

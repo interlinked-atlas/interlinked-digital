@@ -22,11 +22,13 @@ function EyeOffIcon() {
   )
 }
 
-function LoginContent() {
+function SignupContent() {
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -36,27 +38,57 @@ function LoginContent() {
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 40); return () => clearTimeout(t) }, [])
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (authError) {
-      const msg = authError.message
-      if (msg.toLowerCase().includes('email not confirmed')) {
-        setError('Please confirm your email first — check your inbox (and spam) for a confirmation link.')
-      } else if (msg.toLowerCase().includes('invalid login') || msg.toLowerCase().includes('invalid credentials')) {
-        setError('Incorrect email or password.')
-      } else {
-        setError(msg)
-      }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
       return
     }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setLoading(true)
+
+    // Create account via existing backend
+    const res = await fetch('/api/atlas/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      setLoading(false)
+      if (res.status === 409) {
+        setError(
+          `An account with this email already exists. ` +
+          `Sign in instead.`
+        )
+        return
+      }
+      setError(data.error ?? 'Account creation failed. Please try again.')
+      return
+    }
+
+    // Auto sign in after successful account creation
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+
+    if (authError) {
+      setError('Account created, but sign-in failed. Please go to the login page.')
+      return
+    }
+
     const dest = redirect && redirect.startsWith('/') ? redirect : '/atlas/account'
     router.push(dest)
     router.refresh()
   }
+
+  const loginHref = `/auth/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`
 
   return (
     <>
@@ -66,10 +98,10 @@ function LoginContent() {
         input { transition: border-color 0.15s, box-shadow 0.15s; }
         input::placeholder { color: rgba(255,255,255,0.20); }
         input:focus { border-color: rgba(62,207,178,0.5) !important; box-shadow: 0 0 0 3px rgba(62,207,178,0.08) !important; outline: none; }
-        .login-btn { transition: opacity 0.15s, transform 0.12s cubic-bezier(0.16,1,0.3,1); }
-        .login-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-        .login-btn:active:not(:disabled) { transform: scale(0.985); }
-        .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .signup-btn { transition: opacity 0.15s, transform 0.12s cubic-bezier(0.16,1,0.3,1); }
+        .signup-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .signup-btn:active:not(:disabled) { transform: scale(0.985); }
+        .signup-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .eye-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.25); padding: 0; display: flex; align-items: center; transition: color 0.15s; }
         .eye-btn:hover { color: rgba(255,255,255,0.55); }
         a { text-decoration: none; }
@@ -142,33 +174,46 @@ function LoginContent() {
                 color: '#FFFFFF', fontSize: '14px', fontWeight: 600,
                 letterSpacing: '-0.01em', marginBottom: '4px',
               }}>
-                Sign in to your account
+                Create your account
               </h2>
               <p style={{ color: '#525260', fontSize: '12px' }}>
-                Access your subscription, devices, and downloads
+                Get started with ATLAS
               </p>
             </div>
 
-            <form onSubmit={handleLogin} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <form onSubmit={handleSignup} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {error && (
                 <div style={{
                   background: 'rgba(224,85,85,0.08)',
                   border: '1px solid rgba(224,85,85,0.20)',
                   borderRadius: '9px', padding: '10px 14px',
                   color: '#E05555', fontSize: '12px', lineHeight: 1.5,
-                }}>{error}</div>
+                }}>
+                  {error}
+                  {error.includes('already exists') && (
+                    <> <a href={loginHref} style={{ color: '#3ECFB2', fontWeight: 600 }}>Sign in →</a></>
+                  )}
+                </div>
               )}
 
-              <input type="email" placeholder="Email address" value={email}
-                onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                style={inputStyle}
+              />
 
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
+                  placeholder="Password (min 8 characters)"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   style={{ ...inputStyle, paddingRight: '44px' }}
                 />
                 <button
@@ -189,7 +234,35 @@ function LoginContent() {
                 </button>
               </div>
 
-              <button type="submit" disabled={loading} className="login-btn" style={{
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  style={{ ...inputStyle, paddingRight: '44px' }}
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={() => setShowConfirm(v => !v)}
+                  style={{
+                    position: 'absolute', right: '14px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: showConfirm ? 'rgba(62,207,178,0.7)' : 'rgba(255,255,255,0.25)',
+                    display: 'flex', alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+
+              <button type="submit" disabled={loading} className="signup-btn" style={{
                 width: '100%', padding: '12px', border: 'none', borderRadius: '10px',
                 background: 'linear-gradient(135deg, #3ECFB2, #2ABEAA)',
                 color: '#080809', fontSize: '13px', fontWeight: 700,
@@ -197,28 +270,15 @@ function LoginContent() {
                 marginTop: '4px', letterSpacing: '-0.01em',
                 boxShadow: '0 0 24px rgba(62,207,178,0.20)',
               }}>
-                {loading ? 'Signing in…' : 'Sign in →'}
+                {loading ? 'Creating account…' : 'Create account →'}
               </button>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                <a href="/auth/forgot-password" style={{
-                  color: '#44444E', fontSize: '11px', transition: 'color 0.12s',
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#44444E')}
-                >
-                  Forgot password?
+              <p style={{ color: '#44444E', fontSize: '11px', textAlign: 'right', marginTop: '2px' }}>
+                Already have an account?{' '}
+                <a href={loginHref} style={{ color: '#3ECFB2', fontWeight: 600 }}>
+                  Sign in →
                 </a>
-                <p style={{ color: '#44444E', fontSize: '11px' }}>
-                  New to ATLAS?{" "}
-                  <a
-                    href={`/auth/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
-                    style={{ color: '#3ECFB2', fontWeight: 600 }}
-                  >
-                    Sign up →
-                  </a>
-                </p>
-              </div>
+              </p>
             </form>
           </div>
 
@@ -231,7 +291,7 @@ function LoginContent() {
   )
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <Suspense fallback={
       <main style={{
@@ -241,7 +301,7 @@ export default function LoginPage() {
         <div style={{ width: 24, height: 24, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#3ECFB2', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
       </main>
     }>
-      <LoginContent />
+      <SignupContent />
     </Suspense>
   )
 }
