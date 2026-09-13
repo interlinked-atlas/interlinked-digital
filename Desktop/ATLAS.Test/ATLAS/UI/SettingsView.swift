@@ -93,10 +93,8 @@ struct SettingsView: View {
                     sectionHeader("TITAN CORE™")
                     VStack(spacing: 0) {
                         titanToggleRow
-                        if auth.isPro {
-                            Divider().background(Color.atlasSeparator).padding(.leading, 52)
-                            vscanToggleRow
-                        }
+                        Divider().background(Color.atlasSeparator).padding(.leading, 52)
+                        vscanToggleRow
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)
@@ -246,52 +244,10 @@ struct SettingsView: View {
                     // ── Install Limits ────────────────────────────────
                     sectionHeader(L(.installLimits))
                     VStack(spacing: 0) {
-                        let isPro       = auth.isPro
-                        let planColor   = isPro ? Color(hex: "#3ECFB2") : Color(hex: "#7090B8")
+                        let planColor    = Color(hex: "#3ECFB2")
                         let monthlyLimit = MonthlyLimitManager.shared
-                        let dailyUsed    = monthlyLimit.installsToday
                         let monthlyUsed  = monthlyLimit.installsThisPeriod
-                        let monthlyMax   = isPro ? MonthlyLimitManager.proLimit : MonthlyLimitManager.standardMonthlyLimit
-
-                        if !isPro {
-                            let dailyMax = MonthlyLimitManager.standardDailyLimit
-                            let dailyRem = max(0, dailyMax - dailyUsed)
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .fill(planColor.opacity(0.12))
-                                        .frame(width: 28, height: 28)
-                                    Image(systemName: "sun.max")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(planColor)
-                                }
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(L(.dailyInstallations))
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(Color.atlasLabel)
-                                        Spacer()
-                                        Text("\(dailyUsed) / \(dailyMax)")
-                                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                                            .foregroundColor(dailyRem == 0 ? Color(hex: "#F0A030") : planColor)
-                                    }
-                                    GeometryReader { geo in
-                                        ZStack(alignment: .leading) {
-                                            RoundedRectangle(cornerRadius: 3).fill(planColor.opacity(0.15)).frame(height: 4)
-                                            RoundedRectangle(cornerRadius: 3)
-                                                .fill(dailyRem == 0 ? Color(hex: "#F0A030") : planColor)
-                                                .frame(width: geo.size.width * min(1, Double(dailyUsed) / Double(dailyMax)), height: 4)
-                                        }
-                                    }
-                                    .frame(height: 4)
-                                    Text(dailyRem == 0 ? L(.resetsAtMidnight) : String(format: L(.remainingTodayFmt), dailyRem))
-                                        .font(.system(size: 10))
-                                        .foregroundColor(Color.atlasSubtitle)
-                                }
-                            }
-                            .padding(.horizontal, 12).padding(.vertical, 10)
-                            Divider().background(Color.atlasSeparator).padding(.leading, 44)
-                        }
+                        let monthlyMax   = MonthlyLimitManager.atlasMonthlyLimit
 
                         let monthlyRem = max(0, monthlyMax - monthlyUsed)
                         HStack(spacing: 12) {
@@ -498,19 +454,19 @@ struct SettingsView: View {
                     Text(auth.userEmail.isEmpty ? "—" : auth.userEmail)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
-                    Text("ATLAS \(auth.planLabel) · \(auth.subscriptionStatusLabel)")
+                    Text("ATLAS · \(auth.subscriptionStatusLabel)")
                         .font(.system(size: 11))
                         .foregroundColor(auth.subscriptionActive
-                                         ? (auth.isPro ? Color(hex: "#F0A030") : Color.atlasSubtitle)
+                                         ? Color(hex: "#3ECFB2")
                                          : Color(hex: "#E05555"))
                 }
                 Spacer()
-                Text(auth.planLabel.uppercased())
+                Text("ATLAS")
                     .font(.system(size: 8, weight: .black))
                     .tracking(0.8)
-                    .foregroundColor(auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#696E7C"))
+                    .foregroundColor(Color(hex: "#3ECFB2"))
                     .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background((auth.isPro ? Color(hex: "#F0A030") : Color(hex: "#696E7C")).opacity(0.12))
+                    .background(Color(hex: "#3ECFB2").opacity(0.12))
                     .cornerRadius(4)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
@@ -519,42 +475,21 @@ struct SettingsView: View {
             Divider().background(Color.atlasSeparator).padding(.leading, 44)
 
             if auth.subscriptionActive {
-                // Manage account on website
                 subscribeRow(
                     icon: "person.crop.circle.badge.checkmark",
                     iconColor: Color(hex: "#3ECFB2"),
                     title: "Manage Account",
-                    subtitle: "Billing, devices & plan details",
+                    subtitle: "Billing, devices & subscription details",
                     url: "https://interlinked.digital/atlas/account"
                 )
                 Divider().background(Color.atlasSeparator).padding(.leading, 44)
-
-                if !auth.isPro {
-                    subscribeRow(
-                        icon: "star.circle.fill",
-                        iconColor: Color(hex: "#F0A030"),
-                        title: "Upgrade to Pro",
-                        subtitle: "Bulk install, uninstall, Smart Storage & more",
-                        url: "https://interlinked.digital/atlas/account"
-                    )
-                    Divider().background(Color.atlasSeparator).padding(.leading, 44)
-                }
             } else {
-                // No active sub — show subscribe options
-                subscribeRow(
-                    icon: "star.fill",
-                    iconColor: Color(hex: "#7090B8"),
-                    title: "Subscribe to Standard",
-                    subtitle: "$14.99/mo · Basic installations · 1 device",
-                    url: SupabaseConfig.stripeStandardURL
-                )
-                Divider().background(Color.atlasSeparator).padding(.leading, 44)
                 subscribeRow(
                     icon: "star.circle.fill",
-                    iconColor: Color(hex: "#F0A030"),
-                    title: "Subscribe to Pro",
-                    subtitle: "$29.99/mo · All features · up to 3 devices",
-                    url: SupabaseConfig.stripeProURL
+                    iconColor: Color(hex: "#3ECFB2"),
+                    title: "Subscribe to ATLAS",
+                    subtitle: "$30/mo · All features · up to 3 devices",
+                    url: SupabaseConfig.stripeCheckoutURL
                 )
                 Divider().background(Color.atlasSeparator).padding(.leading, 44)
             }
@@ -777,7 +712,7 @@ struct SettingsView: View {
                     Text(L(.vscanSettingTitle))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
-                    Text("PRO")
+                    Text("ATLAS")
                         .font(.system(size: 8, weight: .black))
                         .tracking(0.8)
                         .foregroundColor(Color(hex: "#3ECFB2"))

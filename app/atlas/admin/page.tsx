@@ -9,7 +9,7 @@ const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
 type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits"
 
-const planColor    = (p: string) => p === "pro" ? "#F0A030" : p === "advanced" ? "#A855F7" : "#5B8DEF"
+const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "#6B7399"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "#6B7399"
 const logTypeColor = (t: string) => t === "install" ? "#3ECFB2" : t === "failed" ? "#E05555" : t === "uninstall" ? "#5B8DEF" : t === "confirmed-success" ? "#A855F7" : "#F0A030"
 const logTypeBg    = (t: string) => t === "install" ? "rgba(62,207,178,0.1)" : t === "failed" ? "rgba(224,85,85,0.1)" : t === "uninstall" ? "rgba(91,141,239,0.1)" : t === "confirmed-success" ? "rgba(168,85,247,0.1)" : "rgba(240,160,48,0.1)"
@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [failures, setFailures]   = useState<any[]>([])
   const [patterns, setPatterns]   = useState<any[]>([])
   const [monthlyUsage, setMonthlyUsage] = useState<any[]>([])
+  const [gateUsage, setGateUsage]       = useState<any[]>([])
   const [expandedTicket, setExpandedTicket]   = useState<string | null>(null)
   const [expandedUser, setExpandedUser]       = useState<string | null>(null)
   const [userProfileTab, setUserProfileTab]   = useState<Record<string, string>>({})
@@ -144,13 +145,14 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, failRes, patRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent").order("created_at", { ascending: false }),
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
       supabase.from("support_tickets").select("id,user_id,email,issue_type,message,status,created_at,attached_log_content,product_name,product_status").order("created_at", { ascending: false }),
       supabase.from("monthly_install_counts").select("user_id,period_start,period_end,count").order("period_start", { ascending: false }),
+      supabase.from("install_counts").select("user_id,installs_this_month,period_start").order("updated_at", { ascending: false }),
       fetch("/api/atlas/admin/failures", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
     ])
@@ -160,6 +162,7 @@ export default function AdminPage() {
     setLogs(logRes.data ?? [])
     setTickets(tickRes.data ?? [])
     setMonthlyUsage(usageRes.data ?? [])
+    setGateUsage(gateRes.data ?? [])
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
 
@@ -288,7 +291,8 @@ export default function AdminPage() {
 
   const subByUser = Object.fromEntries(subscriptions.map(s => [s.user_id, s]))
 
-  const proUsers     = users.filter(u => u.plan === "pro" || u.plan === "advanced")
+  const atlasUsers   = users.filter(u => u.plan === "atlas")
+  const freeUsers    = users.filter(u => u.plan === "free" || u.plan == null)
   const activeUsers  = users.filter(u => u.subscription_status === "active")
   const openTickets  = tickets.filter((t: any) => t.status === "open")
   const openFailures = failures.filter((f: any) => f.admin_fix_status === "open")
@@ -298,10 +302,16 @@ export default function AdminPage() {
   const cancelingSoon = subscriptions.filter(s => s.cancel_at_period_end && s.status === "active").length
   const pastDue = subscriptions.filter(s => s.status === "past_due").length
 
-  const PLAN_PRICE: Record<string, number> = { standard: 9, pro: 19, advanced: 29, basic: 5 }
   const mrr = subscriptions
     .filter(s => s.status === "active")
-    .reduce((sum, s) => sum + (PLAN_PRICE[s.plan] ?? 0), 0)
+    .reduce((sum, s) => {
+      if (s.plan === "atlas") {
+        const interval = users.find(u => u.id === s.user_id)?.billing_interval ?? "monthly"
+        return sum + (interval === "annual" ? 25 : 30)
+      }
+      const LEGACY_PRICE: Record<string, number> = { standard: 9, pro: 19, advanced: 29, basic: 5 }
+      return sum + (LEGACY_PRICE[s.plan] ?? 0)
+    }, 0)
 
   const failuresByProduct: Record<string, any[]> = {}
   failures.forEach((f: any) => {
@@ -317,6 +327,9 @@ export default function AdminPage() {
   function userCurrentUsage(uid: string) {
     const now = new Date()
     return monthlyUsage.find(m => m.user_id === uid && new Date(m.period_end) >= now)
+  }
+  function userGateCount(uid: string) {
+    return gateUsage.find(g => g.user_id === uid)
   }
 
   const filteredUsers = subSearch.trim()
@@ -358,8 +371,8 @@ export default function AdminPage() {
           {[
             { label: "Total Users",    val: users.length,           color: "#E8ECFF" },
             { label: "Active",         val: activeUsers.length,     color: "#3ECFB2" },
-            { label: "Pro / Advanced", val: proUsers.length,        color: "#F0A030" },
-            { label: "Standard",       val: users.length - proUsers.length, color: "#5B8DEF" },
+            { label: "ATLAS",          val: atlasUsers.length,      color: "#3ECFB2" },
+            { label: "Free / None",    val: freeUsers.length,       color: "#5B8DEF" },
             { label: "Est. MRR",       val: `$${mrr}`,              color: "#3ECFB2" },
             { label: "Past Due",       val: pastDue,                color: pastDue > 0 ? "#E05555" : "#353860" },
             { label: "Canceling Soon", val: cancelingSoon,          color: cancelingSoon > 0 ? "#F0A030" : "#353860" },
@@ -474,6 +487,9 @@ export default function AdminPage() {
                                 { label:"Confirmed Successes",val: String(confirmedInstalls.length), color:"#A855F7" },
                                 { label:"Joined",             val:fmt(u.created_at) },
                                 { label:"Log Sync",           val: u.privacy_consent ? "On" : "Off", color: u.privacy_consent ? "#3ECFB2" : "#4A5280" },
+                                { label:"Billing Cadence",    val: u.billing_interval === "annual" ? "Annual" : u.billing_interval === "monthly" ? "Monthly" : "—" },
+                                { label:"Billing Anchor",     val: u.billing_anchor_day != null ? `Day ${u.billing_anchor_day} of month` : "—" },
+                                { label:"Current Period Installs", val: (() => { const g = userGateCount(u.id); return g != null ? `${g.installs_this_month} / 25` : "—" })(), color: (() => { const g = userGateCount(u.id); return g != null && g.installs_this_month >= 20 ? "#F0A030" : "#3ECFB2" })(), bold: true },
                               ].map(f => (
                                 <div key={f.label}>
                                   <span style={labelStyle}>{f.label}</span>

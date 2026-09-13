@@ -13,16 +13,17 @@ const supabase = createClient(
 const ADMIN_EMAIL = 'interlinked.digital@gmail.com'
 
 const PRICE_PLAN: Record<string, { profile: string; subscription: string }> = {
-  // LIVE — monthly
-  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'standard', subscription: 'standard' },
-  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'pro',      subscription: 'pro'      },
-  // LIVE — annual
-  'price_1TnTWwA1Bm2dPCGchzhfeeZy': { profile: 'standard', subscription: 'standard' },
-  'price_1TnTXWA1Bm2dPCGcPInuLsUt': { profile: 'pro',      subscription: 'pro'      },
-  // TEST MODE
-  'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'standard', subscription: 'standard' },
-  'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'pro',      subscription: 'pro'      },
-  'price_1TqJSEA1Bm2dPCGcEtL4Au0e': { profile: 'pro',      subscription: 'pro'      }, // $0.50 flow test
+  // ATLAS — new single plan (monthly + annual)
+  'price_1U9uOBA1Bm2dPCGc73d3ZbA5': { profile: 'atlas', subscription: 'atlas' }, // $30/month
+  'price_1U9uOCA1Bm2dPCGcjRbOpXii': { profile: 'atlas', subscription: 'atlas' }, // $300/year
+  // Legacy prices — map to atlas for backward compat (test accounts, replays)
+  'price_1TdIbOA1Bm2dPCGcBzQIiXGV': { profile: 'atlas', subscription: 'atlas' }, // old standard monthly
+  'price_1TdIbOA1Bm2dPCGcpLFkuAea': { profile: 'atlas', subscription: 'atlas' }, // old pro monthly
+  'price_1TnTWwA1Bm2dPCGchzhfeeZy': { profile: 'atlas', subscription: 'atlas' }, // old standard annual
+  'price_1TnTXWA1Bm2dPCGcPInuLsUt': { profile: 'atlas', subscription: 'atlas' }, // old pro annual
+  'price_1TliuWA1Bm2dPCGcbpXH9hE5': { profile: 'atlas', subscription: 'atlas' }, // old test standard
+  'price_1TlitLA1Bm2dPCGcZRFxm68J': { profile: 'atlas', subscription: 'atlas' }, // old test pro
+  'price_1TqJSEA1Bm2dPCGcEtL4Au0e': { profile: 'atlas', subscription: 'atlas' }, // $0.50 flow test
 }
 
 async function getUserByEmail(email: string) {
@@ -212,12 +213,12 @@ export async function POST(req: NextRequest) {
 
           // User emails
           await sendEmail({ to: email, template: 'welcome', data: { name } })
-          await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: plan.profile, renewDate } })
+          await sendEmail({ to: email, template: 'subscription-confirmed', data: { renewDate } })
 
           // Admin notification
           await notifyAdmin(
             `✅ New Subscriber — ${email}`,
-            `${email} just subscribed to ATLAS ${plan.profile.toUpperCase()}.\n\nRenews: ${renewDate}\nStripe Customer: ${sub.customer}\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
+            `${email} just subscribed to ATLAS.\n\nRenews: ${renewDate}\nStripe Customer: ${sub.customer}\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
           )
 
           // Audit log
@@ -256,26 +257,13 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        // Only log/notify if the plan price actually changed
+        // Log interval changes (monthly ↔ annual) if price changed
         const prevPriceId = (prevSub?.items as any)?.data?.[0]?.price?.id
-        const prevPlan = prevPriceId ? PRICE_PLAN[prevPriceId]?.profile : null
-        if (prevPlan && prevPlan !== plan.profile) {
-          const direction = plan.profile === 'pro' ? '⬆️ Upgraded' : '⬇️ Downgraded'
-
-          // Email user their new plan confirmation
-          const renewDate = sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-            : ''
-          await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: plan.profile, renewDate } })
-
-          await notifyAdmin(
-            `${direction} — ${email}`,
-            `${email} changed plan: ${prevPlan.toUpperCase()} → ${plan.profile.toUpperCase()}.\n\nStripe Sub: ${sub.id}\nTime: ${new Date().toUTCString()}`
-          )
-          await auditLog('subscription.plan_changed', {
+        if (prevPriceId && prevPriceId !== priceId) {
+          await auditLog('subscription.price_changed', {
             userId, email, plan: plan.profile,
             stripeEvent: event.type,
-            metadata: { from_plan: prevPlan, to_plan: plan.profile, stripe_subscription_id: sub.id },
+            metadata: { from_price: prevPriceId, to_price: priceId, stripe_subscription_id: sub.id },
           })
         }
         break
@@ -347,7 +335,7 @@ export async function POST(req: NextRequest) {
               .update({ status: 'active', updated_at: new Date().toISOString() })
               .eq('stripe_customer_id', invoice.customer as string)
 
-            await sendEmail({ to: email, template: 'subscription-confirmed', data: { plan: prof.plan ?? 'standard', renewDate: '' } })
+            await sendEmail({ to: email, template: 'subscription-confirmed', data: { renewDate: '' } })
 
             await notifyAdmin(
               `✅ Payment Recovered — ${email}`,

@@ -6,35 +6,19 @@ final class MonthlyLimitManager: ObservableObject {
     private init() { load() }
 
     // MARK: - Limits
-    static let standardDailyLimit   = 3
-    static let standardMonthlyLimit = 10
-    static let proLimit             = 25
+    static let atlasMonthlyLimit = 25
 
     // MARK: - State
     @Published private(set) var installsThisPeriod: Int = 0
-    @Published private(set) var installsToday:      Int = 0
     @Published private(set) var periodStart:        Date = Date()
     @Published private(set) var today:              Date = Date()
     @Published private(set) var pendingURLs:        [URL] = []
 
     // MARK: - Derived limits
 
-    var currentLimit: Int {
-        AuthManager.shared.isPro ? Self.proLimit : Self.standardMonthlyLimit
-    }
-
-    var dailyLimit: Int {
-        AuthManager.shared.isPro ? Int.max : Self.standardDailyLimit
-    }
+    var currentLimit: Int { Self.atlasMonthlyLimit }
 
     // MARK: - Lock state
-
-    /// Daily limit hit (Standard only) — resets at midnight
-    var isDailyLocked: Bool {
-        guard !AuthManager.shared.isPro else { return false }
-        guard !AuthManager.shared.isAdmin else { return false }
-        return installsToday >= Self.standardDailyLimit
-    }
 
     /// Monthly cap hit — resets on billing anniversary
     var isMonthlyLocked: Bool {
@@ -42,43 +26,26 @@ final class MonthlyLimitManager: ObservableObject {
         return installsThisPeriod >= currentLimit && timeUntilMonthlyReset > 0
     }
 
-    /// Either lock applies
-    var isLocked: Bool { isDailyLocked || isMonthlyLocked }
+    /// isLocked — only monthly cap applies (no daily limit)
+    var isLocked: Bool { isMonthlyLocked }
 
     // MARK: - Remaining
 
     var remaining: Int {
         refreshIfExpired()
-        if AuthManager.shared.isPro {
-            return max(0, currentLimit - installsThisPeriod)
-        }
-        let dailyLeft   = max(0, Self.standardDailyLimit   - installsToday)
-        let monthlyLeft = max(0, Self.standardMonthlyLimit - installsThisPeriod)
-        return min(dailyLeft, monthlyLeft)
+        return max(0, currentLimit - installsThisPeriod)
     }
 
     var hasPendingFiles: Bool { !pendingURLs.isEmpty }
 
     // MARK: - Countdowns
 
-    var timeUntilDailyReset: TimeInterval {
-        let cal = Calendar.current
-        guard let nextMidnight = cal.nextDate(after: today,
-                                              matching: DateComponents(hour: 0, minute: 0, second: 0),
-                                              matchingPolicy: .nextTime) else { return 0 }
-        return max(0, nextMidnight.timeIntervalSinceNow)
-    }
-
     var timeUntilMonthlyReset: TimeInterval {
         max(0, nextMonthlyResetDate.timeIntervalSinceNow)
     }
 
-    /// Whichever lock is active — returns the relevant countdown
-    var timeUntilReset: TimeInterval {
-        isDailyLocked ? timeUntilDailyReset : timeUntilMonthlyReset
-    }
+    var timeUntilReset: TimeInterval { timeUntilMonthlyReset }
 
-    var isLockedByDaily:   Bool { isDailyLocked && !isMonthlyLocked }
     var isLockedByMonthly: Bool { isMonthlyLocked }
 
     // MARK: - Next reset dates
@@ -108,18 +75,24 @@ final class MonthlyLimitManager: ObservableObject {
         guard !AuthManager.shared.isAdmin else { return }
         refreshIfExpired()
         installsThisPeriod = min(installsThisPeriod + 1, currentLimit + 1)
-        if !AuthManager.shared.isPro {
-            installsToday = min(installsToday + 1, Self.standardDailyLimit + 1)
-        }
+        save()
+        Task { await syncToServer() }
+    }
+
+    /// Call after a server-gated install authorization.
+    /// checkWithServer() already synced installsThisPeriod from the server response;
+    /// this persists that value and fires the secondary sync without re-incrementing.
+    func syncAfterServerGate() {
+        guard !AuthManager.shared.isAdmin else { return }
         save()
         Task { await syncToServer() }
     }
 
     /// Server-side gate — call BEFORE starting any install.
-    /// Returns (allowed, reason) where reason is "daily_limit", "monthly_limit", or nil.
+    /// Returns (allowed, reason) where reason is "monthly_limit" or nil.
     func checkWithServer() async -> (allowed: Bool, reason: String?) {
         guard let token = await AuthManager.shared.currentToken() else {
-            return (true, nil) // no token → fail open, local gate still applies
+            return (true, nil)
         }
         guard let url = URL(string: "https://www.interlinked.digital/api/atlas/check-install") else {
             return (true, nil)
@@ -132,22 +105,19 @@ final class MonthlyLimitManager: ObservableObject {
         do {
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-                return (true, nil) // fail open on server error
+                return (true, nil)
             }
             struct Result: Decodable {
                 let allowed: Bool
                 let reason: String?
-                let daily_used: Int?
                 let monthly_used: Int?
             }
             let result = try JSONDecoder().decode(Result.self, from: data)
-            // Sync server counts back so UI reflects reality
             if let mu = result.monthly_used { installsThisPeriod = mu }
-            if let du = result.daily_used   { installsToday = du }
-            save(); saveDaily()
+            save()
             return (result.allowed, result.reason)
         } catch {
-            return (true, nil) // network error → fail open
+            return (true, nil)
         }
     }
 
@@ -185,17 +155,6 @@ final class MonthlyLimitManager: ObservableObject {
     // MARK: - Expiry refresh
 
     private func refreshIfExpired() {
-        let cal = Calendar.current
-        let now = Date()
-
-        // Reset daily count if calendar day changed
-        if !cal.isDate(today, inSameDayAs: now) {
-            installsToday = 0
-            today = now
-            saveDaily()
-        }
-
-        // Reset monthly count if billing period expired
         if timeUntilMonthlyReset == 0 {
             installsThisPeriod = 0
             periodStart = currentPeriodStart()
@@ -235,39 +194,20 @@ final class MonthlyLimitManager: ObservableObject {
         ud.set(periodStart.timeIntervalSinceReferenceDate, forKey: "atlas_month_start")
     }
 
-    private func saveDaily() {
-        let ud = UserDefaults.standard
-        ud.set(installsToday, forKey: "atlas_installs_today")
-        ud.set(today.timeIntervalSinceReferenceDate, forKey: "atlas_today_date")
-    }
-
     private func savePending() {
         UserDefaults.standard.set(pendingURLs.map(\.path), forKey: "atlas_pending_urls")
     }
 
     private func load() {
         let ud  = UserDefaults.standard
-        let cal = Calendar.current
         let now = Date()
 
-        // Monthly
         installsThisPeriod = ud.integer(forKey: "atlas_installs_month")
         let ti = ud.double(forKey: "atlas_month_start")
         periodStart = ti > 0 ? Date(timeIntervalSinceReferenceDate: ti) : currentPeriodStart()
 
-        // Daily — discard if saved date is a different calendar day
-        let savedTodayTI = ud.double(forKey: "atlas_today_date")
-        let savedToday   = savedTodayTI > 0 ? Date(timeIntervalSinceReferenceDate: savedTodayTI) : now
-        if cal.isDate(savedToday, inSameDayAs: now) {
-            installsToday = ud.integer(forKey: "atlas_installs_today")
-            today = savedToday
-        } else {
-            installsToday = 0
-            today = now
-            saveDaily()
-        }
+        today = now
 
-        // Pending files
         let raw = ud.stringArray(forKey: "atlas_pending_urls") ?? []
         pendingURLs = raw.compactMap { path -> URL? in
             FileManager.default.fileExists(atPath: path) ? URL(fileURLWithPath: path) : nil

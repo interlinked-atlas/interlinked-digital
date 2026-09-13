@@ -1093,7 +1093,7 @@ struct LibraryItemCard: View {
                         HStack(spacing: 3) {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 7, weight: .semibold))
-                            Text("PRO")
+                            Text("ATLAS")
                                 .font(.system(size: 7, weight: .bold))
                         }
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
@@ -1146,7 +1146,7 @@ struct LibraryItemCard: View {
                         HStack(spacing: 3) {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 7, weight: .semibold))
-                            Text("PRO")
+                            Text("ATLAS")
                                 .font(.system(size: 7, weight: .bold))
                         }
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))

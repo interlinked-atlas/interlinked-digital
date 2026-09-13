@@ -24,12 +24,13 @@ struct ATLASSession: Codable {
 struct ATLASProfile: Codable {
     let id: String
     let email: String
-    let plan: String                // "standard", "pro"
+    let plan: String                // "atlas" (or legacy "standard"/"pro")
     let subscriptionStatus: String
     let billingAnchorDay: Int?      // day of month billing renews (1-31)
     let billingInterval: String?    // "monthly" or "annual"
 
-    var isPro: Bool { plan == "pro" }
+    var isSubscribed: Bool { ["atlas", "pro", "standard"].contains(plan) }
+    var isPro: Bool { isSubscribed }  // backward compat
     var isAnnual: Bool { billingInterval == "annual" }
 
     enum CodingKeys: String, CodingKey {
@@ -72,7 +73,7 @@ enum SupabaseError: LocalizedError {
         case .httpError(let c, let m): return "Server error \(c): \(m)"
         case .decodingError(let m): return "Could not parse response: \(m)"
         case .notAuthenticated:     return "You are not signed in."
-        case .deviceLimitReached:   return "Pro plan allows up to 3 devices. Remove a device in Account settings first."
+        case .deviceLimitReached:   return "ATLAS allows up to 3 devices. Remove a device in Account settings first."
         case .emailNotConfirmed:    return "Please confirm your email before signing in. Check your inbox for a confirmation link."
         }
     }
@@ -167,10 +168,9 @@ actor SupabaseService {
 
     func registerDevice(accessToken: String, userID: String,
                         name: String, hardwareUUID: String,
-                        isPro: Bool) async throws {
-        // Enforce 3-device limit for Pro, 1 for Standard
+                        isSubscribed: Bool) async throws {
         let existing = try await getDevices(accessToken: accessToken, userID: userID)
-        let limit = isPro ? 3 : 1
+        let limit = 3  // ATLAS: all subscribers get 3 devices
         let alreadyRegistered = existing.contains { $0.hardwareUUID == hardwareUUID }
 
         if !alreadyRegistered && existing.count >= limit {

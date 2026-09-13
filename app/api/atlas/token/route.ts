@@ -59,10 +59,12 @@ export async function POST(request: Request) {
 
   // Build claims: 24-hour TTL
   const exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60
+  // p is always 'atlas' for active subscribers — used by OfflineTokenVerifier.
+  // Old tokens with p='pro' or p='standard' remain valid via backward-compat in the Mac app.
   const claims = {
     u: user.id,
     h: hardwareUUID,
-    p: profileRow.plan as string,
+    p: 'atlas',
     e: exp,
   }
 

@@ -20,16 +20,18 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Pro only
+  // Requires active subscription
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan')
+    .select('plan, subscription_status')
     .eq('id', user.id)
     .single()
 
-  const plan = profile?.plan ?? 'standard'
-  if (plan !== 'pro') {
-    return NextResponse.json({ error: 'Virus Scanner is a Pro feature' }, { status: 403 })
+  const isSubscribed = profile?.subscription_status === 'active' &&
+    (profile?.plan === 'atlas' || profile?.plan === 'pro' || profile?.plan === 'standard')
+
+  if (!isSubscribed) {
+    return NextResponse.json({ error: 'Virus Scanner requires an active ATLAS subscription' }, { status: 403 })
   }
 
   const { hash } = await req.json()

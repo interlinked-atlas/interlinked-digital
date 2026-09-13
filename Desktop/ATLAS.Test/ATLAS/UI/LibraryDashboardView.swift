@@ -204,13 +204,13 @@ struct LibraryDashboardView: View {
             guard complete == true, let eng = activeRecoveryEngine else { return }
             kitEngine.markRecovered(successCount: eng.successCount)
         }
-        .alert("ATLAS CLEANER™ — Pro Feature", isPresented: $showUpgradeForCleaner) {
-            Button("Upgrade to Pro") {
+        .alert("ATLAS CLEANER™ — ATLAS Feature", isPresented: $showUpgradeForCleaner) {
+            Button("Subscribe to ATLAS") {
                 NSWorkspace.shared.open(URL(string: "https://interlinked.digital/account")!)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("ATLAS CLEANER™ is available on the Pro plan. Visit interlinked.digital/account and sign in with the email you use in the ATLAS app.")
+            Text("ATLAS CLEANER™ is available with an ATLAS subscription. Visit interlinked.digital/account and sign in with the email you use in the ATLAS app.")
         }
     }
 

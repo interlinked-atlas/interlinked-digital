@@ -29,15 +29,23 @@ export async function POST(req: NextRequest) {
   if (authError || !user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const targetPlan: string = body.plan ?? 'pro'
+  const targetPlan: string = body.plan ?? 'atlas-annual'
   const priceId = PRICE_IDS[targetPlan]
   if (!priceId) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
+  // targetPlan is only a catalog key used to resolve priceId above. The stored
+  // plan value is always normalized to 'atlas' — billing cadence (monthly/annual)
+  // lives in billing_interval, never in the plan column itself.
+  const targetInterval: 'monthly' | 'annual' = targetPlan.includes('annual') ? 'annual' : 'monthly'
+  const normalizedPlan = 'atlas'
+
   const { data: profile } = await supabase
-    .from('profiles').select('email, plan').eq('id', user.id).single()
+    .from('profiles').select('email, plan, billing_interval').eq('id', user.id).single()
 
   if (!profile?.email) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-  if (profile.plan === targetPlan) return NextResponse.json({ ok: true, alreadyOnPlan: true })
+  if (profile.plan === normalizedPlan && profile.billing_interval === targetInterval) {
+    return NextResponse.json({ ok: true, alreadyOnPlan: true })
+  }
 
   // Look up customer ID from subscriptions table first (ID-based, reliable)
   // Fall back to email lookup for legacy accounts
@@ -80,14 +88,14 @@ export async function POST(req: NextRequest) {
   })
 
   await supabase.from('profiles')
-    .update({ plan: targetPlan, subscription_status: 'active' })
+    .update({ plan: normalizedPlan, subscription_status: 'active', billing_interval: targetInterval })
     .eq('id', user.id)
 
   await supabase.from('subscriptions').upsert({
     user_id:                user.id,
     stripe_customer_id:     customerId,
     stripe_subscription_id: sub.id,
-    plan:                   targetPlan,
+    plan:                   normalizedPlan,
     status:                 'active',
     updated_at:             new Date().toISOString(),
   }, { onConflict: 'user_id' })

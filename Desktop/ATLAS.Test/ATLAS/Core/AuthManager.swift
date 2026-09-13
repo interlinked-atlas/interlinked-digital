@@ -21,14 +21,12 @@ final class AuthManager: ObservableObject {
     private var planSyncTimer: Timer?
 
     var isSignedIn: Bool { session != nil }
-    var isPro: Bool { profile?.isPro ?? false }
+    var isSubscribed: Bool { profile?.isSubscribed ?? false }
+    var isPro: Bool { isSubscribed }  // backward compat alias
 
     static let adminEmail = "titantinstaller@gmail.com"
     var isAdmin: Bool { userEmail.lowercased() == Self.adminEmail }
-    var planLabel: String {
-        if isPro { return "Pro" }
-        return "Standard"
-    }
+    var planLabel: String { "ATLAS" }
     var userEmail: String { session?.email ?? "" }
     var subscriptionActive: Bool {
         guard let p = profile else { return false }
@@ -156,17 +154,8 @@ final class AuthManager: ObservableObject {
                         return
                     }
                     if planChanged || statusChanged {
-                        let oldPlan = self.profile?.plan ?? ""
-                        let newPlan = p.plan
                         await MainActor.run {
                             self.profile = p
-                            if planChanged && !oldPlan.isEmpty {
-                                self.planChangeNotice = newPlan == "pro"
-                                    ? "✦ Upgraded to Pro — all features unlocked."
-                                    : newPlan == "standard"
-                                    ? "Plan changed to Standard."
-                                    : nil
-                            }
                         }
                         KeychainManager.saveProfile(p)
                     }
@@ -265,7 +254,7 @@ final class AuthManager: ObservableObject {
                 userID: s.userID,
                 name: name,
                 hardwareUUID: uuid,
-                isPro: profile?.isPro ?? false)
+                isSubscribed: profile?.isSubscribed ?? false)
             // Send security notification for new device activations
             if isNewDevice {
                 try? await SupabaseService.shared.notifyNewDevice(
@@ -275,11 +264,8 @@ final class AuthManager: ObservableObject {
             }
         } catch SupabaseError.deviceLimitReached {
             await MainActor.run {
-                let isPro = profile?.isPro == true
-                authError = isPro
-                    ? "Pro plan limit of 3 devices reached. Remove a device in Account Settings first."
-                    : "Your Standard plan allows 1 device. Sign out on your other device first, or upgrade to Pro for up to 3 devices."
-                authErrorIsDeviceLimit = !isPro
+                authError = "ATLAS allows up to 3 devices. Remove a device in Account Settings first."
+                authErrorIsDeviceLimit = true
                 session = nil
                 profile = nil
             }

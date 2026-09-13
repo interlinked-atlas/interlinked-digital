@@ -1090,16 +1090,16 @@ struct ContentView: View {
                 monthlyLimitLockedZone
             } else {
                 // Standard: show remaining installs counter while not locked
-                if !auth.isPro {
+                if !auth.isSubscribed {
                     let rem = monthlyLimit.remaining
-                    if rem < MonthlyLimitManager.standardDailyLimit {
+                    if rem <= 3 {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
-                            Text("\(rem) install\(rem == 1 ? "" : "s") remaining today")
+                            Text("\(rem) install\(rem == 1 ? "" : "s") remaining this month")
                                 .font(.atlasSubhead)
                             Spacer()
-                            Text("Standard")
+                            Text("ATLAS")
                                 .atlasChip(color: Color.atlasInfo)
                         }
                         .foregroundStyle(Color.atlasSubtitle)
@@ -1193,10 +1193,10 @@ struct ContentView: View {
                 ? String(format: "%dd %02d:%02d:%02d", days, hh, mm, ss)
                 : String(format: "%02d:%02d:%02d", hh, mm, ss)
 
-            let planName   = auth.isPro ? "Pro" : "Standard"
+            let planName   = "ATLAS"
             let cap        = monthlyLimit.currentLimit
-            let nextPlan   = "Pro"
-            let upgradeMsg = "Upgrade to Pro"
+            let nextPlan   = "ATLAS"
+            let upgradeMsg = "Subscribe to ATLAS"
 
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
@@ -2058,13 +2058,15 @@ struct ContentView: View {
     }
 
     private func beginInstall(url: URL) {
-        // Record single-file install against daily limit (Standard only)
-        monthlyLimit.recordInstall()
         withAnimation { showDropZone = false }
         pluginScanResults = []
         showPluginScan = false
-        MenuBarStatusManager.shared.menuStatus = .installing
-        InstallationManager.shared.install(
+        Task {
+            let (allowed, _) = await monthlyLimit.checkWithServer()
+            guard allowed else { return }
+            monthlyLimit.syncAfterServerGate()
+            MenuBarStatusManager.shared.menuStatus = .installing
+            InstallationManager.shared.install(
             url: url, appState: appState,
             logger: logger, historyStore: historyStore
         ) { isPlugin in
@@ -2109,6 +2111,7 @@ struct ContentView: View {
                     withAnimation { showPluginScan = true }
                 }
             }
+        }
         }
     }
 
@@ -2261,8 +2264,14 @@ struct ContentView: View {
             }
         }
 
-        // Record against daily limit per queued file (Standard only)
-        await MainActor.run { monthlyLimit.recordInstall() }
+        // Server-authoritative install-limit gate
+        let (limitAllowed, _) = await monthlyLimit.checkWithServer()
+        guard limitAllowed else {
+            await MainActor.run { monthlyLimit.syncAfterServerGate() }
+            queue.updateStatus(id: id, status: .failure("Monthly install limit reached"))
+            return
+        }
+        await MainActor.run { monthlyLimit.syncAfterServerGate() }
         queue.updateStatus(id: id, status: .installing)
         logger.log("Installing: \(item.fileName)")
 

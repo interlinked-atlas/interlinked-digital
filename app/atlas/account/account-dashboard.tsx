@@ -178,9 +178,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     setUpgradeLoading(false)
   }
 
-  // Keep legacy name for any existing callers
-  const handleUpgradeToPro = () => handleUpgrade("pro")
-
   async function downloadKit(kitId: string, fileType: "atlaskit" | "txt") {
     setKitDownloading(`${kitId}-${fileType}`)
     try {

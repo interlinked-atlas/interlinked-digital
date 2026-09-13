@@ -32,14 +32,8 @@ class HistoryStore: ObservableObject {
         save()
     }
 
-    // Trims stored records to the Standard plan limit.
-    // Called on add and after plan changes so the cap is always current.
     func enforceLimit() {
-        guard !AuthManager.shared.isPro else { return }
-        let limit = Features.standardHistoryLimit
-        if records.count > limit {
-            records = Array(records.prefix(limit))
-        }
+        // All ATLAS subscribers get unlimited history — no cap enforced
     }
 
     // Moves a record from the active Library to Archive.

@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
     .select('plan')
     .eq('id', user.id)
     .single()
-  if (profile?.plan !== 'pro') {
-    return NextResponse.json({ error: 'Cloud Recovery Kit requires ATLAS Pro' }, { status: 403 })
+  const isSubscribed = profile?.plan === 'atlas' || profile?.plan === 'pro' || profile?.plan === 'standard'
+  if (!isSubscribed) {
+    return NextResponse.json({ error: 'Cloud Recovery Kit requires an active ATLAS subscription' }, { status: 403 })
   }
 
   const kitId = req.nextUrl.searchParams.get('kit_id')

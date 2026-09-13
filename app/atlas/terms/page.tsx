@@ -41,8 +41,8 @@ export default function TermsPage() {
 
           <Section title="2. The Service">
             ATLAS is a macOS and Windows application that automates software installation.
-            Access to ATLAS requires an active paid subscription. Features available to you
-            depend on your subscription plan (Standard or Pro).
+            Access to ATLAS requires an active paid ATLAS subscription, billed monthly or
+            annually.
           </Section>
 
           <Section title="3. Subscriptions and Billing">
@@ -80,8 +80,7 @@ export default function TermsPage() {
 
           <Section title="6. Device Limits">
             <ul style={{ marginTop: 16, paddingLeft: 20, lineHeight: 2, color: '#B0B8D0' }}>
-              <li><strong style={{ color: '#C8D8E8' }}>Standard plan:</strong> 1 device</li>
-              <li><strong style={{ color: '#C8D8E8' }}>Pro plan:</strong> 3 devices</li>
+              <li><strong style={{ color: '#C8D8E8' }}>ATLAS subscription:</strong> up to 3 devices</li>
             </ul>
             Attempting to use ATLAS on more devices than your plan allows will result in a login
             block. You may remove devices from your account settings.

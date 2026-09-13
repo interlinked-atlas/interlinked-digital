@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement'
 
 interface SendOptions {
   to: string
@@ -18,8 +18,8 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
       html: welcomeEmail(data.name ?? to.split('@')[0]),
     },
     'subscription-confirmed': {
-      subject: `ATLAS ${data.plan ?? 'Pro'} — Subscription Confirmed`,
-      html: subscriptionConfirmedEmail(data.plan ?? 'Pro', data.renewDate ?? ''),
+      subject: 'ATLAS — Subscription Confirmed',
+      html: subscriptionConfirmedEmail(data.renewDate ?? ''),
     },
     'subscription-cancelled': {
       subject: 'Your ATLAS subscription has been cancelled',
@@ -44,6 +44,14 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'launch': {
       subject: 'ATLAS is live — Download now',
       html: launchEmail(),
+    },
+    'anticipation': {
+      subject: 'ATLAS for macOS — Coming Soon',
+      html: anticipationEmail(),
+    },
+    'october-announcement': {
+      subject: 'ATLAS — macOS available this October.',
+      html: octoberAnnouncementEmail(),
     },
   }
 
@@ -206,23 +214,26 @@ function welcomeEmail(name: string) {
   `)
 }
 
-function subscriptionConfirmedEmail(plan: string, renewDate: string) {
-  const isPro    = plan.toLowerCase() === 'pro'
-  const accent   = isPro ? TEAL : INDIGO
-  const features = isPro
-    ? ['Up to 3 devices', 'Unlimited installs', 'Bulk installation', 'TITAN CORE™ &amp; Smart Storage', 'Uninstall &amp; Rollback']
-    : ['Single-device access', '3 installs per day', 'Install history', 'Notifications']
+function subscriptionConfirmedEmail(renewDate: string) {
+  const features = [
+    'Up to 3 devices',
+    '25 installs/month',
+    'Bulk queue installation',
+    'TITAN CORE™ &amp; Smart Storage',
+    'Uninstall, Rollback &amp; Recovery',
+    'Virus Scanner &amp; ATLAS CLEANER™',
+  ]
 
-  return base(`ATLAS ${plan} — Confirmed`, `
-    <!-- Top accent bar -->
-    <div style="height:2px;background:${accent};"></div>
+  return base('ATLAS — Subscription Confirmed', `
+    <!-- Top teal bar -->
+    <div style="height:2px;background:${TEAL};"></div>
 
     <div style="padding:36px 36px 40px;">
-      ${eyebrow(`ATLAS ${plan}`)}
+      ${eyebrow('ATLAS')}
       ${heading('Subscription confirmed.')}
-      ${body(`You're now on <strong style="color:${WHITE};font-weight:600;">ATLAS ${plan}</strong>.${renewDate ? ` Your subscription renews on <strong style="color:${WHITE};font-weight:600;">${renewDate}</strong>.` : ''}`)}
+      ${body(`You're now subscribed to <strong style="color:${WHITE};font-weight:600;">ATLAS</strong>.${renewDate ? ` Your subscription renews on <strong style="color:${WHITE};font-weight:600;">${renewDate}</strong>.` : ''}`)}
 
-      ${infoBox(features, accent)}
+      ${infoBox(features, TEAL)}
 
       ${tealBtn('View Account Dashboard', 'https://www.interlinked.digital/atlas/account')}
     </div>
@@ -361,6 +372,87 @@ function launchEmail() {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
         Questions? Reply to this email or reach us at <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
+      </p>
+    </div>
+  `)
+}
+
+const APPLE_LOGO_B64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzhBOEE5NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTguNzEgMTkuNWMtLjgzIDEuMjQtMS43MSAyLjQ1LTMuMDUgMi40Ny0xLjM0LjAzLTEuNzctLjc5LTMuMjktLjc5LTEuNTMgMC0yIC43Ny0zLjI3LjgyLTEuMzEuMDUtMi4zLTEuMzItMy4xNC0yLjUzQzQuMjUgMTcgMi45NCAxMi40NSA0LjcgOS4zOWMuODctMS41MiAyLjQzLTIuNDggNC4xMi0yLjUxIDEuMjgtLjAyIDIuNS44NyAzLjI5Ljg3Ljc4IDAgMi4yNi0xLjA3IDMuOC0uOTEuNjUuMDMgMi40Ny4yNiAzLjY0IDEuOTgtLjA5LjA2LTIuMTcgMS4yOC0yLjE1IDMuODEuMDMgMy4wMiAyLjY1IDQuMDMgMi42OCA0LjA0LS4wMy4wNy0uNDIgMS40NC0xLjM3IDIuODNNMTMgMy41Yy43My0uODMgMS45NC0xLjQ2IDIuOTQtMS41LjEzIDEuMTctLjM0IDIuMzUtMS4wNCAzLjE5LS42OS44NS0xLjgzIDEuNTEtMi45NSAxLjQyLS4xNS0xLjE1LjQxLTIuMzUgMS4wNS0zLjExeiIvPjwvc3ZnPg=='
+
+function anticipationEmail() {
+  return base('ATLAS for macOS — Coming Soon', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Coming Soon')}
+
+      <!-- macOS visual treatment -->
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+        <tr>
+          <td valign="middle" style="padding-right:8px;">
+            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
+          </td>
+          <td valign="middle">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
+          </td>
+        </tr>
+      </table>
+
+      ${heading('ATLAS is almost here.')}
+      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">Something is coming for your Mac. We're putting the finishing touches on ATLAS — you're on the waitlist, so you'll be the first to know when it launches.</p>
+
+      ${eyebrow('Pricing Announcing Soon')}
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
+        <tr><td style="padding:18px 20px 18px;">
+          <p style="margin:0 0 2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:${WHITE};letter-spacing:-0.01em;">ATLAS</p>
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#8A8A96;">One plan. Every feature. Monthly or annual billing.</p>
+        </td></tr>
+      </table>
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;line-height:1.6;">
+        Windows Version Coming Soon.
+      </p>
+    </div>
+  `)
+}
+
+function octoberAnnouncementEmail() {
+  return base('ATLAS — macOS available this October.', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Coming October')}
+
+      <!-- macOS badge -->
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+        <tr>
+          <td valign="middle" style="padding-right:8px;">
+            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
+          </td>
+          <td valign="middle">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
+          </td>
+        </tr>
+      </table>
+
+      ${heading('ATLAS for macOS.')}
+      <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">ATLAS for macOS will be available this October. You're on the waitlist — you'll be among the first to hear when it launches.</p>
+
+      ${tealBtn('Learn More', 'https://www.interlinked.digital/atlas')}
+
+      ${divider()}
+
+      <!-- Secondary: Windows teaser -->
+      <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;letter-spacing:-0.01em;">Windows Version of ATLAS Coming Soon.</p>
+      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">Stay tuned for more updates.</p>
+
+      ${divider()}
+
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
       </p>
     </div>
   `)

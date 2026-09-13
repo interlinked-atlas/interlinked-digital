@@ -15,8 +15,9 @@ export async function startCheckoutSession(productId: string, email?: string) {
   const origin = headersList.get('origin') || 'https://interlinked.digital'
 
   // Map product ID to real Stripe price ID
-  const planKey = productId.replace('atlas-', '') as keyof typeof PRICE_IDS
-  const priceId = PRICE_IDS[planKey]
+  // 'atlas' → 'atlas', 'atlas-annual' → 'atlas-annual'
+  const planKey = productId.startsWith('atlas') ? productId : productId.replace('atlas-', '') as keyof typeof PRICE_IDS
+  const priceId = PRICE_IDS[planKey as keyof typeof PRICE_IDS]
   if (!priceId) {
     throw new Error(`No Stripe price ID found for product "${productId}"`)
   }

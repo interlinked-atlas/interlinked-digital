@@ -15,7 +15,7 @@ struct RecoveryKitView: View {
                 .frame(height: 1)
                 .padding(.horizontal, 12)
             importRow
-            if auth.isPro && auth.isSignedIn {
+            if auth.isSubscribed && auth.isSignedIn {
                 Rectangle()
                     .fill(Color.atlasSeparator.opacity(0.6))
                     .frame(height: 1)
@@ -44,15 +44,15 @@ struct RecoveryKitView: View {
         HStack(spacing: 10) {
             Image(systemName: "lifepreserver")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(auth.isPro ? Color(hex: "#3ECFB2") : Color.atlasSubtitle.opacity(0.4))
+                .foregroundColor(auth.isSubscribed ? Color(hex: "#3ECFB2") : Color.atlasSubtitle.opacity(0.4))
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {
                     Text("ATLAS RECOVERY KIT™")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(auth.isPro ? Color.atlasLabel : Color.atlasSubtitle.opacity(0.6))
-                    if !auth.isPro {
+                        .foregroundColor(auth.isSubscribed ? Color.atlasLabel : Color.atlasSubtitle.opacity(0.6))
+                    if !auth.isSubscribed {
                         Text("PRO")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundColor(Color(hex: "#3ECFB2"))
@@ -101,7 +101,7 @@ struct RecoveryKitView: View {
     private var exportButton: some View {
         if case .exporting = engine.exportState {
             EmptyView()
-        } else if auth.isPro {
+        } else if auth.isSubscribed {
             Button(L(.generate)) {
                 Task { await engine.export(store: store) }
             }
@@ -426,7 +426,7 @@ struct RecoveryKitView: View {
             .padding(.horizontal, 12)
 
             // Recovery Mode entry point — gated via extracted pure function (testable without AuthManager)
-            if RecoveryModeEngine.canStartRecovery(isPro: auth.isPro) {
+            if RecoveryModeEngine.canStartRecovery(isPro: auth.isSubscribed) {
                 // Show result state if this specific downloaded backup was already recovered
                 let alreadyRecovered = engine.downloadedKitId != nil
                     && engine.lastRecoveryResult?.kitId == engine.downloadedKitId

@@ -6,14 +6,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const MONTHLY_LIMITS: Record<string, number> = {
-  standard: 10,
-  pro:      25,
-}
+const ATLAS_MONTHLY_LIMIT = 25
+const ATLAS_MAX_DEVICES   = 3
 
-const MAX_DEVICES: Record<string, number> = {
-  standard: 1,
-  pro:      3,
+function isSubscribedPlan(plan: string) {
+  return plan === 'atlas' || plan === 'pro' || plan === 'standard'
 }
 
 // GET /api/atlas/entitlement
@@ -41,11 +38,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ valid: false, reason: 'no_subscription' })
     }
 
-    const isActive    = subscription.status === 'active' || subscription.status === 'trialing'
-    const isPastDue   = subscription.status === 'past_due'
-    const periodEnd   = new Date(subscription.current_period_end)
-    const graceEnd    = new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000)
-    const inGrace     = isPastDue && new Date() < graceEnd
+    const isActive  = subscription.status === 'active' || subscription.status === 'trialing'
+    const isPastDue = subscription.status === 'past_due'
+    const periodEnd = new Date(subscription.current_period_end)
+    const graceEnd  = new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000)
+    const inGrace   = isPastDue && new Date() < graceEnd
 
     if (!isActive && !inGrace) {
       return NextResponse.json({
@@ -55,11 +52,12 @@ export async function GET(request: Request) {
       })
     }
 
-    const plan       = subscription.plan ?? 'standard'
-    const monthlyLimit = MONTHLY_LIMITS[plan] ?? 10
-    const maxDevices   = MAX_DEVICES[plan] ?? 1
+    const plan = subscription.plan ?? 'atlas'
+    if (!isSubscribedPlan(plan)) {
+      return NextResponse.json({ valid: false, reason: 'no_subscription' })
+    }
 
-    // Get current monthly install count
+    // Get current monthly install count (calendar month)
     const now         = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
     const { data: countRow } = await supabaseAdmin
@@ -70,40 +68,37 @@ export async function GET(request: Request) {
       .single()
 
     const monthlyUsed = countRow?.count ?? 0
+    const resetDate   = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
 
-    // Compute reset date (first of next month)
-    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
-
-    const { data: activations } = await supabaseAdmin
-      .from('device_activations')
-      .select('*')
+    const { data: devices } = await supabaseAdmin
+      .from('devices')
+      .select('id, device_name, hardware_uuid, last_seen, created_at')
       .eq('user_id', user.id)
-      .eq('is_active', true)
 
     return NextResponse.json({
       valid: true,
-      plan,
+      plan: 'atlas',
       status: subscription.status,
       current_period_end: subscription.current_period_end,
       cancel_at_period_end: subscription.cancel_at_period_end,
       in_grace_period: inGrace,
       features: {
-        bulk_queue:        plan !== 'standard',
-        uninstall_manager: plan !== 'standard',
-        recovery_system:   plan !== 'standard',
-        max_devices:       maxDevices,
-        monthly_install_limit: monthlyLimit,
+        bulk_queue:            true,
+        uninstall_manager:     true,
+        recovery_system:       true,
+        max_devices:           ATLAS_MAX_DEVICES,
+        monthly_install_limit: ATLAS_MONTHLY_LIMIT,
         monthly_installs_used: monthlyUsed,
         monthly_reset_date:    resetDate,
       },
       activations: {
-        current: activations?.length ?? 0,
-        max:     maxDevices,
-        devices: activations?.map(a => ({
-          id:           a.id,
-          device_name:  a.device_name,
-          activated_at: a.activated_at,
-          last_seen_at: a.last_seen_at,
+        current: devices?.length ?? 0,
+        max:     ATLAS_MAX_DEVICES,
+        devices: devices?.map(d => ({
+          id:           d.id,
+          device_name:  d.device_name,
+          activated_at: d.created_at,
+          last_seen_at: d.last_seen,
         })),
       },
     })
