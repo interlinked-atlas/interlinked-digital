@@ -755,6 +755,56 @@ export default function ATLASWaitlistPage() {
         }
         .footer-link:hover { color: var(--atlas-text-subtle); }
 
+        /* ── FAQ ── */
+        .faq {
+          margin-top: 24px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        .faq-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          color: #3ECFB2;
+          text-align: center;
+          margin-bottom: 8px;
+        }
+        .faq-item {
+          border-bottom: 1px solid var(--atlas-border-faint);
+        }
+        .faq-q {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--atlas-fg);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 2px;
+          cursor: pointer;
+          list-style: none;
+        }
+        .faq-q::-webkit-details-marker { display: none; }
+        .faq-q:focus-visible { outline: 2px solid #3ECFB2; outline-offset: 2px; border-radius: 4px; }
+        .faq-chevron {
+          flex-shrink: 0;
+          color: var(--atlas-text-subtle);
+          transition: transform 0.2s ease;
+        }
+        .faq-item[open] .faq-chevron { transform: rotate(180deg); color: #3ECFB2; }
+        .faq-a {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--atlas-text-subtle);
+          padding: 0 2px 16px;
+          margin: 0;
+        }
+
         @media (max-width: 480px) {
           .card-body { padding: 20px 18px 22px; }
           .logo-text { font-size: 24px; letter-spacing: 10px; }
@@ -1016,10 +1066,27 @@ export default function ATLASWaitlistPage() {
             </div>
           )}
 
-          {/* Footer */}
-          <div className="footer">
-            <span className="footer-brand">InterLinked Digital</span>
-            <a href="https://www.interlinked.digital" className="footer-link">interlinked.digital</a>
+          {/* FAQ */}
+          <div className="faq">
+            <h2 className="faq-heading">FAQ</h2>
+            {[
+              { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
+              { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
+              { q: 'What does ATLAS cost?', a: 'Price Announcing Soon.' },
+              { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices.' },
+              { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
+              { q: 'Does ATLAS install everything?', a: 'ATLAS supports many common macOS software installers, but not every installer or software package is guaranteed to be compatible.' },
+              { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
+              { q: 'How does ATLAS work?', a: 'ATLAS is built to autonomously install your programs with the simple click of a single Install button.' },
+            ].map(item => (
+              <details className="faq-item" key={item.q}>
+                <summary className="faq-q">
+                  <span>{item.q}</span>
+                  <svg className="faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                </summary>
+                <p className="faq-a">{item.a}</p>
+              </details>
+            ))}
           </div>
 
         </div>
