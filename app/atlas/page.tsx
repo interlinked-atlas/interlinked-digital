@@ -189,19 +189,92 @@ export default function ATLASWaitlistPage() {
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
-        /* ── Video logo lockup ── */
+        /* ── Hero (video / branding / statement+waitlist) ── */
+        .hero {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 1160px;
+          display: grid;
+          grid-template-columns: 1.05fr 0.85fr 1.15fr;
+          grid-template-areas: "video branding right";
+          align-items: center;
+          gap: 56px;
+          margin-bottom: 56px;
+          opacity: ${mounted ? 1 : 0};
+          transform: translateY(${mounted ? '0' : '14px'});
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .hero-video-region { grid-area: video; }
+        .hero-branding-region {
+          grid-area: branding;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+        .hero-right-region {
+          grid-area: right;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .hero-video-wrap {
+          width: 100%;
+          aspect-ratio: 784 / 638;
+          border-radius: 16px;
+          overflow: hidden;
+          border: 1px solid rgba(62,207,178,0.2);
+          box-shadow: 0 0 60px rgba(62,207,178,0.12), 0 30px 80px rgba(0,0,0,0.7);
+          background: #000;
+        }
+        .hero-video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          pointer-events: none;
+        }
+        .hero-statement {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          line-height: 1.35;
+          color: var(--atlas-fg);
+          text-align: left;
+          margin-bottom: 24px;
+        }
+        .hero-right-region .card { width: 100%; }
+        .hero-right-region .counter-banner { align-self: flex-start; margin-left: 4px; }
+
+        @media (max-width: 1023px) {
+          .hero {
+            grid-template-columns: 1fr;
+            grid-template-areas: "branding" "right" "video";
+            max-width: 460px;
+            gap: 32px;
+            margin-bottom: 40px;
+          }
+          .hero-right-region { align-items: center; }
+          .hero-statement { text-align: center; }
+          .hero-right-region .card { width: 100%; }
+          .hero-right-region .counter-banner { align-self: center; margin-left: 0; }
+        }
+
+        /* ── Video logo lockup (enlarged for hero center) ── */
         .logo-lockup {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: 20px;
           margin-bottom: 24px;
         }
 
         .logo-video-wrap {
-          width: 72px;
-          height: 72px;
-          border-radius: 18px;
+          width: 180px;
+          height: 180px;
+          border-radius: 36px;
           overflow: hidden;
           background: var(--atlas-icon-bg);
         }
@@ -214,21 +287,22 @@ export default function ATLASWaitlistPage() {
 
         .logo-text {
           font-family: 'SF-Intellivised', -apple-system, sans-serif;
-          font-size: 30px;
+          font-size: 60px;
           font-weight: normal;
-          letter-spacing: 14px;
+          letter-spacing: 26px;
           color: var(--atlas-fg);
           text-transform: uppercase;
-          padding-left: 4px;
+          padding-left: 26px;
           line-height: 1;
         }
         .logo-tagline {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           color: var(--atlas-text-subtle);
           letter-spacing: 0.01em;
           text-align: center;
+          max-width: 220px;
           margin-top: 4px;
         }
 
@@ -805,10 +879,15 @@ export default function ATLASWaitlistPage() {
           margin: 0;
         }
 
+        @media (max-width: 1023px) {
+          .logo-text { font-size: 44px; letter-spacing: 18px; padding-left: 18px; }
+          .logo-video-wrap { width: 130px; height: 130px; border-radius: 28px; }
+        }
+
         @media (max-width: 480px) {
           .card-body { padding: 20px 18px 22px; }
-          .logo-text { font-size: 24px; letter-spacing: 10px; }
-          .logo-video-wrap { width: 60px; height: 60px; }
+          .logo-text { font-size: 30px; letter-spacing: 11px; padding-left: 11px; }
+          .logo-video-wrap { width: 90px; height: 90px; border-radius: 20px; }
           .input-row { flex-direction: column; }
           .submit-btn { width: 100%; }
         }
@@ -926,23 +1005,49 @@ export default function ATLASWaitlistPage() {
       <div className="page">
         <div className="glow" />
 
-        <div className="content">
+        <div className="hero">
 
-          {/* Logo lockup */}
-          <div className="logo-lockup">
-            <div className="logo-video-wrap">
+          {/* Left — non-interactive looping ATLAS demo */}
+          <div className="hero-video-region">
+            <div className="hero-video-wrap">
               <video
-                className="logo-video"
-                src="/atlas-logo-visualizer.mp4"
+                className="hero-video"
+                src="/atlas-demo.mp4"
                 autoPlay
                 loop
                 muted
                 playsInline
+                disablePictureInPicture
+                controlsList="nodownload nofullscreen noremoteplayback"
+                tabIndex={-1}
+                aria-hidden="true"
               />
             </div>
-            <span className="logo-text">ATLAS</span>
-            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
           </div>
+
+          {/* Center — enlarged ATLAS branding */}
+          <div className="hero-branding-region">
+            <div className="logo-lockup">
+              <div className="logo-video-wrap">
+                <video
+                  className="logo-video"
+                  src="/atlas-logo-visualizer.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              </div>
+              <span className="logo-text">ATLAS</span>
+              <p className="logo-tagline">The World's First Autonomous Installation App.</p>
+            </div>
+          </div>
+
+          {/* Right — product statement + waitlist */}
+          <div className="hero-right-region">
+          <p className="hero-statement">
+            ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
+          </p>
 
           {/* Card */}
           <div className="card">
@@ -1065,6 +1170,11 @@ export default function ATLASWaitlistPage() {
               </span>
             </div>
           )}
+
+          </div>
+        </div>
+
+        <div className="content">
 
           {/* FAQ */}
           <div className="faq">

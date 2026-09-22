@@ -1,6 +1,5 @@
 # Exclude home directory folders not part of the Next.js project
 Library/
-"Library/"
 Desktop/
 Applications/
 Movies/
