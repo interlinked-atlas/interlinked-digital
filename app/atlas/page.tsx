@@ -189,23 +189,44 @@ export default function ATLASWaitlistPage() {
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
-        /* ── Hero (video / branding / statement+waitlist) ── */
+        /* ── Hero branding (full-width, centered above the video/waitlist row) ── */
+        .hero-branding {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 1160px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          margin-bottom: 40px;
+          opacity: ${mounted ? 1 : 0};
+          transform: translateY(${mounted ? '0' : '14px'});
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        /* ── Hero (video+statement / waitlist+counter) ── */
         .hero {
           position: relative;
           z-index: 1;
           width: 100%;
           max-width: 1160px;
           display: grid;
-          grid-template-columns: 1.5fr 1fr;
+          grid-template-columns: 1.8fr 1fr;
           grid-template-areas: "video right";
-          align-items: center;
+          align-items: start;
           gap: 56px;
           margin-bottom: 56px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
-        .hero-video-region { grid-area: video; }
+        .hero-video-region {
+          grid-area: video;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
         .hero-right-region {
           grid-area: right;
           display: flex;
@@ -236,12 +257,12 @@ export default function ATLASWaitlistPage() {
           line-height: 1.35;
           color: var(--atlas-fg);
           text-align: left;
-          margin-bottom: 24px;
         }
         .hero-right-region .card { width: 100%; }
         .hero-right-region .counter-banner { align-self: flex-start; margin-left: 4px; }
 
         @media (max-width: 1023px) {
+          .hero-branding { max-width: 460px; margin-bottom: 32px; }
           .hero {
             grid-template-columns: 1fr;
             grid-template-areas: "right" "video";
@@ -998,9 +1019,27 @@ export default function ATLASWaitlistPage() {
       <div className="page">
         <div className="glow" />
 
+        {/* ATLAS branding — full-width, centered above the video/waitlist row */}
+        <div className="hero-branding">
+          <div className="logo-lockup">
+            <div className="logo-video-wrap">
+              <video
+                className="logo-video"
+                src="/atlas-logo-visualizer.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            </div>
+            <span className="logo-text">ATLAS</span>
+            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
+          </div>
+        </div>
+
         <div className="hero">
 
-          {/* Left — non-interactive looping ATLAS demo */}
+          {/* Left — non-interactive looping ATLAS demo + statement */}
           <div className="hero-video-region">
             <div className="hero-video-wrap">
               <video
@@ -1016,28 +1055,13 @@ export default function ATLASWaitlistPage() {
                 aria-hidden="true"
               />
             </div>
+            <p className="hero-statement">
+              ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
+            </p>
           </div>
 
-          {/* Right — ATLAS branding + product statement + waitlist */}
+          {/* Right — waitlist */}
           <div className="hero-right-region">
-          <div className="logo-lockup">
-            <div className="logo-video-wrap">
-              <video
-                className="logo-video"
-                src="/atlas-logo-visualizer.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-              />
-            </div>
-            <span className="logo-text">ATLAS</span>
-            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
-          </div>
-
-          <p className="hero-statement">
-            ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
-          </p>
 
           {/* Card */}
           <div className="card">
