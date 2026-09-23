@@ -23,6 +23,41 @@ export default function ATLASWaitlistPage() {
   const [gateError, setGateError]   = useState('')
   const prevCount                   = useRef<number | null>(null)
   const demoRef                     = useRef<HTMLDivElement>(null)
+  const logoVideoRef                = useRef<HTMLVideoElement>(null)
+  const logoCanvasRef               = useRef<HTMLCanvasElement>(null)
+
+  // ATLAS star visualizer: the source mp4 has an opaque black backdrop baked
+  // into every frame (no alpha channel). Rather than a CSS blend trick, this
+  // reads each decoded frame from the hidden <video> and zeroes the alpha
+  // channel on near-black pixels in real time, so only the star itself is
+  // drawn — true per-pixel transparency, same animation, asset untouched.
+  useEffect(() => {
+    const video = logoVideoRef.current
+    const canvas = logoCanvasRef.current
+    if (!video || !canvas) return
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+    let raf = 0
+    const draw = () => {
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const d = frame.data
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114
+          d[i + 3] = lum < 18 ? 0 : Math.min(255, Math.round(lum * 2.1))
+        }
+        ctx.putImageData(frame, 0, 0)
+      }
+      raf = requestAnimationFrame(draw)
+    }
+    raf = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -194,7 +229,7 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 900px;
+          max-width: 1000px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -210,9 +245,9 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 900px;
+          max-width: 1000px;
           display: grid;
-          grid-template-columns: 1.8fr 1fr;
+          grid-template-columns: 2.2fr 1fr;
           grid-template-areas: "video right";
           align-items: start;
           gap: 40px;
@@ -258,6 +293,9 @@ export default function ATLASWaitlistPage() {
           color: var(--atlas-fg);
           text-align: left;
         }
+        .hero-statement-lead {
+          font-size: 32px;
+        }
         .hero-right-region .card { width: 100%; }
         .hero-right-region .counter-banner { align-self: flex-start; margin-left: 4px; }
 
@@ -290,16 +328,23 @@ export default function ATLASWaitlistPage() {
           height: 96px;
           border-radius: 20px;
           overflow: hidden;
+          position: relative;
         }
         .logo-video {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
-          /* Source clip has an opaque black backdrop baked into every frame
-             (no alpha channel) — screen-blending it removes the black square
-             visually without touching the asset file or its animation. */
-          mix-blend-mode: screen;
+        }
+        /* Source clip (public/atlas-logo-visualizer.mp4) has an opaque black
+           backdrop baked into every frame (no alpha channel). The <video> is
+           rendered off-screen purely as a frame source; this <canvas> reads
+           each frame and zeroes alpha on near-black pixels in real time, so
+           the star itself is truly transparent — not a CSS blend illusion. */
+        .logo-video-canvas {
+          width: 100%;
+          height: 100%;
+          display: block;
         }
 
         .logo-text {
@@ -1027,13 +1072,16 @@ export default function ATLASWaitlistPage() {
           <div className="logo-lockup">
             <div className="logo-video-wrap">
               <video
+                ref={logoVideoRef}
                 className="logo-video"
                 src="/atlas-logo-visualizer.mp4"
                 autoPlay
                 loop
                 muted
                 playsInline
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
               />
+              <canvas ref={logoCanvasRef} className="logo-video-canvas" />
             </div>
             <span className="logo-text">ATLAS</span>
             <p className="logo-tagline">The World's First Autonomous Installation App.</p>
@@ -1059,7 +1107,7 @@ export default function ATLASWaitlistPage() {
               />
             </div>
             <p className="hero-statement">
-              ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
+              <span className="hero-statement-lead">ATLAS</span> is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
             </p>
           </div>
 
