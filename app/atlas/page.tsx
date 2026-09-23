@@ -193,8 +193,8 @@ export default function ATLASWaitlistPage() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          padding: 20px 20px;
+          justify-content: flex-start;
+          padding: 16px 20px;
           position: relative;
           overflow: hidden;
         }
@@ -230,11 +230,12 @@ export default function ATLASWaitlistPage() {
           z-index: 1;
           width: 100%;
           max-width: 1000px;
+          align-self: flex-start;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
@@ -246,12 +247,13 @@ export default function ATLASWaitlistPage() {
           z-index: 1;
           width: 100%;
           max-width: 1000px;
+          align-self: flex-start;
           display: grid;
           grid-template-columns: 2.2fr 1fr;
           grid-template-areas: "video right";
           align-items: start;
           gap: 40px;
-          margin-bottom: 28px;
+          margin-bottom: 16px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
@@ -260,7 +262,7 @@ export default function ATLASWaitlistPage() {
           grid-area: video;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 14px;
         }
         .hero-right-region {
           grid-area: right;
@@ -319,8 +321,8 @@ export default function ATLASWaitlistPage() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 20px;
-          margin-bottom: 24px;
+          gap: 12px;
+          margin-bottom: 10px;
         }
 
         .logo-video-wrap {
