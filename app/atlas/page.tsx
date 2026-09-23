@@ -196,7 +196,7 @@ export default function ATLASWaitlistPage() {
           width: 100%;
           max-width: 1160px;
           display: grid;
-          grid-template-columns: 1.05fr 0.85fr 1.15fr;
+          grid-template-columns: 1.4fr 0.7fr 1.0fr;
           grid-template-areas: "video branding right";
           align-items: center;
           gap: 56px;
@@ -208,6 +208,7 @@ export default function ATLASWaitlistPage() {
         .hero-video-region { grid-area: video; }
         .hero-branding-region {
           grid-area: branding;
+          align-self: start;
           display: flex;
           flex-direction: column;
           align-items: center;
