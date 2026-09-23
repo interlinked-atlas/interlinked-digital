@@ -23,6 +23,31 @@ export default function ATLASWaitlistPage() {
   const [gateError, setGateError]   = useState('')
   const prevCount                   = useRef<number | null>(null)
   const demoRef                     = useRef<HTMLDivElement>(null)
+  const heroSplashRef               = useRef<HTMLVideoElement>(null)
+  const [heroPhase, setHeroPhase]   = useState<'video' | 'image'>('video')
+
+  // Left-side hero sequence: splash video plays once → 0.6s crossfade to the
+  // static app image → hold 2.5s → 0.6s crossfade back to the video, restarted
+  // from the beginning → repeat. The video has no `loop` attribute — its
+  // native `onEnded` event drives the crossfade to the image instead.
+  useEffect(() => {
+    const video = heroSplashRef.current
+    if (!video) return
+    let holdTimer: ReturnType<typeof setTimeout>
+    const onEnded = () => {
+      setHeroPhase('image')
+      holdTimer = setTimeout(() => {
+        setHeroPhase('video')
+        video.currentTime = 0
+        video.play().catch(() => {})
+      }, 2500)
+    }
+    video.addEventListener('ended', onEnded)
+    return () => {
+      video.removeEventListener('ended', onEnded)
+      clearTimeout(holdTimer)
+    }
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -235,19 +260,23 @@ export default function ATLASWaitlistPage() {
         }
         .hero-video-wrap {
           width: 100%;
-          aspect-ratio: 784 / 638;
+          aspect-ratio: 16 / 9;
           border-radius: 16px;
           overflow: hidden;
           border: 1px solid rgba(62,207,178,0.2);
           box-shadow: 0 0 60px rgba(62,207,178,0.12), 0 30px 80px rgba(0,0,0,0.7);
           background: #000;
+          position: relative;
         }
-        .hero-video {
+        .hero-video-layer {
+          position: absolute;
+          inset: 0;
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
           display: block;
           pointer-events: none;
+          transition: opacity 0.6s ease;
         }
         .hero-statement {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -1038,16 +1067,24 @@ export default function ATLASWaitlistPage() {
           <div className="hero-video-region">
             <div className="hero-video-wrap">
               <video
-                className="hero-video"
-                src="/atlas-demo.mp4"
+                ref={heroSplashRef}
+                className="hero-video-layer"
+                src="/atlas-splash.mp4"
                 autoPlay
-                loop
                 muted
                 playsInline
                 disablePictureInPicture
                 controlsList="nodownload nofullscreen noremoteplayback"
                 tabIndex={-1}
                 aria-hidden="true"
+                style={{ opacity: heroPhase === 'video' ? 1 : 0 }}
+              />
+              <img
+                src="/atlas-app.png"
+                className="hero-video-layer"
+                alt="ATLAS app"
+                aria-hidden="true"
+                style={{ opacity: heroPhase === 'image' ? 1 : 0 }}
               />
             </div>
             <p className="hero-statement">
