@@ -196,8 +196,8 @@ export default function ATLASWaitlistPage() {
           width: 100%;
           max-width: 1160px;
           display: grid;
-          grid-template-columns: 1.4fr 0.7fr 1.0fr;
-          grid-template-areas: "video branding right";
+          grid-template-columns: 1.5fr 1fr;
+          grid-template-areas: "video right";
           align-items: center;
           gap: 56px;
           margin-bottom: 56px;
@@ -206,14 +206,6 @@ export default function ATLASWaitlistPage() {
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
         .hero-video-region { grid-area: video; }
-        .hero-branding-region {
-          grid-area: branding;
-          align-self: start;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-        }
         .hero-right-region {
           grid-area: right;
           display: flex;
@@ -252,7 +244,7 @@ export default function ATLASWaitlistPage() {
         @media (max-width: 1023px) {
           .hero {
             grid-template-columns: 1fr;
-            grid-template-areas: "branding" "right" "video";
+            grid-template-areas: "right" "video";
             max-width: 460px;
             gap: 32px;
             margin-bottom: 40px;
@@ -1026,26 +1018,23 @@ export default function ATLASWaitlistPage() {
             </div>
           </div>
 
-          {/* Center — enlarged ATLAS branding */}
-          <div className="hero-branding-region">
-            <div className="logo-lockup">
-              <div className="logo-video-wrap">
-                <video
-                  className="logo-video"
-                  src="/atlas-logo-visualizer.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-              </div>
-              <span className="logo-text">ATLAS</span>
-              <p className="logo-tagline">The World's First Autonomous Installation App.</p>
+          {/* Right — ATLAS branding + product statement + waitlist */}
+          <div className="hero-right-region">
+          <div className="logo-lockup">
+            <div className="logo-video-wrap">
+              <video
+                className="logo-video"
+                src="/atlas-logo-visualizer.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
             </div>
+            <span className="logo-text">ATLAS</span>
+            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
           </div>
 
-          {/* Right — product statement + waitlist */}
-          <div className="hero-right-region">
           <p className="hero-statement">
             ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
           </p>
