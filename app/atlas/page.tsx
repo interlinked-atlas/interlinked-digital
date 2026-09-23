@@ -384,19 +384,9 @@ export default function ATLASWaitlistPage() {
         /* ── Card ── */
         .card {
           width: 100%;
-          background: var(--atlas-card-alt);
-          border: 1px solid var(--atlas-border-subtle);
-          border-radius: 20px;
-          overflow: hidden;
-          box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
         }
 
-        .card-top-bar {
-          height: 2px;
-          background: linear-gradient(90deg, #3ECFB2 0%, #5E6AD2 100%);
-        }
-
-        .card-body { padding: 24px 28px 26px; }
+        .card-body { padding: 0; }
 
         /* ── Platform badges ── */
         .platforms {
@@ -558,40 +548,14 @@ export default function ATLASWaitlistPage() {
         /* ── Subscriber counter banner ── */
         .counter-banner {
           width: 100%;
-          margin-top: 12px;
-          background: rgba(62,207,178,0.06);
-          border: 1px solid rgba(62,207,178,0.15);
-          border-radius: 12px;
-          padding: 12px 20px;
+          margin-top: 16px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 12px;
-        }
-        .counter-coin {
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 35% 35%, #5EFFD8, #3ECFB2 60%, #1a8a72);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 11px;
-          box-shadow: 0 0 10px rgba(62,207,178,0.5);
-          flex-shrink: 0;
-        }
-        .counter-coin.pop {
-          animation: coinPop 1.2s ease forwards;
-        }
-        @keyframes coinPop {
-          0%   { transform: scale(1) translateY(0); box-shadow: 0 0 10px rgba(62,207,178,0.5); }
-          20%  { transform: scale(1.5) translateY(-8px); box-shadow: 0 0 30px rgba(62,207,178,1); }
-          50%  { transform: scale(1.15) translateY(-3px); box-shadow: 0 0 18px rgba(62,207,178,0.7); }
-          100% { transform: scale(1) translateY(0); box-shadow: 0 0 10px rgba(62,207,178,0.5); }
+          justify-content: flex-start;
         }
         .counter-label {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 20px;
           color: var(--atlas-text-subtle);
           letter-spacing: -0.01em;
         }
@@ -599,20 +563,7 @@ export default function ATLASWaitlistPage() {
           font-weight: 700;
           color: #3ECFB2;
           font-variant-numeric: tabular-nums;
-          font-size: 13px;
-        }
-        .counter-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: #3ECFB2;
-          opacity: 0.5;
-          animation: pulse 2s ease-in-out infinite;
-          flex-shrink: 0;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
+          font-size: 22px;
         }
 
         /* ── Locked demo teaser ── */
@@ -960,7 +911,6 @@ export default function ATLASWaitlistPage() {
         }
 
         @media (max-width: 480px) {
-          .card-body { padding: 20px 18px 22px; }
           .logo-text { font-size: 30px; letter-spacing: 11px; padding-left: 11px; }
           .logo-video-wrap { width: 60px; height: 60px; }
           .input-row { flex-direction: column; }
@@ -1126,9 +1076,8 @@ export default function ATLASWaitlistPage() {
           {/* Right — waitlist */}
           <div className="hero-right-region">
 
-          {/* Card */}
+          {/* Waitlist content — open/unstyled section, no card container */}
           <div className="card">
-            <div className="card-top-bar" />
             <div className="card-body">
 
               {/* Platform badges */}
@@ -1240,8 +1189,6 @@ export default function ATLASWaitlistPage() {
           {/* Live subscriber counter banner */}
           {count !== null && (
             <div className="counter-banner">
-              <div className="counter-dot" />
-              <div className={`counter-coin${coinAnim ? ' pop' : ''}`}>✦</div>
               <span className="counter-label">
                 <span className="counter-num">{count.toLocaleString()}</span> people on the waitlist
               </span>
