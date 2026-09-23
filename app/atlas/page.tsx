@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useTheme } from 'next-themes'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function ATLASWaitlistPage() {
+  const { theme }                   = useTheme()
   const [email, setEmail]           = useState('')
   const [status, setStatus]         = useState<'idle' | 'loading' | 'verifying' | 'confirming' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg]     = useState('')
@@ -25,6 +27,13 @@ export default function ATLASWaitlistPage() {
   const demoRef                     = useRef<HTMLDivElement>(null)
   const heroSplashRef               = useRef<HTMLVideoElement>(null)
   const [heroPhase, setHeroPhase]   = useState<'video' | 'image'>('video')
+  // Theme-specific hero assets — identical sizing/positioning/sequencing to
+  // Light Mode; only the underlying video/image source swaps. Gated on
+  // `mounted` (matches the hydration-safety pattern already used by
+  // ThemeToggle) so the server-rendered markup always matches Light Mode.
+  const heroIsDark                  = mounted && theme === 'dark'
+  const heroSplashSrc               = heroIsDark ? '/atlas-splash-dark.mp4' : '/atlas-splash.mp4'
+  const heroAppImgSrc               = heroIsDark ? '/atlas-app-dark.png' : '/atlas-app.png'
   const faqRef                      = useRef<HTMLDivElement>(null)
   const [faqVisible, setFaqVisible] = useState(false)
 
@@ -1050,7 +1059,7 @@ export default function ATLASWaitlistPage() {
               <video
                 ref={heroSplashRef}
                 className="hero-video-layer"
-                src="/atlas-splash.mp4"
+                src={heroSplashSrc}
                 autoPlay
                 muted
                 playsInline
@@ -1061,7 +1070,7 @@ export default function ATLASWaitlistPage() {
                 style={{ opacity: heroPhase === 'video' ? 1 : 0 }}
               />
               <img
-                src="/atlas-app.png"
+                src={heroAppImgSrc}
                 className="hero-video-layer"
                 alt="ATLAS app"
                 aria-hidden="true"
