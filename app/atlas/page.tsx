@@ -25,6 +25,27 @@ export default function ATLASWaitlistPage() {
   const demoRef                     = useRef<HTMLDivElement>(null)
   const heroSplashRef               = useRef<HTMLVideoElement>(null)
   const [heroPhase, setHeroPhase]   = useState<'video' | 'image'>('video')
+  const faqRef                      = useRef<HTMLDivElement>(null)
+  const [faqVisible, setFaqVisible] = useState(false)
+
+  // FAQ fade-in as it scrolls into view — same opacity/translateY/transition
+  // recipe already used for the initial `mounted` fade elsewhere on this page,
+  // just triggered by scroll position instead of mount time.
+  useEffect(() => {
+    const el = faqRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setFaqVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.15 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Left-side hero sequence: splash video plays once → 0.6s crossfade to the
   // static app image → hold 2.5s → 0.6s crossfade back to the video, restarted
@@ -219,7 +240,7 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 1000px;
+          max-width: 1120px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -235,9 +256,9 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 1000px;
+          max-width: 1120px;
           display: grid;
-          grid-template-columns: 2.2fr 1fr;
+          grid-template-columns: 2.4fr 1fr;
           grid-template-areas: "video right";
           align-items: start;
           gap: 40px;
@@ -340,14 +361,23 @@ export default function ATLASWaitlistPage() {
           padding-left: 34px;
           line-height: 1;
         }
-        .logo-tagline {
+        .logo-brand-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 500;
           color: var(--atlas-text-subtle);
           letter-spacing: 0.01em;
           text-align: center;
-          max-width: 220px;
+          margin-top: -4px;
+        }
+        .logo-tagline {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          color: var(--atlas-text-subtle);
+          letter-spacing: 0.01em;
+          text-align: center;
+          max-width: 320px;
           margin-top: 4px;
         }
 
@@ -883,13 +913,13 @@ export default function ATLASWaitlistPage() {
         }
         .faq-heading {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
+          font-size: 32px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          text-transform: none;
           color: #3ECFB2;
           text-align: center;
-          margin-bottom: 8px;
+          margin-bottom: 16px;
         }
         .faq-item {
           border-bottom: 1px solid var(--atlas-border-faint);
@@ -1057,6 +1087,7 @@ export default function ATLASWaitlistPage() {
               <img src="/atlas-icon.png" className="logo-video" alt="ATLAS" />
             </div>
             <span className="logo-text">ATLAS</span>
+            <p className="logo-brand-sub">by InterLinked®</p>
             <p className="logo-tagline">The World's First Autonomous Installation App.</p>
           </div>
         </div>
@@ -1223,7 +1254,11 @@ export default function ATLASWaitlistPage() {
         <div className="content">
 
           {/* FAQ */}
-          <div className="faq">
+          <div className="faq" ref={faqRef} style={{
+            opacity: faqVisible ? 1 : 0,
+            transform: `translateY(${faqVisible ? '0' : '14px'})`,
+            transition: 'opacity 0.7s ease, transform 0.7s ease',
+          }}>
             <h2 className="faq-heading">FAQ</h2>
             {[
               { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
