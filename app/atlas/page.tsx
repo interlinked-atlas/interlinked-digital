@@ -194,12 +194,12 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 1160px;
+          max-width: 900px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          margin-bottom: 40px;
+          margin-bottom: 20px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
@@ -210,13 +210,13 @@ export default function ATLASWaitlistPage() {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 1160px;
+          max-width: 900px;
           display: grid;
           grid-template-columns: 1.8fr 1fr;
           grid-template-areas: "video right";
           align-items: start;
-          gap: 56px;
-          margin-bottom: 56px;
+          gap: 40px;
+          margin-bottom: 28px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
           transition: opacity 0.7s ease, transform 0.7s ease;
@@ -286,27 +286,30 @@ export default function ATLASWaitlistPage() {
         }
 
         .logo-video-wrap {
-          width: 180px;
-          height: 180px;
-          border-radius: 36px;
+          width: 96px;
+          height: 96px;
+          border-radius: 20px;
           overflow: hidden;
-          background: var(--atlas-icon-bg);
         }
         .logo-video {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
+          /* Source clip has an opaque black backdrop baked into every frame
+             (no alpha channel) — screen-blending it removes the black square
+             visually without touching the asset file or its animation. */
+          mix-blend-mode: screen;
         }
 
         .logo-text {
           font-family: 'SF-Intellivised', -apple-system, sans-serif;
           font-size: 60px;
           font-weight: normal;
-          letter-spacing: 26px;
+          letter-spacing: 34px;
           color: var(--atlas-fg);
           text-transform: uppercase;
-          padding-left: 26px;
+          padding-left: 34px;
           line-height: 1;
         }
         .logo-tagline {
@@ -895,13 +898,13 @@ export default function ATLASWaitlistPage() {
 
         @media (max-width: 1023px) {
           .logo-text { font-size: 44px; letter-spacing: 18px; padding-left: 18px; }
-          .logo-video-wrap { width: 130px; height: 130px; border-radius: 28px; }
+          .logo-video-wrap { width: 76px; height: 76px; border-radius: 16px; }
         }
 
         @media (max-width: 480px) {
           .card-body { padding: 20px 18px 22px; }
           .logo-text { font-size: 30px; letter-spacing: 11px; padding-left: 11px; }
-          .logo-video-wrap { width: 90px; height: 90px; border-radius: 20px; }
+          .logo-video-wrap { width: 60px; height: 60px; border-radius: 13px; }
           .input-row { flex-direction: column; }
           .submit-btn { width: 100%; }
         }
