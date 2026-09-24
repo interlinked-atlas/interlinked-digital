@@ -886,7 +886,7 @@ export default function ATLASWaitlistPage() {
         }
         .faq-q {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
+          font-size: 22px;
           font-weight: 600;
           color: var(--atlas-fg);
           display: flex;
@@ -907,7 +907,7 @@ export default function ATLASWaitlistPage() {
         .faq-item[open] .faq-chevron { transform: rotate(180deg); color: #3ECFB2; }
         .faq-a {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
+          font-size: 22px;
           line-height: 1.6;
           color: var(--atlas-text-subtle);
           padding: 0 2px 16px;
