@@ -36,6 +36,7 @@ export default function ATLASWaitlistPage() {
   const heroAppImgSrc               = heroIsDark ? '/atlas-app-dark.png' : '/atlas-app.png'
   const faqRef                      = useRef<HTMLDivElement>(null)
   const [faqVisible, setFaqVisible] = useState(false)
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
 
   // FAQ fade-in as it scrolls into view — same opacity/translateY/transition
   // recipe already used for the initial `mounted` fade elsewhere on this page,
@@ -886,7 +887,7 @@ export default function ATLASWaitlistPage() {
         }
         .faq-q {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 600;
           color: var(--atlas-fg);
           display: flex;
@@ -907,7 +908,7 @@ export default function ATLASWaitlistPage() {
         .faq-item[open] .faq-chevron { transform: rotate(180deg); color: #3ECFB2; }
         .faq-a {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
+          font-size: 15px;
           line-height: 1.6;
           color: var(--atlas-text-subtle);
           padding: 0 2px 16px;
@@ -1225,8 +1226,13 @@ export default function ATLASWaitlistPage() {
               { q: 'Does ATLAS install everything?', a: 'ATLAS supports many common macOS software installers, but not every installer or software package is guaranteed to be compatible.' },
               { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
               { q: 'How does ATLAS work?', a: 'ATLAS is built to autonomously install your programs with the simple click of a single Install button.' },
-            ].map(item => (
-              <details className="faq-item" key={item.q}>
+            ].map((item, i) => (
+              <details
+                className="faq-item"
+                key={item.q}
+                open={openFaqIndex === i}
+                onToggle={e => setOpenFaqIndex(e.currentTarget.open ? i : null)}
+              >
                 <summary className="faq-q">
                   <span>{item.q}</span>
                   <svg className="faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
