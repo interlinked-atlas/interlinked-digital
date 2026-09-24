@@ -1225,6 +1225,7 @@ export default function ATLASWaitlistPage() {
               { q: 'Does ATLAS install everything?', a: 'ATLAS supports many common macOS software installers, but not every installer or software package is guaranteed to be compatible.' },
               { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
               { q: 'How does ATLAS work?', a: 'ATLAS is built to autonomously install your programs with the simple click of a single Install button.' },
+              { q: 'How can I get Involved in ATLAS? Im Excited!', a: 'For Investment Purposes, Press & More: interlinked.digital@gmail.com' },
             ].map(item => (
               <details className="faq-item" key={item.q}>
                 <summary className="faq-q">
