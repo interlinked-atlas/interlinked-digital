@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { hasActiveAtlasSubscription } from '@/lib/entitlement'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,11 +16,8 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Pro only
-  const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-  const plan = profile?.plan ?? 'standard'
-  if (plan !== 'pro') {
-    return NextResponse.json({ error: 'File Sharing is a Pro feature' }, { status: 403 })
+  if (!(await hasActiveAtlasSubscription(supabase, user.id))) {
+    return NextResponse.json({ error: 'File Sharing requires an active ATLAS subscription' }, { status: 403 })
   }
 
   const { file_name, file_size } = await req.json()
