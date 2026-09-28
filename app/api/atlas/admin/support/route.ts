@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await supabase
     .from('support_tickets')
-    .update({ status, resolved_at: status === 'resolved' ? new Date().toISOString() : null })
+    .update({ status })
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

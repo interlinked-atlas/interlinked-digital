@@ -9,12 +9,12 @@ const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
 type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits"
 
-const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "#6B7399"
-const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "#6B7399"
+const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "var(--text-muted)"
+const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "var(--text-muted)"
 const logTypeColor = (t: string) => t === "install" ? "#3ECFB2" : t === "failed" ? "#E05555" : t === "uninstall" ? "#5B8DEF" : t === "confirmed-success" ? "#A855F7" : "#F0A030"
 const logTypeBg    = (t: string) => t === "install" ? "rgba(62,207,178,0.1)" : t === "failed" ? "rgba(224,85,85,0.1)" : t === "uninstall" ? "rgba(91,141,239,0.1)" : t === "confirmed-success" ? "rgba(168,85,247,0.1)" : "rgba(240,160,48,0.1)"
-const fixStatusColor = (s: string) => s === "fixed" ? "#3ECFB2" : s === "investigating" ? "#F0A030" : s === "wont_fix" ? "#6B7399" : "#E05555"
-const failTypeColor  = (t: string) => ({ pkg:"#E05555", script:"#F0A030", binary:"#F0A030", verify:"#5B8DEF", demo:"#F0A030", cancelled:"#6B7399", scan:"#A855F7" } as any)[t] ?? "#6B7399"
+const fixStatusColor = (s: string) => s === "fixed" ? "#3ECFB2" : s === "investigating" ? "#F0A030" : s === "wont_fix" ? "var(--text-muted)" : "#E05555"
+const failTypeColor  = (t: string) => ({ pkg:"#E05555", script:"#F0A030", binary:"#F0A030", verify:"#5B8DEF", demo:"#F0A030", cancelled:"var(--text-muted)", scan:"#A855F7" } as any)[t] ?? "var(--text-muted)"
 
 function fmt(d: string | null | undefined) {
   if (!d) return "—"
@@ -179,11 +179,16 @@ export default function AdminPage() {
 
   async function resolveTicket(id: string) {
     const headers = { ...(await authHeader()), "Content-Type": "application/json" }
-    await fetch("/api/atlas/admin/support", {
+    const res = await fetch("/api/atlas/admin/support", {
       method: "PATCH",
       headers,
       body: JSON.stringify({ id, status: "resolved" }),
     })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      alert(`Failed to resolve ticket: ${body.error || res.statusText}`)
+      return
+    }
     setTickets(t => t.map((x: any) => x.id === id ? { ...x, status: "resolved" } : x))
     if (expandedTicket === id) setExpandedTicket(null)
   }
@@ -336,28 +341,28 @@ export default function AdminPage() {
     ? users.filter(u => u.email?.toLowerCase().includes(subSearch.toLowerCase()))
     : users
 
-  const card: React.CSSProperties = { background: "#0C0E1C", borderRadius: "12px", border: "1px solid #1E2240", overflow: "hidden" }
-  const inputStyle: React.CSSProperties = { background: "#07080F", border: "1px solid #1E2240", borderRadius: "7px", color: "#D0D8F0", padding: "8px 12px", fontSize: "12px", width: "100%", outline: "none", boxSizing: "border-box" }
-  const labelStyle: React.CSSProperties = { fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "#353860", textTransform: "uppercase", display: "block", marginBottom: "5px" }
+  const card: React.CSSProperties = { background: "var(--atlas-card)", borderRadius: "12px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }
+  const inputStyle: React.CSSProperties = { background: "var(--atlas-bg)", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", color: "var(--atlas-text-body)", padding: "8px 12px", fontSize: "12px", width: "100%", outline: "none", boxSizing: "border-box" }
+  const labelStyle: React.CSSProperties = { fontSize: "9px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", display: "block", marginBottom: "5px" }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#07080F", color: "#E8ECFF" }}>
+    <div style={{ minHeight: "100vh", background: "var(--atlas-bg)", color: "var(--atlas-fg)" }}>
       {/* Toast */}
       {toastMsg && (
-        <div style={{ position:"fixed", bottom:"24px", left:"50%", transform:"translateX(-50%)", zIndex:999, background:"#1E2240", border:"1px solid #3ECFB2", borderRadius:"10px", padding:"10px 20px", fontSize:"12px", color:"#E8ECFF", boxShadow:"0 4px 20px rgba(0,0,0,0.5)", whiteSpace:"nowrap" }}>
+        <div style={{ position:"fixed", bottom:"24px", left:"50%", transform:"translateX(-50%)", zIndex:999, background:"var(--atlas-border-color)", border:"1px solid #3ECFB2", borderRadius:"10px", padding:"10px 20px", fontSize:"12px", color:"var(--atlas-fg)", boxShadow:"0 4px 20px rgba(0,0,0,0.5)", whiteSpace:"nowrap" }}>
           {toastMsg}
         </div>
       )}
 
       {/* Header */}
-      <header style={{ borderBottom: "1px solid #1E2240", position: "sticky", top: 0, zIndex: 50, background: "rgba(7,8,15,0.95)", backdropFilter: "blur(12px)", padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <header style={{ borderBottom: "1px solid var(--atlas-border-color)", position: "sticky", top: 0, zIndex: 50, background: "rgba(7,8,15,0.95)", backdropFilter: "blur(12px)", padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Link href="/atlas/account" style={{ fontSize: "10px", letterSpacing: "1px", color: "#6B7399", textDecoration: "none", padding: "5px 10px", border: "1px solid #1E2240", borderRadius: "6px" }}>← ACCOUNT</Link>
+          <Link href="/atlas/account" style={{ fontSize: "10px", letterSpacing: "1px", color: "var(--text-muted)", textDecoration: "none", padding: "5px 10px", border: "1px solid var(--atlas-border-color)", borderRadius: "6px" }}>← ACCOUNT</Link>
           <span style={{ fontSize: "18px", letterSpacing: "6px", fontFamily: "'SF-Intellivised', sans-serif" }}>ATLAS</span>
           <span style={{ fontSize: "9px", color: "#F0A030", letterSpacing: "3px", padding: "2px 8px", border: "1px solid rgba(240,160,48,0.3)", borderRadius: "4px", background: "rgba(240,160,48,0.06)" }}>ADMIN</span>
         </div>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <span style={{ fontSize: "11px", color: "#4A5280" }}>{userEmail}</span>
+          <span style={{ fontSize: "11px", color: "var(--atlas-text-mid)" }}>{userEmail}</span>
           <button onClick={loadAll} style={{ fontSize: "10px", color: "#3ECFB2", background: "none", border: "1px solid rgba(62,207,178,0.3)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>
             {loading ? "Syncing…" : "↻ Refresh"}
           </button>
@@ -369,29 +374,29 @@ export default function AdminPage() {
         {/* Stats */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "24px" }}>
           {[
-            { label: "Total Users",    val: users.length,           color: "#E8ECFF" },
+            { label: "Total Users",    val: users.length,           color: "var(--atlas-fg)" },
             { label: "Active",         val: activeUsers.length,     color: "#3ECFB2" },
             { label: "ATLAS",          val: atlasUsers.length,      color: "#3ECFB2" },
             { label: "Free / None",    val: freeUsers.length,       color: "#5B8DEF" },
             { label: "Est. MRR",       val: `$${mrr}`,              color: "#3ECFB2" },
-            { label: "Past Due",       val: pastDue,                color: pastDue > 0 ? "#E05555" : "#353860" },
-            { label: "Canceling Soon", val: cancelingSoon,          color: cancelingSoon > 0 ? "#F0A030" : "#353860" },
-            { label: "Devices",        val: devices.length,         color: "#E8ECFF" },
-            { label: "Open Tickets",   val: openTickets.length,     color: openTickets.length  > 0 ? "#E05555" : "#353860" },
-            { label: "Open Failures",  val: openFailures.length,    color: openFailures.length > 0 ? "#E05555" : "#353860" },
+            { label: "Past Due",       val: pastDue,                color: pastDue > 0 ? "#E05555" : "var(--atlas-text-label)" },
+            { label: "Canceling Soon", val: cancelingSoon,          color: cancelingSoon > 0 ? "#F0A030" : "var(--atlas-text-label)" },
+            { label: "Devices",        val: devices.length,         color: "var(--atlas-fg)" },
+            { label: "Open Tickets",   val: openTickets.length,     color: openTickets.length  > 0 ? "#E05555" : "var(--atlas-text-label)" },
+            { label: "Open Failures",  val: openFailures.length,    color: openFailures.length > 0 ? "#E05555" : "var(--atlas-text-label)" },
             { label: "Known Patterns", val: patterns.length,        color: "#3ECFB2" },
           ].map(s => (
-            <div key={s.label} style={{ background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
-              <p style={{ fontSize: "8px", color: "#353860", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>{s.label}</p>
+            <div key={s.label} style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
+              <p style={{ fontSize: "8px", color: "var(--atlas-text-label)", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>{s.label}</p>
               <p style={{ fontSize: "20px", fontWeight: 700, color: s.color, margin: 0 }}>{s.val}</p>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
           {(["subscribers","devices","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "#1E2240" : "transparent", color: tab === t ? "#E8ECFF" : "#353860", position: "relative" }}>
+            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "var(--atlas-border-color)" : "transparent", color: tab === t ? "var(--atlas-fg)" : "var(--atlas-text-label)", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
               {t === "failures" && openFailures.length > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openFailures.length}</span>}
@@ -410,11 +415,11 @@ export default function AdminPage() {
                 onChange={e => setSubSearch(e.target.value)}
                 style={{ ...inputStyle, paddingLeft: "32px" }}
               />
-              <span style={{ position:"absolute", left:"11px", top:"50%", transform:"translateY(-50%)", fontSize:"14px", color:"#353860", pointerEvents:"none" }}>⌕</span>
-              {subSearch && <button onClick={() => setSubSearch("")} style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#353860", cursor:"pointer", fontSize:"16px", lineHeight:1 }}>×</button>}
+              <span style={{ position:"absolute", left:"11px", top:"50%", transform:"translateY(-50%)", fontSize:"14px", color:"var(--atlas-text-label)", pointerEvents:"none" }}>⌕</span>
+              {subSearch && <button onClick={() => setSubSearch("")} style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"var(--atlas-text-label)", cursor:"pointer", fontSize:"16px", lineHeight:1 }}>×</button>}
             </div>
 
-            {filteredUsers.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"#353860"}}>{subSearch ? "No users match." : "No users yet."}</div>}
+            {filteredUsers.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>{subSearch ? "No users match." : "No users yet."}</div>}
             {filteredUsers.map(u => {
               const sub      = subByUser[u.id]
               const uDevs    = userDevices(u.id)
@@ -427,13 +432,13 @@ export default function AdminPage() {
               const isPastDue  = sub?.status === "past_due"
 
               return (
-                <div key={u.id} style={{ ...card, border: isExpiring ? "1px solid rgba(240,160,48,0.4)" : isPastDue ? "1px solid rgba(224,85,85,0.4)" : "1px solid #1E2240" }}>
+                <div key={u.id} style={{ ...card, border: isExpiring ? "1px solid rgba(240,160,48,0.4)" : isPastDue ? "1px solid rgba(224,85,85,0.4)" : "1px solid var(--atlas-border-color)" }}>
                   <button onClick={() => setExpandedUser(open ? null : u.id)} style={{ width:"100%", background:"none", border:"none", cursor:"pointer", padding:"14px 18px", display:"flex", alignItems:"center", gap:"12px", textAlign:"left" }}>
                     <div style={{ width:"8px", height:"8px", borderRadius:"50%", background:statusColor(u.subscription_status), boxShadow:`0 0 6px ${statusColor(u.subscription_status)}88`, flexShrink:0 }} />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:"13px", color:"#D0D8F0", fontWeight:500, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{u.email}</p>
+                      <p style={{ fontSize:"13px", color:"var(--atlas-text-body)", fontWeight:500, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{u.email}</p>
                       <div style={{ display:"flex", gap:"8px", alignItems:"center", marginTop:"3px", flexWrap:"wrap" }}>
-                        <span style={{ fontSize:"10px", color:"#353860" }}>Joined {fmt(u.created_at)}</span>
+                        <span style={{ fontSize:"10px", color:"var(--atlas-text-label)" }}>Joined {fmt(u.created_at)}</span>
                         {u.privacy_consent && <span style={{ fontSize:"9px", color:"rgba(62,207,178,0.5)" }}>· sync on</span>}
                         {isExpiring && <span style={{ fontSize:"9px", fontWeight:700, color:"#F0A030" }}>· cancels {fmtShort(sub?.current_period_end)}</span>}
                         {isPastDue  && <span style={{ fontSize:"9px", fontWeight:700, color:"#E05555" }}>· PAST DUE</span>}
@@ -442,8 +447,8 @@ export default function AdminPage() {
                     <div style={{ display:"flex", gap:"6px", alignItems:"center", flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
                       <span style={{ fontSize:"9px", fontWeight:800, padding:"3px 8px", borderRadius:"5px", border:`1px solid ${planColor(u.plan)}44`, color:planColor(u.plan), background:`${planColor(u.plan)}11` }}>{u.plan.toUpperCase()}</span>
                       <span style={{ fontSize:"9px", fontWeight:700, padding:"3px 8px", borderRadius:"5px", border:`1px solid ${statusColor(u.subscription_status)}44`, color:statusColor(u.subscription_status), background:`${statusColor(u.subscription_status)}11` }}>{u.subscription_status.toUpperCase()}</span>
-                      <span style={{ fontSize:"10px", color:"#252845" }}>{uDevs.length}d · {uLogs.length}l</span>
-                      <span style={{ fontSize:"11px", color: open?"#3ECFB2":"#353860" }}>{open?"▲":"▼"}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-faint)" }}>{uDevs.length}d · {uLogs.length}l</span>
+                      <span style={{ fontSize:"11px", color: open?"#3ECFB2":"var(--atlas-text-label)" }}>{open?"▲":"▼"}</span>
                     </div>
                   </button>
 
@@ -457,15 +462,15 @@ export default function AdminPage() {
                       { id: "support",  label: "Support",  count: uTickets.length, alert: uTickets.filter((t:any)=>t.status==="open").length > 0 },
                     ]
                     return (
-                      <div style={{ borderTop:"1px solid #1A1D30" }}>
+                      <div style={{ borderTop:"1px solid var(--atlas-divider)" }}>
 
                         {/* Inner tab bar */}
-                        <div style={{ display:"flex", gap:"2px", padding:"8px 12px", borderBottom:"1px solid #1A1D30", background:"#08090F" }}>
+                        <div style={{ display:"flex", gap:"2px", padding:"8px 12px", borderBottom:"1px solid var(--atlas-divider)", background:"#08090F" }}>
                           {profileTabs.map(pt => (
-                            <button key={pt.id} onClick={() => setProfileTab(pt.id)} style={{ padding:"5px 12px", borderRadius:"6px", border:"none", cursor:"pointer", fontSize:"11px", fontWeight:600, background: activeProfileTab===pt.id ? "#1E2240" : "transparent", color: activeProfileTab===pt.id ? "#E8ECFF" : "#4A5280", display:"flex", alignItems:"center", gap:"5px" }}>
+                            <button key={pt.id} onClick={() => setProfileTab(pt.id)} style={{ padding:"5px 12px", borderRadius:"6px", border:"none", cursor:"pointer", fontSize:"11px", fontWeight:600, background: activeProfileTab===pt.id ? "var(--atlas-border-color)" : "transparent", color: activeProfileTab===pt.id ? "var(--atlas-fg)" : "var(--atlas-text-mid)", display:"flex", alignItems:"center", gap:"5px" }}>
                               {pt.label}
                               {pt.count !== null && pt.count > 0 && (
-                                <span style={{ fontSize:"9px", fontWeight:800, padding:"1px 5px", borderRadius:"8px", background: pt.alert ? "#E05555" : "#1E2240", color: pt.alert ? "#fff" : "#6B7399" }}>{pt.count}</span>
+                                <span style={{ fontSize:"9px", fontWeight:800, padding:"1px 5px", borderRadius:"8px", background: pt.alert ? "#E05555" : "var(--atlas-border-color)", color: pt.alert ? "#fff" : "var(--text-muted)" }}>{pt.count}</span>
                               )}
                             </button>
                           ))}
@@ -486,7 +491,7 @@ export default function AdminPage() {
                                 { label:"Total Installs",     val: String(uLogs.filter(l => l.log_type==="install"||l.log_type==="confirmed-success").length) },
                                 { label:"Confirmed Successes",val: String(confirmedInstalls.length), color:"#A855F7" },
                                 { label:"Joined",             val:fmt(u.created_at) },
-                                { label:"Log Sync",           val: u.privacy_consent ? "On" : "Off", color: u.privacy_consent ? "#3ECFB2" : "#4A5280" },
+                                { label:"Log Sync",           val: u.privacy_consent ? "On" : "Off", color: u.privacy_consent ? "#3ECFB2" : "var(--atlas-text-mid)" },
                                 { label:"Billing Cadence",    val: u.billing_interval === "annual" ? "Annual" : u.billing_interval === "monthly" ? "Monthly" : "—" },
                                 { label:"Billing Anchor",     val: u.billing_anchor_day != null ? `Day ${u.billing_anchor_day} of month` : "—" },
                                 { label:"Current Period Installs", val: (() => { const g = userGateCount(u.id); return g != null ? `${g.installs_this_month} / 25` : "—" })(), color: (() => { const g = userGateCount(u.id); return g != null && g.installs_this_month >= 20 ? "#F0A030" : "#3ECFB2" })(), bold: true },
@@ -499,13 +504,13 @@ export default function AdminPage() {
                               {sub?.stripe_customer_id && (
                                 <div style={{ gridColumn:"span 2" }}>
                                   <span style={labelStyle}>Stripe Customer ID</span>
-                                  <p style={{ fontSize:"10px", color:"#6B7399", fontFamily:"monospace", margin:0 }}>{sub.stripe_customer_id}</p>
+                                  <p style={{ fontSize:"10px", color:"var(--text-muted)", fontFamily:"monospace", margin:0 }}>{sub.stripe_customer_id}</p>
                                 </div>
                               )}
                               {sub?.stripe_subscription_id && (
                                 <div style={{ gridColumn:"span 2" }}>
                                   <span style={labelStyle}>Stripe Subscription ID</span>
-                                  <p style={{ fontSize:"10px", color:"#6B7399", fontFamily:"monospace", margin:0 }}>{sub.stripe_subscription_id}</p>
+                                  <p style={{ fontSize:"10px", color:"var(--text-muted)", fontFamily:"monospace", margin:0 }}>{sub.stripe_subscription_id}</p>
                                 </div>
                               )}
                             </div>
@@ -516,15 +521,15 @@ export default function AdminPage() {
                         {activeProfileTab === "logs" && (
                           <div style={{ maxHeight:"420px", overflowY:"auto" }}>
                             {uLogs.length === 0
-                              ? <p style={{ padding:"24px", textAlign:"center", color:"#353860", fontSize:"12px" }}>No logs yet.</p>
+                              ? <p style={{ padding:"24px", textAlign:"center", color:"var(--atlas-text-label)", fontSize:"12px" }}>No logs yet.</p>
                               : uLogs.map(l => (
                                 <div key={l.id} style={{ display:"flex", gap:"8px", alignItems:"center", padding:"9px 18px", borderBottom:"1px solid #0A0C18" }}>
                                   <span style={{ fontSize:"8px", fontWeight:800, letterSpacing:"1px", padding:"2px 7px", borderRadius:"3px", background:logTypeBg(l.log_type??"install"), color:logTypeColor(l.log_type??"install"), flexShrink:0, minWidth:"60px", textAlign:"center" }}>{(l.log_type??"install").toUpperCase()}</span>
                                   <div style={{ flex:1, minWidth:0 }}>
                                     <p style={{ fontSize:"12px", color:"#C0C8E8", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{l.app_name ?? l.filename ?? "—"}</p>
-                                    {l.device_name && <p style={{ fontSize:"9px", color:"#353860", margin:"1px 0 0" }}>{l.device_name}</p>}
+                                    {l.device_name && <p style={{ fontSize:"9px", color:"var(--atlas-text-label)", margin:"1px 0 0" }}>{l.device_name}</p>}
                                   </div>
-                                  <span style={{ fontSize:"10px", color:"#353860", flexShrink:0 }}>{fmtDateTime(l.installed_at)}</span>
+                                  <span style={{ fontSize:"10px", color:"var(--atlas-text-label)", flexShrink:0 }}>{fmtDateTime(l.installed_at)}</span>
                                 </div>
                               ))
                             }
@@ -535,17 +540,17 @@ export default function AdminPage() {
                         {activeProfileTab === "devices" && (
                           <div style={{ padding:"12px 18px" }}>
                             {uDevs.length === 0
-                              ? <p style={{ textAlign:"center", color:"#353860", fontSize:"12px", padding:"16px 0" }}>No devices registered.</p>
+                              ? <p style={{ textAlign:"center", color:"var(--atlas-text-label)", fontSize:"12px", padding:"16px 0" }}>No devices registered.</p>
                               : uDevs.map((d, i) => (
-                                <div key={d.id} style={{ padding:"10px 0", borderBottom: i < uDevs.length-1 ? "1px solid #0F1020" : "none" }}>
+                                <div key={d.id} style={{ padding:"10px 0", borderBottom: i < uDevs.length-1 ? "1px solid var(--atlas-divider-subtle)" : "none" }}>
                                   <div style={{ display:"flex", gap:"10px", alignItems:"flex-start" }}>
-                                    <div style={{ width:"30px", height:"30px", borderRadius:"7px", background:"#0F1225", border:"1px solid #1E2240", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"14px" }}>🖥</div>
+                                    <div style={{ width:"30px", height:"30px", borderRadius:"7px", background:"#0F1225", border:"1px solid var(--atlas-border-color)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"14px" }}>🖥</div>
                                     <div style={{ flex:1 }}>
-                                      <p style={{ fontSize:"12px", color:"#D0D8F0", fontWeight:500, margin:0 }}>{d.device_name || "Unknown Device"}</p>
+                                      <p style={{ fontSize:"12px", color:"var(--atlas-text-body)", fontWeight:500, margin:0 }}>{d.device_name || "Unknown Device"}</p>
                                       <p style={{ fontSize:"9px", color:"#3ECFB2", fontFamily:"monospace", margin:"3px 0" }}>UUID: {d.hardware_uuid}</p>
                                       <div style={{ display:"flex", gap:"12px" }}>
-                                        <p style={{ fontSize:"10px", color:"#353860", margin:0 }}>Last seen: {fmtDateTime(d.last_seen)}</p>
-                                        <p style={{ fontSize:"10px", color:"#252845", margin:0 }}>Added: {fmtShort(d.created_at)}</p>
+                                        <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", margin:0 }}>Last seen: {fmtDateTime(d.last_seen)}</p>
+                                        <p style={{ fontSize:"10px", color:"var(--atlas-text-faint)", margin:0 }}>Added: {fmtShort(d.created_at)}</p>
                                       </div>
                                     </div>
                                   </div>
@@ -559,20 +564,20 @@ export default function AdminPage() {
                         {activeProfileTab === "support" && (
                           <div style={{ maxHeight:"420px", overflowY:"auto" }}>
                             {uTickets.length === 0
-                              ? <p style={{ padding:"24px", textAlign:"center", color:"#353860", fontSize:"12px" }}>No support tickets.</p>
+                              ? <p style={{ padding:"24px", textAlign:"center", color:"var(--atlas-text-label)", fontSize:"12px" }}>No support tickets.</p>
                               : uTickets.map((t:any) => (
                                 <div key={t.id} style={{ padding:"12px 18px", borderBottom:"1px solid #0A0C18" }}>
                                   <div style={{ display:"flex", gap:"8px", alignItems:"center", marginBottom:"6px", flexWrap:"wrap" }}>
                                     <span style={{ fontSize:"9px", fontWeight:700, padding:"2px 7px", borderRadius:"4px", border:`1px solid ${t.status==="open"?"rgba(224,85,85,0.3)":"rgba(62,207,178,0.3)"}`, color:t.status==="open"?"#E05555":"#3ECFB2", background:t.status==="open"?"rgba(224,85,85,0.08)":"rgba(62,207,178,0.08)" }}>{t.status.toUpperCase()}</span>
                                     <span style={{ fontSize:"11px", color:"#A0A8C8", fontWeight:500 }}>{t.issue_type}</span>
-                                    {t.product_name && <span style={{ fontSize:"10px", color:"#6B7399", padding:"1px 6px", background:"#0A0D1C", borderRadius:"4px", border:"1px solid #1E2240" }}>{t.product_name}</span>}
-                                    <span style={{ marginLeft:"auto", fontSize:"10px", color:"#353860" }}>{fmt(t.created_at)}</span>
+                                    {t.product_name && <span style={{ fontSize:"10px", color:"var(--text-muted)", padding:"1px 6px", background:"var(--atlas-icon-bg)", borderRadius:"4px", border:"1px solid var(--atlas-border-color)" }}>{t.product_name}</span>}
+                                    <span style={{ marginLeft:"auto", fontSize:"10px", color:"var(--atlas-text-label)" }}>{fmt(t.created_at)}</span>
                                   </div>
-                                  <p style={{ fontSize:"11px", color:"#6B7399", margin:0, lineHeight:1.55 }}>{t.message}</p>
+                                  <p style={{ fontSize:"11px", color:"var(--text-muted)", margin:0, lineHeight:1.55 }}>{t.message}</p>
                                   {t.attached_log_content && (
                                     <details style={{ marginTop:"8px" }}>
                                       <summary style={{ fontSize:"10px", color:"#3ECFB2", cursor:"pointer" }}>View attached log</summary>
-                                      <pre style={{ margin:"5px 0 0", padding:"8px", background:"#07080F", color:"#6B7399", fontSize:"9px", lineHeight:1.6, borderRadius:"6px", border:"1px solid #1E2240", maxHeight:"160px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{t.attached_log_content}</pre>
+                                      <pre style={{ margin:"5px 0 0", padding:"8px", background:"var(--atlas-bg)", color:"var(--text-muted)", fontSize:"9px", lineHeight:1.6, borderRadius:"6px", border:"1px solid var(--atlas-border-color)", maxHeight:"160px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{t.attached_log_content}</pre>
                                     </details>
                                   )}
                                   {t.status === "open" && (
@@ -596,21 +601,21 @@ export default function AdminPage() {
         {/* ── DEVICES ── */}
         {tab === "devices" && (
           <div style={card}>
-            <div style={{ padding:"14px 18px", borderBottom:"1px solid #1A1D30" }}>
+            <div style={{ padding:"14px 18px", borderBottom:"1px solid var(--atlas-divider)" }}>
               <p style={{...labelStyle}}>All Registered Devices — {devices.length} total</p>
             </div>
             {devices.length === 0
-              ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No devices.</div>
+              ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No devices.</div>
               : devices.map(d => (
-                <div key={d.id} style={{ padding:"12px 18px", borderBottom:"1px solid #0F1020", display:"flex", gap:"14px", alignItems:"flex-start" }}>
+                <div key={d.id} style={{ padding:"12px 18px", borderBottom:"1px solid var(--atlas-divider-subtle)", display:"flex", gap:"14px", alignItems:"flex-start" }}>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{fontSize:"13px",color:"#D0D8F0",fontWeight:500,margin:0}}>{d.device_name||"Unknown"}</p>
+                    <p style={{fontSize:"13px",color:"var(--atlas-text-body)",fontWeight:500,margin:0}}>{d.device_name||"Unknown"}</p>
                     <p style={{fontSize:"9px",color:"#3ECFB2",fontFamily:"monospace",margin:"3px 0"}}>UUID: {d.hardware_uuid}</p>
-                    <p style={{fontSize:"11px",color:"#6B7399",margin:0}}>{emailOf(d.user_id)}</p>
+                    <p style={{fontSize:"11px",color:"var(--text-muted)",margin:0}}>{emailOf(d.user_id)}</p>
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
                     <p style={{fontSize:"10px",color:"#A0A8C8",margin:0}}>Last: {fmtDateTime(d.last_seen)}</p>
-                    <p style={{fontSize:"10px",color:"#353860",margin:"3px 0 0"}}>Added: {fmtShort(d.created_at)}</p>
+                    <p style={{fontSize:"10px",color:"var(--atlas-text-label)",margin:"3px 0 0"}}>Added: {fmtShort(d.created_at)}</p>
                   </div>
                 </div>
               ))
@@ -623,23 +628,23 @@ export default function AdminPage() {
           <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
               {["all","install","uninstall","failed","crashed","confirmed-success","install-demo"].map(t => (
-                <button key={t} onClick={() => setLogFilter(t)} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"pointer", background:logFilter===t?"#1E2240":"transparent", color:logFilter===t?"#E8ECFF":"#353860" }}>{t}</button>
+                <button key={t} onClick={() => setLogFilter(t)} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"pointer", background:logFilter===t?"var(--atlas-border-color)":"transparent", color:logFilter===t?"var(--atlas-fg)":"var(--atlas-text-label)" }}>{t}</button>
               ))}
-              <span style={{ marginLeft:"auto", fontSize:"11px", color:"#252845" }}>{filteredLogs.length} logs</span>
+              <span style={{ marginLeft:"auto", fontSize:"11px", color:"var(--atlas-text-faint)" }}>{filteredLogs.length} logs</span>
             </div>
             <div style={card}>
               {filteredLogs.length === 0
-                ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No logs.</div>
+                ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No logs.</div>
                 : filteredLogs.map(l => (
-                  <div key={l.id} style={{ borderBottom:"1px solid #0F1020" }}>
+                  <div key={l.id} style={{ borderBottom:"1px solid var(--atlas-divider-subtle)" }}>
                     <button onClick={() => setExpandedLog(expandedLog===l.id?null:l.id)} style={{ width:"100%", background:"none", border:"none", cursor:"pointer", padding:"11px 18px", display:"flex", alignItems:"center", gap:"10px", textAlign:"left" }}>
                       <span style={{ fontSize:"8px", fontWeight:800, letterSpacing:"1px", padding:"2px 7px", borderRadius:"3px", background:logTypeBg(l.log_type??"install"), color:logTypeColor(l.log_type??"install"), flexShrink:0 }}>{(l.log_type??"install").toUpperCase()}</span>
                       <span style={{ fontSize:"12px", color:"#A8B4D0", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{l.app_name??l.filename}</span>
-                      <span style={{ fontSize:"10px", color:"#4A5280", flexShrink:0 }}>{emailOf(l.user_id)}</span>
-                      <span style={{ fontSize:"10px", color:"#252845", flexShrink:0 }}>{fmtShort(l.installed_at)}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-mid)", flexShrink:0 }}>{emailOf(l.user_id)}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-faint)", flexShrink:0 }}>{fmtShort(l.installed_at)}</span>
                     </button>
                     {expandedLog===l.id && l.content && (
-                      <pre style={{ margin:0, padding:"12px 18px", background:"#07080F", color:"#6B7399", fontSize:"10px", lineHeight:1.65, overflowX:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:"360px", overflowY:"auto" }}>{l.content}</pre>
+                      <pre style={{ margin:0, padding:"12px 18px", background:"var(--atlas-bg)", color:"var(--text-muted)", fontSize:"10px", lineHeight:1.65, overflowX:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:"360px", overflowY:"auto" }}>{l.content}</pre>
                     )}
                   </div>
                 ))
@@ -656,20 +661,20 @@ export default function AdminPage() {
               {["all","open","resolved"].map(s => {
                 const count = s === "all" ? tickets.length : tickets.filter((t:any) => t.status === s).length
                 return (
-                  <button key={s} onClick={() => {}} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"default", background:"transparent", color:"#353860" }}>
+                  <button key={s} onClick={() => {}} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"default", background:"transparent", color:"var(--atlas-text-label)" }}>
                     {s} ({count})
                   </button>
                 )
               })}
-              <span style={{ marginLeft:"auto", fontSize:"10px", color:"#252845" }}>{openTickets.length} open</span>
+              <span style={{ marginLeft:"auto", fontSize:"10px", color:"var(--atlas-text-faint)" }}>{openTickets.length} open</span>
             </div>
 
-            {tickets.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"#353860"}}>No tickets yet.</div>}
+            {tickets.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No tickets yet.</div>}
             {tickets.map((t: any) => {
               const isExpanded = expandedTicket === t.id
               const isOpen = t.status === "open"
               return (
-                <div key={t.id} style={{ ...card, border: isOpen ? "1px solid rgba(224,85,85,0.15)" : "1px solid #1A1D30" }}>
+                <div key={t.id} style={{ ...card, border: isOpen ? "1px solid rgba(224,85,85,0.15)" : "1px solid var(--atlas-divider)" }}>
                   {/* Row — always visible */}
                   <button
                     onClick={() => setExpandedTicket(isExpanded ? null : t.id)}
@@ -677,26 +682,26 @@ export default function AdminPage() {
                   >
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap" }}>
-                        <span style={{ fontSize:"11px", fontWeight:700, color:"#D0D8F0" }}>{t.email}</span>
+                        <span style={{ fontSize:"11px", fontWeight:700, color:"var(--atlas-text-body)" }}>{t.email}</span>
                         <span style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1px", padding:"2px 7px", borderRadius:"4px",
                           border:`1px solid ${isOpen?"rgba(224,85,85,0.3)":"rgba(62,207,178,0.3)"}`,
                           color:isOpen?"#E05555":"#3ECFB2",
                           background:isOpen?"rgba(224,85,85,0.08)":"rgba(62,207,178,0.08)"
                         }}>{t.status.toUpperCase()}</span>
-                        <span style={{ fontSize:"10px", color:"#6B7399", padding:"2px 7px", borderRadius:"4px", background:"#0A0D1C", border:"1px solid #1E2240" }}>{t.issue_type}</span>
-                        {t.product_name && <span style={{ fontSize:"10px", color:"#A0A8C8", padding:"2px 7px", borderRadius:"4px", background:"#0A0D1C", border:"1px solid #1E2240" }}>{t.product_name}</span>}
+                        <span style={{ fontSize:"10px", color:"var(--text-muted)", padding:"2px 7px", borderRadius:"4px", background:"var(--atlas-icon-bg)", border:"1px solid var(--atlas-border-color)" }}>{t.issue_type}</span>
+                        {t.product_name && <span style={{ fontSize:"10px", color:"#A0A8C8", padding:"2px 7px", borderRadius:"4px", background:"var(--atlas-icon-bg)", border:"1px solid var(--atlas-border-color)" }}>{t.product_name}</span>}
                       </div>
                       <p style={{ margin:"5px 0 0", fontSize:"12px", color:"#525270", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.message}</p>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"10px", flexShrink:0 }}>
-                      <span style={{ fontSize:"10px", color:"#252845" }}>{fmt(t.created_at)}</span>
-                      <span style={{ fontSize:"10px", color:"#353860" }}>{isExpanded ? "▲" : "▼"}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-faint)" }}>{fmt(t.created_at)}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-label)" }}>{isExpanded ? "▲" : "▼"}</span>
                     </div>
                   </button>
 
                   {/* Expanded detail */}
                   {isExpanded && (
-                    <div style={{ borderTop:"1px solid #1A1D30", padding:"18px" }}>
+                    <div style={{ borderTop:"1px solid var(--atlas-divider)", padding:"18px" }}>
                       {/* Meta row */}
                       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"10px", marginBottom:"16px" }}>
                         {[
@@ -708,8 +713,8 @@ export default function AdminPage() {
                           t.product_status && { label:"Product Status", value: t.product_status },
                           t.attached_log_id && { label:"Log ID", value: t.attached_log_id },
                         ].filter(Boolean).map((row: any) => (
-                          <div key={row.label} style={{ padding:"10px 12px", background:"#07080F", borderRadius:"8px", border:"1px solid #1A1D30" }}>
-                            <p style={{ margin:"0 0 3px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#353860" }}>{row.label}</p>
+                          <div key={row.label} style={{ padding:"10px 12px", background:"var(--atlas-bg)", borderRadius:"8px", border:"1px solid var(--atlas-divider)" }}>
+                            <p style={{ margin:"0 0 3px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"var(--atlas-text-label)" }}>{row.label}</p>
                             <p style={{ margin:0, fontSize:"12px", color:"#A0A8C8", wordBreak:"break-all" }}>{row.value}</p>
                           </div>
                         ))}
@@ -717,8 +722,8 @@ export default function AdminPage() {
 
                       {/* Full message */}
                       <div style={{ marginBottom:"16px" }}>
-                        <p style={{ margin:"0 0 8px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#353860" }}>Message</p>
-                        <div style={{ padding:"14px", background:"#07080F", borderRadius:"8px", border:"1px solid #1A1D30" }}>
+                        <p style={{ margin:"0 0 8px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"var(--atlas-text-label)" }}>Message</p>
+                        <div style={{ padding:"14px", background:"var(--atlas-bg)", borderRadius:"8px", border:"1px solid var(--atlas-divider)" }}>
                           <p style={{ margin:0, fontSize:"13px", color:"#C0C8E8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{t.message}</p>
                         </div>
                       </div>
@@ -726,8 +731,8 @@ export default function AdminPage() {
                       {/* Attached log */}
                       {t.attached_log_content && (
                         <div style={{ marginBottom:"16px" }}>
-                          <p style={{ margin:"0 0 8px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#353860" }}>Attached Log</p>
-                          <pre style={{ margin:0, padding:"12px", background:"#07080F", color:"#6B7399", fontSize:"10px", lineHeight:1.6, borderRadius:"8px", border:"1px solid #1E2240", maxHeight:"240px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{t.attached_log_content}</pre>
+                          <p style={{ margin:"0 0 8px", fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"var(--atlas-text-label)" }}>Attached Log</p>
+                          <pre style={{ margin:0, padding:"12px", background:"var(--atlas-bg)", color:"var(--text-muted)", fontSize:"10px", lineHeight:1.6, borderRadius:"8px", border:"1px solid var(--atlas-border-color)", maxHeight:"240px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{t.attached_log_content}</pre>
                         </div>
                       )}
 
@@ -743,7 +748,7 @@ export default function AdminPage() {
                         )}
                         <button
                           onClick={() => setExpandedTicket(null)}
-                          style={{ padding:"8px 14px", borderRadius:"8px", border:"1px solid #1E2240", background:"transparent", color:"#525270", fontSize:"12px", cursor:"pointer" }}
+                          style={{ padding:"8px 14px", borderRadius:"8px", border:"1px solid var(--atlas-border-color)", background:"transparent", color:"#525270", fontSize:"12px", cursor:"pointer" }}
                         >
                           Close
                         </button>
@@ -761,14 +766,14 @@ export default function AdminPage() {
           <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
             {Object.keys(failuresByProduct).length > 0 && (
               <div style={card}>
-                <div style={{ padding:"12px 18px", borderBottom:"1px solid #1A1D30" }}>
+                <div style={{ padding:"12px 18px", borderBottom:"1px solid var(--atlas-divider)" }}>
                   <p style={{...labelStyle}}>Failures by Product</p>
                 </div>
                 <div style={{ padding:"12px 18px", display:"flex", flexWrap:"wrap", gap:"8px" }}>
                   {Object.entries(failuresByProduct).sort((a,b)=>b[1].length-a[1].length).map(([name, fs]) => (
-                    <div key={name} onClick={() => setFailureFilter(name === failureFilter ? "all" : name)} style={{ padding:"6px 12px", borderRadius:"7px", background: failureFilter===name?"rgba(224,85,85,0.15)":"#0A0D1C", border: failureFilter===name?"1px solid rgba(224,85,85,0.4)":"1px solid #1E2240", cursor:"pointer" }}>
+                    <div key={name} onClick={() => setFailureFilter(name === failureFilter ? "all" : name)} style={{ padding:"6px 12px", borderRadius:"7px", background: failureFilter===name?"rgba(224,85,85,0.15)":"var(--atlas-icon-bg)", border: failureFilter===name?"1px solid rgba(224,85,85,0.4)":"1px solid var(--atlas-border-color)", cursor:"pointer" }}>
                       <span style={{ fontSize:"11px", color:"#C0C8E8" }}>{name}</span>
-                      <span style={{ marginLeft:"8px", fontSize:"11px", fontWeight:700, color: fs.length >= 3?"#E05555":fs.length>=2?"#F0A030":"#6B7399" }}>{fs.length}x</span>
+                      <span style={{ marginLeft:"8px", fontSize:"11px", fontWeight:700, color: fs.length >= 3?"#E05555":fs.length>=2?"#F0A030":"var(--text-muted)" }}>{fs.length}x</span>
                     </div>
                   ))}
                 </div>
@@ -776,24 +781,24 @@ export default function AdminPage() {
             )}
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
               {["all","open","investigating","fixed","wont_fix"].map(s => (
-                <button key={s} onClick={() => setFailureFilter(s)} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"pointer", background:failureFilter===s?"#1E2240":"transparent", color:failureFilter===s?"#E8ECFF":"#353860" }}>{s.replace("_"," ")}</button>
+                <button key={s} onClick={() => setFailureFilter(s)} style={{ fontSize:"9px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", padding:"4px 10px", borderRadius:"6px", border:"none", cursor:"pointer", background:failureFilter===s?"var(--atlas-border-color)":"transparent", color:failureFilter===s?"var(--atlas-fg)":"var(--atlas-text-label)" }}>{s.replace("_"," ")}</button>
               ))}
-              <span style={{ marginLeft:"auto", fontSize:"11px", color:"#252845" }}>{filteredFails.length} failures</span>
+              <span style={{ marginLeft:"auto", fontSize:"11px", color:"var(--atlas-text-faint)" }}>{filteredFails.length} failures</span>
             </div>
             <div style={card}>
               {filteredFails.length === 0
-                ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No failures matching filter.</div>
+                ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No failures matching filter.</div>
                 : filteredFails.map((f: any) => (
-                  <div key={f.id} style={{ borderBottom:"1px solid #0F1020" }}>
+                  <div key={f.id} style={{ borderBottom:"1px solid var(--atlas-divider-subtle)" }}>
                     <button onClick={() => setExpandedFailure(expandedFailure===f.id?null:f.id)} style={{ width:"100%", background:"none", border:"none", cursor:"pointer", padding:"12px 18px", display:"flex", alignItems:"center", gap:"10px", textAlign:"left" }}>
                       <span style={{ fontSize:"8px", fontWeight:800, padding:"2px 7px", borderRadius:"3px", background:`${failTypeColor(f.failure_type??"")}18`, color:failTypeColor(f.failure_type??""), flexShrink:0 }}>{(f.failure_type??"unknown").toUpperCase()}</span>
                       <span style={{ fontSize:"12px", color:"#C0C8E8", fontWeight:500, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.product_name}</span>
-                      <span style={{ fontSize:"10px", color:"#6B7399", flexShrink:0 }}>{f.device_name}</span>
+                      <span style={{ fontSize:"10px", color:"var(--text-muted)", flexShrink:0 }}>{f.device_name}</span>
                       <span style={{ fontSize:"9px", fontWeight:700, padding:"2px 7px", borderRadius:"4px", border:`1px solid ${fixStatusColor(f.admin_fix_status)}44`, color:fixStatusColor(f.admin_fix_status), background:`${fixStatusColor(f.admin_fix_status)}11`, flexShrink:0 }}>{(f.admin_fix_status??"open").toUpperCase()}</span>
-                      <span style={{ fontSize:"10px", color:"#252845", flexShrink:0 }}>{fmtShort(f.created_at)}</span>
+                      <span style={{ fontSize:"10px", color:"var(--atlas-text-faint)", flexShrink:0 }}>{fmtShort(f.created_at)}</span>
                     </button>
                     {expandedFailure===f.id && (
-                      <div style={{ borderTop:"1px solid #1A1D30", padding:"16px 18px", display:"flex", flexDirection:"column", gap:"14px" }}>
+                      <div style={{ borderTop:"1px solid var(--atlas-divider)", padding:"16px 18px", display:"flex", flexDirection:"column", gap:"14px" }}>
                         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
                           {[["File", f.source_filename],["Step", f.failure_step],["macOS", f.macos_version],["UUID", f.hardware_uuid]].map(([k,v]) => v ? (
                             <div key={k}><p style={{...labelStyle}}>{k}</p><p style={{ fontSize:"11px", color:"#A0A8C8", margin:0, fontFamily: k==="UUID"?"monospace":"inherit" }}>{v}</p></div>
@@ -808,7 +813,7 @@ export default function AdminPage() {
                             <p style={{...labelStyle}}>Steps Attempted</p>
                             <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
                               {f.steps_attempted.map((s: string, i: number) => (
-                                <p key={i} style={{ fontSize:"10px", color:"#6B7399", margin:0, fontFamily:"monospace" }}>{s}</p>
+                                <p key={i} style={{ fontSize:"10px", color:"var(--text-muted)", margin:0, fontFamily:"monospace" }}>{s}</p>
                               ))}
                             </div>
                           </div>
@@ -816,7 +821,7 @@ export default function AdminPage() {
                         {f.install_log && (
                           <details>
                             <summary style={{ fontSize:"10px", color:"#3ECFB2", cursor:"pointer" }}>Full install log</summary>
-                            <pre style={{ margin:"6px 0 0", padding:"10px", background:"#07080F", color:"#6B7399", fontSize:"9px", lineHeight:1.6, borderRadius:"6px", border:"1px solid #1E2240", maxHeight:"300px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{f.install_log}</pre>
+                            <pre style={{ margin:"6px 0 0", padding:"10px", background:"var(--atlas-bg)", color:"var(--text-muted)", fontSize:"9px", lineHeight:1.6, borderRadius:"6px", border:"1px solid var(--atlas-border-color)", maxHeight:"300px", overflowY:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{f.install_log}</pre>
                           </details>
                         )}
                         {f.admin_note && fixingId !== f.id && (
@@ -826,15 +831,15 @@ export default function AdminPage() {
                           </div>
                         )}
                         {fixingId === f.id ? (
-                          <div style={{ background:"#0A0D1C", border:"1px solid #1E2240", borderRadius:"10px", padding:"14px" }}>
+                          <div style={{ background:"var(--atlas-icon-bg)", border:"1px solid var(--atlas-border-color)", borderRadius:"10px", padding:"14px" }}>
                             <p style={{...labelStyle,marginBottom:"10px"}}>Write Fix Note</p>
                             <textarea value={fixNote} onChange={e => setFixNote(e.target.value)} placeholder="Describe the fix…" style={{ ...inputStyle, height:"80px", resize:"vertical", fontFamily:"inherit", lineHeight:1.5 }} />
                             <div style={{ display:"flex", gap:"8px", marginTop:"10px", flexWrap:"wrap" }}>
                               {["investigating","fixed","wont_fix"].map(s => (
-                                <button key={s} onClick={() => setFixStatus(s)} style={{ fontSize:"9px", fontWeight:700, padding:"4px 10px", borderRadius:"6px", border:`1px solid ${fixStatus===s?fixStatusColor(s)+"66":"#1E2240"}`, background:fixStatus===s?`${fixStatusColor(s)}15`:"transparent", color:fixStatus===s?fixStatusColor(s):"#353860", cursor:"pointer" }}>{s.replace("_"," ").toUpperCase()}</button>
+                                <button key={s} onClick={() => setFixStatus(s)} style={{ fontSize:"9px", fontWeight:700, padding:"4px 10px", borderRadius:"6px", border:`1px solid ${fixStatus===s?fixStatusColor(s)+"66":"var(--atlas-border-color)"}`, background:fixStatus===s?`${fixStatusColor(s)}15`:"transparent", color:fixStatus===s?fixStatusColor(s):"var(--atlas-text-label)", cursor:"pointer" }}>{s.replace("_"," ").toUpperCase()}</button>
                               ))}
                               <div style={{ marginLeft:"auto", display:"flex", gap:"6px" }}>
-                                <button onClick={() => setFixingId(null)} style={{ fontSize:"11px", color:"#6B7399", background:"none", border:"1px solid #1E2240", borderRadius:"7px", padding:"5px 12px", cursor:"pointer" }}>Cancel</button>
+                                <button onClick={() => setFixingId(null)} style={{ fontSize:"11px", color:"var(--text-muted)", background:"none", border:"1px solid var(--atlas-border-color)", borderRadius:"7px", padding:"5px 12px", cursor:"pointer" }}>Cancel</button>
                                 <button onClick={saveFailureFix} disabled={fixSaving} style={{ fontSize:"11px", fontWeight:600, color:"#08090E", background:"#3ECFB2", border:"none", borderRadius:"7px", padding:"5px 14px", cursor:"pointer" }}>{fixSaving?"Saving…":"Save Fix"}</button>
                               </div>
                             </div>
@@ -867,7 +872,7 @@ export default function AdminPage() {
             </div>
             {(newPattern || editingPattern) && (
               <div style={{ ...card, padding:"20px" }}>
-                <p style={{ fontSize:"13px", fontWeight:600, color:"#E8ECFF", marginBottom:"16px" }}>{newPattern?"New Pattern":"Edit Pattern: "}{editingPattern?.product_name}</p>
+                <p style={{ fontSize:"13px", fontWeight:600, color:"var(--atlas-fg)", marginBottom:"16px" }}>{newPattern?"New Pattern":"Edit Pattern: "}{editingPattern?.product_name}</p>
                 <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
                   <div><span style={labelStyle}>Product Name</span><input style={inputStyle} value={patternDraft.product_name??""} onChange={e => setPatternDraft((d: any)=>({...d,product_name:e.target.value}))} placeholder="e.g. Baby Audio Smooth Operator Pro" /></div>
                   <div><span style={labelStyle}>Match Patterns (one per line)</span><textarea style={{...inputStyle,height:"70px",resize:"vertical",fontFamily:"monospace"}} value={patternDraft.match_patterns_text??""} onChange={e => setPatternDraft((d: any)=>({...d,match_patterns_text:e.target.value}))} placeholder={"baby audio smooth operator\nsmooth operator pro"} /></div>
@@ -875,7 +880,7 @@ export default function AdminPage() {
                   <div><span style={labelStyle}>Installed Paths (one per line)</span><textarea style={{...inputStyle,height:"70px",resize:"vertical",fontFamily:"monospace"}} value={patternDraft.installed_paths_text??""} onChange={e => setPatternDraft((d: any)=>({...d,installed_paths_text:e.target.value}))} placeholder="/Library/Audio/Plug-Ins/Components/SmoothOperator.component" /></div>
                   <div><span style={labelStyle}>Hosts Entries to Block (one per line)</span><textarea style={{...inputStyle,height:"60px",resize:"vertical",fontFamily:"monospace"}} value={patternDraft.hosts_entries_text??""} onChange={e => setPatternDraft((d: any)=>({...d,hosts_entries_text:e.target.value}))} placeholder="activation.babyaud.io" /></div>
                   <div style={{ display:"flex", gap:"8px", justifyContent:"flex-end" }}>
-                    <button onClick={() => { setNewPattern(false); setEditingPattern(null) }} style={{ fontSize:"11px", color:"#6B7399", background:"none", border:"1px solid #1E2240", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}>Cancel</button>
+                    <button onClick={() => { setNewPattern(false); setEditingPattern(null) }} style={{ fontSize:"11px", color:"var(--text-muted)", background:"none", border:"1px solid var(--atlas-border-color)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}>Cancel</button>
                     <button onClick={savePattern} disabled={patternSaving} style={{ fontSize:"11px", fontWeight:600, color:"#08090E", background:"#3ECFB2", border:"none", borderRadius:"7px", padding:"6px 16px", cursor:"pointer" }}>{patternSaving?"Saving…":"Save Pattern"}</button>
                   </div>
                 </div>
@@ -883,25 +888,25 @@ export default function AdminPage() {
             )}
             <div style={card}>
               {patterns.length === 0
-                ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No patterns yet. They appear here as users install products successfully.</div>
+                ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No patterns yet. They appear here as users install products successfully.</div>
                 : patterns.map((p: any) => (
-                  <div key={p.id} style={{ borderBottom:"1px solid #0F1020", padding:"12px 18px", display:"flex", alignItems:"flex-start", gap:"12px" }}>
+                  <div key={p.id} style={{ borderBottom:"1px solid var(--atlas-divider-subtle)", padding:"12px 18px", display:"flex", alignItems:"flex-start", gap:"12px" }}>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" }}>
-                        <p style={{ fontSize:"13px", color:"#D0D8F0", fontWeight:500, margin:0 }}>{p.product_name}</p>
+                        <p style={{ fontSize:"13px", color:"var(--atlas-text-body)", fontWeight:500, margin:0 }}>{p.product_name}</p>
                         {p.admin_verified && <span style={{ fontSize:"8px", fontWeight:800, letterSpacing:"1px", padding:"2px 6px", borderRadius:"3px", background:"rgba(62,207,178,0.1)", color:"#3ECFB2", border:"1px solid rgba(62,207,178,0.2)" }}>ADMIN VERIFIED</span>}
                         <span style={{ fontSize:"10px", color:"#3ECFB2", marginLeft:"auto" }}>{p.success_count} confirmed install{p.success_count!==1?"s":""}</span>
                       </div>
                       <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
                         {(p.match_patterns??[]).slice(0,4).map((m: string) => (
-                          <span key={m} style={{ fontSize:"9px", color:"#6B7399", fontFamily:"monospace", padding:"2px 6px", background:"#0A0D1C", borderRadius:"4px", border:"1px solid #1E2240" }}>{m}</span>
+                          <span key={m} style={{ fontSize:"9px", color:"var(--text-muted)", fontFamily:"monospace", padding:"2px 6px", background:"var(--atlas-icon-bg)", borderRadius:"4px", border:"1px solid var(--atlas-border-color)" }}>{m}</span>
                         ))}
-                        {(p.match_patterns??[]).length > 4 && <span style={{fontSize:"9px",color:"#252845"}}>+{p.match_patterns.length-4} more</span>}
+                        {(p.match_patterns??[]).length > 4 && <span style={{fontSize:"9px",color:"var(--atlas-text-faint)"}}>+{p.match_patterns.length-4} more</span>}
                       </div>
                       {(p.hosts_entries??[]).length > 0 && <p style={{ fontSize:"9px", color:"#E05555", margin:"4px 0 0", fontFamily:"monospace" }}>blocks: {p.hosts_entries.join(", ")}</p>}
                     </div>
                     <div style={{ display:"flex", gap:"6px", flexShrink:0 }}>
-                      <button onClick={() => { setEditingPattern(p); setNewPattern(false); setPatternDraft({ product_name:p.product_name, match_patterns_text:(p.match_patterns??[]).join("\n"), pkg_receipt_ids_text:(p.pkg_receipt_ids??[]).join("\n"), installed_paths_text:(p.installed_paths??[]).join("\n"), hosts_entries_text:(p.hosts_entries??[]).join("\n") }) }} style={{ fontSize:"10px", color:"#A0A8C8", background:"#0A0D1C", border:"1px solid #1E2240", borderRadius:"6px", padding:"4px 10px", cursor:"pointer" }}>Edit</button>
+                      <button onClick={() => { setEditingPattern(p); setNewPattern(false); setPatternDraft({ product_name:p.product_name, match_patterns_text:(p.match_patterns??[]).join("\n"), pkg_receipt_ids_text:(p.pkg_receipt_ids??[]).join("\n"), installed_paths_text:(p.installed_paths??[]).join("\n"), hosts_entries_text:(p.hosts_entries??[]).join("\n") }) }} style={{ fontSize:"10px", color:"#A0A8C8", background:"var(--atlas-icon-bg)", border:"1px solid var(--atlas-border-color)", borderRadius:"6px", padding:"4px 10px", cursor:"pointer" }}>Edit</button>
                       <button onClick={() => deletePattern(p.id)} style={{ fontSize:"10px", color:"#E05555", background:"rgba(224,85,85,0.08)", border:"1px solid rgba(224,85,85,0.2)", borderRadius:"6px", padding:"4px 10px", cursor:"pointer" }}>Delete</button>
                     </div>
                   </div>
@@ -915,31 +920,31 @@ export default function AdminPage() {
             </div>
             <div style={card}>
               {titanMemory.length === 0
-                ? <div style={{padding:"40px",textAlign:"center",color:"#353860"}}>No titan_memory entries yet.</div>
+                ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No titan_memory entries yet.</div>
                 : titanMemory.map((tm: any) => {
                   const steps: any[] = Array.isArray(tm.steps) ? tm.steps : []
                   const alreadyPromoted = patterns.some((p: any) => p.product_name.toLowerCase().trim() === tm.product_name.toLowerCase().trim())
                   return (
-                    <div key={tm.id} style={{ borderBottom:"1px solid #0F1020", padding:"12px 18px", display:"flex", alignItems:"flex-start", gap:"12px" }}>
+                    <div key={tm.id} style={{ borderBottom:"1px solid var(--atlas-divider-subtle)", padding:"12px 18px", display:"flex", alignItems:"flex-start", gap:"12px" }}>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" }}>
-                          <p style={{ fontSize:"13px", color:"#D0D8F0", fontWeight:500, margin:0 }}>{tm.product_name}</p>
+                          <p style={{ fontSize:"13px", color:"var(--atlas-text-body)", fontWeight:500, margin:0 }}>{tm.product_name}</p>
                           {alreadyPromoted && <span style={{ fontSize:"8px", fontWeight:800, letterSpacing:"1px", padding:"2px 6px", borderRadius:"3px", background:"rgba(62,207,178,0.1)", color:"#3ECFB2", border:"1px solid rgba(62,207,178,0.2)" }}>IN PATTERNS</span>}
-                          <span style={{ fontSize:"10px", color:"#6B7399", marginLeft:"auto" }}>{fmt(tm.confirmed_at)}</span>
+                          <span style={{ fontSize:"10px", color:"var(--text-muted)", marginLeft:"auto" }}>{fmt(tm.confirmed_at)}</span>
                         </div>
                         <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
                           {steps.slice(0,4).map((s: any, i: number) => (
-                            <span key={i} style={{ fontSize:"9px", color:"#6B7399", fontFamily:"monospace", padding:"2px 6px", background:"#0A0D1C", borderRadius:"4px", border:"1px solid #1E2240" }}>{s.file ?? s.note ?? s.type}</span>
+                            <span key={i} style={{ fontSize:"9px", color:"var(--text-muted)", fontFamily:"monospace", padding:"2px 6px", background:"var(--atlas-icon-bg)", borderRadius:"4px", border:"1px solid var(--atlas-border-color)" }}>{s.file ?? s.note ?? s.type}</span>
                           ))}
-                          {steps.length > 4 && <span style={{fontSize:"9px",color:"#252845"}}>+{steps.length-4} more steps</span>}
+                          {steps.length > 4 && <span style={{fontSize:"9px",color:"var(--atlas-text-faint)"}}>+{steps.length-4} more steps</span>}
                         </div>
                         {(tm.hosts_entries??[]).length > 0 && <p style={{ fontSize:"9px", color:"#E05555", margin:"4px 0 0", fontFamily:"monospace" }}>blocks: {tm.hosts_entries.join(", ")}</p>}
-                        {tm.confirmed_by && <p style={{ fontSize:"9px", color:"#252845", margin:"2px 0 0" }}>confirmed by: {tm.confirmed_by}</p>}
+                        {tm.confirmed_by && <p style={{ fontSize:"9px", color:"var(--atlas-text-faint)", margin:"2px 0 0" }}>confirmed by: {tm.confirmed_by}</p>}
                       </div>
                       <button
                         onClick={() => promoteToPattern(tm)}
                         disabled={promotingId === tm.id || alreadyPromoted}
-                        style={{ fontSize:"10px", fontWeight:600, color: alreadyPromoted?"#353860":"#08090E", background: alreadyPromoted?"#1A1D30":"#A855F7", border:"none", borderRadius:"6px", padding:"5px 12px", cursor: alreadyPromoted?"default":"pointer", flexShrink:0, opacity: promotingId===tm.id ? 0.6 : 1 }}
+                        style={{ fontSize:"10px", fontWeight:600, color: alreadyPromoted?"var(--atlas-text-label)":"#08090E", background: alreadyPromoted?"var(--atlas-divider)":"#A855F7", border:"none", borderRadius:"6px", padding:"5px 12px", cursor: alreadyPromoted?"default":"pointer", flexShrink:0, opacity: promotingId===tm.id ? 0.6 : 1 }}
                       >
                         {promotingId === tm.id ? "Promoting…" : alreadyPromoted ? "Promoted" : "Promote to Learn"}
                       </button>
@@ -955,15 +960,15 @@ export default function AdminPage() {
         {tab === "recovery-kits" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ fontSize: "11px", color: "#353860", margin: 0 }}>Subscribers with cloud-synced Recovery Kits.</p>
+              <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", margin: 0 }}>Subscribers with cloud-synced Recovery Kits.</p>
               <button onClick={loadRkSubscribers} disabled={rkSubscribersLoading}
-                style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 12px", cursor: "pointer", opacity: rkSubscribersLoading ? 0.5 : 1 }}>
+                style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid var(--atlas-kit-btn-border)", borderRadius: "6px", padding: "5px 12px", cursor: "pointer", opacity: rkSubscribersLoading ? 0.5 : 1 }}>
                 {rkSubscribersLoading ? "Loading…" : "Refresh"}
               </button>
             </div>
 
             {rkSubscribers.length === 0 && !rkSubscribersLoading && (
-              <div style={{ background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "12px", padding: "32px", textAlign: "center", color: "#353860", fontSize: "12px" }}>
+              <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "12px", padding: "32px", textAlign: "center", color: "var(--atlas-text-label)", fontSize: "12px" }}>
                 No subscribers with cloud Recovery Kits.{" "}
                 <button onClick={loadRkSubscribers} style={{ color: "#3ECFB2", background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}>Load</button>
               </div>
@@ -973,7 +978,7 @@ export default function AdminPage() {
               const isExpanded = expandedRkUser === sub.user_id
               const kits = rkUserKits[sub.user_id] ?? []
               return (
-                <div key={sub.user_id} style={{ background: "#0C0E1C", border: "1px solid #1E2240", borderRadius: "12px", overflow: "hidden" }}>
+                <div key={sub.user_id} style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "12px", overflow: "hidden" }}>
                   <div
                     onClick={() => {
                       if (isExpanded) { setExpandedRkUser(null); return }
@@ -984,22 +989,22 @@ export default function AdminPage() {
                   >
                     <div>
                       <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{sub.email}</p>
-                      <p style={{ fontSize: "10px", color: "#353860", margin: "2px 0 0" }}>{sub.kit_count} kit{sub.kit_count !== 1 ? "s" : ""} · Latest {fmt(sub.latest_kit_date)}</p>
+                      <p style={{ fontSize: "10px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>{sub.kit_count} kit{sub.kit_count !== 1 ? "s" : ""} · Latest {fmt(sub.latest_kit_date)}</p>
                     </div>
-                    <span style={{ fontSize: "12px", color: "#353860" }}>{isExpanded ? "▲" : "▼"}</span>
+                    <span style={{ fontSize: "12px", color: "var(--atlas-text-label)" }}>{isExpanded ? "▲" : "▼"}</span>
                   </div>
 
                   {isExpanded && (
-                    <div style={{ borderTop: "1px solid #141629" }}>
+                    <div style={{ borderTop: "1px solid var(--atlas-divider-faint)" }}>
                       {rkUserKitsLoading === sub.user_id ? (
-                        <div style={{ padding: "16px 18px", color: "#353860", fontSize: "11px" }}>Loading kits…</div>
+                        <div style={{ padding: "16px 18px", color: "var(--atlas-text-label)", fontSize: "11px" }}>Loading kits…</div>
                       ) : kits.length === 0 ? (
-                        <div style={{ padding: "16px 18px", color: "#353860", fontSize: "11px" }}>No kits found.</div>
+                        <div style={{ padding: "16px 18px", color: "var(--atlas-text-label)", fontSize: "11px" }}>No kits found.</div>
                       ) : kits.map((kit, i) => (
-                        <div key={kit.id} style={{ padding: "12px 18px", borderBottom: i < kits.length - 1 ? "1px solid #141629" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                        <div key={kit.id} style={{ padding: "12px 18px", borderBottom: i < kits.length - 1 ? "1px solid var(--atlas-divider-faint)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                           <div>
                             <p style={{ fontSize: "11px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{fmtDateTime(kit.generated_at)}</p>
-                            <p style={{ fontSize: "10px", color: "#353860", margin: "2px 0 0" }}>
+                            <p style={{ fontSize: "10px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
                               {kit.record_count} items{kit.device_name ? ` · ${kit.device_name}` : ""} · ATLAS {kit.atlas_version}
                             </p>
                           </div>
@@ -1007,14 +1012,14 @@ export default function AdminPage() {
                             <button
                               onClick={() => adminDownloadKit(kit.id, "atlaskit")}
                               disabled={rkDownloading === `${kit.id}-atlaskit`}
-                              style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid #1E3830", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
+                              style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid var(--atlas-kit-btn-border)", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-atlaskit` ? 0.5 : 1 }}
                             >
                               {rkDownloading === `${kit.id}-atlaskit` ? "…" : ".atlaskit"}
                             </button>
                             <button
                               onClick={() => adminDownloadKit(kit.id, "txt")}
                               disabled={rkDownloading === `${kit.id}-txt`}
-                              style={{ fontSize: "10px", fontWeight: 600, color: "#6B7399", background: "none", border: "1px solid #1A1D30", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
+                              style={{ fontSize: "10px", fontWeight: 600, color: "var(--text-muted)", background: "none", border: "1px solid var(--atlas-divider)", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", opacity: rkDownloading === `${kit.id}-txt` ? 0.5 : 1 }}
                             >
                               {rkDownloading === `${kit.id}-txt` ? "…" : ".txt"}
                             </button>

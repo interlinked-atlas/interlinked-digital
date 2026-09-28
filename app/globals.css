@@ -41,7 +41,7 @@
 .atlas-text {
   font-family: 'SF-Intellivised', -apple-system, sans-serif !important;
   animation: atlasGlow 3s ease-in-out infinite;
-  color: #E8ECFF;
+  color: var(--atlas-fg);
   letter-spacing: 0.25em;
 }
 

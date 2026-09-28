@@ -52,6 +52,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const searchParams = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [deviceToRemove, setDeviceToRemove] = useState<Device | null>(null)
+  const [removeDeviceError, setRemoveDeviceError] = useState("")
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState("")
   const [cancelError, setCancelError] = useState("")
@@ -72,6 +74,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [cloudKitsLoading, setCloudKitsLoading] = useState(false)
   const [cloudKitsError, setCloudKitsError] = useState("")
   const [kitDownloading, setKitDownloading] = useState<string | null>(null)
+  const [logsExpanded, setLogsExpanded] = useState(false)
+  const [kitsExpanded, setKitsExpanded] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -144,6 +148,11 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const isCancelled = profile?.subscription_status === "cancelled" || subscription?.status === "canceled"
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
   const maxDevices = 3
+  // Device with the latest last_seen — not necessarily devices[0], which is ordered by
+  // created_at (registration order), not activity recency.
+  const mostRecentDeviceId = devices.length
+    ? devices.reduce((latest, d) => new Date(d.last_seen) > new Date(latest.last_seen) ? d : latest, devices[0]).id
+    : null
   const planName  = "ATLAS"
   const planPrice = isMonthly ? "$30" : "$300"
   const monthlyInstallLimit = 25
@@ -255,9 +264,15 @@ export default function AccountDashboard({ user, subscription, profile, devices,
 
   async function handleRemoveDevice(deviceId: string) {
     setLoading(deviceId)
+    setRemoveDeviceError("")
     const { error } = await supabase.from("devices").delete().eq("id", deviceId).eq("user_id", user.id)
-    if (!error) router.refresh()
     setLoading(null)
+    if (error) {
+      setRemoveDeviceError(error.message || "Failed to remove device. Please try again.")
+      return
+    }
+    setDeviceToRemove(null)
+    router.refresh()
   }
 
   const logTypeColor = (t: string) => t === "install" ? "#3ECFB2" : t === "failed" ? "#E05555" : t === "uninstall" ? "#5B8DEF" : "#F0A030"
@@ -476,7 +491,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>No devices activated yet.</p>
                 <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "4px" }}>Download ATLAS and sign in to activate this Mac.</p>
               </div>
-            ) : devices.map((device, idx) => (
+            ) : devices.map((device) => (
               <div key={device.id} style={{ padding: "14px 22px", display: "flex", alignItems: "flex-start", gap: "14px", borderBottom: "1px solid var(--atlas-divider-subtle)" }}>
                 <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "var(--atlas-icon-bg)", border: "1px solid var(--atlas-border-color)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-text-mid)" strokeWidth="1.5">
@@ -486,7 +501,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--atlas-text-body)" }}>{device.device_name || "Unknown Mac"}</p>
-                    {idx === 0 && <span style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px", borderRadius: "3px", background: "var(--atlas-icon-bg)", border: "1px solid var(--atlas-border-color)", color: "var(--atlas-text-label)" }}>MOST RECENT</span>}
+                    {device.id === mostRecentDeviceId && <span style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "1.5px", padding: "2px 6px", borderRadius: "3px", background: "var(--atlas-icon-bg)", border: "1px solid var(--atlas-border-color)", color: "var(--atlas-text-label)" }}>MOST RECENT</span>}
                   </div>
                   <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", fontFamily: "monospace", marginTop: "2px" }}>
                     ID: {device.hardware_uuid.slice(0, 8).toUpperCase()}···
@@ -496,7 +511,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                     {" · "}Registered {new Date(device.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
-                <button onClick={() => handleRemoveDevice(device.id)} disabled={loading === device.id}
+                <button onClick={() => { setRemoveDeviceError(""); setDeviceToRemove(device) }} disabled={loading === device.id}
                   style={{ fontSize: "11px", color: "var(--atlas-text-faint)", background: "none", border: "none", cursor: "pointer", flexShrink: 0, marginTop: "2px" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#E05555")}
                   onMouseLeave={e => (e.currentTarget.style.color = "var(--atlas-text-faint)")}>
@@ -509,17 +524,21 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <p style={{ fontSize: "10px", color: "var(--atlas-text-ghost)", lineHeight: 1.6 }}>
               When you sign in to ATLAS, your Mac&apos;s hardware identifier is registered here. ATLAS will not open on a new Mac if your plan&apos;s device limit is reached. Remove an existing device to free up a slot.
             </p>
+            {removeDeviceError && !deviceToRemove && <p style={{ fontSize: "11px", color: "#E05555", marginTop: "6px" }}>{removeDeviceError}</p>}
           </div>
         </section>
 
         {/* ── Installation Logs ── */}
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
-          <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", margin: 0 }}>Installation Logs</p>
+          <div style={{ padding: "18px 22px 14px", borderBottom: logsExpanded ? "1px solid var(--atlas-divider)" : "none" }}>
+            <button onClick={() => setLogsExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: logsExpanded ? "12px" : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", transform: logsExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease", display: "inline-block" }}>▶</span>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", margin: 0 }}>Installation Logs</p>
+              </div>
               {logs.length > 0 && <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)" }}>{filteredLogs.length !== logs.length ? `${filteredLogs.length} of ${logs.length}` : `${logs.length} total`}</span>}
-            </div>
-            {logs.length > 0 && (<>
+            </button>
+            {logsExpanded && logs.length > 0 && (<>
               <input
                 type="text" placeholder="Search by app name…" value={logSearch}
                 onChange={e => setLogSearch(e.target.value)}
@@ -538,7 +557,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               </div>
             </>)}
           </div>
-          {logs.length === 0 ? (
+          {!logsExpanded ? null : logs.length === 0 ? (
             <div style={{ padding: "32px 22px", textAlign: "center" }}>
               <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>No logs synced yet.</p>
               <p style={{ fontSize: "11px", color: "var(--atlas-text-faint)", marginTop: "4px" }}>
@@ -695,11 +714,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         {/* ── Recovery Kits ── */}
         {(isSubscribed || (!cloudKitsLoading && cloudKits.length > 0)) && (
           <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
-              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>
-              <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginBottom: 0 }}>Your synced recovery plans — download anytime to restore your plugins.</p>
-            </div>
-            {cloudKitsLoading ? (
+            <button onClick={() => setKitsExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "18px 22px 14px", borderBottom: kitsExpanded ? "1px solid var(--atlas-divider)" : "none", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+              <div>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "2px" }}>Cloud Recovery Kits</p>
+                <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginBottom: 0 }}>Your synced recovery plans — download anytime to restore your plugins.</p>
+              </div>
+              <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", transform: kitsExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease", flexShrink: 0, marginTop: "2px" }}>▶</span>
+            </button>
+            {!kitsExpanded ? null : cloudKitsLoading ? (
               <div style={{ padding: "20px 22px", color: "var(--atlas-text-label)", fontSize: "12px" }}>Loading…</div>
             ) : cloudKitsError ? (
               <div style={{ padding: "20px 22px", color: "#E05555", fontSize: "12px" }}>{cloudKitsError}</div>
@@ -797,6 +819,43 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           </div>
         </div>
       , document.body)}
+
+      {deviceToRemove && typeof document !== "undefined" && createPortal(
+        <div className="backdrop-enter" onClick={(e) => { if (e.target === e.currentTarget) setDeviceToRemove(null) }} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)",
+          zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+        }}>
+          <div className="modal-enter" style={{
+            background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "16px",
+            width: "100%", maxWidth: "360px", padding: "24px", boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "rgba(224,85,85,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E05555" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h2 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "6px", color: "var(--atlas-fg)" }}>Remove this device?</h2>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px", lineHeight: 1.6 }}>
+              <strong style={{ color: "var(--text-secondary)" }}>{deviceToRemove.device_name || "Unknown Mac"}</strong> will no longer be able to sign in to ATLAS until you register it again. This frees up a device slot immediately.
+            </p>
+            {removeDeviceError && <p style={{ fontSize: "11px", color: "#E05555", marginBottom: "12px" }}>{removeDeviceError}</p>}
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setDeviceToRemove(null)} style={{
+                flex: 1, padding: "10px", borderRadius: "10px",
+                border: "1px solid var(--atlas-border-color)", color: "var(--text-secondary)",
+                fontSize: "12px", background: "none", cursor: "pointer",
+              }}>Keep Device</button>
+              <button onClick={() => handleRemoveDevice(deviceToRemove.id)} disabled={loading === deviceToRemove.id} style={{
+                flex: 1, padding: "10px", borderRadius: "10px",
+                background: "rgba(224,85,85,0.8)", color: "#fff",
+                fontSize: "12px", fontWeight: 600, border: "none", cursor: "pointer",
+              }}>
+                {loading === deviceToRemove.id ? "Removing…" : "Yes, Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
     </div>
   )
 }
@@ -830,13 +889,14 @@ function NotifRow({ label, description, enabled, onChange, locked }: {
           style={{
             position: "relative", flexShrink: 0, borderRadius: "11px",
             width: "40px", height: "22px", border: "none", cursor: "pointer",
+            padding: 0, margin: 0,
             background: enabled ? "#3ECFB2" : "var(--atlas-border-color)",
             transition: "background 0.2s",
           }}>
           <span style={{
-            position: "absolute", top: "2px", borderRadius: "50%", background: "#fff",
+            position: "absolute", top: "2px", left: "2px", borderRadius: "50%", background: "#fff",
             width: "18px", height: "18px", transition: "transform 0.2s",
-            transform: enabled ? "translateX(20px)" : "translateX(2px)",
+            transform: enabled ? "translateX(18px)" : "translateX(0px)",
           }} />
         </button>
       )}
