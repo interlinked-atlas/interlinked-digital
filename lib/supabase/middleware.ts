@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protect account routes
   if (
-    (request.nextUrl.pathname.startsWith('/account') ||
+    (request.nextUrl.pathname.startsWith('/atlas/account') ||
      request.nextUrl.pathname.startsWith('/atlas/checkout')) &&
     !user
   ) {
