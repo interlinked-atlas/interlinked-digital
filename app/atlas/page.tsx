@@ -194,6 +194,61 @@ export default function ATLASWaitlistPage() {
     }
   }
 
+  // Interactive feature explainer — factual content sourced from /atlas/plans.
+  // Each entry describes a capability already documented there; no new
+  // claims or capabilities are introduced here.
+  const ATLAS_FEATURES = [
+    {
+      key: 'install',
+      label: 'Installation',
+      body: 'Drop in a plugin or software installer and ATLAS handles the install automatically — no manual drag-and-drop into system folders, no guessing where a format needs to go. One click, and it’s installed correctly.',
+    },
+    {
+      key: 'uninstall',
+      label: 'Uninstallation',
+      body: 'ATLAS removes exactly what it installed, nothing more — including the install receipts and leftover files most uninstallers skip, so your system folders stay clean and organized instead of accumulating orphaned files over time.',
+    },
+    {
+      key: 'recovery',
+      label: 'Recovery / Rollback',
+      body: 'If an install needs to be undone, ATLAS can roll it back — restoring your system to the way it was before that install, when that’s possible for the install in question.',
+    },
+    {
+      key: 'recovery-kit',
+      label: 'ATLAS Recovery Kit™',
+      body: 'A cloud backup of your ATLAS install history. If you move to a new Mac or need to restore your setup, ATLAS Recovery Kit™ keeps that history backed up and available, so you’re not starting over from scratch.',
+    },
+    {
+      key: 'cleaner',
+      label: 'ATLAS Cleaner™',
+      body: 'Finds leftover files from software that was removed outside of ATLAS, so your Mac doesn’t quietly accumulate clutter from installers and plugins you no longer use.',
+    },
+    {
+      key: 'formats',
+      label: 'Product Format Management',
+      body: 'Plugins can come in several formats — AU, VST, VST3, AAX, and more. ATLAS keeps track of which formats of a product are installed and where, so you always know the status of each format instead of hunting through system folders yourself.',
+    },
+  ] as const
+  const [selectedFeature, setSelectedFeature] = useState<string>(ATLAS_FEATURES[0].key)
+  const activeFeature = ATLAS_FEATURES.find(f => f.key === selectedFeature) ?? ATLAS_FEATURES[0]
+
+  // Full $30/mo plan feature list — copied verbatim from app/atlas/plans/page.tsx.
+  const PLAN_FEATURES = [
+    'Up to 3 devices',
+    '25 installs / month',
+    'TITAN CORE™',
+    'Smart Storage',
+    'Full install history',
+    'Bulk installation',
+    'Uninstall & Rollback',
+    'Trash install file',
+    'ATLAS CLEANER™',
+    'ATLAS RECOVERY KIT™',
+    'Cloud Backup',
+    'Built-In Virus Scanner',
+    'File Sharing (Coming Soon)',
+  ]
+
   return (
     <>
       <style>{`
@@ -260,17 +315,19 @@ export default function ATLASWaitlistPage() {
           transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
-        /* ── Hero (video+statement / waitlist+counter) ── */
+        /* ── Hero (video+statement). Previously a 2-column grid sharing this
+             row with the waitlist; the waitlist has moved further down the
+             page (below pricing), so this is now a single centered column
+             sized to match the video's original rendered width. ── */
         .hero {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 1120px;
+          max-width: 760px;
           display: grid;
-          grid-template-columns: 2.4fr 1fr;
-          grid-template-areas: "video right";
+          grid-template-columns: 1fr;
+          grid-template-areas: "video";
           align-items: start;
-          gap: 40px;
           margin-bottom: 16px;
           opacity: ${mounted ? 1 : 0};
           transform: translateY(${mounted ? '0' : '14px'});
@@ -282,11 +339,14 @@ export default function ATLASWaitlistPage() {
           flex-direction: column;
           gap: 14px;
         }
+        /* Waitlist region — unchanged styling, now positioned below pricing
+           instead of beside the hero video. */
         .hero-right-region {
-          grid-area: right;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
+          align-items: center;
+          width: 100%;
+          max-width: 460px;
         }
         .hero-video-wrap {
           width: 100%;
@@ -914,6 +974,132 @@ export default function ATLASWaitlistPage() {
           margin: 0;
         }
 
+        /* ── Minimal FAQ (moved, bottom of page) — visually subordinate to .fp-heading ── */
+        .faq-minimal .faq-heading { font-size: 17px; margin-bottom: 6px; }
+        .faq-minimal .faq-q { font-size: 14px; padding: 10px 2px; }
+        .faq-minimal .faq-a { font-size: 13px; padding: 0 2px 12px; }
+
+        /* ── Features / Plan / Pricing (replaces the old FAQ slot) ── */
+        .fp-section {
+          margin-top: 24px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+        }
+        .fp-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 32px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: #3ECFB2;
+          text-align: center;
+          margin-bottom: 0;
+        }
+        .fp-sub {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: var(--atlas-text-subtle);
+          text-align: center;
+          margin-top: -12px;
+        }
+        .fp-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: center;
+          width: 100%;
+        }
+        .fp-tab {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--atlas-text-subtle);
+          background: transparent;
+          border: 1px solid var(--atlas-border-faint);
+          border-radius: 20px;
+          padding: 8px 14px;
+          cursor: pointer;
+          transition: color 0.2s, border-color 0.2s, background 0.2s;
+        }
+        .fp-tab:hover { color: #3ECFB2; border-color: rgba(62,207,178,0.35); }
+        .fp-tab.active { color: #3ECFB2; border-color: rgba(62,207,178,0.5); background: rgba(62,207,178,0.1); }
+        .fp-desc {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 14px;
+          line-height: 1.6;
+          color: var(--atlas-fg);
+          background: rgba(62,207,178,0.06);
+          border: 1px solid rgba(62,207,178,0.18);
+          border-radius: 14px;
+          padding: 16px;
+          width: 100%;
+          text-align: left;
+        }
+        .fp-desc-title {
+          display: block;
+          font-weight: 700;
+          color: #3ECFB2;
+          margin-bottom: 6px;
+          font-size: 14px;
+        }
+        .fp-plan-heading {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--atlas-fg);
+          text-align: center;
+          margin-top: 4px;
+        }
+        .fp-plan-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+        }
+        .fp-plan-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 13px;
+          color: var(--atlas-text-subtle);
+        }
+        .fp-check { color: #3ECFB2; flex-shrink: 0; }
+        .fp-pricing {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          padding-top: 16px;
+          border-top: 1px solid var(--atlas-border-faint);
+        }
+        .fp-price-row {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+        .fp-price {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 48px;
+          font-weight: 800;
+          color: #3ECFB2;
+          letter-spacing: -0.02em;
+        }
+        .fp-price-period {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--atlas-text-subtle);
+        }
+        .fp-price-note {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size: 12px;
+          color: var(--atlas-text-faint);
+        }
+
         @media (max-width: 1023px) {
           .logo-text { font-size: 44px; letter-spacing: 18px; padding-left: 18px; }
           .logo-video-wrap { width: 76px; height: 76px; }
@@ -1053,7 +1239,7 @@ export default function ATLASWaitlistPage() {
 
         <div className="hero">
 
-          {/* Left — non-interactive looping ATLAS demo + statement */}
+          {/* non-interactive looping ATLAS demo + statement — unchanged visual assets */}
           <div className="hero-video-region">
             <div className="hero-video-wrap">
               <video
@@ -1081,11 +1267,77 @@ export default function ATLASWaitlistPage() {
               <span className="hero-statement-lead">ATLAS</span> is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
             </p>
           </div>
+        </div>
 
-          {/* Right — waitlist */}
-          <div className="hero-right-region">
+        {/* Demo section — always visible — unchanged: heading, copy, divider, iframe */}
+        <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
+            <h2 className="demo-heading">See ATLAS in Action</h2>
+            <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
+            <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.8, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
+            <div className="demo-divider" />
+            <div className="demo-video-wrap">
+              <iframe
+                className="demo-iframe"
+                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&fs=0"
+                title="ATLAS Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+        </div>
 
-          {/* Waitlist content — open/unstyled section, no card container */}
+        <div className="content">
+
+          {/* Features / Plan / Pricing */}
+          <div className="fp-section" ref={faqRef} style={{
+            opacity: faqVisible ? 1 : 0,
+            transform: `translateY(${faqVisible ? '0' : '14px'})`,
+            transition: 'opacity 0.7s ease, transform 0.7s ease',
+          }}>
+            <h2 className="fp-heading">Features</h2>
+            <p className="fp-sub">Select a feature to see what it does.</p>
+
+            <div className="fp-tabs">
+              {ATLAS_FEATURES.map(f => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`fp-tab${selectedFeature === f.key ? ' active' : ''}`}
+                  onClick={() => setSelectedFeature(f.key)}
+                  aria-pressed={selectedFeature === f.key}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="fp-desc">
+              <span className="fp-desc-title">{activeFeature.label}</span>
+              {activeFeature.body}
+            </div>
+
+            <h3 className="fp-plan-heading">Everything in the ATLAS plan</h3>
+            <div className="fp-plan-list">
+              {PLAN_FEATURES.map(item => (
+                <div className="fp-plan-item" key={item}>
+                  <svg className="fp-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="fp-pricing">
+              <div className="fp-price-row">
+                <span className="fp-price">$30</span>
+                <span className="fp-price-period">/month</span>
+              </div>
+              <p className="fp-price-note">Up to 3 devices &middot; cancel anytime</p>
+            </div>
+          </div>
+
+          {/* Join Waitlist — moved here from the hero row; same markup, state, and handlers as before */}
+          <div className="hero-right-region" style={{ marginTop: 28 }}>
+
           <div className="card">
             <div className="card-body">
 
@@ -1205,27 +1457,16 @@ export default function ATLASWaitlistPage() {
           )}
 
           </div>
-        </div>
 
-        <div className="content">
-
-          {/* FAQ */}
-          <div className="faq" ref={faqRef} style={{
-            opacity: faqVisible ? 1 : 0,
-            transform: `translateY(${faqVisible ? '0' : '14px'})`,
-            transition: 'opacity 0.7s ease, transform 0.7s ease',
-          }}>
+          {/* Minimal FAQ — kept, moved here, visually subordinate to the Features/Pricing section above */}
+          <div className="faq faq-minimal" style={{ marginTop: 28 }}>
             <h2 className="faq-heading">FAQ</h2>
             {[
               { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
               { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
-              { q: 'What does ATLAS cost?', a: 'Price Announcing Soon.' },
               { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices.' },
               { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
-              { q: 'Does ATLAS install everything?', a: 'ATLAS supports many common macOS software installers, but not every installer or software package is guaranteed to be compatible.' },
               { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
-              { q: 'How does ATLAS work?', a: 'ATLAS is built to autonomously install your programs with the simple click of a single Install button.' },
-              { q: 'How can I get Involved in ATLAS? Im Excited!', a: 'For Investment Purposes, Press & More: interlinked.digital@gmail.com' },
             ].map(item => (
               <details className="faq-item" key={item.q}>
                 <summary className="faq-q">
@@ -1237,56 +1478,39 @@ export default function ATLASWaitlistPage() {
             ))}
           </div>
 
-        </div>
-
-        {/* Demo section — always visible */}
-        <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
-            <h2 className="demo-heading">See ATLAS in Action</h2>
-            <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
-            <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.8, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
-            <div className="demo-divider" />
-            <div className="demo-video-wrap">
-              <iframe
-                className="demo-iframe"
-                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&fs=0"
-                title="ATLAS Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-
-            {/* Share with a friend */}
-            <div className="share-section">
-              <p className="share-heading">Know someone who'd love this?</p>
-              <p className="share-sub">Enter their email and we'll send them a personal invite to join the waitlist.</p>
-              {shareStatus === 'sent' ? (
-                <p className="share-sent">✓ Invite sent — they'll hear from us shortly.</p>
-              ) : (
-                <form className="share-row" onSubmit={handleShare}>
-                  <input
-                    className="share-input"
-                    type="email"
-                    placeholder="friend@email.com"
-                    value={shareEmail}
-                    onChange={e => setShareEmail(e.target.value)}
-                    required
-                    disabled={shareStatus === 'sending'}
-                    autoComplete="off"
-                  />
-                  <button
-                    className="share-btn"
-                    type="submit"
-                    disabled={shareStatus === 'sending' || !shareEmail}
-                  >
-                    {shareStatus === 'sending' ? 'Sending…' : 'Send Invite →'}
-                  </button>
-                </form>
-              )}
-              {shareStatus === 'error' && (
-                <p className="error-msg">{shareError}</p>
-              )}
-            </div>
+          {/* Share with a friend */}
+          <div className="share-section" style={{ marginTop: 20 }}>
+            <p className="share-heading">Know someone who'd love this?</p>
+            <p className="share-sub">Enter their email and we'll send them a personal invite to join the waitlist.</p>
+            {shareStatus === 'sent' ? (
+              <p className="share-sent">✓ Invite sent — they'll hear from us shortly.</p>
+            ) : (
+              <form className="share-row" onSubmit={handleShare}>
+                <input
+                  className="share-input"
+                  type="email"
+                  placeholder="friend@email.com"
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  required
+                  disabled={shareStatus === 'sending'}
+                  autoComplete="off"
+                />
+                <button
+                  className="share-btn"
+                  type="submit"
+                  disabled={shareStatus === 'sending' || !shareEmail}
+                >
+                  {shareStatus === 'sending' ? 'Sending…' : 'Send Invite →'}
+                </button>
+              </form>
+            )}
+            {shareStatus === 'error' && (
+              <p className="error-msg">{shareError}</p>
+            )}
           </div>
+
+        </div>
 
       </div>
     </>
