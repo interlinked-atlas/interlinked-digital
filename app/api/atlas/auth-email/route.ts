@@ -40,10 +40,14 @@ export async function POST(req: NextRequest) {
   const actionType: string = email_data?.email_action_type ?? ''
 
   if (actionType === 'recovery') {
-    // Password reset — build the magic link from token_hash
+    // Password reset — build the magic link from token_hash.
+    // Destination is pinned to the ATLAS-branded reset page regardless of
+    // email_data.redirect_to (the client's resetPasswordForEmail() call still
+    // passes the legacy /auth/reset-password as its own redirectTo, which
+    // would otherwise take priority here and silently defeat this change).
     const siteUrl = email_data?.site_url ?? 'https://www.interlinked.digital'
     const tokenHash = email_data?.token_hash ?? email_data?.token ?? ''
-    const redirectTo = email_data?.redirect_to ?? `${siteUrl}/auth/reset-password`
+    const redirectTo = `${siteUrl}/atlas/reset-password`
     const resetUrl = tokenHash
       ? `${siteUrl}/auth/confirm?token_hash=${tokenHash}&type=recovery&next=${encodeURIComponent(redirectTo)}`
       : redirectTo
