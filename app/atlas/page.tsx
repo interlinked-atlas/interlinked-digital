@@ -990,7 +990,7 @@ export default function ATLASWaitlistPage() {
         }
         .fp-heading {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 32px;
+          font-size: 34px;
           font-weight: 700;
           letter-spacing: -0.02em;
           color: #3ECFB2;
@@ -999,7 +999,7 @@ export default function ATLASWaitlistPage() {
         }
         .fp-sub {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
+          font-size: 15px;
           color: var(--atlas-text-subtle);
           text-align: center;
           margin-top: -12px;
@@ -1013,13 +1013,13 @@ export default function ATLASWaitlistPage() {
         }
         .fp-tab {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 14px;
           font-weight: 600;
           color: var(--atlas-text-subtle);
           background: transparent;
           border: 1px solid var(--atlas-border-faint);
           border-radius: 20px;
-          padding: 8px 14px;
+          padding: 9px 16px;
           cursor: pointer;
           transition: color 0.2s, border-color 0.2s, background 0.2s;
         }
@@ -1027,7 +1027,7 @@ export default function ATLASWaitlistPage() {
         .fp-tab.active { color: #3ECFB2; border-color: rgba(62,207,178,0.5); background: rgba(62,207,178,0.1); }
         .fp-desc {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1.6;
           color: var(--atlas-fg);
           background: rgba(62,207,178,0.06);
@@ -1042,11 +1042,11 @@ export default function ATLASWaitlistPage() {
           font-weight: 700;
           color: #3ECFB2;
           margin-bottom: 6px;
-          font-size: 14px;
+          font-size: 16px;
         }
         .fp-plan-heading {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
           color: var(--atlas-fg);
           text-align: center;
@@ -1066,7 +1066,7 @@ export default function ATLASWaitlistPage() {
           gap: 6px;
           text-align: center;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 14px;
           line-height: 1.35;
           color: var(--atlas-text-subtle);
         }
@@ -1094,20 +1094,20 @@ export default function ATLASWaitlistPage() {
         }
         .fp-price {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 48px;
+          font-size: 52px;
           font-weight: 800;
           color: #3ECFB2;
           letter-spacing: -0.02em;
         }
         .fp-price-period {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 600;
           color: var(--atlas-text-subtle);
         }
         .fp-price-note {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
+          font-size: 14px;
           color: var(--atlas-text-faint);
         }
 
