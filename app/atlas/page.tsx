@@ -1053,20 +1053,31 @@ export default function ATLASWaitlistPage() {
           margin-top: 4px;
         }
         .fp-plan-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 18px 10px;
           width: 100%;
+          justify-content: center;
         }
         .fp-plan-item {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 10px;
+          gap: 6px;
+          text-align: center;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
+          font-size: 12px;
+          line-height: 1.35;
           color: var(--atlas-text-subtle);
         }
+        .fp-plan-item:last-child {
+          grid-column: 1 / -1;
+          justify-self: center;
+        }
         .fp-check { color: #3ECFB2; flex-shrink: 0; }
+        @media (max-width: 420px) {
+          .fp-plan-list { grid-template-columns: repeat(2, 1fr); gap: 16px 8px; }
+        }
         .fp-pricing {
           display: flex;
           flex-direction: column;
