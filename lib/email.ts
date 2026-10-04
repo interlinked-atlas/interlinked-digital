@@ -95,7 +95,6 @@ function base(title: string, body: string) {
   <style>
     @font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");font-weight:normal;font-style:normal;}
     :root { color-scheme: dark; supported-color-schemes: dark; }
-    body, table, td { background-color: ${BG} !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background:${BG};background-color:${BG};-webkit-font-smoothing:antialiased;" bgcolor="${BG}">
@@ -155,9 +154,12 @@ function body(text: string) {
 }
 
 function tealBtn(text: string, url: string) {
+  // bgcolor is set explicitly alongside the CSS background — some clients'
+  // dark-mode handling can otherwise override an inline style background on
+  // a <td>, which would make the button blend into the dark page background.
   return `<table cellpadding="0" cellspacing="0" border="0">
     <tr>
-      <td align="center" style="background:${TEAL};border-radius:10px;">
+      <td align="center" style="background:${TEAL};background-color:${TEAL};border-radius:10px;" bgcolor="${TEAL}">
         <a href="${url}" style="display:inline-block;padding:13px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:-0.01em;color:#080809;text-decoration:none;">${text} →</a>
       </td>
     </tr>
