@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch'
 
 interface SendOptions {
   to: string
@@ -52,6 +52,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'october-announcement': {
       subject: 'ATLAS — macOS available this October.',
       html: octoberAnnouncementEmail(),
+    },
+    'features-pricing-launch': {
+      subject: 'ATLAS — Plan, Pricing & Features are now live.',
+      html: featuresPricingLaunchEmail(),
     },
   }
 
@@ -451,6 +455,45 @@ function octoberAnnouncementEmail() {
 
       ${divider()}
 
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+      </p>
+    </div>
+  `)
+}
+
+function featuresPricingLaunchEmail() {
+  const features = [
+    'Installation — drop in an installer, ATLAS handles the rest',
+    'Uninstallation — removes exactly what it installed, nothing left behind',
+    'Recovery / Rollback — undo an install when needed',
+    'ATLAS Recovery Kit™ — cloud backup of your install history',
+    'ATLAS Cleaner™ — finds leftover files from software removed outside ATLAS',
+    'Product Format Management — tracks AU, VST, VST3 &amp; AAX installs',
+  ]
+
+  return base('ATLAS — Plan, Pricing & Features are now live.', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Now Available')}
+      ${heading('Plan, Pricing & Features — now live.')}
+      ${body("You're on the ATLAS waitlist, so you're seeing this first. The full ATLAS plan — pricing and every feature — is now live on the site.")}
+
+      ${infoBox(features, TEAL)}
+
+      <!-- Pricing callout -->
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
+        <tr><td align="center" style="padding:22px 20px;">
+          <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${MUTED};">ATLAS Plan</p>
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:34px;font-weight:800;letter-spacing:-0.02em;color:${TEAL};">$30<span style="font-size:14px;font-weight:600;color:${SUBTLE};">/month</span></p>
+        </td></tr>
+      </table>
+
+      ${tealBtn('See Plan & Pricing', 'https://www.interlinked.digital/atlas')}
+
+      ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
         You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
       </p>
