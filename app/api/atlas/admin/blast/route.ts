@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const { data: rows, error } = await supabase
     .from('atlas_waitlist')
     .select('email')
-    .order('created_at', { ascending: true })
+    .order('signed_up_at', { ascending: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
