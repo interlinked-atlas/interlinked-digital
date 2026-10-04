@@ -83,16 +83,24 @@ const LOGO_URL  = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAAB
 // ─────────────────────────────────────────────
 function base(title: string, body: string) {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:${BG};">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- Force the dark presentation explicitly — do not let the recipient's
+       client auto-pick a theme or invert these colors. -->
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
   <title>${title}</title>
-  <style>@font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");font-weight:normal;font-style:normal;}</style>
+  <style>
+    @font-face{font-family:"SF-Intellivised";src:url("https://www.interlinked.digital/fonts/SF-Intellivised.ttf") format("truetype");font-weight:normal;font-style:normal;}
+    :root { color-scheme: dark; supported-color-schemes: dark; }
+    body, table, td { background-color: ${BG} !important; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};">
-  <tr><td align="center" style="padding:52px 20px 48px;">
+<body style="margin:0;padding:0;background:${BG};background-color:${BG};-webkit-font-smoothing:antialiased;" bgcolor="${BG}">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};background-color:${BG};" bgcolor="${BG}">
+  <tr><td align="center" style="padding:52px 20px 48px;background:${BG};background-color:${BG};" bgcolor="${BG}">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
 
       <!-- Logo -->
@@ -110,7 +118,7 @@ function base(title: string, body: string) {
       </td></tr>
 
       <!-- Card -->
-      <tr><td style="background:${CARD};border-radius:16px;border:1px solid ${BORDER};overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.6);">
+      <tr><td style="background:${CARD};background-color:${CARD};border-radius:16px;border:1px solid ${BORDER};overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.6);" bgcolor="${CARD}">
         ${body}
       </td></tr>
 
@@ -463,35 +471,16 @@ function octoberAnnouncementEmail() {
 }
 
 function featuresPricingLaunchEmail() {
-  const features = [
-    'Installation — drop in an installer, ATLAS handles the rest',
-    'Uninstallation — removes exactly what it installed, nothing left behind',
-    'Recovery / Rollback — undo an install when needed',
-    'ATLAS Recovery Kit™ — cloud backup of your install history',
-    'ATLAS Cleaner™ — finds leftover files from software removed outside ATLAS',
-    'Product Format Management — tracks AU, VST, VST3 &amp; AAX installs',
-  ]
-
   return base('ATLAS — Plan, Pricing & Features are now live.', `
     <!-- Top teal/indigo gradient bar -->
     <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
 
     <div style="padding:36px 36px 40px;">
       ${eyebrow('Now Available')}
-      ${heading('Plan, Pricing & Features — now live.')}
-      ${body("You're on the ATLAS waitlist, so you're seeing this first. The full ATLAS plan — pricing and every feature — is now live on the site.")}
+      ${heading('Plan, Pricing & Features are live.')}
+      ${body("You're on the ATLAS waitlist, so you're seeing this first. The ATLAS plan, pricing, and full feature breakdown just went live on the site — take a look.")}
 
-      ${infoBox(features, TEAL)}
-
-      <!-- Pricing callout -->
-      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
-        <tr><td align="center" style="padding:22px 20px;">
-          <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${MUTED};">ATLAS Plan</p>
-          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:34px;font-weight:800;letter-spacing:-0.02em;color:${TEAL};">$30<span style="font-size:14px;font-weight:600;color:${SUBTLE};">/month</span></p>
-        </td></tr>
-      </table>
-
-      ${tealBtn('See Plan & Pricing', 'https://www.interlinked.digital/atlas')}
+      ${tealBtn('Explore ATLAS', 'https://www.interlinked.digital/atlas')}
 
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
