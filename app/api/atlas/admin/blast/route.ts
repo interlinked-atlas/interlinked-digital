@@ -8,11 +8,15 @@ const supabase = createClient(
 )
 
 // POST /api/atlas/admin/blast
-// Body: { secret: string, template: 'launch' | ..., dryRun?: boolean }
+// Body: { secret: string, template: 'launch' | ..., dryRun?: boolean, exclude?: string[] }
 // Requires ATLAS_ADMIN_SECRET env var to match.
 // dryRun=true returns email list without sending.
+// exclude is an optional explicit list of addresses to drop from the
+// atlas_waitlist result before sending/counting — e.g. a known synthetic
+// test fixture address that happens to be a real row in the table. It only
+// removes recipients; it can never add one outside atlas_waitlist.
 export async function POST(req: NextRequest) {
-  const { secret, template = 'launch', dryRun = false } = await req.json()
+  const { secret, template = 'launch', dryRun = false, exclude = [] } = await req.json()
 
   if (!process.env.ATLAS_ADMIN_SECRET || secret !== process.env.ATLAS_ADMIN_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,7 +32,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const emails = (rows ?? []).map((r: { email: string }) => r.email).filter(Boolean)
+  const excludeSet = new Set((exclude as string[]).map((e) => e.toLowerCase()))
+  const emails = (rows ?? [])
+    .map((r: { email: string }) => r.email)
+    .filter(Boolean)
+    .filter((e: string) => !excludeSet.has(e.toLowerCase()))
 
   if (dryRun) {
     return NextResponse.json({ count: emails.length, emails, dryRun: true })
