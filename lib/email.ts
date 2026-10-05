@@ -507,7 +507,7 @@ function demoFeaturesAnnouncementEmail() {
     <div style="padding:36px 36px 40px;">
       ${eyebrow('New Demo')}
       ${heading("See ATLAS's Features Overview.")}
-      ${body("We put together a new demo walking through what ATLAS actually does. Tap below to watch it — and explore the full feature breakdown on the site.")}
+      ${body("Check out the new Features Overview to experience ATLAS and its potential. Tap below to watch it — and explore the full feature breakdown on the site.")}
 
       <!-- Clickable video thumbnail -->
       <a href="${demoUrl}" target="_blank" style="display:block;text-decoration:none;margin-bottom:24px;position:relative;">
