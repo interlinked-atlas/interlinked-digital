@@ -1280,16 +1280,15 @@ export default function ATLASWaitlistPage() {
           </div>
         </div>
 
-        {/* Demo section — always visible — unchanged: heading, copy, divider, iframe */}
+        {/* Demo section — always visible — heading/divider/iframe container unchanged; video + subtitle updated to Demo 2: Features Overview, stale "Stay Tuned" pricing line removed */}
         <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
             <h2 className="demo-heading">See ATLAS in Action</h2>
-            <p className="demo-sub">Watch how ATLAS autonomously installs plugins and software — drop a file, ATLAS handles the rest.</p>
-            <p style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 12, fontWeight: 600, color: '#3ECFB2', opacity: 0.8, marginTop: -8 }}>Stay Tuned for Subscription Plans &amp; Pricing.</p>
+            <p className="demo-sub">A closer look at ATLAS&apos;s Features Overview — see installation, uninstallation, rollback, and more in action.</p>
             <div className="demo-divider" />
             <div className="demo-video-wrap">
               <iframe
                 className="demo-iframe"
-                src="https://www.youtube.com/embed/OHbz5y4kHeg?rel=0&modestbranding=1&color=white&fs=0"
+                src="https://www.youtube.com/embed/q2W9QkBKz2c?rel=0&modestbranding=1&color=white&fs=0"
                 title="ATLAS Demo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
