@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement'
 
 interface SendOptions {
   to: string
@@ -56,6 +56,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'features-pricing-launch': {
       subject: 'ATLAS — Plan, Pricing & Features are now live.',
       html: featuresPricingLaunchEmail(),
+    },
+    'demo-features-announcement': {
+      subject: 'ATLAS — New Demo: Features Overview',
+      html: demoFeaturesAnnouncementEmail(),
     },
   }
 
@@ -483,6 +487,34 @@ function featuresPricingLaunchEmail() {
       ${body("You're on the ATLAS waitlist, so you're seeing this first. The ATLAS plan, pricing, and full feature breakdown just went live on the site — take a look.")}
 
       ${tealBtn('Explore ATLAS', 'https://www.interlinked.digital/atlas')}
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+      </p>
+    </div>
+  `)
+}
+
+function demoFeaturesAnnouncementEmail() {
+  const demoUrl = 'https://www.interlinked.digital/atlas'
+  const thumbUrl = 'https://img.youtube.com/vi/q2W9QkBKz2c/maxresdefault.jpg'
+
+  return base('ATLAS — New Demo: Features Overview', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('New Demo')}
+      ${heading("See ATLAS's Features Overview.")}
+      ${body("We put together a new demo walking through what ATLAS actually does. Tap below to watch it — and explore the full feature breakdown on the site.")}
+
+      <!-- Clickable video thumbnail -->
+      <a href="${demoUrl}" target="_blank" style="display:block;text-decoration:none;margin-bottom:24px;position:relative;">
+        <img src="${thumbUrl}" width="100%" alt="Watch the ATLAS Features Overview demo" style="display:block;border:0;width:100%;border-radius:10px;border:1px solid ${BORDER};">
+      </a>
+
+      ${tealBtn('Watch the Demo', demoUrl)}
 
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
