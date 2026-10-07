@@ -430,15 +430,22 @@ export default function ATLASWaitlistPage() {
           padding-left: 34px;
           line-height: 1;
         }
-        .logo-brand-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--atlas-text-subtle);
-          letter-spacing: 0.01em;
-          text-align: center;
-          margin-top: -4px;
+        /* InterLinked sub-brand mark, replacing the old "by InterLinked®" text.
+           Two real logo files (not a CSS filter) are swapped per theme — the
+           supplied white variant for dark mode, the black variant for light
+           mode — using the same html.light convention as app/globals.css. */
+        .logo-interlinked {
+          width: 130px;
+          height: auto;
+          display: block;
+          margin-top: 2px;
+          opacity: 0.85;
         }
+        html.light .logo-interlinked { opacity: 0.8; }
+        .logo-interlinked.for-dark  { display: block; }
+        .logo-interlinked.for-light { display: none; }
+        html.light .logo-interlinked.for-dark  { display: none; }
+        html.light .logo-interlinked.for-light { display: block; }
         .logo-tagline {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 16px;
@@ -1114,11 +1121,13 @@ export default function ATLASWaitlistPage() {
         @media (max-width: 1023px) {
           .logo-text { font-size: 44px; letter-spacing: 18px; padding-left: 18px; }
           .logo-video-wrap { width: 76px; height: 76px; }
+          .logo-interlinked { width: 100px; }
         }
 
         @media (max-width: 480px) {
           .logo-text { font-size: 30px; letter-spacing: 11px; padding-left: 11px; }
           .logo-video-wrap { width: 60px; height: 60px; }
+          .logo-interlinked { width: 72px; }
           .input-row { flex-direction: column; }
           .submit-btn { width: 100%; }
         }
@@ -1243,7 +1252,8 @@ export default function ATLASWaitlistPage() {
               <img src="/atlas-icon.png" className="logo-video" alt="ATLAS" />
             </div>
             <span className="logo-text">ATLAS</span>
-            <p className="logo-brand-sub">by InterLinked®</p>
+            <img src="/interlinked-logo-dark.png" className="logo-interlinked for-dark" alt="InterLinked" />
+            <img src="/interlinked-logo.png" className="logo-interlinked for-light" alt="InterLinked" />
             <p className="logo-tagline">The World's First Autonomous Installation App.</p>
           </div>
         </div>
