@@ -9,10 +9,6 @@ const supabaseAdmin = createClient(
 const ATLAS_MONTHLY_LIMIT = 25
 const ATLAS_MAX_DEVICES   = 3
 
-function isSubscribedPlan(plan: string) {
-  return plan === 'atlas' || plan === 'pro' || plan === 'standard'
-}
-
 // GET /api/atlas/entitlement
 export async function GET(request: Request) {
   try {
@@ -52,23 +48,41 @@ export async function GET(request: Request) {
       })
     }
 
-    const plan = subscription.plan ?? 'atlas'
-    if (!isSubscribedPlan(plan)) {
-      return NextResponse.json({ valid: false, reason: 'no_subscription' })
-    }
+    // Entitlement is already fully determined above by subscriptions.status
+    // (active / trialing / past_due-within-grace) — no plan-string check.
 
-    // Get current monthly install count (calendar month)
-    const now         = new Date()
-    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    const { data: countRow } = await supabaseAdmin
-      .from('monthly_install_counts')
-      .select('count')
-      .eq('user_id', user.id)
-      .eq('period_start', periodStart)
+    // Get current install count from the authoritative, account-wide
+    // install_counts table (one row per user_id — the 25-install allowance
+    // is shared across every device on the account, not per device).
+    //
+    // Period boundary is computed by the same atlas_period_start/
+    // atlas_next_period_start functions reserve_install_slot and
+    // confirm_install_reservation use — one shared calculation, not a second
+    // competing one. billing_interval/billing_anchor_day are cadence metadata
+    // only; entitlement above remains solely subscriptions.status-based.
+    const { data: billingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('billing_interval, billing_anchor_day')
+      .eq('id', user.id)
       .single()
 
-    const monthlyUsed = countRow?.count ?? 0
-    const resetDate   = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
+    const { data: periodStart } = await supabaseAdmin.rpc('atlas_period_start', {
+      p_billing_interval: billingProfile?.billing_interval ?? null,
+      p_billing_anchor_day: billingProfile?.billing_anchor_day ?? null,
+    })
+    const { data: nextPeriodStart } = await supabaseAdmin.rpc('atlas_next_period_start', {
+      p_billing_interval: billingProfile?.billing_interval ?? null,
+      p_billing_anchor_day: billingProfile?.billing_anchor_day ?? null,
+    })
+
+    const { data: countRows } = await supabaseAdmin
+      .from('install_counts')
+      .select('installs_this_month')
+      .eq('user_id', user.id)
+      .eq('period_start', periodStart)
+
+    const monthlyUsed = (countRows ?? []).reduce((sum, r) => sum + (r.installs_this_month ?? 0), 0)
+    const resetDate   = new Date(nextPeriodStart as string).toISOString()
 
     const { data: devices } = await supabaseAdmin
       .from('devices')
