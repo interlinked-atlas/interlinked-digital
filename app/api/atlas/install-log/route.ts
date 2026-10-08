@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { hasActiveAtlasSubscription } from '@/lib/entitlement'
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-function isActiveSubscription(plan: string, status: string) {
-  return status === 'active' && (plan === 'atlas' || plan === 'pro' || plan === 'standard')
-}
 
 export async function POST(request: Request) {
   try {
@@ -17,10 +14,7 @@ export async function POST(request: Request) {
 
     const { app_name, device_id } = await request.json()
 
-    const { data: profile } = await supabaseAdmin
-      .from('profiles').select('plan, subscription_status').eq('id', user.id).single()
-
-    if (!isActiveSubscription(profile?.plan ?? '', profile?.subscription_status ?? '')) {
+    if (!(await hasActiveAtlasSubscription(supabaseAdmin, user.id))) {
       return NextResponse.json({ allowed: false, reason: 'no_active_subscription' }, { status: 403 })
     }
 

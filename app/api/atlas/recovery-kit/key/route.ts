@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { hasActiveAtlasSubscription } from '@/lib/entitlement'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,13 +44,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single()
-  const isSubscribed = profile?.plan === 'atlas' || profile?.plan === 'pro' || profile?.plan === 'standard'
-  if (!isSubscribed) {
+  if (!(await hasActiveAtlasSubscription(supabase, user.id))) {
     return NextResponse.json({ error: 'Cloud Recovery Kit requires an active ATLAS subscription' }, { status: 403 })
   }
 
