@@ -4,6 +4,11 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' })
+// Test-mode counterpart — only used when a test-mode event is received
+// (event.livemode === false). A live event always uses `stripe` above.
+const stripeTest = process.env.STRIPE_SECRET_KEY_TEST
+  ? new Stripe(process.env.STRIPE_SECRET_KEY_TEST, { apiVersion: '2025-04-30.basil' })
+  : null
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,8 +117,8 @@ async function upsertSubscription(
   console.log(`[ATLAS] Updated user ${userId} → plan:${plan.profile} status:${profileStatus}`)
 }
 
-async function handleCancellation(customerId: string, stripeEvent: string) {
-  const customer = await stripe.customers.retrieve(customerId)
+async function handleCancellation(stripeClient: Stripe, customerId: string, stripeEvent: string) {
+  const customer = await stripeClient.customers.retrieve(customerId)
   if (customer.deleted) return
   const email = (customer as Stripe.Customer).email
   if (!email) return
@@ -167,13 +172,35 @@ export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
 
-  let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
-  } catch (err: any) {
-    console.error('[ATLAS] Webhook signature verification failed:', err.message)
+  // Accept events signed with either the live or the test-mode webhook
+  // secret — Stripe treats the two as entirely separate signing secrets
+  // even when both point at this same endpoint URL. Tries live first
+  // (the common case), falls back to test, and only rejects if neither
+  // secret verifies the signature.
+  const webhookSecrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_TEST,
+  ].filter(Boolean) as string[]
+
+  let event: Stripe.Event | undefined
+  let verificationError: Error | undefined
+  for (const secret of webhookSecrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret)
+      break
+    } catch (err: any) {
+      verificationError = err
+    }
+  }
+  if (!event) {
+    console.error('[ATLAS] Webhook signature verification failed:', verificationError?.message)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
+
+  // Use the Stripe client whose API key matches this specific event's mode —
+  // a test-mode event's object IDs don't exist under the live key and vice
+  // versa. Falls back to the live client if no test key is configured.
+  const stripeClient = event.livemode ? stripe : (stripeTest ?? stripe)
 
   try {
     switch (event.type) {
@@ -184,7 +211,7 @@ export async function POST(req: NextRequest) {
         if (!email) break
 
         if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(session.subscription as string)
+          const sub = await stripeClient.subscriptions.retrieve(session.subscription as string)
           const priceId = sub.items.data[0]?.price.id ?? ''
           const plan = PRICE_PLAN[priceId] ?? { profile: 'atlas', subscription: 'atlas' }
 
@@ -237,7 +264,7 @@ export async function POST(req: NextRequest) {
         const priceId = sub.items.data[0]?.price.id ?? ''
         const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
         let customer: Stripe.Customer | Stripe.DeletedCustomer
-        try { customer = await stripe.customers.retrieve(sub.customer as string) } catch { break }
+        try { customer = await stripeClient.customers.retrieve(sub.customer as string) } catch { break }
         if (customer.deleted) break
         const email = (customer as Stripe.Customer).email
         if (!email) break
@@ -249,11 +276,25 @@ export async function POST(req: NextRequest) {
           plan, sub.status, sub.current_period_end, sub.cancel_at_period_end
         )
 
+        // Keep billing_anchor_day/billing_interval in sync with Stripe on every
+        // update, not just initial checkout — a cadence switch (e.g. "Switch to
+        // Annual") fires this event and previously left these fields stale.
+        // Install-period math (atlas_period_start) reads these; entitlement
+        // itself is untouched and still comes solely from subscriptions.status.
+        {
+          const anchorDay = new Date(sub.current_period_start * 1000).getDate()
+          const interval = sub.items.data[0]?.price.recurring?.interval ?? 'month'
+          await supabase.from('profiles').update({
+            billing_anchor_day: anchorDay,
+            billing_interval: interval === 'year' ? 'annual' : 'monthly',
+          }).eq('id', userId)
+        }
+
         // ATLAS policy: cancel_at_period_end === true means immediate access revocation.
         // Portal/admin cancellations that defer to period end must not grant continued access.
         // handleCancellation is idempotent — customer.subscription.deleted at period end is a no-op.
         if (sub.cancel_at_period_end) {
-          await handleCancellation(sub.customer as string, event.type)
+          await handleCancellation(stripeClient, sub.customer as string, event.type)
           break
         }
 
@@ -271,7 +312,7 @@ export async function POST(req: NextRequest) {
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
-        await handleCancellation(sub.customer as string, event.type)
+        await handleCancellation(stripeClient, sub.customer as string, event.type)
         break
       }
 
