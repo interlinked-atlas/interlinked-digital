@@ -68,8 +68,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [supportAttachId, setSupportAttachId] = useState<string | null>(null)
   const [supportSubmitting, setSupportSubmitting] = useState(false)
   const [supportDone, setSupportDone] = useState(false)
-  const [upgradeLoading, setUpgradeLoading] = useState(false)
-  const [upgradeError, setUpgradeError] = useState("")
   const [cloudKits, setCloudKits] = useState<CloudKit[]>([])
   const [cloudKitsLoading, setCloudKitsLoading] = useState(false)
   const [cloudKitsError, setCloudKitsError] = useState("")
@@ -143,7 +141,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const currentPlan = profile?.plan ?? subscription?.plan ?? "free"
   const isSubscribed = ["atlas","pro","standard"].includes(currentPlan)
   const isPro = isSubscribed // backward-compat alias — do not use for new logic
-  const isMonthly = (profile?.billing_interval ?? "monthly") === "monthly"
   const isActive = profile?.subscription_status === "active" || subscription?.status === "active" || subscription?.status === "trialing"
   const isCancelled = profile?.subscription_status === "cancelled" || subscription?.status === "canceled"
   const isPastDue = profile?.subscription_status === "payment_failed" || subscription?.status === "past_due"
@@ -154,38 +151,12 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     ? devices.reduce((latest, d) => new Date(d.last_seen) > new Date(latest.last_seen) ? d : latest, devices[0]).id
     : null
   const planName  = "ATLAS"
-  const planPrice = isMonthly ? "$30" : "$300"
   const monthlyInstallLimit = 25
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
   const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
   const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isActive ? "Active" : "Inactive"
-
-  async function handleUpgrade(targetPlan: string) {
-    setUpgradeLoading(true); setUpgradeError("")
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setUpgradeLoading(false); return }
-    try {
-      const res = await fetch("/api/atlas/upgrade", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: targetPlan }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        if (json.error === 'NO_STRIPE_CUSTOMER' && json.redirectTo) {
-          window.location.href = json.redirectTo
-          return
-        }
-        throw new Error(json.error || "Upgrade failed")
-      }
-      window.location.reload()
-    } catch (err: unknown) {
-      setUpgradeError(err instanceof Error ? err.message : "Upgrade failed")
-    }
-    setUpgradeLoading(false)
-  }
 
   async function downloadKit(kitId: string, fileType: "atlaskit" | "txt") {
     setKitDownloading(`${kitId}-${fileType}`)
@@ -381,7 +352,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                 </div>
                 <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                  {isMonthly ? "$30/month" : "$300/year"}{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
+                  $30/month{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
                 </p>
               </div>
               <div style={{
@@ -393,14 +364,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-            {isActive && !isCancelled && isMonthly && (
-              <button onClick={() => handleUpgrade("atlas-annual")} disabled={upgradeLoading} style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px",
-                background: upgradeLoading ? "rgba(62,207,178,0.3)" : "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
-                color: "#07080F", fontSize: "11px", fontWeight: 700, cursor: upgradeLoading ? "not-allowed" : "pointer", border: "none",
-              }}>{upgradeLoading ? "Switching…" : "⭐ Switch to Annual — $300/yr (save $60)"}</button>
-            )}
             {isCancelled && (
               <Link href="/atlas" style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
@@ -417,7 +380,6 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               }}>Cancel Subscription</button>
             )}
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}
-            {upgradeError && <p style={{ fontSize: "11px", color: "#E05555", width: "100%" }}>{upgradeError}</p>}
           </div>
         </section>
 

@@ -424,7 +424,7 @@ function anticipationEmail() {
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
         <tr><td style="padding:18px 20px 18px;">
           <p style="margin:0 0 2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:${WHITE};letter-spacing:-0.01em;">ATLAS</p>
-          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#8A8A96;">One plan. Every feature. Monthly or annual billing.</p>
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#8A8A96;">One plan. Every feature. $30/month.</p>
         </td></tr>
       </table>
 

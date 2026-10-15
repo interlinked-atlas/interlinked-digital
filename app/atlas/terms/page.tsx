@@ -41,13 +41,12 @@ export default function TermsPage() {
 
           <Section title="2. The Service">
             ATLAS is a macOS and Windows application that automates software installation.
-            Access to ATLAS requires an active paid ATLAS subscription, billed monthly or
-            annually.
+            Access to ATLAS requires an active paid ATLAS subscription, billed monthly.
           </Section>
 
           <Section title="3. Subscriptions and Billing">
             <ul style={{ marginTop: 16, paddingLeft: 20, lineHeight: 2, color: '#B0B8D0' }}>
-              <li>Subscriptions are billed monthly or annually depending on the plan you select.</li>
+              <li>Subscriptions are billed monthly at $30/month.</li>
               <li>Billing is processed by Stripe. By subscribing, you authorize Stripe to charge
               your payment method on a recurring basis.</li>
               <li>Your subscription renews automatically on your billing date unless cancelled.</li>

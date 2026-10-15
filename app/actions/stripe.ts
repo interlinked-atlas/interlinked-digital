@@ -14,8 +14,9 @@ export async function startCheckoutSession(productId: string, email?: string) {
   const headersList = await headers()
   const origin = headersList.get('origin') || 'https://interlinked.digital'
 
-  // Map product ID to real Stripe price ID
-  // 'atlas' → 'atlas', 'atlas-annual' → 'atlas-annual'
+  // Map product ID to real Stripe price ID. productId is already validated
+  // against PRODUCTS above — only 'atlas' exists there now, so this can
+  // never resolve to the (removed) annual price.
   const planKey = productId.startsWith('atlas') ? productId : productId.replace('atlas-', '') as keyof typeof PRICE_IDS
   const priceId = PRICE_IDS[planKey as keyof typeof PRICE_IDS]
   if (!priceId) {

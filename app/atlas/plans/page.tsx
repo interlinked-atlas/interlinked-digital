@@ -26,14 +26,9 @@ const MONTHLY = {
   ],
 }
 
-const ANNUAL = {
-  price: '$25', period: '/mo', billed: '$300 billed annually', save: 'Save $60', priceId: 'atlas-annual',
-  features: MONTHLY.features,
-}
-
 const COMPARE_ROWS = [
   { label: 'Cost per file installed',   titan: '$30–$80+ per file',   atlas: 'Flat monthly rate' },
-  { label: 'Annual cost estimate',       titan: '$1,440+ / year',      atlas: '$300 / year' },
+  { label: 'Annual cost estimate',       titan: '$1,440+ / year',      atlas: '$360 / year' },
   { label: 'Wait time',                  titan: 'Long queue — hours',  atlas: 'Instant, on your schedule' },
   { label: 'Installation speed',         titan: 'Slow & manual',       atlas: 'Automated & intelligent' },
   { label: 'Remote access required',     titan: 'Yes — AnyDesk',       atlas: 'Never' },
@@ -83,7 +78,6 @@ function FadeUp({ children, delay = 0, style = {} }: { children: React.ReactNode
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PlansPage() {
-  const [annual, setAnnual] = useState(false)
   const [heroIn, setHeroIn] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
   const [hintVisible, setHintVisible] = useState(false)
@@ -125,7 +119,7 @@ export default function PlansPage() {
     compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const plan = annual ? ANNUAL : MONTHLY
+  const plan = MONTHLY
 
   return (
     <>
@@ -298,43 +292,6 @@ export default function PlansPage() {
             <p style={{ fontSize: '14px', color: 'var(--atlas-text-sub)', marginBottom: '20px' }}>
               One plan. Everything included.
             </p>
-
-            {/* Billing toggle */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center',
-              background: 'var(--atlas-toggle-wrap-bg)',
-              border: '1px solid var(--atlas-toggle-wrap-bd)',
-              borderRadius: '50px', padding: '3px',
-            }}>
-              <button
-                className="toggle-btn"
-                onClick={() => setAnnual(false)}
-                style={{
-                  padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
-                  background: !annual ? 'var(--atlas-toggle-on)' : 'var(--atlas-toggle-off)',
-                  color: !annual ? 'var(--atlas-toggle-text-on)' : 'var(--atlas-toggle-text-off)',
-                  fontSize: '13px', fontWeight: !annual ? 600 : 400,
-                }}
-              >Monthly</button>
-              <button
-                className="toggle-btn"
-                onClick={() => setAnnual(true)}
-                style={{
-                  padding: '6px 18px', borderRadius: '50px', border: 'none', cursor: 'pointer',
-                  background: annual ? 'var(--atlas-toggle-on)' : 'var(--atlas-toggle-off)',
-                  color: annual ? 'var(--atlas-toggle-text-on)' : 'var(--atlas-toggle-text-off)',
-                  fontSize: '13px', fontWeight: annual ? 600 : 400,
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}
-              >
-                Annual
-                <span style={{
-                  background: '#F0A030', color: '#080809',
-                  fontSize: '8px', fontWeight: 800, letterSpacing: '1px',
-                  padding: '2px 6px', borderRadius: '50px',
-                }}>SAVE $60</span>
-              </button>
-            </div>
           </div>
         </section>
 
@@ -358,18 +315,10 @@ export default function PlansPage() {
                 <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>
                   <span className="atlas-chrome-text">ATLAS</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: annual ? '4px' : '0' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                   <span style={{ color: 'var(--atlas-plans-card-text)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{plan.price}</span>
                   <span style={{ color: 'var(--atlas-plans-sub)', fontSize: '12px' }}>{plan.period}</span>
                 </div>
-                {annual && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: 'var(--atlas-plans-sub)', fontSize: '12px' }}>{(plan as typeof ANNUAL).billed}</span>
-                    <span style={{ background: 'rgba(240,160,48,0.15)', color: '#F0A030', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '50px' }}>
-                      {(plan as typeof ANNUAL).save}
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -398,7 +347,7 @@ export default function PlansPage() {
                     boxShadow: '0 0 20px rgba(62,207,178,0.22)',
                   }}
                 >
-                  {annual ? 'Get ATLAS Annual →' : 'Get ATLAS →'}
+                  Get ATLAS →
                 </button>
               </div>
             </div>
@@ -408,7 +357,7 @@ export default function PlansPage() {
           <FadeUp delay={80}>
             <div style={{ textAlign: 'center', marginTop: '16px' }}>
               <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', marginBottom: '4px' }}>
-                Secure payment via Stripe · Cancel anytime · Annual plans billed as a single payment
+                Secure payment via Stripe · Cancel anytime
               </p>
               <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px' }}>
                 Already subscribed?{' '}
@@ -513,7 +462,7 @@ export default function PlansPage() {
                   Stop paying per file. One plan, everything included.
                 </p>
                 <button
-                  onClick={() => handleSelectPlan(annual ? 'atlas-annual' : 'atlas')}
+                  onClick={() => handleSelectPlan('atlas')}
                   className="cta-btn"
                   style={{
                     padding: '13px 32px',

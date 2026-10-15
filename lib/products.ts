@@ -10,9 +10,8 @@ export interface Product {
 
 // Live Stripe price IDs — must match PRICE_PLAN in webhooks/stripe/route.ts
 export const PRICE_IDS = {
-  // New ATLAS prices
+  // Current ATLAS plan — $30/month only, no annual option
   'atlas':        'price_1U9uOBA1Bm2dPCGc73d3ZbA5',
-  'atlas-annual': 'price_1U9uOCA1Bm2dPCGcjRbOpXii',
   // Legacy prices retained for backward-compat webhook processing
   'standard':           'price_1TdIbOA1Bm2dPCGcBzQIiXGV',
   'pro':                'price_1TdIbOA1Bm2dPCGcpLFkuAea',
@@ -43,18 +42,5 @@ export const PRODUCTS: Product[] = [
       'Notifications & alerts',
     ],
     popular: true,
-  },
-  {
-    id: 'atlas-annual',
-    name: 'ATLAS Annual',
-    description: 'The complete ATLAS subscription, billed annually. Save $60/year.',
-    priceInCents: 30000,
-    interval: 'year',
-    features: [
-      'Everything in ATLAS',
-      '$25/month — billed as $300/year',
-      'Save $60 versus monthly',
-    ],
-    popular: false,
   },
 ]
