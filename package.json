@@ -11,6 +11,11 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "next": "^16.0.10",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "stripe": "^22.2.0",
     "7zip-bin": "^5.2.0",
     "abbrev": "^1.1.1",
     "agent-base": "^7.1.3",
