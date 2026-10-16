@@ -1,0 +1,1 @@
+ALTER TABLE shared_files ADD COLUMN IF NOT EXISTS platform TEXT DEFAULT 'unknown';

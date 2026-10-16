@@ -1,0 +1,2 @@
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS product_name TEXT DEFAULT NULL;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS product_status TEXT DEFAULT NULL;
