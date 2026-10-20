@@ -67,6 +67,30 @@ struct RollbackEngine {
         }
         alog.notice("[ATLAS-ROLLBACK] otherOwnedPaths=\(otherOwnedPaths.count)")
 
+        // Cross-product receipt-based ownership cache — loaded ONCE per rollback,
+        // never re-queried per candidate below. Closes a gap otherOwnedPaths alone
+        // cannot: a resource an earlier product created and a later product merely
+        // reuses (without rewriting it) never appears in the later product's own
+        // install-time filesystem-diff evidence, so it's absent from that record's
+        // stored installedFiles/runtimeCreatedPaths. A PKG receipt's file list,
+        // however, is the package's registered BOM — it persists in pkgutil
+        // regardless of whether files were rewritten on any particular install run.
+        // Querying every other live record's CURRENT receipts directly sidesteps
+        // that stale-manifest blind spot entirely.
+        // Query failures/timeouts contribute no paths — never treated as evidence
+        // of a conflict, only a successfully-returned file list can block anything,
+        // matching how a failed receiptFilesWithTimeout() call is already handled
+        // elsewhere in this function (empty result, not a distinct error signal).
+        onProgress?(0.16, "Building uninstall plan|Checking shared package ownership")
+        var otherLiveReceiptPaths = Set<String>()
+        for other in otherRecords where other.id != record.id && other.status == .success {
+            for receiptID in other.pkgReceiptIDs {
+                let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 30)
+                otherLiveReceiptPaths.formUnion(files)
+            }
+        }
+        alog.notice("[ATLAS-ROLLBACK] otherLiveReceiptPaths=\(otherLiveReceiptPaths.count)")
+
         // ── Pre-flight: receipt collision check ───────────────────────────────
         // If any stored receipt ID is also claimed by another live product, ATLAS
         // cannot know which product owns the associated files. Halt immediately.
@@ -123,12 +147,24 @@ struct RollbackEngine {
         }
 
         // Manifest path: add explicitly tracked files (license assets, ZIP-installed plugins, etc.)
+        // For records with the evidence model (fileEvidenceMap non-nil), only authorize deletion
+        // of files classified as .transactionCreated. Replaced, unchanged, and BOM-only files
+        // are preserved (fail closed) because ATLAS cannot establish exclusive ownership.
         if !record.installedFiles.isEmpty {
             onProgress?(0.18, "Building uninstall plan|Assembling file list")
-            for path in record.installedFiles.map(\.destinationPath) {
+            let hasEvidenceModel = record.fileEvidenceMap != nil
+            for file in record.installedFiles {
+                let path = file.destinationPath
                 guard !otherOwnedPaths.contains(path) else { continue }
-                candidates.insert(path)
-                positivelyOwnedPaths.insert(path)
+                let authorized = evidenceAuthorizesDeletion(
+                    path: path, fileEvidence: file.ownershipEvidence,
+                    evidenceMap: record.fileEvidenceMap, hasEvidenceModel: hasEvidenceModel)
+                if authorized {
+                    candidates.insert(path)
+                    positivelyOwnedPaths.insert(path)
+                } else if hasEvidenceModel && file.ownershipEvidence != nil {
+                    await logger.log("⚠ Preserved (evidence: \(file.ownershipEvidence!.rawValue)): \(URL(fileURLWithPath: path).lastPathComponent)")
+                }
             }
         }
 
@@ -167,8 +203,13 @@ struct RollbackEngine {
             }
 
             // Only stored receipt IDs authorize deletion.
+            // For records with the evidence model, each BOM-listed path is checked against
+            // fileEvidenceMap. Only .transactionCreated paths are authorized for deletion.
+            // Replaced, unchanged, and BOM-only paths are preserved (fail closed).
+            // Legacy records (fileEvidenceMap == nil) use the original behavior.
             let allReceiptIDs = Array(Set(record.pkgReceiptIDs))
-            await logger.log("Phase 1: \(allReceiptIDs.count) receipt(s) to scan")
+            let hasEvidenceModel = record.fileEvidenceMap != nil
+            await logger.log("Phase 1: \(allReceiptIDs.count) receipt(s) to scan\(hasEvidenceModel ? " (evidence model active)" : " (legacy mode)")")
             let totalReceipts = allReceiptIDs.count
             for (receiptIndex, receiptID) in allReceiptIDs.enumerated() {
                 onProgress?(0.18 + Double(receiptIndex) / Double(max(totalReceipts, 1)) * 0.10,
@@ -179,7 +220,7 @@ struct RollbackEngine {
                     return RollbackResult(success: false, removedFiles: [], failedFiles: [],
                                          detail: "Cancelled.")
                 }
-                let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 10)
+                let files = await receiptFilesWithTimeout(receiptID: receiptID, seconds: 60)
                 if files.isEmpty {
                     let locTask = Task.detached { PKGReceiptScanner.installLocation(forReceipt: receiptID) }
                     let pnTask  = Task.detached { PKGReceiptScanner.pkgName(forReceipt: receiptID) }
@@ -192,21 +233,46 @@ struct RollbackEngine {
                         "/Library/Audio/Presets", "/Library"
                     ]
                     if !location.isEmpty && location != "/" && !sharedDirs.contains(location) {
-                        candidates.insert(location)
-                        positivelyOwnedPaths.insert(location)
+                        // Empty-file receipt with non-aggregate install location.
+                        // Only authorize if evidence model confirms creation, or legacy mode.
+                        let authorized = evidenceAuthorizesDeletion(
+                            path: location, fileEvidence: nil,
+                            evidenceMap: record.fileEvidenceMap, hasEvidenceModel: hasEvidenceModel)
+                        if authorized {
+                            candidates.insert(location)
+                            positivelyOwnedPaths.insert(location)
+                        }
                     } else if let name = pkgName, !name.isEmpty {
                         for dir in ["/Library/Audio/Presets/\(name)",
                                     "/Library/Application Support/\(name)",
                                     NSHomeDirectory() + "/Library/Audio/Presets/\(name)"]
                         where FileManager.default.fileExists(atPath: dir) {
-                            candidates.insert(dir)
-                            positivelyOwnedPaths.insert(dir)
+                            let authorized = evidenceAuthorizesDeletion(
+                                path: dir, fileEvidence: nil,
+                                evidenceMap: record.fileEvidenceMap, hasEvidenceModel: hasEvidenceModel)
+                            if authorized {
+                                candidates.insert(dir)
+                                positivelyOwnedPaths.insert(dir)
+                            }
                         }
                     }
                 } else {
+                    var authorizedCount = 0
+                    var preservedCount = 0
                     for f in files where !otherOwnedPaths.contains(f) {
-                        candidates.insert(f)
-                        positivelyOwnedPaths.insert(f)
+                        let authorized = evidenceAuthorizesDeletion(
+                            path: f, fileEvidence: nil,
+                            evidenceMap: record.fileEvidenceMap, hasEvidenceModel: hasEvidenceModel)
+                        if authorized {
+                            candidates.insert(f)
+                            positivelyOwnedPaths.insert(f)
+                            authorizedCount += 1
+                        } else {
+                            preservedCount += 1
+                        }
+                    }
+                    if preservedCount > 0 {
+                        await logger.log("  \(receiptID): \(authorizedCount) authorized, \(preservedCount) preserved (no exclusive ownership evidence)")
                     }
                 }
             }
@@ -243,11 +309,27 @@ struct RollbackEngine {
             }
         }
 
-        // Runtime-created paths (filesystem diff at install time) — diagnostic and deferred cleanup only.
-        // These paths are NOT independently authorized for deletion.
-        // Files: only deletable via installedFiles or pkgReceiptIDs (already in candidates above).
-        // Directories: deferred — Phase 6 cleanupEmptyDirs removes them if empty after file deletion.
-        // Owning files inside a directory does NOT authorize deleting the directory itself.
+        // Runtime-created paths (filesystem diff at install time).
+        // Files: only deletable via installedFiles or pkgReceiptIDs (already in candidates above) —
+        // timing evidence alone never authorizes a file.
+        // Directories: may be authorized as a single exclusively-owned unit — D1 + D2 + D3 —
+        // with NO timestamp/mtime heuristic of any kind:
+        //   D1 — already satisfied by construction: this path is only ever populated from
+        //        install-time ctime-diff evidence (snapshotLibraryTopLevel/diffLibraryTopLevel).
+        //        No new filesystem scanning happens here.
+        //   D2 — the path itself (exact match, NOT an ancestor-walk — a child of an aggregate/
+        //        protected root, e.g. /Library/Application Support/XLN Audio, must remain
+        //        eligible; only the root itself is refused) is not a protected/aggregate root,
+        //        and passes the existing isProtectedPath namespace guard.
+        //   D3 — no other live record's installedFiles/runtimeCreatedPaths is this path or any
+        //        path above/below it (bidirectional prefix check — catches both "another
+        //        product owns something inside this directory" and "this directory is an
+        //        ancestor of another product's owned path", e.g. a shared vendor root).
+        // If D1–D3 all pass, the directory is added to candidates and runtimeTrustedPaths —
+        // the same trust flag Phase 3 already honors for collapseByDirectory-verified folders —
+        // so it is removed as a whole unit through the existing Trash-recoverable mechanism.
+        // If any check fails, the directory is left exactly as before: untouched here, only
+        // swept by Phase 6 cleanupEmptyDirs if it happens to become empty on its own.
         for path in (record.runtimeCreatedPaths ?? []) {
             let name = URL(fileURLWithPath: path).lastPathComponent
             guard !otherOwnedPaths.contains(path) else { continue }
@@ -258,8 +340,32 @@ struct RollbackEngine {
             var isDir: ObjCBool = false
             FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
             if isDir.boolValue {
-                await logger.log("ℹ Runtime-created directory deferred to Phase 6 cleanup: \(name)")
-                alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory deferred: \(path, privacy: .public)")
+                guard !protectedDirs.contains(path), !aggregateDirs.contains(path) else {
+                    await logger.log("ℹ Runtime-created directory is a protected/shared root — not removed as a unit: \(name)")
+                    alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory is protected/aggregate root, skipped: \(path, privacy: .public)")
+                    continue
+                }
+                guard !isSubpath(path, ofAny: otherOwnedPaths) else {
+                    await logger.log("ℹ Runtime-created directory shares ownership with another product — not removed as a unit: \(name)")
+                    alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory overlaps otherOwnedPaths, skipped: \(path, privacy: .public)")
+                    continue
+                }
+                // Cross-product receipt check — deliberately one direction only:
+                // does another live product's OWN package still declare something
+                // AT or BENEATH this candidate. Never the reverse (candidate nested
+                // under one of their shallow entries) — real PKG BOMs commonly share
+                // ancestor entries like "Library"/"Applications" across completely
+                // unrelated packages, and checking the reverse direction would treat
+                // that universal noise as a false ownership conflict.
+                guard !otherLiveReceiptPaths.contains(where: { $0 == path || $0.hasPrefix(path + "/") }) else {
+                    await logger.log("ℹ Runtime-created directory is still declared by another installed product's package — not removed as a unit: \(name)")
+                    alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory claimed by another live receipt, skipped: \(path, privacy: .public)")
+                    continue
+                }
+                candidates.insert(path)
+                runtimeTrustedPaths.insert(path)
+                await logger.log("Runtime-created directory authorized for removal (exclusively owned): \(name)")
+                alog.notice("[ATLAS-ROLLBACK] runtimeCreatedPath directory authorized (D1+D2+D3 passed): \(path, privacy: .public)")
             } else {
                 // File paths require positive ownership to be deleted.
                 // If already in candidates via installedFiles or receipt path, this is a no-op.
@@ -286,7 +392,7 @@ struct RollbackEngine {
         let ownedPaths   = Set(afterBundles)
         // Trust bundle roots — bypass Phase 3 untracked-items safety check.
         let knownBundleExts: Set<String> = [
-            "component", "vst3", "vst", "aaxplugin", "app",
+            "component", "vst3", "vst", "aaxplugin", "clap", "app",
             "framework", "plugin", "kext", "appex", "bundle"
         ]
         for path in afterBundles where knownBundleExts.contains(
@@ -365,7 +471,7 @@ struct RollbackEngine {
             // install time as "this entire directory was created fresh by this install."
             // Vendor preference files (also in runtimeTrustedPaths) are also exempt.
             let pathExt = URL(fileURLWithPath: path).pathExtension.lowercased()
-            let knownBundleExts: Set<String> = ["component","vst3","vst","aaxplugin","app","framework","plugin","kext","appex","bundle"]
+            let knownBundleExts: Set<String> = ["component","vst3","vst","aaxplugin","clap","app","framework","plugin","kext","appex","bundle"]
             var pathIsDir: ObjCBool = false
             FileManager.default.fileExists(atPath: path, isDirectory: &pathIsDir)
             if pathIsDir.boolValue && !knownBundleExts.contains(pathExt) && !runtimeTrustedPaths.contains(path) {
@@ -462,6 +568,12 @@ struct RollbackEngine {
             let receiptDir = "/var/db/receipts"
             var backedUpCount = 0
             for id in record.pkgReceiptIDs {
+                // Only back up receipts that will be forgotten (.created or legacy).
+                // .rewritten receipts are not forgotten on uninstall, so backing them
+                // up would create orphaned backup files and confuse recovery.
+                if let provenance = record.pkgReceiptProvenance?[id], provenance == .rewritten {
+                    continue
+                }
                 for ext in ["plist", "bom"] {
                     let src = "\(receiptDir)/\(id).\(ext)"
                     let dst = "\(pkg)/\(id).\(ext)"
@@ -494,7 +606,19 @@ struct RollbackEngine {
                 break
             }
             alog.notice("[ATLAS-ROLLBACK] Phase5 forget \(forgetIndex + 1)/\(receiptIDsToForget.count): \(id, privacy: .public)")
-            // Safety: do not forget a receipt that is also claimed by another live record.
+
+            // Provenance guard: do not forget a receipt that pre-existed before this install.
+            // A .rewritten receipt was created by a prior product — forgetting it would corrupt
+            // that product's pkgutil record (e.g. com.adobe.Fonts pre-installed by Adobe CC,
+            // then touched by FabFilter). Only forget receipts this transaction created (.created).
+            // Legacy records (no provenance) retain old behavior (forget).
+            if let provenance = record.pkgReceiptProvenance?[id], provenance == .rewritten {
+                await logger.log("⚠ Skipped forget — receipt \(id) pre-existed before install (shared-resource safety)")
+                alog.notice("[ATLAS-ROLLBACK] Phase5 skip forget — \(id, privacy: .public) provenance=rewritten")
+                continue
+            }
+
+            // Cross-record guard: do not forget a receipt claimed by another live ATLAS record.
             // Forgetting removes the pkgutil ownership record; doing so for a shared ID
             // would corrupt the other product's uninstall.
             if let claimant = otherRecords.first(where: { $0.id != record.id && $0.status == .success && $0.pkgReceiptIDs.contains(id) }) {
@@ -562,6 +686,49 @@ struct RollbackEngine {
             detail: detail,
             manifestPath: manifestPath
         )
+    }
+
+    // MARK: - Evidence-based deletion authorization
+
+    // Central authorization gate for the evidence model.
+    //
+    // Returns true (authorized for deletion) if:
+    //   - The record predates the evidence model (hasEvidenceModel == false) → legacy behavior
+    //   - fileEvidence == .transactionCreated → ATLAS created this path
+    //   - Path is in evidenceMap as .transactionCreated → ATLAS created this path
+    //
+    // Returns false (fail closed / preserve) if:
+    //   - hasEvidenceModel == true AND evidence is .transactionReplaced → prior product may need it
+    //   - hasEvidenceModel == true AND evidence is .preExistingUnchanged → installer didn't write it
+    //   - hasEvidenceModel == true AND evidence is .bomOnly → outside snapshot coverage
+    //   - hasEvidenceModel == true AND path not in evidenceMap → treated as preExistingUnchanged
+    //
+    // The rule is: fail closed. If ATLAS cannot positively establish that it created
+    // a path during this transaction, it does not delete it.
+    private static func evidenceAuthorizesDeletion(
+        path: String,
+        fileEvidence: FileOwnershipEvidence?,
+        evidenceMap: [String: FileOwnershipEvidence]?,
+        hasEvidenceModel: Bool
+    ) -> Bool {
+        guard hasEvidenceModel else {
+            // Legacy record: no evidence model. Use old implicit authorization.
+            return true
+        }
+
+        // Check stored per-file evidence first (from InstalledFile.ownershipEvidence).
+        if let explicit = fileEvidence {
+            return explicit == .transactionCreated
+        }
+
+        // Then check the evidence map (for BOM-listed paths not in installedFiles).
+        if let mapEvidence = evidenceMap?[path] {
+            return mapEvidence == .transactionCreated
+        }
+
+        // Path not in evidence map: either preExistingUnchanged (within snapshot coverage
+        // but unchanged) or bomOnly (outside snapshot coverage). Both fail closed.
+        return false
     }
 
     // MARK: - Legacy name-based fallback (no tracking data, no PKG receipts)
@@ -828,6 +995,41 @@ struct RollbackEngine {
         systemRoots.contains { path == $0 || path.hasPrefix($0 + "/") }
     }
 
+    // Bidirectional path/subpath containment against a set of paths owned by other
+    // live install records. True if `path` IS one of `owned`, is nested inside one
+    // of them (subject to the vendor-root carve-out below), OR has one of them
+    // nested inside it. The third direction is what protects a shared vendor root
+    // (e.g. ".../Vendor") from being authorized for whole-directory removal merely
+    // because a sibling subdirectory of it (".../Vendor/ProductA") belongs to the
+    // record being uninstalled — another live product's own path
+    // (".../Vendor/ProductB") nested under that same root must still block it, even
+    // though "Vendor" is an ANCESTOR of ProductB's path, not a descendant.
+    //
+    // Vendor-root carve-out (the `path.hasPrefix(other + "/")` direction only):
+    // an `other` entry that is itself a direct child of an aggregateDirs root
+    // (e.g. ".../Application Support/Vendor") is a shared container, not proof of
+    // exclusive ownership of everything nested inside it — another record can
+    // legitimately end up listing a vendor root in its own runtimeCreatedPaths
+    // simply because it happened to be the first product installed there. Without
+    // this carve-out, that incidental entry would falsely block every sibling
+    // product's own, entirely unrelated directory from ever being authorized.
+    // This reuses the same "direct child of an aggregate = vendor-owned root"
+    // distinction collapseByDirectory's isVendorRoot already relies on — not a new
+    // rule. Deeper, genuinely product-specific directories (whose own parent is
+    // NOT itself an aggregate root) are unaffected and remain exclusive.
+    private static func isSubpath(_ path: String, ofAny owned: Set<String>) -> Bool {
+        let aggregates = aggregateDirs
+        return owned.contains { other in
+            if path == other { return true }
+            if other.hasPrefix(path + "/") { return true }
+            if path.hasPrefix(other + "/") {
+                let otherParent = URL(fileURLWithPath: other).deletingLastPathComponent().path
+                return !aggregates.contains(otherParent)
+            }
+            return false
+        }
+    }
+
     // Returns true for paths that must never be deleted regardless of what the
     // installation record says. Covers ATLAS's own files, Apple-namespaced plists,
     // and preference files belonging to a different vendor than the product being
@@ -892,7 +1094,7 @@ struct RollbackEngine {
     // MARK: - Bundle collapsing
 
     private static let bundleExts: Set<String> = [
-        "component", "vst3", "vst", "aaxplugin", "app",
+        "component", "vst3", "vst", "aaxplugin", "clap", "app",
         "framework", "plugin", "kext", "appex", "bundle",
     ]
 
@@ -948,6 +1150,7 @@ struct RollbackEngine {
             "/Library/Audio/MIDI Drivers",
             "/Library/Application Support/Avid",   // Avid sub-tree is itself an aggregate
             "/Applications",
+            "/Users/Shared",                       // shared, multi-vendor — never bulk-owned
             home + "/Library/Application Support",
             home + "/Library/Audio/Plug-Ins",
             home + "/Library/Audio/Presets",
@@ -1306,7 +1509,7 @@ struct RollbackEngine {
 
         // Bundle extensions that are directories but should be treated as files
         let bundleExts: Set<String> = [
-            "component", "vst3", "vst", "aaxplugin", "app",
+            "component", "vst3", "vst", "aaxplugin", "clap", "app",
             "framework", "plugin", "kext", "appex", "bundle"
         ]
         let fm = FileManager.default
@@ -1351,6 +1554,7 @@ struct RollbackEngine {
             "/Library/Audio/Plug-Ins/VST3", "/Library/Audio/Plug-Ins/VST",
             "/Library/Application Support", "/Library/LaunchAgents",
             "/Library/LaunchDaemons", "/Library/Extensions",
+            "/Users/Shared",
             home, home + "/Library",
             home + "/Library/Application Support",
             home + "/Library/Audio", home + "/Library/Audio/Plug-Ins",

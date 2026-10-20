@@ -20,15 +20,33 @@ struct PKGReceiptScanner {
         )
     }
 
-    // Only returns receipts whose on-disk plist/bom was written AFTER `since`.
-    // This filters out receipts updated by background processes (e.g. Toontrack
-    // Product Manager) that happened to run during the install window.
+    // Returns all receipts involved in this installation transaction.
+    //
+    // A receipt is attributed to this transaction if:
+    //   A. It is new — appeared in `after` but not in `before` (after − before), OR
+    //   B. It pre-existed but its on-disk plist/bom was rewritten during the install window.
+    //      macOS always rewrites the plist and bom when a PKG component is (re)installed,
+    //      even for pre-existing receipt IDs. The modification timestamp is therefore a
+    //      reliable signal that the installer touched that receipt during this transaction.
+    //
+    // The window is [since − 5s, now] to give slow installers a 5-second grace period.
+    // Both new and updated receipts must pass the timestamp test — this prevents
+    // background processes (e.g. Toontrack Product Manager, Acrobat updater) from being
+    // attributed merely because they ran while ATLAS was waiting for the installer.
+    //
+    // Attribution boundary: only receipts that macOS wrote to /var/db/receipts during
+    // this transaction window. Receipts with timestamps outside the window are excluded
+    // regardless of their name or vendor.
     static func findNewReceipts(before: Set<String>, since: Date) -> [String] {
         let after = snapshotReceipts()
-        let candidates = Array(after.subtracting(before))
         let receiptDir = "/private/var/db/receipts"
         let grace = since.addingTimeInterval(-5)  // 5s grace for slow installers
-        return candidates.filter { id in
+
+        // Receipts whose plist/bom timestamp falls within the transaction window.
+        // Applies to both genuinely new receipts (after − before) and pre-existing
+        // receipts that the installer updated (before ∩ after, with fresh timestamps).
+        let allCandidates = after  // scan every post-install receipt against the time window
+        return allCandidates.filter { id in
             for suffix in [".plist", ".bom"] {
                 let p = "\(receiptDir)/\(id)\(suffix)"
                 if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
@@ -122,6 +140,58 @@ struct PKGReceiptScanner {
             password: password,
             arguments: ["/usr/sbin/pkgutil", "--forget", receiptID]
         ).success
+    }
+
+    // General-purpose receipt attribution for multi-component/distribution PKG installs.
+    //
+    // ATTRIBUTION BOUNDARY: Only receipts in (after − before) can be attributed to this
+    // transaction. A receipt that existed in the before snapshot is NEVER claimed by this
+    // installation, regardless of whether its ID matches the installer name.
+    //
+    // Algorithm:
+    //   1. Poll pkgutil --pkgs every 500 ms, computing (after − before) at each poll.
+    //   2. Stop when the set is unchanged for 2 consecutive polls (~1 s stable), or after
+    //      a 15-second hard cap — whichever comes first.
+    //   3. Take one final snapshot after the stable window to catch any receipt written
+    //      during the last polling interval.
+    //   4. allNewReceipts = finalAfter − before  (the complete attribution boundary)
+    //   5. Apply name-based matching ONLY within allNewReceipts — never against the full
+    //      receipt database — so pre-existing receipts cannot be claimed.
+    //   6. Return stability-confirmed ∪ name-matched, both constrained to allNewReceipts.
+    //
+    // Note: the 1-second stability window is a practical heuristic, not a mathematical
+    // guarantee that macOS has finished registering every possible component receipt.
+    // The (after − before) boundary is the critical safety invariant.
+    static func captureNewReceipts(before: Set<String>, installerName: String) -> [String] {
+        let deadline      = Date().addingTimeInterval(15.0)
+        var lastSet       = Set<String>()
+        var stableCount   = 0
+        let stableRequired = 2   // 2 consecutive unchanged polls ≈ 1 second
+
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.5)
+            let current = Set(snapshotReceipts()).subtracting(before)
+            if current == lastSet {
+                stableCount += 1
+                if stableCount >= stableRequired { break }
+            } else {
+                lastSet       = current
+                stableCount   = 0
+            }
+        }
+
+        // Final snapshot — catches receipts written during the last polling interval.
+        let allNewReceipts = Set(snapshotReceipts()).subtracting(before)
+
+        // Name-based supplement: intersect with allNewReceipts so we can never claim
+        // a receipt that already existed before this installation.
+        let nameMatched = Set(findReceiptsByName(installerName)).intersection(allNewReceipts)
+
+        // allNewReceipts (final snapshot) is the complete attribution boundary.
+        // Using it — rather than lastSet — captures receipts that registered
+        // after the stability window closed (e.g. installer helpers that write
+        // receipts asynchronously after the main process exits).
+        return Array(allNewReceipts.union(nameMatched)).sorted()
     }
 
     static func buildInstalledFiles(
