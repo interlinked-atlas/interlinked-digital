@@ -58,18 +58,22 @@ export default function TermsPage() {
               borderRadius: 10,
               color: '#E8A0A0', fontSize: 15, lineHeight: 1.7,
             }}>
-              <strong style={{ color: '#E05555' }}>All payments are final and non-refundable.</strong>
-              {' '}We do not issue refunds or credits for any reason, including unused subscription
-              time, accidental purchases, or dissatisfaction with the service.
+              <strong style={{ color: '#E05555' }}>Subscriptions are generally non-refundable.</strong>
+              {' '}We do not issue refunds or credits for unused subscription time, accidental
+              purchases, or dissatisfaction with the service. Exceptions may apply where required
+              by applicable law or by Stripe's or the applicable card network's rules (for example,
+              certain payment disputes or chargebacks).
             </div>
           </Section>
 
           <Section title="4. Cancellation">
             You may cancel your subscription at any time through your account settings at{' '}
             <a href="/atlas/account" style={{ color: '#7A9BC0' }}>interlinked.digital/atlas/account</a>{' '}
-            or by contacting us. Upon cancellation, your access to ATLAS is terminated{' '}
-            <strong style={{ color: '#C8D8E8' }}>immediately</strong>. You will not be charged
-            again after cancellation. No refund is issued for the remaining period.
+            or by contacting us. Cancelling stops future renewal — it does not refund a payment
+            you've already made. Your access to ATLAS continues until the end of the billing
+            period you've already paid for, then ends; you will not be charged again. If your
+            payment fails, see Section 5 below — access is suspended immediately in that case,
+            without waiting for the period to end.
           </Section>
 
           <Section title="5. Payment Failure">

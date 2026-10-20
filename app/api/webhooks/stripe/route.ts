@@ -168,6 +168,52 @@ async function handleCancellation(stripeClient: Stripe, customerId: string, stri
   console.log(`[ATLAS] Cancelled subscription for ${email}`)
 }
 
+// Revokes paid access in Supabase only — never calls any Stripe refund/cancel
+// API. Used by dispute/full-refund handling below. Idempotent: a no-op if the
+// account is already non-active, same guard pattern as handleCancellation.
+async function revokeAccessForCustomer(customerId: string, reason: string, stripeEvent: string, metadata: Record<string, unknown>) {
+  let customer: Stripe.Customer | Stripe.DeletedCustomer
+  try { customer = await stripe.customers.retrieve(customerId) } catch { return }
+  if (customer.deleted) return
+  const email = (customer as Stripe.Customer).email
+  if (!email) return
+  const userId = await getUserByEmail(email)
+  if (!userId) return
+
+  const { data: currentProfile } = await supabase
+    .from('profiles')
+    .select('subscription_status')
+    .eq('id', userId)
+    .single()
+  if (currentProfile?.subscription_status === 'cancelled') {
+    console.log(`[ATLAS] revokeAccessForCustomer(${reason}): already non-active for ${email} — skipping`)
+    return
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ subscription_status: 'cancelled', plan: 'free' })
+    .eq('id', userId)
+
+  await supabase
+    .from('subscriptions')
+    .update({ status: 'canceled', updated_at: new Date().toISOString() })
+    .eq('stripe_customer_id', customerId)
+
+  await notifyAdmin(
+    `⚠️ Access Revoked (${reason}) — ${email}`,
+    `ATLAS access revoked for ${email} due to ${reason}.\n\nStripe Customer: ${customerId}\nTime: ${new Date().toUTCString()}`
+  )
+
+  await auditLog(`access.revoked.${reason}`, {
+    userId, email, plan: 'free',
+    stripeEvent,
+    metadata,
+  })
+
+  console.log(`[ATLAS] Revoked access for ${email} (${reason})`)
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('stripe-signature') ?? ''
@@ -201,6 +247,26 @@ export async function POST(req: NextRequest) {
   // a test-mode event's object IDs don't exist under the live key and vice
   // versa. Falls back to the live client if no test key is configured.
   const stripeClient = event.livemode ? stripe : (stripeTest ?? stripe)
+
+  // Idempotency: record this event.id before running any side effects. Stripe
+  // retries deliveries (and out-of-order/duplicate delivery is explicitly
+  // possible), so a repeat of the same event.id must not re-send emails,
+  // re-insert audit rows, or re-run an irreversible write (e.g. a second
+  // entitlement revocation). Requires the stripe_webhook_events table
+  // (migration 20261020000000) — if that table is missing, this fails open
+  // (logs and continues) rather than silently dropping all webhook
+  // processing, since a missing dedup table is an infra gap, not a reason to
+  // stop honoring Stripe events.
+  const { error: dedupeError } = await supabase
+    .from('stripe_webhook_events')
+    .insert({ id: event.id, type: event.type })
+  if (dedupeError) {
+    if (dedupeError.code === '23505') {
+      console.log(`[ATLAS] Duplicate webhook delivery for ${event.id} (${event.type}) — skipping`)
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+    console.warn('[ATLAS] stripe_webhook_events insert failed (continuing):', dedupeError.message)
+  }
 
   try {
     switch (event.type) {
@@ -290,12 +356,25 @@ export async function POST(req: NextRequest) {
           }).eq('id', userId)
         }
 
-        // ATLAS policy: cancel_at_period_end === true means immediate access revocation.
-        // Portal/admin cancellations that defer to period end must not grant continued access.
-        // handleCancellation is idempotent — customer.subscription.deleted at period end is a no-op.
-        if (sub.cancel_at_period_end) {
-          await handleCancellation(stripeClient, sub.customer as string, event.type)
-          break
+        // ATLAS policy (2026-10-20): a scheduled cancellation (cancel_at_period_end
+        // === true, status still 'active') preserves access through the period the
+        // customer already paid for — it does NOT revoke immediately. Access only
+        // stops when Stripe's actual customer.subscription.deleted fires at period
+        // end (handled below), or sooner via payment failure, which remains an
+        // immediate revocation under the active-only entitlement policy. This is a
+        // deliberate change from the previous immediate-revoke-on-schedule behavior;
+        // log it for auditability since it affects when access is lost.
+        if (sub.cancel_at_period_end && !prevSub?.cancel_at_period_end) {
+          await auditLog('subscription.cancellation_scheduled', {
+            userId, email, plan: plan.profile,
+            stripeEvent: event.type,
+            metadata: {
+              stripe_subscription_id: sub.id,
+              stripe_customer_id: sub.customer,
+              current_period_end: sub.current_period_end,
+            },
+            notes: 'Access preserved until current_period_end; no immediate revocation.',
+          })
         }
 
         // Log interval changes (monthly ↔ annual) if price changed
@@ -394,9 +473,106 @@ export async function POST(req: NextRequest) {
         })
         break
       }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge
+        const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
+        const isFullRefund = charge.amount_refunded >= charge.amount
+        const userId = customerId ? await (async () => {
+          let customer: Stripe.Customer | Stripe.DeletedCustomer
+          try { customer = await stripeClient.customers.retrieve(customerId) } catch { return null }
+          if (customer.deleted) return null
+          const email = (customer as Stripe.Customer).email
+          return email ? await getUserByEmail(email) : null
+        })() : null
+
+        await auditLog(isFullRefund ? 'payment.refunded.full' : 'payment.refunded.partial', {
+          userId, stripeEvent: event.type,
+          metadata: {
+            charge_id: charge.id,
+            stripe_customer_id: customerId,
+            amount: charge.amount,
+            amount_refunded: charge.amount_refunded,
+            currency: charge.currency,
+          },
+          notes: `${(charge.amount_refunded / 100).toFixed(2)} ${charge.currency.toUpperCase()} refunded of ${(charge.amount / 100).toFixed(2)}`,
+        })
+
+        // A full refund of a charge means the customer did not, in the end, pay
+        // for that period — revoke access. A partial refund is a goodwill/
+        // billing adjustment, not grounds on its own to revoke paid access.
+        if (isFullRefund && customerId) {
+          await revokeAccessForCustomer(customerId, 'full_refund', event.type, { charge_id: charge.id })
+        }
+        break
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute
+        const charge = typeof dispute.charge === 'string'
+          ? await stripeClient.charges.retrieve(dispute.charge)
+          : dispute.charge
+        const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
+
+        await auditLog('dispute.created', {
+          stripeEvent: event.type,
+          metadata: {
+            dispute_id: dispute.id,
+            charge_id: charge.id,
+            stripe_customer_id: customerId,
+            amount: dispute.amount,
+            currency: dispute.currency,
+            reason: dispute.reason,
+            status: dispute.status,
+          },
+        })
+
+        // Fail closed: a disputed charge must not continue to authorize paid
+        // access while the dispute is open, regardless of outcome.
+        if (customerId) {
+          await revokeAccessForCustomer(customerId, 'dispute_opened', event.type, { dispute_id: dispute.id })
+        }
+        break
+      }
+
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object as Stripe.Dispute
+        const charge = typeof dispute.charge === 'string'
+          ? await stripeClient.charges.retrieve(dispute.charge)
+          : dispute.charge
+        const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
+
+        // Record the outcome only. Do NOT auto-restore access on a 'won'
+        // outcome — per policy, access is only re-granted after reconciling
+        // the payment and current subscription state, which requires a human
+        // (or a separate, deliberate reconciliation path) to confirm the
+        // account should be re-activated, not an automatic webhook action.
+        await auditLog('dispute.closed', {
+          stripeEvent: event.type,
+          metadata: {
+            dispute_id: dispute.id,
+            charge_id: charge.id,
+            stripe_customer_id: customerId,
+            status: dispute.status,
+          },
+          notes: `Dispute closed with status "${dispute.status}" — access NOT automatically restored; requires manual reconciliation.`,
+        })
+
+        if (customerId) {
+          await notifyAdmin(
+            `ℹ️ Dispute Closed (${dispute.status}) — review access manually`,
+            `Dispute ${dispute.id} closed with status "${dispute.status}" for Stripe customer ${customerId}.\n\nAccess was not automatically changed. Review and restore manually if appropriate.\nTime: ${new Date().toUTCString()}`
+          )
+        }
+        break
+      }
     }
   } catch (err: any) {
     console.error('[ATLAS] Webhook handler error:', err.message)
+    // Release the dedupe claim on failure — Stripe will retry a non-2xx
+    // response, and that retry must be reprocessed, not silently dropped as
+    // a false "duplicate" of an attempt that never actually completed.
+    await supabase.from('stripe_webhook_events').delete().eq('id', event.id)
     return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
   }
 

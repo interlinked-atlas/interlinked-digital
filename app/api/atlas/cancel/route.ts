@@ -62,19 +62,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
   }
 
-  await stripe.subscriptions.cancel(stripeSubId)
+  // ATLAS policy (2026-10-20): schedule cancellation for the end of the
+  // current billing period rather than cancelling immediately — the customer
+  // has already paid for this period and keeps access through it. Do NOT
+  // write 'cancelled'/'canceled' to profiles/subscriptions here: the account
+  // remains active until Stripe's customer.subscription.updated (recording
+  // cancel_at_period_end) and, at the actual period end,
+  // customer.subscription.deleted fire and the webhook updates status itself.
+  // Writing a terminal status here would incorrectly revoke access early.
+  const updatedSub = await stripe.subscriptions.update(stripeSubId, { cancel_at_period_end: true })
 
-  await supabase
-    .from('profiles')
-    .update({ subscription_status: 'cancelled', plan: 'free' })
-    .eq('id', user.id)
-
-  await supabase
-    .from('subscriptions')
-    .update({ status: 'canceled', updated_at: new Date().toISOString() })
-    .eq('stripe_customer_id', customerId)
-
-  // Cancellation email sent by Stripe webhook (customer.subscription.deleted) — not here, to avoid duplicates
-
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    cancel_at_period_end: true,
+    access_until: updatedSub.current_period_end
+      ? new Date(updatedSub.current_period_end * 1000).toISOString()
+      : null,
+  })
 }
