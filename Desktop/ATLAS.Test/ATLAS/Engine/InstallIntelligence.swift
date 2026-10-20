@@ -292,7 +292,11 @@ struct InstallIntelligence {
         // ── Existing pipeline (unchanged) ─────────────────────────────────────
         // 1. Bundled / cloud-synced TITAN MEMORY™ — highest priority.
         //    A confirmed match skips HTML/CSS parsing entirely and uses verified data.
-        if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files) {
+        //    Guard: a cached entry with zero recorded install steps can never
+        //    produce a real installation — do not trust it as a usable fast-path
+        //    plan. Fall through to the normal analysis tiers below instead.
+        if let memory = TitanMemory.shared.lookup(directoryName: dirName, files: files),
+           !memory.installSteps.isEmpty {
             NSLog("[ATLAS] Plan source: TITAN MEMORY™ — \(memory.name)")
             return buildPlanFromMemory(memory, directory: directory, files: files)
         }

@@ -37,6 +37,16 @@ struct AtlasKit: Codable, Sendable {
 
 // MARK: - SanitizedRecord
 
+/// Replaces a leading home-directory prefix with "~" so exported paths never carry the
+/// local macOS account name cross-Mac. `homeDir` is injectable for testing; defaults to
+/// the real home directory in production. Only rewrites an exact prefix match — leaves
+/// any other string (already-relative, or not under the home directory) unchanged.
+func sanitizedHomePath(_ path: String, homeDir: String = NSHomeDirectory()) -> String {
+    guard path.hasPrefix(homeDir) else { return path }
+    let suffix = path.dropFirst(homeDir.count)
+    return "~" + suffix
+}
+
 /// A sanitized copy of InstallRecord with sensitive and machine-internal fields excluded.
 /// Structurally excludes: logFileName, rollbackBackupPath, sessionID, installerDocInfo, feedbackSubmittedAt.
 /// These fields cannot appear in the export because they are never copied into this type.
@@ -79,7 +89,10 @@ struct SanitizedRecord: Codable, Sendable {
         activationRequired  = record.activationRequired
         verificationWarning = record.verificationWarning
         // installerDocInfo intentionally not copied
-        runtimeCreatedPaths = record.runtimeCreatedPaths
+        // Home-directory prefix stripped — these are absolute local paths (see
+        // InstallationManager.diffLibraryTopLevel) and would otherwise leak the
+        // macOS account name into an exported, cross-Mac Recovery Kit.
+        runtimeCreatedPaths = record.runtimeCreatedPaths?.map { sanitizedHomePath($0) }
         disabledFormats     = record.disabledFormats
         // feedbackSubmittedAt intentionally not copied
         archivedAt          = record.archivedAt
