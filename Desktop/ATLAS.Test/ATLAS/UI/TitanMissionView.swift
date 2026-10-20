@@ -60,7 +60,7 @@ struct TitanMissionView: View {
 
                 // Product name
                 Text(fileName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.atlasFont(size: 15, weight: .semibold))
                     .foregroundColor(Color(hex: "#C8D0F0"))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
@@ -96,18 +96,18 @@ struct TitanMissionView: View {
                 // Status + percentage
                 HStack {
                     Text(statusText)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color(hex: "#8A92BC"))
                         .lineLimit(1)
                         .animation(.easeInOut(duration: 0.2), value: statusText)
                     Spacer()
                     if mission.isComplete {
                         Text(anyFailed ? "Failed" : "Done")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.atlasFont(size: 11, weight: .semibold))
                             .foregroundColor(accentColor)
                     } else {
                         Text("\(Int(progress * 100))%")
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.atlasFont(size: 11, design: .monospaced))
                             .foregroundColor(Color(hex: "#353860"))
                     }
                 }
@@ -119,7 +119,7 @@ struct TitanMissionView: View {
             if !hasStarted {
                 HStack(spacing: 12) {
                     Button("← Back") { onCancel() }
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.atlasFont(size: 13, weight: .semibold))
                         .foregroundColor(Color(hex: "#8A92BC"))
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
@@ -135,16 +135,18 @@ struct TitanMissionView: View {
                         hasStarted = true
                         let pw = adminPassword
                         Task {
-                            let (allowed, _) = await MonthlyLimitManager.shared.checkWithServer()
-                            guard allowed else {
-                                await MainActor.run { hasStarted = false }
-                                return
-                            }
-                            MonthlyLimitManager.shared.syncAfterServerGate()
+                            // mission.execute() now performs its own atomic
+                            // install-limit reservation internally (see
+                            // Engine/TitanMission.swift) — the separate mission-start
+                            // check previously here is redundant and has been
+                            // removed to avoid reserving twice for one mission.
                             await mission.execute(adminPassword: pw)
+                            if mission.limitReached {
+                                await MainActor.run { hasStarted = false }
+                            }
                         }
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.atlasFont(size: 13, weight: .semibold))
                     .foregroundColor(Color(hex: "#08090E"))
                     .padding(.horizontal, 36)
                     .padding(.vertical, 10)
@@ -156,7 +158,7 @@ struct TitanMissionView: View {
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else if mission.isComplete {
                 Button(anyFailed ? "Close" : "Done") { onDone() }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.atlasFont(size: 13, weight: .semibold))
                     .foregroundColor(Color(hex: "#08090E"))
                     .padding(.horizontal, 36)
                     .padding(.vertical, 10)
@@ -178,7 +180,7 @@ struct TitanMissionView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text("Details")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.atlasFont(size: 11, weight: .medium))
                             .foregroundColor(Color.atlasSubtitle)
 
                         // Dot indicators for step states
@@ -193,7 +195,7 @@ struct TitanMissionView: View {
                         Spacer()
 
                         Image(systemName: showDetails ? "chevron.down" : "chevron.up")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.atlasFont(size: 9, weight: .semibold))
                             .foregroundColor(Color.atlasTertiary)
                     }
                     .padding(.horizontal, 20)
@@ -258,18 +260,18 @@ private struct TitanStepRow: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#5B8DEF")))
                 } else {
                     Image(systemName: iconName)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.atlasFont(size: 9, weight: .bold))
                         .foregroundColor(iconFG)
                 }
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(step.title)
-                    .font(.system(size: 10, weight: step.status == .running ? .semibold : .regular))
+                    .font(.atlasFont(size: 10, weight: step.status == .running ? .semibold : .regular))
                     .foregroundColor(step.status == .pending ? Color.atlasTertiary : Color.atlasSubtitle)
                     .lineLimit(1)
                 if !step.resultNote.isEmpty {
                     Text(step.resultNote)
-                        .font(.system(size: 9))
+                        .font(.atlasFont(size: 9))
                         .foregroundColor(step.status == .failed ? Color.atlasDanger : Color.atlasTertiary)
                         .lineLimit(2)
                 }

@@ -75,6 +75,9 @@ final class TitanMission: ObservableObject {
     @Published var isRunning = false
     @Published var isComplete = false
     @Published var currentNote = ""
+    /// True when the mission could not start because the monthly install-limit
+    /// reservation was denied (device already at 25 confirmed+active this period).
+    @Published var limitReached = false
 
     // Source context
     let mountPoint: String
@@ -411,6 +414,20 @@ final class TitanMission: ObservableObject {
 
     func execute(adminPassword: String) async {
         guard !steps.isEmpty else { return }
+
+        // Server-authoritative install-limit gate — atomic reserve. The current
+        // architecture has no authoritative way to distinguish independent
+        // top-level products from one product's multi-step workflow (confirmed by
+        // investigation — no heuristic is used here), so an entire mission is
+        // reserved and counted as ONE product, confirmed on overall mission
+        // success or released on overall mission failure below.
+        let reservation = await MonthlyLimitManager.shared.reserveSlot()
+        guard reservation.allowed else {
+            limitReached = true
+            return
+        }
+        let reservationID = reservation.reservationID
+
         isRunning  = true
         isComplete = false
         // Reset rollback tracking
@@ -469,6 +486,16 @@ final class TitanMission: ObservableObject {
         // A failed install should not leave ownership claims on the filesystem.
         let didFail = steps.contains(where: { $0.status == .failed })
         runtimeCreatedPaths = didFail ? [] : InstallEngine.diffLibraryTopLevel(before: libSnapshot)
+
+        // Confirm the mission-level reservation on overall success, release on
+        // overall failure — this mission was reserved and counted as ONE product.
+        if let reservationID {
+            if didFail {
+                await MonthlyLimitManager.shared.releaseReservation(reservationID: reservationID)
+            } else {
+                await MonthlyLimitManager.shared.confirmSuccess(reservationID: reservationID)
+            }
+        }
 
         isRunning  = false
         isComplete = true
@@ -614,22 +641,22 @@ final class TitanMission: ObservableObject {
             var receipts: [String] = []
             var files: [InstallRecord.InstalledFile] = []
             if success {
-                // Give the installer a moment to finish writing all receipt files —
-                // macOS PKG metapackages register sub-package receipts sequentially
-                // and some may not be flushed to disk immediately after exit.
-                Thread.sleep(forTimeInterval: 3.0)
                 receipts = PKGReceiptScanner.findNewReceipts(before: receiptsBefore, since: installStart)
-                // Always also search by name and merge — timestamp scan misses receipts
-                // when the PKG metapackage registers them after the parent process exits.
-                let pkgName = URL(fileURLWithPath: urlPath).deletingPathExtension().lastPathComponent
-                let byName = PKGReceiptScanner.findReceiptsByName(pkgName)
-                let merged = Array(Set(receipts + byName))
-                receipts = merged.isEmpty ? receipts : merged
-                // Skip per-file enumeration — pkgutil --files can return tens of
-                // thousands of paths for large packages (e.g. Serum presets), causing
-                // a multi-minute hang. Rollback uses receipt IDs directly via pkgutil,
-                // so we don't need individual file paths here.
-                files = []
+                // Classify each attributed receipt as .created (new to system) or .rewritten
+                // (pre-existed and was overwritten by the installer). This mirrors the provenance
+                // logic in installPKG so RollbackEngine can skip --forget for .rewritten receipts.
+                var provenance: [String: ReceiptProvenance] = [:]
+                for id in receipts {
+                    provenance[id] = receiptsBefore.contains(id) ? .rewritten : .created
+                }
+                InstallEngine.lastPKGReceiptProvenance = provenance
+                // Enumerate installed plugin bundles from receipt BOMs using --only-dirs,
+                // which limits output to bundle-level directories and avoids the pipe-buffer
+                // deadlock risk of raw --files output on large receipts (e.g. Serum presets).
+                // resolveInstalledBundlesFromReceipts is format-agnostic: it discovers any
+                // bundle type (.component, .vst3, .vst, .aaxplugin, .clap, .app, etc.) for
+                // any vendor, using each receipt's own install-location for path resolution.
+                files = InstallEngine.resolveInstalledBundlesFromReceipts(receipts)
             }
             return (success, r.output, receipts, files)
         }.value
@@ -876,25 +903,31 @@ final class TitanMission: ObservableObject {
         return nil
     }
 
-    // Runs a .app patch bundle by launching it via NSWorkspace, then:
-    //   • If a GUI window appears → drives the wizard automatically (clicks Next/Agree/Finish)
-    //   • If no window within 30 s → running headless, waits for process to exit
-    // The global auth watcher (started in execute()) handles the macOS
-    // "wants to make changes" password dialog transparently.
+    // Runs a .app patch bundle through a tiered execution pipeline:
+    //   Strategy 1 — InstallBuilder headless: arch-specific launcher + --mode unattended
+    //   Strategy 2 — Generic headless: primary bundle executable via shell subprocess
+    //                (no Launch Services → no Gatekeeper UI for any installer type)
+    //   Strategy 3 — GUI with Gatekeeper pre-authorization: spctl --add before NSWorkspace,
+    //                then drives the wizard automatically (clicks Next/Agree/Finish)
+    // Strategies are tried in order; only reports failure after all are exhausted.
+    // After any successful strategy, diffs plugin directories and PKG receipts to produce
+    // an authoritative install record — format-agnostic, vendor-agnostic, name-agnostic.
     nonisolated private func runAppBundle(_ appURL: URL, adminPassword: String) async -> StepResult {
         let appName = appURL.deletingPathExtension().lastPathComponent
         let log = os.Logger(subsystem: "digital.interlinked.atlas", category: "titan-gatekeeper")
 
-        // ── Change 1: Writable copy for read-only mounted volumes ─────────────────────
-        // xattr -cr cannot modify files on a read-only DMG filesystem (/Volumes/).
-        // If the source lives under /Volumes/, copy the entire .app to a writable temp
+        // ── Writable copy for read-only mounted filesystems ───────────────────────────
+        // /Volumes/ = read-only DMG mount via hdiutil attach.
+        // /private/tmp/ = read-only ISO mount via hdiutil attach -mountrandom /tmp
+        //   (/tmp is a symlink to /private/tmp; the resolved mount path always uses the
+        //    /private/tmp/ prefix — not /tmp/).
+        // xattr -cr cannot write to read-only filesystems, so copy to a writable temp
         // directory before any quarantine work. All subsequent operations use workingURL.
-        // Non-/Volumes/ sources use the original path unchanged — existing behavior preserved.
         let workingURL: URL
         var tempBundleDir: URL? = nil
 
-        if appURL.path.hasPrefix("/Volumes/") {
-            log.info("[ATLAS] .app on mounted volume (read-only): \(appURL.path, privacy: .public)")
+        if appURL.path.hasPrefix("/Volumes/") || appURL.path.hasPrefix("/private/tmp/") {
+            log.info("[ATLAS] .app on read-only filesystem: \(appURL.path, privacy: .public)")
             let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("ATLAS_app_\(UUID().uuidString)")
             do {
@@ -931,11 +964,42 @@ final class TitanMission: ObservableObject {
             log.warning("[ATLAS] Quarantine removal non-zero for \(workingURL.lastPathComponent, privacy: .public): \(xattrResult.output.prefix(120), privacy: .public)")
         }
 
-        // InstallBuilder detection — look for the arch-specific launcher inside the .app.
-        // If found, run with --mode unattended so it completes silently with no GUI.
         let macosDir = workingURL.appendingPathComponent("Contents/MacOS")
+
+        // ── Pre-run install provenance snapshots ──────────────────────────────────────
+        // FilesystemSnapshot matches the standard installFromMountPoint .patch pipeline:
+        // it covers all plugin formats, /Applications, Application Support (vendor dirs
+        // deep + new dirs shallow), LaunchAgents/Daemons, fonts, extensions, MIDI drivers,
+        // and user-library equivalents — not just plugin directories.
+        // PKGReceiptScanner captures receipts registered by any internal PKG the .app runs.
+        // Both snapshots are taken once before any strategy executes so the diff is
+        // attributed solely to this installer — no vendor names, no filename logic.
+        let fsBefore       = FilesystemSnapshot.take()
+        let receiptsBefore = PKGReceiptScanner.snapshotReceipts()
+        let installStart   = Date()
+
+        // Diffs the full watched filesystem scope and PKG receipts against pre-run
+        // snapshots, appends results to the TitanMission record, and returns success.
+        // Called exactly once at the first strategy that reports success.
+        func recordInstall(note: String) async -> StepResult {
+            let fsAfter     = FilesystemSnapshot.take()
+            let changed     = FilesystemSnapshot.diff(before: fsBefore, after: fsAfter)
+            let newFiles    = FilesystemSnapshot.buildInstalledFiles(changedPaths: changed)
+            let newReceipts = PKGReceiptScanner.findNewReceipts(before: receiptsBefore, since: installStart)
+            log.info("[ATLAS] Post-run record: \(newFiles.count, privacy: .public) file(s), \(newReceipts.count, privacy: .public) receipt(s) captured for \(appName, privacy: .public)")
+            await MainActor.run {
+                self.installedFiles.append(contentsOf: newFiles)
+                self.installedPKGReceipts.append(contentsOf: newReceipts)
+            }
+            return StepResult(success: true, note: note)
+        }
+
+        // ── Strategy 1: InstallBuilder headless ───────────────────────────────────────
+        // Detect arch-specific InstallBuilder launchers. Run with --mode unattended
+        // so the installation completes without any visible window.
+        // archPrefix returns "" (arm64/universal) or "arch -x86_64 " (Intel-only).
+        // Priority list is arm64-first when the binary is not forced to x86.
         let isAppleSilicon = archPrefix(for: workingURL) == "arm64"
-        // Prefer native arch launcher; fall back to the other; then generic names
         let installBuilderPriority = isAppleSilicon
             ? ["osx-arm64", "osx-x86_64", "osx-x86", "installbuilder"]
             : ["osx-x86_64", "osx-x86", "osx-arm64", "installbuilder"]
@@ -953,12 +1017,74 @@ final class TitanMission: ObservableObject {
                 let r = InstallEngine.runShell(script)
                 let ok = r.success || r.output.lowercased().contains("finish") || r.output.lowercased().contains("success")
                 if ok {
-                    return StepResult(success: true, note: "Patch applied (unattended)")
+                    return await recordInstall(note: "Patch applied (unattended)")
                 }
-                // Unattended mode failed — fall through to GUI wizard path below.
-                // The wizard runs in user context so ATLAS's Accessibility API can control it.
-                log.info("[ATLAS] InstallBuilder unattended failed for \(appName, privacy: .public) — falling through to GUI wizard")
+                log.info("[ATLAS] InstallBuilder unattended failed for \(appName, privacy: .public) — trying generic headless")
                 break
+            }
+        }
+
+        // ── Strategy 2: Generic headless execution ────────────────────────────────────
+        // Finds the primary bundle executable — the one matching the bundle name, or the
+        // first no-extension binary that is not an InstallBuilder launcher (already tried).
+        // Runs via shell subprocess (runShellWithEnv) — no Launch Services is invoked,
+        // so Gatekeeper's UI dialog never fires regardless of signing status.
+        let ibNames: Set<String> = ["osx-arm64", "osx-x86_64", "osx-x86", "installbuilder", "installbuilder.sh"]
+        let execCandidates = (try? FileManager.default.contentsOfDirectory(
+            at: macosDir, includingPropertiesForKeys: nil, options: [])) ?? []
+        let primaryExec = execCandidates.first(where: {
+            $0.lastPathComponent.lowercased() == appName.lowercased()
+        }) ?? execCandidates.first(where: {
+            $0.pathExtension.isEmpty && !ibNames.contains($0.lastPathComponent.lowercased())
+        })
+        if let exec = primaryExec {
+            _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", exec.path])
+            let dir = macosDir.path.replacingOccurrences(of: "'", with: "'\\''")
+            let exe = exec.path.replacingOccurrences(of: "'", with: "'\\''")
+            let pwd = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+            let prefix = archPrefix(for: exec)
+            let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
+            // Attempt 2a: unattended mode — exits cleanly for installers that support it
+            let r1 = InstallEngine.runShellWithEnv(
+                "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exe)' --mode unattended 2>&1",
+                env: ["ATLAS_PASSWORD": adminPassword], adminPassword: adminPassword)
+            let out1 = r1.output.lowercased()
+            if r1.success || out1.contains("finish") || out1.contains("success") || out1.contains("license") {
+                log.info("[ATLAS] Generic headless (unattended) succeeded for \(appName, privacy: .public)")
+                return await recordInstall(note: "Patch applied (headless)")
+            }
+            // Attempt 2b: bare execution — for installers that ignore --mode unattended
+            let r2 = InstallEngine.runShellWithEnv(
+                "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exe)' 2>&1",
+                env: ["ATLAS_PASSWORD": adminPassword], adminPassword: adminPassword)
+            let out2 = r2.output.lowercased()
+            if r2.success || out2.contains("finish") || out2.contains("success") || out2.contains("license") {
+                log.info("[ATLAS] Generic headless (bare) succeeded for \(appName, privacy: .public)")
+                return await recordInstall(note: "Patch applied (headless)")
+            }
+            log.info("[ATLAS] Generic headless exhausted for \(appName, privacy: .public) — proceeding to GUI path")
+        }
+
+        // ── Strategy 3: GUI execution with Gatekeeper pre-authorization ───────────────
+        // Mirrors InstallationManager.runPatchApp Step 2. spctl --assess first — the
+        // exception is added only when actually needed (unsigned/unnotarized apps).
+        // sudo -S with adminPassword — same elevation pattern as runPatchApp line 1765.
+        // The per-item allow rule is written to /var/db/SystemPolicy on the writable
+        // boot volume, independent of the source filesystem. Launch Services reads it
+        // before presenting any dialog, so the app opens without user intervention.
+        let escapedApp = workingURL.path.replacingOccurrences(of: "'", with: "'\\''")
+        let escapedPwd = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
+        let gatekeeperOK = InstallEngine.runProcess(
+            path: "/usr/sbin/spctl",
+            arguments: ["--assess", "--type", "execute", workingURL.path]).success
+        if !gatekeeperOK {
+            log.info("[ATLAS] Establishing Gatekeeper exception for \(workingURL.lastPathComponent, privacy: .public)")
+            let spctlResult = InstallEngine.runProcess(path: "/bin/bash", arguments: ["-c",
+                "echo '\(escapedPwd)' | sudo -S /usr/sbin/spctl --add '\(escapedApp)'"])
+            if spctlResult.success {
+                log.info("[ATLAS] Gatekeeper exception added for \(workingURL.lastPathComponent, privacy: .public)")
+            } else {
+                log.warning("[ATLAS] Gatekeeper exception non-zero: \(spctlResult.output.prefix(120), privacy: .public)")
             }
         }
 
@@ -970,28 +1096,22 @@ final class TitanMission: ObservableObject {
             MacUIAutomator.findApp(named: appName) != nil
         }
 
-        // ── Change 2: Distinguish Gatekeeper block from headless exit ────────────────
-        // Previously, finding no running process after 30 s was unconditionally reported
-        // as success ("Patch applied"). This is a false positive when macOS blocked the
-        // app before it could launch (Gatekeeper / unverified developer dialog).
-        // Fix: if the process never appeared, run spctl --assess to determine whether
-        // macOS would allow execution. A failing assessment means the app was blocked,
-        // not that it ran and exited cleanly.
+        // If the process still has not appeared, all strategies are exhausted.
+        // spctl --assess distinguishes a genuine headless exit (app ran and finished
+        // before we could poll it) from a failure to start at all.
         if MacUIAutomator.findApp(named: appName) == nil {
-            log.info("[ATLAS] '\(appName, privacy: .public)' not found after launch — running Gatekeeper assessment")
+            log.info("[ATLAS] '\(appName, privacy: .public)' not found after GUI launch — running Gatekeeper assessment")
             let spctl = InstallEngine.runProcess(
                 path: "/usr/sbin/spctl",
                 arguments: ["--assess", "--type", "execute", workingURL.path])
             if spctl.success {
-                // spctl passed — app launched headlessly and exited before we polled
                 log.info("[ATLAS] Gatekeeper assessment passed — headless exit, treating as success")
-                return StepResult(success: true, note: "Patch applied")
+                return await recordInstall(note: "Patch applied")
             } else {
-                // spctl failed — macOS blocked execution before the process could launch
-                log.warning("[ATLAS] Gatekeeper assessment failed — execution blocked: \(spctl.output.prefix(200), privacy: .public)")
+                log.warning("[ATLAS] All strategies exhausted for \(appName, privacy: .public): \(spctl.output.prefix(200), privacy: .public)")
                 return StepResult(
                     success: false,
-                    note: "macOS blocked \(appName) — Gatekeeper could not verify the developer. The component did not run.")
+                    note: "\(appName) did not start after all execution strategies (headless, GUI with authorization). Check system logs for details.")
             }
         }
 
@@ -1018,12 +1138,16 @@ final class TitanMission: ObservableObject {
 
         // Exited while we were waiting for a window → headless success
         if MacUIAutomator.findApp(named: appName) == nil {
-            return StepResult(success: true, note: "Patch applied (headless)")
+            return await recordInstall(note: "Patch applied (headless)")
         }
 
         if windowAppeared {
-            // GUI installer wizard — drive it
-            return await driveInstallerWizard(appName: appName, timeout: 1800)
+            // GUI installer wizard — drive it, then record what it installed
+            let wizardResult = await driveInstallerWizard(appName: appName, timeout: 1800)
+            if wizardResult.success {
+                return await recordInstall(note: wizardResult.note)
+            }
+            return wizardResult
         }
 
         // No window after 30 s → running headlessly — wait up to 10 min for exit
@@ -1033,7 +1157,7 @@ final class TitanMission: ObservableObject {
         if MacUIAutomator.findApp(named: appName) != nil {
             await MacUIAutomator.quitApp(named: appName)
         }
-        return StepResult(success: true, note: "Patch applied")
+        return await recordInstall(note: "Patch applied")
     }
 
     // Drives a wizard-style installer GUI through to completion.
