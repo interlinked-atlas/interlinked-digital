@@ -29,11 +29,13 @@ private func pluginFormatLabel(for path: String) -> (label: String, key: String)
     case "vst3":       return ("VST3","vst3")
     case "vst":        return ("VST", "vst")
     case "aaxplugin":  return ("AAX", "aax")
+    case "clap":       return ("CLAP","clap")
     default:           return nil
     }
 }
 
 private func pluginFormats(for record: InstallRecord) -> [PluginFormatRow] {
+    guard record.status != .uninstalled else { return [] }
     var seen = Set<String>()
     return record.installedFiles.compactMap { file in
         guard let (label, key) = pluginFormatLabel(for: file.destinationPath),
@@ -64,7 +66,7 @@ struct HistoryPanelView: View {
             HStack(spacing: 8) {
                 Button { onClose?() } label: {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.atlasFont(size: 11, weight: .semibold))
                         .foregroundColor(Color.atlasSubtitle)
                         .frame(width: 24, height: 24)
                         .background(Color.atlasElevated)
@@ -74,12 +76,12 @@ struct HistoryPanelView: View {
                 .help("Close ATLAS Library")
 
                 Text(L(.atlasLibrary))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.atlasFont(size: 13, weight: .semibold))
                     .foregroundColor(Color.atlasLabel)
                 Spacer()
                 if !store.records.isEmpty {
                     Button(L(.clearAll)) { showClearConfirm = true }
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.atlasFont(size: 10, weight: .medium))
                         .foregroundColor(Color(hex: "#E05555").opacity(0.85))
                         .buttonStyle(.plain)
                 }
@@ -437,16 +439,16 @@ struct InstalledProductsSection: View {
                     if scrollable {
                         HStack(spacing: 5) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.atlasFont(size: 10, weight: .medium))
                                 .foregroundColor(Color.atlasSubtitle.opacity(0.6))
                             TextField("Search ATLAS Library…", text: $searchText)
-                                .font(.system(size: 11))
+                                .font(.atlasFont(size: 11))
                                 .foregroundColor(Color.atlasLabel)
                                 .textFieldStyle(.plain)
                             if !searchText.isEmpty {
                                 Button { searchText = "" } label: {
                                     Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 10))
+                                        .font(.atlasFont(size: 10))
                                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                                 }
                                 .buttonStyle(.plain)
@@ -465,9 +467,9 @@ struct InstalledProductsSection: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "line.3.horizontal.decrease")
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.atlasFont(size: 9, weight: .semibold))
                             Text(activeFilterCount > 0 ? "Filters · \(activeFilterCount)" : "Filters")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.atlasFont(size: 10, weight: .medium))
                             }
                             .foregroundColor(activeFilterCount > 0 ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
                             .padding(.horizontal, 7)
@@ -500,7 +502,7 @@ struct InstalledProductsSection: View {
                                     filterFormat = "All"; filterStatus = "All"
                                     filterDate = "All"; filterEnableState = "All"
                                 }
-                                .font(.system(size: 9, weight: .medium))
+                                .font(.atlasFont(size: 9, weight: .medium))
                                 .foregroundColor(Color(hex: "#E05555").opacity(0.8))
                                 .buttonStyle(.plain)
                             }
@@ -522,10 +524,10 @@ struct InstalledProductsSection: View {
     private var emptyLibraryView: some View {
         VStack(spacing: 8) {
             Image(systemName: "books.vertical")
-                .font(.system(size: 24))
+                .font(.atlasFont(size: 24))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.4))
             Text(L(.noInstallsYet))
-                .font(.system(size: 11))
+                .font(.atlasFont(size: 11))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.6))
         }
         .frame(maxWidth: .infinity)
@@ -534,12 +536,12 @@ struct InstalledProductsSection: View {
     private var noResultsView: some View {
         VStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 20))
+                .font(.atlasFont(size: 20))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.4))
             Text(!activeSearchText.isEmpty
                  ? "No results for \"\(activeSearchText)\""
                  : "No items match these filters")
-                .font(.system(size: 11))
+                .font(.atlasFont(size: 11))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.6))
                 .multilineTextAlignment(.center)
             if !activeSearchText.isEmpty || activeFilterCount > 0 {
@@ -549,7 +551,7 @@ struct InstalledProductsSection: View {
                     filterFormat = "All"; filterStatus = "All"
                     filterDate = "All"; filterEnableState = "All"
                 }
-                .font(.system(size: 10, weight: .medium))
+                .font(.atlasFont(size: 10, weight: .medium))
                 .foregroundColor(Color(hex: "#3ECFB2"))
                 .buttonStyle(.plain)
             }
@@ -565,7 +567,7 @@ struct InstalledProductsSection: View {
                            selection: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.atlasFont(size: 9, weight: .semibold))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.6))
                 .textCase(.uppercase)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -576,7 +578,7 @@ struct InstalledProductsSection: View {
                         let isSelected = selection.wrappedValue == option
                         Button { selection.wrappedValue = option } label: {
                             Text(displayName)
-                                .font(.system(size: 9, weight: isSelected ? .semibold : .regular))
+                                .font(.atlasFont(size: 9, weight: isSelected ? .semibold : .regular))
                                 .foregroundColor(isSelected ? Color(hex: "#08090E") : Color.atlasSubtitle)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 3)
@@ -597,10 +599,10 @@ struct InstalledProductsSection: View {
         let eligible = group.uninstallableRecords
         HStack(spacing: 6) {
             Image(systemName: "square.stack.3d.down.right.fill")
-                .font(.system(size: 9))
+                .font(.atlasFont(size: 9))
                 .foregroundColor(Color(hex: "#3ECFB2"))
             Text(String(format: L(.sessionFmt), group.records.count, shortDate(group.date)))
-                .font(.system(size: 10, weight: .semibold))
+                .font(.atlasFont(size: 10, weight: .semibold))
                 .foregroundColor(Color.atlasSubtitle)
             Spacer()
             if eligible.count >= 2 {
@@ -609,8 +611,8 @@ struct InstalledProductsSection: View {
                     showBatchConfirm = true
                 } label: {
                     HStack(spacing: 3) {
-                        Image(systemName: "trash").font(.system(size: 8))
-                        Text(L(.filterAll)).font(.system(size: 9, weight: .semibold))
+                        Image(systemName: "trash").font(.atlasFont(size: 8))
+                        Text(L(.filterAll)).font(.atlasFont(size: 9, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "#E05555"))
                     .padding(.horizontal, 6)
@@ -651,13 +653,13 @@ struct InstalledProductsSection: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "archivebox")
-                        .font(.system(size: 9))
+                        .font(.atlasFont(size: 9))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.6))
                     Text(String(format: L(.archiveLabelFmt), store.archivedRecords.count))
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.atlasFont(size: 10, weight: .semibold))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     Image(systemName: showArchive ? "chevron.up" : "chevron.right")
-                        .font(.system(size: 8, weight: .semibold))
+                        .font(.atlasFont(size: 8, weight: .semibold))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.4))
                 }
                 .padding(.leading, 12)
@@ -672,7 +674,7 @@ struct InstalledProductsSection: View {
                 showPermanentDeleteArchivesConfirm = true
             } label: {
                 Text(L(.deleteAll))
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.atlasFont(size: 9, weight: .medium))
                     .foregroundColor(Color(hex: "#E05555").opacity(0.6))
             }
             .buttonStyle(.plain)
@@ -710,6 +712,7 @@ struct LibraryItemCard: View {
 
     @State private var hovered = false
     @State private var isExpanded = false
+    @State private var showAllFormats = false
     @State private var showUpgradeAlert = false
     @State private var lockedFeatureName = ""
     @State private var trashFilesExist: Bool? = nil
@@ -755,9 +758,9 @@ struct LibraryItemCard: View {
                 HStack(spacing: 7) {
                     Image(systemName: record.statusIcon)
                         .foregroundColor(statusColor)
-                        .font(.system(size: 11))
+                        .font(.atlasFont(size: 11))
                     Text(record.fileName)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.atlasFont(size: 11, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -765,7 +768,7 @@ struct LibraryItemCard: View {
                     // Remove button
                     Button(action: onRemove) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.atlasFont(size: 8, weight: .bold))
                             .foregroundColor(Color.atlasSubtitle.opacity(hovered ? 0.8 : 0.4))
                     }
                     .buttonStyle(.plain)
@@ -775,17 +778,17 @@ struct LibraryItemCard: View {
                 // Meta row
                 HStack(spacing: 4) {
                     Text(record.shortDate)
-                        .font(.system(size: 10))
+                        .font(.atlasFont(size: 10))
                         .foregroundColor(Color.atlasSubtitle)
                     Text("·")
-                        .font(.system(size: 10))
+                        .font(.atlasFont(size: 10))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                     Text(record.shortTime)
-                        .font(.system(size: 10))
+                        .font(.atlasFont(size: 10))
                         .foregroundColor(Color.atlasSubtitle)
                     Spacer()
                     Text(record.fileType)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.atlasFont(size: 9, weight: .medium))
                         .foregroundColor(Color.atlasSubtitle)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
@@ -797,11 +800,11 @@ struct LibraryItemCard: View {
                 HStack(spacing: 0) {
                     if !record.pkgReceiptIDs.isEmpty {
                         Text(String(format: L(.receiptsAndFilesFmt), record.pkgReceiptIDs.count, record.installedFiles.count))
-                            .font(.system(size: 10))
+                            .font(.atlasFont(size: 10))
                             .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     } else if !record.installedFiles.isEmpty {
                         Text(String(format: L(.filesTrackedFmt), record.installedFiles.count))
-                            .font(.system(size: 10))
+                            .font(.atlasFont(size: 10))
                             .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                     }
                     if !formats.isEmpty {
@@ -841,9 +844,9 @@ struct LibraryItemCard: View {
                         if permanentlyDeleted {
                             HStack(spacing: 3) {
                                 Image(systemName: "trash.slash")
-                                    .font(.system(size: 7, weight: .semibold))
+                                    .font(.atlasFont(size: 7, weight: .semibold))
                                 Text(L(.permanentlyDeleted))
-                                    .font(.system(size: 8, weight: .medium))
+                                    .font(.atlasFont(size: 8, weight: .medium))
                                     .lineLimit(1)
                             }
                             .foregroundColor(Color.atlasSubtitle.opacity(0.6))
@@ -860,9 +863,9 @@ struct LibraryItemCard: View {
                                 // Feedback already submitted
                                 HStack(spacing: 3) {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 8, weight: .semibold))
+                                        .font(.atlasFont(size: 8, weight: .semibold))
                                     Text(L(.feedbackReceived))
-                                        .font(.system(size: 9, weight: .semibold))
+                                        .font(.atlasFont(size: 9, weight: .semibold))
                                 }
                                 .foregroundColor(Color(hex: "#3ECFB2").opacity(0.6))
                                 .padding(.horizontal, 6).padding(.vertical, 3)
@@ -884,9 +887,9 @@ struct LibraryItemCard: View {
                             } label: {
                                 HStack(spacing: 3) {
                                     Text(L(.formatsLabel))
-                                        .font(.system(size: 9, weight: .semibold))
+                                        .font(.atlasFont(size: 9, weight: .semibold))
                                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                        .font(.system(size: 7, weight: .semibold))
+                                        .font(.atlasFont(size: 7, weight: .semibold))
                                 }
                                 .foregroundColor(isExpanded ? Color.atlasInfo : Color.atlasSubtitle.opacity(0.6))
                                 .padding(.horizontal, 6)
@@ -920,8 +923,22 @@ struct LibraryItemCard: View {
                     .padding(.leading, inSession ? 18 : 12)
 
                 VStack(spacing: 0) {
-                    ForEach(formats) { fmt in
+                    let visibleFormats = showAllFormats ? formats : Array(formats.prefix(5))
+                    ForEach(visibleFormats) { fmt in
                         formatRow(fmt)
+                    }
+                    if !showAllFormats && formats.count > 5 {
+                        Button("Show all \(formats.count) formats") {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showAllFormats = true
+                            }
+                        }
+                        .font(.atlasFont(size: 10, weight: .medium))
+                        .foregroundColor(Color.atlasInfo)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.bottom, 6)
@@ -976,15 +993,22 @@ struct LibraryItemCard: View {
     @ViewBuilder
     private var formatInlineRow: some View {
         HStack(spacing: 0) {
-            ForEach(formats) { fmt in
+            let visible = Array(formats.prefix(3))
+            let overflow = formats.count - visible.count
+            ForEach(visible) { fmt in
                 let isDisabled = record.disabledFormats?.contains { $0.originalPath == fmt.destinationPath } ?? false
                 Text(" · \(fmt.label)")
-                    .font(.system(size: 10))
+                    .font(.atlasFont(size: 10))
                     .foregroundColor(
                         isDisabled
                             ? Color.atlasSubtitle.opacity(0.35)
                             : Color.atlasInfo.opacity(0.75)   // informational → blue
                     )
+            }
+            if overflow > 0 {
+                Text(" · +\(overflow) more")
+                    .font(.atlasFont(size: 10))
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.45))
             }
         }
     }
@@ -996,9 +1020,9 @@ struct LibraryItemCard: View {
         if record.demoDetected == true {
             HStack(spacing: 3) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.atlasFont(size: 7, weight: .bold))
                 Text("DEMO MODE")
-                    .font(.system(size: 7, weight: .bold)).tracking(1)
+                    .font(.atlasFont(size: 7, weight: .bold)).tracking(1)
             }
             .foregroundColor(Color(hex: "#F0A030"))
             .padding(.horizontal, 5).padding(.vertical, 2)
@@ -1009,9 +1033,9 @@ struct LibraryItemCard: View {
         } else if record.titanVerified == true {
             HStack(spacing: 3) {
                 Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.atlasFont(size: 7, weight: .bold))
                 Text("TITAN VERIFIED™")
-                    .font(.system(size: 7, weight: .bold)).tracking(1)
+                    .font(.atlasFont(size: 7, weight: .bold)).tracking(1)
             }
             .foregroundColor(Color(hex: "#3ECFB2"))
             .padding(.horizontal, 5).padding(.vertical, 2)
@@ -1032,18 +1056,18 @@ struct LibraryItemCard: View {
         HStack(spacing: 8) {
             // Format badge
             Text(fmt.label)
-                .font(.system(size: 9, weight: .bold))
+                .font(.atlasFont(size: 9, weight: .bold))
                 .foregroundColor(isDisabled ? Color.atlasSubtitle.opacity(0.5) : Color(hex: "#3ECFB2"))
                 .frame(width: 32, alignment: .leading)
 
             // Path / state
             if isDisabled {
                 Text(L(.disabled))
-                    .font(.system(size: 9))
+                    .font(.atlasFont(size: 9))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.6))
             } else {
                 Text(URL(fileURLWithPath: fmt.destinationPath).lastPathComponent)
-                    .font(.system(size: 9))
+                    .font(.atlasFont(size: 9))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.8))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -1056,7 +1080,7 @@ struct LibraryItemCard: View {
                 showInFinder(fmt: fmt, disabledEntry: disabledEntry)
             } label: {
                 Image(systemName: "folder")
-                    .font(.system(size: 9))
+                    .font(.atlasFont(size: 9))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
             }
             .buttonStyle(.plain)
@@ -1092,9 +1116,9 @@ struct LibraryItemCard: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 7, weight: .semibold))
+                                .font(.atlasFont(size: 7, weight: .semibold))
                             Text("ATLAS")
-                                .font(.system(size: 7, weight: .bold))
+                                .font(.atlasFont(size: 7, weight: .bold))
                         }
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                         .padding(.horizontal, 5).padding(.vertical, 2)
@@ -1118,15 +1142,15 @@ struct LibraryItemCard: View {
                                 .scaleEffect(0.5)
                                 .frame(width: 12, height: 12)
                             Text(L(.signingLabel))
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.atlasFont(size: 9, weight: .semibold))
                                 .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                         }
                     } else if successThis {
                         HStack(spacing: 3) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 8, weight: .semibold))
+                                .font(.atlasFont(size: 8, weight: .semibold))
                             Text(L(.signedLabel))
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.atlasFont(size: 9, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .padding(.horizontal, 6).padding(.vertical, 3)
@@ -1145,9 +1169,9 @@ struct LibraryItemCard: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 7, weight: .semibold))
+                                .font(.atlasFont(size: 7, weight: .semibold))
                             Text("ATLAS")
-                                .font(.system(size: 7, weight: .bold))
+                                .font(.atlasFont(size: 7, weight: .bold))
                         }
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                         .padding(.horizontal, 5).padding(.vertical, 2)
@@ -1259,9 +1283,9 @@ struct LibraryItemCard: View {
     private func compactButton(label: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 8, weight: .semibold))
+                Image(systemName: icon).font(.atlasFont(size: 8, weight: .semibold))
                 Text(label)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.atlasFont(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -1322,15 +1346,15 @@ private struct ArchiveItemCard: View {
             HStack(spacing: 7) {
                 Image(systemName: record.statusIcon)
                     .foregroundColor(Color.atlasSubtitle.opacity(0.4))
-                    .font(.system(size: 11))
+                    .font(.atlasFont(size: 11))
                 Text(record.fileName)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.atlasFont(size: 11, weight: .semibold))
                     .foregroundColor(Color.atlasLabel.opacity(0.55))
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
                 Text(record.fileType)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.atlasFont(size: 9, weight: .medium))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.45))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
@@ -1341,14 +1365,14 @@ private struct ArchiveItemCard: View {
             // Date + file status row
             HStack(spacing: 4) {
                 Text(String(format: L(.installedOnFmt), record.shortDate))
-                    .font(.system(size: 10))
+                    .font(.atlasFont(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                 if !archivedDateStr.isEmpty {
                     Text("·")
-                        .font(.system(size: 10))
+                        .font(.atlasFont(size: 10))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.3))
                     Text(String(format: L(.archivedOnFmt), archivedDateStr))
-                        .font(.system(size: 10))
+                        .font(.atlasFont(size: 10))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                 }
                 Spacer()
@@ -1364,9 +1388,9 @@ private struct ArchiveItemCard: View {
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "arrow.uturn.up.circle")
-                            .font(.system(size: 8, weight: .semibold))
+                            .font(.atlasFont(size: 8, weight: .semibold))
                         Text(L(.unArchive))
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.atlasFont(size: 9, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "#3ECFB2"))
                     .padding(.horizontal, 6).padding(.vertical, 3)
@@ -1382,9 +1406,9 @@ private struct ArchiveItemCard: View {
                     Button { onRestore(record) } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "arrow.uturn.backward")
-                                .font(.system(size: 8, weight: .semibold))
+                                .font(.atlasFont(size: 8, weight: .semibold))
                             Text(L(.recover))
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.atlasFont(size: 9, weight: .semibold))
                         }
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .padding(.horizontal, 6).padding(.vertical, 3)
@@ -1401,7 +1425,7 @@ private struct ArchiveItemCard: View {
 
                 Button { showDeleteConfirm = true } label: {
                     Image(systemName: "trash")
-                        .font(.system(size: 9))
+                        .font(.atlasFont(size: 9))
                         .foregroundColor(Color(hex: "#E05555").opacity(0.5))
                 }
                 .buttonStyle(.plain)
@@ -1426,20 +1450,20 @@ private struct ArchiveItemCard: View {
         switch status {
         case .present:
             HStack(spacing: 3) {
-                Image(systemName: "checkmark.circle").font(.system(size: 7, weight: .semibold))
-                Text(L(.filesPresent)).font(.system(size: 8, weight: .medium))
+                Image(systemName: "checkmark.circle").font(.atlasFont(size: 7, weight: .semibold))
+                Text(L(.filesPresent)).font(.atlasFont(size: 8, weight: .medium))
             }
             .foregroundColor(Color(hex: "#2ECC8A").opacity(0.7))
         case .inTrash:
             HStack(spacing: 3) {
-                Image(systemName: "trash").font(.system(size: 7, weight: .semibold))
-                Text(L(.inTrash)).font(.system(size: 8, weight: .medium))
+                Image(systemName: "trash").font(.atlasFont(size: 7, weight: .semibold))
+                Text(L(.inTrash)).font(.atlasFont(size: 8, weight: .medium))
             }
             .foregroundColor(Color(hex: "#F0A030").opacity(0.8))
         case .missing:
             HStack(spacing: 3) {
-                Image(systemName: "xmark.circle").font(.system(size: 7, weight: .semibold))
-                Text(L(.filesGone)).font(.system(size: 8, weight: .medium))
+                Image(systemName: "xmark.circle").font(.atlasFont(size: 7, weight: .semibold))
+                Text(L(.filesGone)).font(.atlasFont(size: 8, weight: .medium))
             }
             .foregroundColor(Color.atlasSubtitle.opacity(0.45))
         }

@@ -40,6 +40,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var appearance  = AppearanceManager.shared
+    @ObservedObject private var textSize    = TextSizeManager.shared
     @ObservedObject private var langMgr     = LanguageManager.shared
     @ObservedObject private var titanCore   = TitanCore.shared
     @ObservedObject private var auth        = AuthManager.shared
@@ -54,6 +55,7 @@ struct SettingsView: View {
     @State private var notificationsEnabled = false
     @State private var notifPermissionDenied = false
     @State private var showTitanMemory = false
+    @State private var showQuarantinedFiles = false
     @State private var isInternalNotifUpdate = false
 
     private static let notifKey = "ATLAS.notificationsEnabled"
@@ -65,16 +67,16 @@ struct SettingsView: View {
             HStack {
                 HStack(spacing: 8) {
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.atlasFont(size: 14, weight: .semibold))
                         .foregroundColor(Color(hex: "#3ECFB2"))
                     Text(L(.settings))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.atlasFont(size: 15, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                 }
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
+                        .font(.atlasFont(size: 16))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.7))
                 }
                 .buttonStyle(.plain)
@@ -111,15 +113,15 @@ struct SettingsView: View {
                                     .fill(Color(hex: "#7090B8").opacity(0.12))
                                     .frame(width: 28, height: 28)
                                 Image(systemName: "globe")
-                                    .font(.system(size: 13))
+                                    .font(.atlasFont(size: 13))
                                     .foregroundColor(Color(hex: "#7090B8"))
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L(.language))
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.atlasFont(size: 12, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
                                 Text("\(langMgr.current.flag) \(langMgr.current.displayName)")
-                                    .font(.system(size: 11))
+                                    .font(.atlasFont(size: 11))
                                     .foregroundColor(Color.atlasSubtitle)
                             }
                             Spacer()
@@ -142,6 +144,8 @@ struct SettingsView: View {
                     sectionHeader(L(.appearance))
                     VStack(spacing: 0) {
                         appearanceRow
+                        Divider().background(Color.atlasSeparator).padding(.leading, 52)
+                        textSizeRow
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)
@@ -183,6 +187,20 @@ struct SettingsView: View {
                     // ── Tools ─────────────────────────────────────────
                     sectionHeader(L(.tools))
                     VStack(spacing: 0) {
+                        // Quarantined Files
+                        let quarantineCount = QuarantineManager.shared.records.count
+                        infoRow(
+                            icon: "lock.shield.fill",
+                            iconColor: Color(hex: "#E05555"),
+                            title: "Quarantined Files",
+                            subtitle: quarantineCount == 0
+                                ? "No files quarantined"
+                                : quarantineCount == 1
+                                    ? "1 file isolated by TITAN VSCAN™"
+                                    : "\(quarantineCount) files isolated by TITAN VSCAN™",
+                            action: { showQuarantinedFiles = true }
+                        )
+                        Divider().background(Color.atlasSeparator).padding(.leading, 48)
                         // Gatekeeper fix
                         HStack(spacing: 12) {
                             ZStack {
@@ -190,15 +208,15 @@ struct SettingsView: View {
                                     .fill(Color(hex: "#F0A030").opacity(0.12))
                                     .frame(width: 28, height: 28)
                                 Image(systemName: "lock.shield.fill")
-                                    .font(.system(size: 12))
+                                    .font(.atlasFont(size: 12))
                                     .foregroundColor(Color(hex: "#F0A030"))
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L(.fixBlockedPlugins))
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.atlasFont(size: 12, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
                                 Text(gatekeeperFixResult ?? L(.removeSecurityBlocks))
-                                    .font(.system(size: 11))
+                                    .font(.atlasFont(size: 11))
                                     .foregroundColor(gatekeeperFixResult != nil ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
                                     .lineLimit(2)
                             }
@@ -224,7 +242,7 @@ struct SettingsView: View {
                                         }
                                     }
                                 }
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.atlasFont(size: 11, weight: .semibold))
                                 .foregroundColor(Color(hex: "#F0A030"))
                                 .padding(.horizontal, 10).padding(.vertical, 4)
                                 .background(Color(hex: "#F0A030").opacity(0.12))
@@ -256,17 +274,17 @@ struct SettingsView: View {
                                     .fill(planColor.opacity(0.12))
                                     .frame(width: 28, height: 28)
                                 Image(systemName: "calendar")
-                                    .font(.system(size: 12))
+                                    .font(.atlasFont(size: 12))
                                     .foregroundColor(planColor)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text(L(.monthlyInstallations))
-                                        .font(.system(size: 12, weight: .medium))
+                                        .font(.atlasFont(size: 12, weight: .medium))
                                         .foregroundColor(Color.atlasLabel)
                                     Spacer()
                                     Text("\(monthlyUsed) / \(monthlyMax)")
-                                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                        .font(.atlasFont(size: 11, weight: .semibold).monospacedDigit())
                                         .foregroundColor(monthlyRem == 0 ? Color(hex: "#F0A030") : planColor)
                                 }
                                 GeometryReader { geo in
@@ -279,7 +297,7 @@ struct SettingsView: View {
                                 }
                                 .frame(height: 4)
                                 Text(monthlyRem == 0 ? L(.refillsOnBillingDate) : String(format: L(.remainingThisMonthFmt), monthlyRem))
-                                    .font(.system(size: 10))
+                                    .font(.atlasFont(size: 10))
                                     .foregroundColor(Color.atlasSubtitle)
                             }
                         }
@@ -298,17 +316,17 @@ struct SettingsView: View {
                                     .fill(Color(hex: "#E05555").opacity(0.12))
                                     .frame(width: 28, height: 28)
                                 Image(systemName: "bell.badge.fill")
-                                    .font(.system(size: 12))
+                                    .font(.atlasFont(size: 12))
                                     .foregroundColor(Color(hex: "#E05555"))
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L(.installAlerts))
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.atlasFont(size: 12, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
                                 Text(notifPermissionDenied
                                      ? L(.enableInSystemSettings)
                                      : (notificationsEnabled ? L(.notifOn) : L(.notifOff)))
-                                    .font(.system(size: 11))
+                                    .font(.atlasFont(size: 11))
                                     .foregroundColor(notifPermissionDenied
                                                      ? Color(hex: "#F0A030")
                                                      : Color.atlasSubtitle)
@@ -347,10 +365,10 @@ struct SettingsView: View {
                         if volumes.isEmpty {
                             HStack(spacing: 12) {
                                 Image(systemName: "internaldrive")
-                                    .font(.system(size: 13))
+                                    .font(.atlasFont(size: 13))
                                     .foregroundColor(Color.atlasSubtitle)
                                 Text(L(.noVolumesFound))
-                                    .font(.system(size: 12))
+                                    .font(.atlasFont(size: 12))
                                     .foregroundColor(Color.atlasSubtitle)
                             }
                             .padding(.horizontal, 12).padding(.vertical, 10)
@@ -412,6 +430,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showTitanMemory) {
             TitanMemoryViewer()
         }
+        .sheet(isPresented: $showQuarantinedFiles) {
+            QuarantinedFilesView()
+        }
         .preferredColorScheme(appearance.override)
     }
 
@@ -447,22 +468,22 @@ struct SettingsView: View {
                         .fill(Color(hex: "#7090B8").opacity(0.15))
                         .frame(width: 28, height: 28)
                     Image(systemName: "person.fill")
-                        .font(.system(size: 12))
+                        .font(.atlasFont(size: 12))
                         .foregroundColor(Color(hex: "#7090B8"))
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(auth.userEmail.isEmpty ? "—" : auth.userEmail)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                     Text("ATLAS · \(auth.subscriptionStatusLabel)")
-                        .font(.system(size: 11))
+                        .font(.atlasFont(size: 11))
                         .foregroundColor(auth.subscriptionActive
                                          ? Color(hex: "#3ECFB2")
                                          : Color(hex: "#E05555"))
                 }
                 Spacer()
                 Text("ATLAS")
-                    .font(.system(size: 8, weight: .black))
+                    .font(.atlasFont(size: 8, weight: .black))
                     .tracking(0.8)
                     .foregroundColor(Color(hex: "#3ECFB2"))
                     .padding(.horizontal, 6).padding(.vertical, 3)
@@ -504,17 +525,17 @@ struct SettingsView: View {
                                 .fill(Color(hex: "#3ECFB2").opacity(isCurrent ? 0.15 : 0.07))
                                 .frame(width: 28, height: 28)
                             Image(systemName: "desktopcomputer")
-                                .font(.system(size: 11))
+                                .font(.atlasFont(size: 11))
                                 .foregroundColor(isCurrent ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 5) {
                                 Text(device.deviceName)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.atlasFont(size: 11, weight: .medium))
                                     .foregroundColor(Color.atlasLabel)
                                 if isCurrent {
                                     Text("this mac")
-                                        .font(.system(size: 9, weight: .semibold))
+                                        .font(.atlasFont(size: 9, weight: .semibold))
                                         .foregroundColor(Color(hex: "#3ECFB2"))
                                         .padding(.horizontal, 5).padding(.vertical, 1)
                                         .background(Color(hex: "#3ECFB2").opacity(0.12))
@@ -522,7 +543,7 @@ struct SettingsView: View {
                                 }
                             }
                             Text("Last seen \(formattedDate(device.lastSeen))")
-                                .font(.system(size: 10))
+                                .font(.atlasFont(size: 10))
                                 .foregroundColor(Color.atlasSubtitle)
                         }
                         Spacer()
@@ -531,7 +552,7 @@ struct SettingsView: View {
                                 Task { await auth.removeDevice(device) }
                             } label: {
                                 Image(systemName: "minus.circle.fill")
-                                    .font(.system(size: 14))
+                                    .font(.atlasFont(size: 14))
                                     .foregroundColor(Color(hex: "#E05555").opacity(0.7))
                             }
                             .buttonStyle(.plain)
@@ -554,15 +575,15 @@ struct SettingsView: View {
                                 .fill(Color(hex: "#696E7C").opacity(0.08))
                                 .frame(width: 28, height: 28)
                             Image(systemName: "person.crop.circle")
-                                .font(.system(size: 11))
+                                .font(.atlasFont(size: 11))
                                 .foregroundColor(Color(hex: "#696E7C"))
                         }
                         Text("Manage Subscription")
-                            .font(.system(size: 12))
+                            .font(.atlasFont(size: 12))
                             .foregroundColor(Color(hex: "#696E7C"))
                         Spacer()
                         Image(systemName: "arrow.up.right")
-                            .font(.system(size: 9))
+                            .font(.atlasFont(size: 9))
                             .foregroundColor(Color(hex: "#696E7C").opacity(0.5))
                     }
                     .padding(.horizontal, 12).padding(.vertical, 10)
@@ -581,11 +602,11 @@ struct SettingsView: View {
                             .fill(Color(hex: "#E05555").opacity(0.12))
                             .frame(width: 28, height: 28)
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 11))
+                            .font(.atlasFont(size: 11))
                             .foregroundColor(Color(hex: "#E05555"))
                     }
                     Text(L(.signOut))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color(hex: "#E05555"))
                     Spacer()
                 }
@@ -625,20 +646,20 @@ struct SettingsView: View {
                         .fill(iconColor.opacity(0.15))
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
-                        .font(.system(size: 12))
+                        .font(.atlasFont(size: 12))
                         .foregroundColor(iconColor)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(.atlasFont(size: 11))
                         .foregroundColor(Color.atlasSubtitle)
                 }
                 Spacer()
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.atlasFont(size: 10, weight: .semibold))
                     .foregroundColor(iconColor.opacity(0.7))
             }
             .padding(.horizontal, 12)
@@ -657,16 +678,16 @@ struct SettingsView: View {
                     .fill(Color(hex: "#3ECFB2").opacity(0.15))
                     .frame(width: 28, height: 28)
                 Image(systemName: "cpu.fill")
-                    .font(.system(size: 13))
+                    .font(.atlasFont(size: 13))
                     .foregroundColor(Color(hex: "#3ECFB2"))
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text("TITAN CORE™")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.atlasFont(size: 12, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                     Text("ALL PLANS")
-                        .font(.system(size: 8, weight: .black))
+                        .font(.atlasFont(size: 8, weight: .black))
                         .tracking(0.8)
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .padding(.horizontal, 5).padding(.vertical, 2)
@@ -674,7 +695,7 @@ struct SettingsView: View {
                         .cornerRadius(4)
                 }
                 Text("Always active — pre-flight, smart recovery, verification")
-                    .font(.system(size: 11))
+                    .font(.atlasFont(size: 11))
                     .foregroundColor(Color.atlasSubtitle)
             }
             Spacer()
@@ -683,7 +704,7 @@ struct SettingsView: View {
                     .fill(Color(hex: "#3ECFB2"))
                     .frame(width: 6, height: 6)
                 Text("ON")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.atlasFont(size: 10, weight: .bold))
                     .foregroundColor(Color(hex: "#3ECFB2"))
             }
             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -704,16 +725,16 @@ struct SettingsView: View {
                     .fill(Color(hex: "#3ECFB2").opacity(0.15))
                     .frame(width: 28, height: 28)
                 Image(systemName: "shield.lefthalf.filled")
-                    .font(.system(size: 13))
+                    .font(.atlasFont(size: 13))
                     .foregroundColor(Color(hex: "#3ECFB2"))
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(L(.vscanSettingTitle))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.atlasFont(size: 12, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                     Text("ATLAS")
-                        .font(.system(size: 8, weight: .black))
+                        .font(.atlasFont(size: 8, weight: .black))
                         .tracking(0.8)
                         .foregroundColor(Color(hex: "#3ECFB2"))
                         .padding(.horizontal, 5).padding(.vertical, 2)
@@ -721,7 +742,7 @@ struct SettingsView: View {
                         .cornerRadius(4)
                 }
                 Text(L(.vscanSettingSubtitle))
-                    .font(.system(size: 11))
+                    .font(.atlasFont(size: 11))
                     .foregroundColor(Color.atlasSubtitle)
             }
             Spacer()
@@ -744,21 +765,57 @@ struct SettingsView: View {
                     .fill(Color(hex: "#F0A030").opacity(0.15))
                     .frame(width: 28, height: 28)
                 Image(systemName: "circle.lefthalf.filled")
-                    .font(.system(size: 13))
+                    .font(.atlasFont(size: 13))
                     .foregroundColor(Color(hex: "#F0A030"))
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Theme")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.atlasFont(size: 12, weight: .medium))
                     .foregroundColor(Color.atlasLabel)
                 Text(appearance.override == nil
                      ? "Following system"
                      : (appearance.override == .dark ? "Dark" : "Light"))
-                    .font(.system(size: 11))
+                    .font(.atlasFont(size: 11))
                     .foregroundColor(Color.atlasSubtitle)
             }
             Spacer()
             AppearanceToggle()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - Text Size row (Stage A — persists the selection only; no
+    // screen reads this value yet, so choosing Large/Larger has no visible
+    // effect until a future, separately-approved migration stage)
+
+    @ViewBuilder
+    private var textSizeRow: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color(hex: "#7090B8").opacity(0.15))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "textformat.size")
+                    .font(.atlasFont(size: 13))
+                    .foregroundColor(Color(hex: "#7090B8"))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Text Size")
+                    .font(.atlasFont(size: 12, weight: .medium))
+                    .foregroundColor(Color.atlasLabel)
+                Text(textSize.size.displayName)
+                    .font(.atlasFont(size: 11))
+                    .foregroundColor(Color.atlasSubtitle)
+            }
+            Spacer()
+            Picker("", selection: $textSize.size) {
+                ForEach(AtlasTextSize.allCases) { level in
+                    Text(level.displayName).tag(level)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: 140)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -774,17 +831,17 @@ struct SettingsView: View {
                     .fill((vol.isInternal ? Color(hex: "#7090B8") : Color(hex: "#F0A030")).opacity(0.15))
                     .frame(width: 28, height: 28)
                 Image(systemName: vol.isInternal ? "internaldrive.fill" : "externaldrive.fill")
-                    .font(.system(size: 12))
+                    .font(.atlasFont(size: 12))
                     .foregroundColor(vol.isInternal ? Color(hex: "#7090B8") : Color(hex: "#F0A030"))
             }
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(vol.name)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                     Spacer()
                     Text("\(vol.freeFormatted) free")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.atlasFont(size: 11, weight: .medium))
                         .foregroundColor(Color.atlasSubtitle)
                 }
                 GeometryReader { geo in
@@ -801,7 +858,7 @@ struct SettingsView: View {
                 }
                 .frame(height: 4)
                 Text("\(vol.totalFormatted) total")
-                    .font(.system(size: 10))
+                    .font(.atlasFont(size: 10))
                     .foregroundColor(Color.atlasSubtitle.opacity(0.6))
             }
         }
@@ -931,7 +988,7 @@ struct SettingsView: View {
     private func sectionHeader(_ title: String) -> some View {
         HStack {
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold))
+                .font(.atlasFont(size: 10, weight: .semibold))
                 .foregroundColor(Color.atlasSubtitle)
                 .tracking(1.2)
             Spacer()
@@ -957,21 +1014,21 @@ struct SettingsView: View {
                         .fill(iconColor.opacity(0.15))
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
-                        .font(.system(size: 13))
+                        .font(.atlasFont(size: 13))
                         .foregroundColor(iconColor)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.atlasFont(size: 12, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(.atlasFont(size: 11))
                         .foregroundColor(Color.atlasSubtitle)
                 }
                 Spacer()
                 if action != nil {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.atlasFont(size: 10, weight: .semibold))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                 }
             }
