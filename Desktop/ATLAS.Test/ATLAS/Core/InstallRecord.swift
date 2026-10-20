@@ -38,6 +38,21 @@ struct InstallRecord: Codable, Identifiable {
     // nil for records created before this field was added.
     var installerSourcePath: String? = nil
 
+    // MARK: - Ownership evidence (PKG installs only)
+    //
+    // Populated by installPKG using pre/post FilesystemSnapshot diffs.
+    // Maps each path that CHANGED during the install to its evidence classification.
+    // Paths not in this map are either preExistingUnchanged (within snapshot coverage)
+    // or bomOnly (outside snapshot coverage) — both are non-deletable by default.
+    // nil on non-PKG installs and legacy records (pre-evidence-model records).
+    var fileEvidenceMap: [String: FileOwnershipEvidence]?
+
+    // Classifies whether each attributed receipt was newly created by this transaction
+    // or pre-existed and was merely rewritten. Used to decide whether to call
+    // pkgutil --forget on uninstall: only .created receipts are forgotten.
+    // nil on non-PKG installs and legacy records.
+    var pkgReceiptProvenance: [String: ReceiptProvenance]?
+
     enum InstallStatus: String, Codable {
         case success
         case failure
@@ -47,6 +62,18 @@ struct InstallRecord: Codable, Identifiable {
     struct InstalledFile: Codable {
         let sourceName: String
         let destinationPath: String
+        // Nil on legacy records (pre-evidence model). Treat as .bomOnly when nil
+        // and the record has a non-nil fileEvidenceMap (indicating the record was
+        // produced after the evidence model was introduced).
+        let ownershipEvidence: FileOwnershipEvidence?
+
+        init(sourceName: String,
+             destinationPath: String,
+             ownershipEvidence: FileOwnershipEvidence? = nil) {
+            self.sourceName        = sourceName
+            self.destinationPath   = destinationPath
+            self.ownershipEvidence = ownershipEvidence
+        }
     }
 
     var statusIcon: String {
@@ -92,6 +119,8 @@ struct InstallRecord: Codable, Identifiable {
         case archivedAt, archiveReason
         case recoveryKitID
         case installerSourcePath
+        case fileEvidenceMap
+        case pkgReceiptProvenance
     }
 
     init(id: UUID = UUID(), date: Date = Date(), fileName: String, fileType: String,
@@ -108,7 +137,9 @@ struct InstallRecord: Codable, Identifiable {
          archivedAt: Date? = nil,
          archiveReason: String? = nil,
          recoveryKitID: UUID? = nil,
-         installerSourcePath: String? = nil) {
+         installerSourcePath: String? = nil,
+         fileEvidenceMap: [String: FileOwnershipEvidence]? = nil,
+         pkgReceiptProvenance: [String: ReceiptProvenance]? = nil) {
         self.id = id
         self.date = date
         self.fileName = fileName
@@ -133,6 +164,8 @@ struct InstallRecord: Codable, Identifiable {
         self.archiveReason       = archiveReason
         self.recoveryKitID       = recoveryKitID
         self.installerSourcePath = installerSourcePath
+        self.fileEvidenceMap     = fileEvidenceMap
+        self.pkgReceiptProvenance = pkgReceiptProvenance
     }
 
     init(from decoder: Decoder) throws {
@@ -159,9 +192,48 @@ struct InstallRecord: Codable, Identifiable {
         feedbackSubmittedAt  = try c.decodeIfPresent(Date.self,                    forKey: .feedbackSubmittedAt)
         archivedAt           = try c.decodeIfPresent(Date.self,                    forKey: .archivedAt)
         archiveReason        = try c.decodeIfPresent(String.self,                  forKey: .archiveReason)
-        recoveryKitID        = try c.decodeIfPresent(UUID.self,                    forKey: .recoveryKitID)
-        installerSourcePath  = try c.decodeIfPresent(String.self,                  forKey: .installerSourcePath)
+        recoveryKitID        = try c.decodeIfPresent(UUID.self,                          forKey: .recoveryKitID)
+        installerSourcePath  = try c.decodeIfPresent(String.self,                        forKey: .installerSourcePath)
+        fileEvidenceMap      = try c.decodeIfPresent([String: FileOwnershipEvidence].self, forKey: .fileEvidenceMap)
+        pkgReceiptProvenance = try c.decodeIfPresent([String: ReceiptProvenance].self,    forKey: .pkgReceiptProvenance)
     }
+}
+
+// MARK: - FileOwnershipEvidence
+//
+// Classifies each file path relative to the install transaction that created it.
+// Determined at install time by comparing pre/post FilesystemSnapshot (ctime-based).
+// This is the authoritative signal for uninstall authorization.
+//
+// Authorization rules:
+//   .transactionCreated    → SAFE to delete. Path did not exist before; installer wrote it.
+//   .transactionReplaced   → FAIL CLOSED. Installer overwrote a pre-existing path.
+//                            A prior product may still depend on it. Do not delete without
+//                            explicit pre-install backup (not yet implemented).
+//   .preExistingUnchanged  → DO NOT DELETE. Installer declared it in the BOM but did not
+//                            write it. The file belongs to a prior installation.
+//   .bomOnly               → DO NOT DELETE. Path is outside FilesystemSnapshot coverage;
+//                            no ctime evidence is available.
+enum FileOwnershipEvidence: String, Codable, Sendable {
+    case transactionCreated
+    case transactionReplaced
+    case preExistingUnchanged
+    case bomOnly
+}
+
+// MARK: - ReceiptProvenance
+//
+// Classifies whether a PKG receipt ID was created by this transaction or pre-existed.
+// Used to determine whether pkgutil --forget should run on uninstall.
+//
+//   .created   → ATLAS created this receipt. Safe to forget on uninstall.
+//   .rewritten → Receipt pre-existed. Installer rewrote the plist/BOM timestamp but
+//                did not create the receipt. Do NOT forget — another product may depend
+//                on it (e.g. com.adobe.Fonts installed by Adobe CC then rewritten by
+//                FabFilter). Forgetting would corrupt the other product's pkgutil record.
+enum ReceiptProvenance: String, Codable, Sendable {
+    case created
+    case rewritten
 }
 
 // MARK: - DisabledFormatEntry
