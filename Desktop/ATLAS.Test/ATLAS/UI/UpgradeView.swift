@@ -70,9 +70,6 @@ struct UpgradeView: View {
                         Text("$30 / month")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.white)
-                        Text("or $300 / year  (save $60)")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#8890B0"))
                     }
                 }
                 .padding(14)
@@ -113,29 +110,14 @@ struct UpgradeView: View {
                             .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
-
-                    Button {
-                        NSWorkspace.shared.open(
-                            URL(string: "https://www.interlinked.digital/atlas/checkout?plan=atlas-annual")!)
-                        onDismiss()
-                    } label: {
-                        Text("Subscribe Annually — $300/yr  (save $60)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(teal)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(teal.opacity(0.12))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(teal.opacity(0.4), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(14)
             }
             .background(card)
+            .atlasGlass(.surface, cornerRadius: 10, modalStrength: 0.15)
             .cornerRadius(10)
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(teal.opacity(0.3), lineWidth: 0.75))
+                .strokeBorder(Color.chromeEdgeGradient.opacity(0.4), lineWidth: 0.75))
             .padding(16)
 
             Divider().background(sep)
