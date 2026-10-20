@@ -139,15 +139,17 @@ async function handleCancellation(stripeClient: Stripe, customerId: string, stri
     return
   }
 
-  await supabase
-    .from('profiles')
-    .update({ subscription_status: 'cancelled', plan: 'free' })
-    .eq('id', userId)
-
-  await supabase
-    .from('subscriptions')
-    .update({ status: 'canceled', updated_at: new Date().toISOString() })
-    .eq('stripe_customer_id', customerId)
+  // Both writes happen inside one Postgres function/transaction — either
+  // both land or neither does, so a crash between them can never leave
+  // profiles and subscriptions disagreeing about entitlement.
+  const { error: rpcErr } = await supabase.rpc('atlas_set_entitlement_status', {
+    p_user_id: userId,
+    p_stripe_customer_id: customerId,
+    p_profile_status: 'cancelled',
+    p_plan: 'free',
+    p_sub_status: 'canceled',
+  })
+  if (rpcErr) throw new Error(`atlas_set_entitlement_status failed: ${rpcErr.message}`)
 
   // User email
   await sendEmail({ to: email, template: 'subscription-cancelled' })
@@ -190,15 +192,15 @@ async function revokeAccessForCustomer(customerId: string, reason: string, strip
     return
   }
 
-  await supabase
-    .from('profiles')
-    .update({ subscription_status: 'cancelled', plan: 'free' })
-    .eq('id', userId)
-
-  await supabase
-    .from('subscriptions')
-    .update({ status: 'canceled', updated_at: new Date().toISOString() })
-    .eq('stripe_customer_id', customerId)
+  // Same atomic pairing as handleCancellation — see its comment.
+  const { error: rpcErr } = await supabase.rpc('atlas_set_entitlement_status', {
+    p_user_id: userId,
+    p_stripe_customer_id: customerId,
+    p_profile_status: 'cancelled',
+    p_plan: 'free',
+    p_sub_status: 'canceled',
+  })
+  if (rpcErr) throw new Error(`atlas_set_entitlement_status failed: ${rpcErr.message}`)
 
   await notifyAdmin(
     `⚠️ Access Revoked (${reason}) — ${email}`,
@@ -248,24 +250,50 @@ export async function POST(req: NextRequest) {
   // versa. Falls back to the live client if no test key is configured.
   const stripeClient = event.livemode ? stripe : (stripeTest ?? stripe)
 
-  // Idempotency: record this event.id before running any side effects. Stripe
-  // retries deliveries (and out-of-order/duplicate delivery is explicitly
-  // possible), so a repeat of the same event.id must not re-send emails,
-  // re-insert audit rows, or re-run an irreversible write (e.g. a second
-  // entitlement revocation). Requires the stripe_webhook_events table
-  // (migration 20261020000000) — if that table is missing, this fails open
-  // (logs and continues) rather than silently dropping all webhook
-  // processing, since a missing dedup table is an infra gap, not a reason to
-  // stop honoring Stripe events.
-  const { error: dedupeError } = await supabase
+  // Idempotency (requires migration 20261021000000's status/completed_at
+  // columns on stripe_webhook_events — if that table/columns are missing,
+  // this fails open: logs and continues, rather than silently dropping all
+  // webhook processing over an infra gap).
+  //
+  // Only a row whose status is 'succeeded' means "fully done, including side
+  // effects (email/audit/notify) — skip entirely." A row that's 'processing'
+  // or 'failed' means a previous attempt was claimed but never confirmed to
+  // finish (crashed, timed out, or errored) — that is NOT treated as a
+  // duplicate; it's let through to run again. This is what makes "a retry
+  // can complete work a previous attempt only partially performed" true: the
+  // entitlement writes themselves are idempotent SETs (safe to repeat), so
+  // re-running a partially-completed handler converges to the same correct
+  // end state. The side effects (email/admin notify) are NOT perfectly
+  // exactly-once under this design — a crash after the state writes but
+  // before the 'succeeded' marker can cause a repeat email on retry. That is
+  // a known, accepted limitation (documented in the final report), not a
+  // silent gap: the alternative (marking success before side effects run)
+  // would risk the opposite and worse failure — a successful entitlement
+  // change with no customer notification, permanently lost, since a
+  // 'succeeded' row is never retried.
+  const { data: existingEvent } = await supabase
     .from('stripe_webhook_events')
-    .insert({ id: event.id, type: event.type })
-  if (dedupeError) {
-    if (dedupeError.code === '23505') {
-      console.log(`[ATLAS] Duplicate webhook delivery for ${event.id} (${event.type}) — skipping`)
-      return NextResponse.json({ received: true, duplicate: true })
+    .select('status')
+    .eq('id', event.id)
+    .maybeSingle()
+
+  if (existingEvent?.status === 'succeeded') {
+    console.log(`[ATLAS] Duplicate webhook delivery for ${event.id} (${event.type}) — already succeeded, skipping`)
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
+  if (!existingEvent) {
+    const { error: insertErr } = await supabase
+      .from('stripe_webhook_events')
+      .insert({ id: event.id, type: event.type, status: 'processing' })
+    // A 23505 here means a concurrent delivery raced us and claimed it
+    // first — proceed anyway rather than bail, since we don't know whether
+    // that concurrent attempt will succeed; any other insert error is a
+    // genuine infra problem and we fail open (log, continue) rather than
+    // drop the event.
+    if (insertErr && insertErr.code !== '23505') {
+      console.warn('[ATLAS] stripe_webhook_events insert failed (continuing):', insertErr.message)
     }
-    console.warn('[ATLAS] stripe_webhook_events insert failed (continuing):', dedupeError.message)
   }
 
   try {
@@ -569,12 +597,21 @@ export async function POST(req: NextRequest) {
     }
   } catch (err: any) {
     console.error('[ATLAS] Webhook handler error:', err.message)
-    // Release the dedupe claim on failure — Stripe will retry a non-2xx
-    // response, and that retry must be reprocessed, not silently dropped as
-    // a false "duplicate" of an attempt that never actually completed.
-    await supabase.from('stripe_webhook_events').delete().eq('id', event.id)
+    // Mark 'failed', not deleted — Stripe will retry a non-2xx response, and
+    // that retry must be reprocessed (a 'failed' row is not treated as a
+    // duplicate above), while still leaving a permanent record that this
+    // event was attempted and did not cleanly succeed.
+    await supabase.from('stripe_webhook_events').update({ status: 'failed' }).eq('id', event.id)
     return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
   }
+
+  // Only now — after every side effect for this event has run — is the event
+  // marked fully done. This is the single source of truth a duplicate
+  // delivery is checked against above.
+  await supabase
+    .from('stripe_webhook_events')
+    .update({ status: 'succeeded', completed_at: new Date().toISOString() })
+    .eq('id', event.id)
 
   return NextResponse.json({ received: true })
 }
