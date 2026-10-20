@@ -482,6 +482,11 @@ export default function PlansPage() {
         </div>
 
         <footer style={{ borderTop: '1px solid var(--atlas-border-faint)', padding: '24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--atlas-text-dim)', fontSize: '11px', letterSpacing: '0.01em', maxWidth: '520px', margin: '0 auto 10px', lineHeight: 1.6 }}>
+            By subscribing you agree to the <a href="/atlas/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms of Service</a>.
+            Subscriptions are generally non-refundable (exceptions may apply where required by law or payment-network rules).
+            Cancelling stops future renewal — you keep access through the period you've already paid for.
+          </p>
           <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', letterSpacing: '0.02em' }}>
             InterLinked® · All rights reserved
           </p>

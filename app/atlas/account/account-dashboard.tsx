@@ -57,6 +57,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState("")
   const [cancelError, setCancelError] = useState("")
+  const [scheduledCancelUntil, setScheduledCancelUntil] = useState<string | null>(null)
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
   const [lastSync, setLastSync] = useState<Date>(new Date())
@@ -152,11 +153,20 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     : null
   const planName  = "ATLAS"
   const monthlyInstallLimit = 25
-  const periodEnd = subscription?.current_period_end
-    ? new Date(subscription.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+  // Prefer the date the just-completed /api/atlas/cancel call returned (fresher
+  // than the server-rendered `subscription` prop, which won't reflect a
+  // cancellation scheduled moments ago without a full reload) — fall back to
+  // the prop. Both come from Stripe's current_period_end; never invented.
+  const periodEndRaw = scheduledCancelUntil ?? subscription?.current_period_end ?? null
+  const periodEnd = periodEndRaw && !Number.isNaN(new Date(periodEndRaw).getTime())
+    ? new Date(periodEndRaw).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
-  const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
-  const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isActive ? "Active" : "Inactive"
+  // A scheduled (not yet effective) cancellation: the subscription is still
+  // active server-side (no grace period was skipped — it genuinely hasn't
+  // ended yet) but will stop renewing at period end.
+  const isScheduledToCancel = !isCancelled && (Boolean(scheduledCancelUntil) || subscription?.cancel_at_period_end === true)
+  const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isScheduledToCancel ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
+  const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isScheduledToCancel ? "Cancels at period end" : isActive ? "Active" : "Inactive"
 
   async function downloadKit(kitId: string, fileType: "atlaskit" | "txt") {
     setKitDownloading(`${kitId}-${fileType}`)
@@ -206,12 +216,15 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       const res = await fetch("/api/atlas/cancel", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to cancel")
-      await supabase.auth.signOut()
-      router.push("/atlas?cancelled=1")
+      // Cancellation is scheduled for period end, not immediate — the
+      // account keeps paid access until then, so there's nothing to sign
+      // out of or redirect away from. Show the confirmed paid-through date
+      // (from the API's own response, never invented) right here instead.
+      setScheduledCancelUntil(typeof json.access_until === "string" ? json.access_until : null)
     } catch (err: unknown) {
       setCancelError(err instanceof Error ? err.message : "Unknown error")
-      setLoading(null)
     }
+    setLoading(null)
     setShowCancelConfirm(false)
   }
 
@@ -372,12 +385,18 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
               }}>↺ Re-subscribe</Link>
             )}
-            {isActive && !isCancelled && (
+            {isActive && !isCancelled && !isScheduledToCancel && (
               <button onClick={() => setShowCancelConfirm(true)} style={{
                 padding: "8px 16px", borderRadius: "8px",
                 border: "1px solid rgba(224,85,85,0.25)", color: "#E05555",
                 fontSize: "11px", background: "none", cursor: "pointer",
               }}>Cancel Subscription</button>
+            )}
+            {isScheduledToCancel && (
+              <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                Cancellation scheduled — you'll keep access
+                {periodEnd ? <> until <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : " until the end of your current billing period"}.
+              </p>
             )}
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}
           </div>
@@ -762,7 +781,9 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
             <h2 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "6px", color: "var(--atlas-fg)" }}>Cancel subscription?</h2>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px", lineHeight: 1.6 }}>
-              Your subscription will be cancelled <strong style={{ color: "var(--text-secondary)" }}>immediately</strong>. You will lose access to ATLAS. You can re-subscribe at any time.
+              Your subscription will stop renewing. You'll keep access to ATLAS
+              {periodEnd ? <> until <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : " until the end of your current billing period"}
+              , then it will end — no refund is issued for the remaining period. You can re-subscribe at any time.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={() => setShowCancelConfirm(false)} style={{
