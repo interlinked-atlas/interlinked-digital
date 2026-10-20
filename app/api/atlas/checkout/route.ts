@@ -1,57 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' })
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-const PRICE_IDS: Record<string, string> = {
-  standard: 'price_1TdIbOA1Bm2dPCGcBzQIiXGV', // $14.99/mo
-  pro:      'price_1TdIbOA1Bm2dPCGcpLFkuAea',  // $29.99/mo
-}
-
-export async function POST(req: NextRequest) {
-  const { plan, email, userId } = await req.json()
-
-  if (!plan || !email || !userId) {
-    return NextResponse.json({ error: 'Missing plan, email, or userId' }, { status: 400 })
-  }
-
-  const priceId = PRICE_IDS[plan]
-  if (!priceId) {
-    return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
-  }
-
-  // Verify the auth user actually exists
-  const { data: { user: authUser }, error: authErr } = await supabase.auth.admin.getUserById(userId)
-  if (authErr || !authUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  }
-
-  // Ensure a profiles row exists — the DB trigger should create it on signup,
-  // but upsert here to close the race window between signUp() and this call.
-  await supabase.from('profiles').upsert(
-    { id: userId, email, plan: 'free', subscription_status: 'inactive' },
-    { onConflict: 'id', ignoreDuplicates: true }
+// Disabled 2026-10-19: this route sold the obsolete standard/pro price tiers
+// ($14.99/$29.99), bypassing lib/products.ts's current single-$30-plan
+// allowlist. Its only caller anywhere in the repo was the dormant,
+// unrouted app/atlas/_page-launch.tsx. Kept as a safe stub (not deleted)
+// so it's available to be re-pointed at the current allowlisted checkout
+// mechanism (app/actions/stripe.ts) when the real launch flow is built.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'This checkout endpoint is no longer active.' },
+    { status: 410 }
   )
-
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    customer_email: email,
-    client_reference_id: userId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `https://www.interlinked.digital/atlas/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url:  `https://www.interlinked.digital/atlas?cancelled=1`,
-    metadata: { plan, supabase_user_id: userId },
-    custom_text: {
-      submit: { message: 'By subscribing you agree to our Terms of Service. All payments are non-refundable.' },
-    },
-  })
-
-  return NextResponse.json({ url: session.url })
 }
