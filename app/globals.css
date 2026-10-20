@@ -1,5 +1,14 @@
-@import 'tailwindcss';
+/* source(none): this project's root is the user's home directory (not a
+   dedicated repo root), so Tailwind v4's automatic content scanning would
+   otherwise walk the entire home directory — Library, Desktop, other
+   unrelated projects — looking for class names, making every build
+   extremely slow. Restrict scanning explicitly to this site's own source. */
+@import 'tailwindcss' source(none);
 @import 'tw-animate-css';
+
+@source './app';
+@source './components';
+@source './lib';
 
 /* ── Custom Fonts ── */
 @font-face {
