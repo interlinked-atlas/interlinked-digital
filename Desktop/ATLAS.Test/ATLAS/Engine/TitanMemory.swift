@@ -231,6 +231,37 @@ class TitanMemory {
         return raw.replacingOccurrences(of: "~", with: NSHomeDirectory())
     }
 
+    // MARK: - Realtime entry points
+
+    // Called by TitanMemoryRealtime on INSERT or UPDATE events.
+    // Updates the in-memory entry list only — does not touch the disk cache.
+    func applyCloudEvent(row: [String: Any]) {
+        guard let entry = TitanMemoryEntry(cloudRow: row) else {
+            NSLog("[TitanMemory] applyCloudEvent: skipping malformed row")
+            return
+        }
+        queue.async(flags: .barrier) {
+            if let idx = self.entries.firstIndex(where: { $0.id == entry.id }) {
+                self.entries[idx] = entry
+            } else {
+                self.entries.append(entry)
+            }
+        }
+    }
+
+    // Called by TitanMemoryRealtime on DELETE events.
+    // Removes the entry from memory only — does not touch the disk cache.
+    func removeEntry(id: String) {
+        queue.async(flags: .barrier) {
+            self.entries.removeAll { $0.id == id }
+        }
+    }
+
+    // Starts the live Realtime subscription. Safe to call multiple times — only connects once.
+    func startRealtimeSync() {
+        TitanMemoryRealtime.shared.start()
+    }
+
     // MARK: - Step override
 
     // MARK: - Confirmed-success feedback
