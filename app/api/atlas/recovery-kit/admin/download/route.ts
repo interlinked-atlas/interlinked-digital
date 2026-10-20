@@ -55,6 +55,10 @@ export async function GET(req: NextRequest) {
   const file  = req.nextUrl.searchParams.get('file') // 'atlaskit' or 'txt'
 
   if (!kitId) return NextResponse.json({ error: 'kit_id required' }, { status: 400 })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(kitId)) {
+    return NextResponse.json({ error: 'kit_id must be a valid UUID' }, { status: 400 })
+  }
   if (file !== 'atlaskit' && file !== 'txt') {
     return NextResponse.json({ error: 'file must be "atlaskit" or "txt"' }, { status: 400 })
   }

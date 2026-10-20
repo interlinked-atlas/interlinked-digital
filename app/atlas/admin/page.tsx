@@ -152,7 +152,10 @@ export default function AdminPage() {
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
       supabase.from("support_tickets").select("id,user_id,email,issue_type,message,status,created_at,attached_log_content,product_name,product_status").order("created_at", { ascending: false }),
       supabase.from("monthly_install_counts").select("user_id,period_start,period_end,count").order("period_start", { ascending: false }),
-      supabase.from("install_counts").select("user_id,installs_this_month,period_start").order("updated_at", { ascending: false }),
+      // install_counts is service-role-only at the database level (it's the live reservation-gate
+      // table behind reserve_install_slot/etc) — read through the admin-authorized server route
+      // instead of the anon-key client, which RLS would otherwise return nothing for.
+      fetch("/api/atlas/admin/install-counts", { headers }).then(r => r.json()).catch(() => ({ counts: [] })),
       fetch("/api/atlas/admin/failures", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
     ])
@@ -162,7 +165,7 @@ export default function AdminPage() {
     setLogs(logRes.data ?? [])
     setTickets(tickRes.data ?? [])
     setMonthlyUsage(usageRes.data ?? [])
-    setGateUsage(gateRes.data ?? [])
+    setGateUsage(Array.isArray(gateRes?.counts) ? gateRes.counts : [])
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
 
