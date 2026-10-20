@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-enum ATLASMenuStatus {
+enum ATLASMenuStatus: Equatable {
     case idle, installing, success, failure
 }
 

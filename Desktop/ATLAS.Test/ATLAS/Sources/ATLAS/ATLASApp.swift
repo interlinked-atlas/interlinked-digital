@@ -3,6 +3,7 @@ import AppKit
 import CoreText
 import UserNotifications
 import Combine
+import QuartzCore
 import os
 
 @main
@@ -76,6 +77,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     var statusItem: NSStatusItem?
     private var menuStatusCancellable: AnyCancellable?
     private var iconResetTask: Task<Void, Never>?
+    // Local-only transition tracker for the completion jiggle. Deliberately
+    // separate from MenuBarStatusManager itself — does not alter that
+    // publisher's semantics, just observes it to detect one true idle/
+    // installing → success transition per logical operation.
+    private var previousMenuBarStatus: ATLASMenuStatus = .idle
 
     // Stored once at launch so we never lose the reference — NSApp.windows.first
     // can return nil or a wrong auxiliary window (sheet/dialog) after orderOut.
@@ -123,8 +129,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             InstallQueue.shared.loadPersistedQueueIfNeeded()
         }
-        TitanMemory.shared.syncFromCloud()   // pull latest confirmed patterns from Supabase
+        TitanMemory.shared.syncFromCloud()        // pull latest confirmed patterns from Supabase
+        TitanMemory.shared.startRealtimeSync()    // live delta updates via Supabase Realtime
+        print("[ATLAS-MENUBAR-DIAG] calling setupMenuBarIcon() from applicationDidFinishLaunching")
         setupMenuBarIcon()
+        print("[ATLAS-MENUBAR-DIAG] setupMenuBarIcon() returned")
 
         menuStatusCancellable = MenuBarStatusManager.shared.$menuStatus
             .receive(on: RunLoop.main)
@@ -134,6 +143,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         if let window = NSApp.windows.first {
             AppDelegate.mainWindow = window
             window.delegate = self
+            // Reverted: Liquid Chrome Glass shell (transparent window) caused a
+            // persistent native-titlebar glass/vibrancy strip behind the traffic
+            // lights that could not be cleanly eliminated — see matching config
+            // in openMainWindow(). Back to a normal opaque window.
+            window.isOpaque = true
+            window.backgroundColor = .windowBackgroundColor
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.isMovableByWindowBackground = true
+            window.titlebarSeparatorStyle = .none
+            AppDelegate.hideNativeTitlebarVibrancy(window)
         }
 
         // Center and fade in on initial launch
@@ -204,38 +224,86 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         iconResetTask?.cancel()
         iconResetTask = nil
 
-        let (symbolName, resetAfter): (String, Bool) = {
-            switch status {
-            case .idle:       return ("sparkle",             false)
-            case .installing: return ("arrow.down.circle",   false)
-            case .success:    return ("checkmark.circle",    true)
-            case .failure:    return ("xmark.circle",        true)
-            }
-        }()
+        // Detected locally, before updating the tracker below — does not read
+        // from or modify MenuBarStatusManager itself, so its publisher's
+        // semantics/behavior for the rest of the app are unchanged.
+        let transitionedToSuccess = (status == .success && previousMenuBarStatus != .success)
+        previousMenuBarStatus = status
 
-        button.image = NSImage(systemSymbolName: symbolName,
-                               accessibilityDescription: "ATLAS")
-        button.image?.isTemplate = true
+        switch status {
+        case .idle:
+            // The approved ATLAS ✧ identity (Candidate A), not the generic
+            // system "sparkle" symbol — the app's resting/idle icon.
+            button.image = ATLASMenuBarIcon.image()
 
-        if resetAfter {
-            iconResetTask = Task {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                guard !Task.isCancelled else { return }
-                await MainActor.run { MenuBarStatusManager.shared.menuStatus = .idle }
+        case .installing, .success, .failure:
+            let (symbolName, resetAfter): (String, Bool) = {
+                switch status {
+                case .installing: return ("arrow.down.circle", false)
+                case .success:    return ("checkmark.circle",  true)
+                case .failure:    return ("xmark.circle",      true)
+                case .idle:       fatalError("unreachable")
+                }
+            }()
+
+            button.image = NSImage(systemSymbolName: symbolName,
+                                   accessibilityDescription: "ATLAS")
+            button.image?.isTemplate = true
+
+            if resetAfter {
+                iconResetTask = Task {
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run { MenuBarStatusManager.shared.menuStatus = .idle }
+                }
             }
         }
+
+        // Success only — no jiggle for failure or cancellation (cancellation
+        // routes to .idle directly at its existing call sites, never .success).
+        if transitionedToSuccess {
+            jiggleMenuBarIcon()
+        }
+    }
+
+    /// Brief, restrained completion acknowledgment — a small rotational
+    /// "jiggle" on the status item's own button layer. Pure Core Animation,
+    /// runs independently of and cannot block/interfere with any install,
+    /// uninstall, or rollback work (which lives entirely in Engine/).
+    private func jiggleMenuBarIcon() {
+        guard let button = statusItem?.button else { return }
+        button.wantsLayer = true
+        guard let layer = button.layer else { return }
+
+        let anim = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        let a: CGFloat = 0.16   // ~9°, restrained
+        anim.values = [0, a, -a, a * 0.6, -a * 0.6, a * 0.25, 0]
+        anim.keyTimes = [0, 0.16, 0.38, 0.58, 0.76, 0.9, 1]
+        anim.duration = 0.45
+        anim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        layer.add(anim, forKey: "atlasMenuBarJiggle")
     }
 
     private func setupMenuBarIcon() {
         statusItem = NSStatusBar.system.statusItem(
             withLength: NSStatusItem.squareLength)
 
+        print("[ATLAS-MENUBAR-DIAG] statusItem non-nil: \(statusItem != nil)")
+        print("[ATLAS-MENUBAR-DIAG] statusItem?.isVisible: \(String(describing: statusItem?.isVisible))")
+        print("[ATLAS-MENUBAR-DIAG] statusItem?.length: \(String(describing: statusItem?.length))")
+        print("[ATLAS-MENUBAR-DIAG] statusItem?.button exists: \(statusItem?.button != nil)")
+
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "sparkle",
-                                  accessibilityDescription: "ATLAS")
-            button.image?.isTemplate = true
+            // Approved ATLAS ✧ identity (Candidate A — Signature Sparkle),
+            // replacing the generic system "sparkle" SF Symbol.
+            button.image = ATLASMenuBarIcon.image()
             button.action = #selector(statusBarButtonClicked)
             button.target = self
+            print("[ATLAS-MENUBAR-DIAG] configured icon: ATLASMenuBarIcon (Candidate A)")
+            print("[ATLAS-MENUBAR-DIAG] button.image non-nil after assignment: \(button.image != nil)")
+            print("[ATLAS-MENUBAR-DIAG] button.image?.isTemplate: \(String(describing: button.image?.isTemplate))")
+        } else {
+            print("[ATLAS-MENUBAR-DIAG] statusItem?.button was nil — could not configure image")
         }
 
         // Build the menu
@@ -290,8 +358,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
 
         window.level = .normal
+        // Liquid Chrome Glass shell: transparent window so ContentView's root
+        // .atlasGlass(.shell) material (NSVisualEffectView + chrome edge) is the
+        // actual visible surface, not a flat opaque fill. Sizing/resizing/close
+        // behavior below is unchanged.
+        // Reverted: see matching note in applicationDidFinishLaunching — back to
+        // a normal opaque window, no transparent glass shell.
         window.isOpaque = true
         window.backgroundColor = .windowBackgroundColor
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.titlebarSeparatorStyle = .none
+        AppDelegate.hideNativeTitlebarVibrancy(window)
         [NSWindow.ButtonType.closeButton,
          .miniaturizeButton, .zoomButton].forEach {
             window.standardWindowButton($0)?.isHidden = false
@@ -311,6 +390,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28
             window.animator().alphaValue = 1
+        }
+    }
+
+    /// Hides AppKit's native titlebar vibrancy/backdrop layers so the ATLAS
+    /// SwiftUI glass (which spans the full window, including under the
+    /// traffic lights) is the only material visible behind them — no second,
+    /// competing native fill left to create a visually distinct "bar".
+    /// Confirmed via runtime view-hierarchy inspection that there are TWO
+    /// independent native sources inside NSTitlebarView, both siblings of the
+    /// close/zoom/miniaturize widgets, not ancestors — hiding either does not
+    /// affect the buttons themselves:
+    ///   1. An NSVisualEffectView (material: .titlebar).
+    ///   2. A plain NSView backed directly by a CABackdropLayer
+    ///      (groupName "NSTitlebarViewBackdropLayer") — a lower-level,
+    ///      separate vibrancy mechanism that survives hiding #1 alone.
+    /// Both are matched by their actual view/layer type, not a hardcoded
+    /// subview index, so this stays resilient to AppKit's own internal
+    /// subview ordering. Reached via the public
+    /// standardWindowButton(.closeButton)?.superview anchor.
+    static func hideNativeTitlebarVibrancy(_ window: NSWindow) {
+        guard let titlebarView = window.standardWindowButton(.closeButton)?.superview else { return }
+        for subview in titlebarView.subviews {
+            if subview is NSVisualEffectView {
+                subview.isHidden = true
+            } else if let layerClassName = subview.layer.map({ String(describing: type(of: $0)) }),
+                      layerClassName.contains("Backdrop") {
+                // CABackdropLayer is a private QuartzCore class (not
+                // importable as a Swift type), so it's matched by its
+                // runtime class name instead of a static type check.
+                subview.isHidden = true
+            }
         }
     }
 
@@ -343,12 +453,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         InstallLogger.openLogsInFinder()
     }
 
+    // v1: informational only — no network/version check, no Sparkle, no
+    // automatic updater. Opens the main window and shows a simple notice
+    // that updates ship on the website when v2 is announced. See
+    // UI/UpdateNoticeView.swift.
     @objc private func checkForUpdates() {
-        Task { @MainActor in
-            UpdateChecker.shared.dismissed = false
-            UpdateChecker.shared.check()
-            openMainWindow()
-        }
+        openMainWindow()
+        NotificationCenter.default.post(name: .atlasShowUpdateNotice, object: nil)
     }
 
 }
