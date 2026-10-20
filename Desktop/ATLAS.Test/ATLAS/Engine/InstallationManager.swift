@@ -58,6 +58,13 @@ struct InstallEngine {
     // nil = default system paths (/Applications, /Library/…). Cleared after install.
     static var storageRoot: URL? = nil
 
+    // PKG ownership evidence — populated by installPKG after each successful PKG install.
+    // Read by the record-creation site in InstallationManager/ContentView immediately after
+    // install() returns. Only valid within a single serial install job (GUIInstallerQueue
+    // ensures no concurrent PKG installs). Reset to empty before each PKG attempt.
+    static var lastPKGEvidenceMap: [String: FileOwnershipEvidence] = [:]
+    static var lastPKGReceiptProvenance: [String: ReceiptProvenance] = [:]
+
     // MARK: - Global auth-dialog watcher
 
     // Runs for the full duration of any install. Catches every "wants to make changes"
@@ -454,6 +461,17 @@ struct InstallEngine {
             let plan = await InstallIntelligence.analyze(
                 directory: mountPoint, files: allInstallable)
 
+            // Safeguard: real installable files were found, but planning produced
+            // no executable steps for them (e.g. a stale/invalid cached TITAN
+            // MEMORY™ pattern) — this can never be a legitimate success. Fail
+            // explicitly instead of silently falling through to the loop below's
+            // default .success with zero work performed.
+            if plan.orderedSteps.isEmpty {
+                await logger.log("⚠ No executable install steps were produced for the discovered content — treating as failure.")
+                if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
+                return (.failure(reason: "No files or components were installed."), [], [], false)
+            }
+
             if let instr = plan.instructions {
                 await logger.log("📋 Instructions found — reading install order...")
                 if !instr.steps.isEmpty {
@@ -797,6 +815,10 @@ struct InstallEngine {
 
         await logger.log("Starting PKG installation: \(url.lastPathComponent)")
 
+        // Reset PKG evidence from any previous install before this attempt.
+        lastPKGEvidenceMap = [:]
+        lastPKGReceiptProvenance = [:]
+
         // DAW gate — conservative filename-based check before running the PKG installer.
         if case .blocked(let dawName) = DAWInstallationGate.checkPKG(url: url) {
             await logger.log("DAW installation not supported: \(dawName) — user notified.")
@@ -808,13 +830,17 @@ struct InstallEngine {
         }
 
         await progress(0.05, "Saving a restore point in case something goes wrong…")
-        await logger.log("Taking pre-install receipt snapshot...")
-        // Snapshot receipts only — filesystem diffing enumerates tens of thousands
-        // of files for large packages (Serum 2 has 10k+ presets) and hangs indefinitely.
-        // Rollback re-queries pkgutil at rollback time, so we only need receipt IDs here.
-        let beforeReceipts = await Task.detached(priority: .userInitiated) {
-            PKGReceiptScanner.snapshotReceipts()
-        }.value
+        await logger.log("Taking pre-install snapshot…")
+        // Two parallel snapshots: filesystem state (for per-file ownership evidence)
+        // and receipt state (for receipt provenance and timestamp attribution).
+        // Both tasks start before either is awaited — genuine parallelism.
+        // FilesystemSnapshot only enumerates narrowly-scoped audio plugin directories —
+        // it does NOT recursively scan /Library or /Applications wholesale, so it is
+        // fast even for machines with large sample libraries.
+        let fsBeforeTask       = Task.detached(priority: .userInitiated) { FilesystemSnapshot.take() }
+        let receiptsBeforeTask = Task.detached(priority: .userInitiated) { PKGReceiptScanner.snapshotReceipts() }
+        let beforeFS       = await fsBeforeTask.value
+        let beforeReceipts = await receiptsBeforeTask.value
         let installStart = Date()
 
         await progress(0.12, "Running the package installer — this may take a moment…")
@@ -868,9 +894,18 @@ struct InstallEngine {
         await progress(0.90, "Verifying installation receipts…")
         try? await Task.sleep(nanoseconds: 500_000_000)
 
-        var newReceiptIDs = await Task.detached(priority: .userInitiated) {
+        // Post-install snapshot: run in parallel with receipt scan for minimal delay.
+        // Both tasks start before either is awaited — genuine parallelism.
+        // afterFS captures ctime of every file in deepLocations so we can classify
+        // each BOM-listed path as transactionCreated / transactionReplaced / preExistingUnchanged.
+        let fsAfterTask      = Task.detached(priority: .userInitiated) { FilesystemSnapshot.take() }
+        let receiptsAfterTask = Task.detached(priority: .userInitiated) {
             PKGReceiptScanner.findNewReceipts(before: beforeReceipts, since: installStart)
-        }.value
+        }
+        let afterFS          = await fsAfterTask.value
+        let newReceiptIDsRaw = await receiptsAfterTask.value
+
+        var newReceiptIDs = newReceiptIDsRaw
         if newReceiptIDs.isEmpty {
             newReceiptIDs = await Task.detached(priority: .userInitiated) {
                 PKGReceiptScanner.findReceiptsByName(installerName)
@@ -879,6 +914,38 @@ struct InstallEngine {
 
         for id in newReceiptIDs { await logger.log("  Receipt: \(id)") }
         await logger.log("Total receipts tracked: \(newReceiptIDs.count)")
+
+        // ── Receipt provenance ────────────────────────────────────────────────
+        // Classify each attributed receipt as .created (new) or .rewritten (pre-existed).
+        // Only .created receipts will be forgotten on uninstall — forgetting a .rewritten
+        // receipt could corrupt the pkgutil record of a prior product that owned it.
+        var receiptProvenance: [String: ReceiptProvenance] = [:]
+        for id in newReceiptIDs {
+            receiptProvenance[id] = beforeReceipts.contains(id) ? .rewritten : .created
+        }
+        let rewrittenCount = receiptProvenance.values.filter { $0 == .rewritten }.count
+        if rewrittenCount > 0 {
+            await logger.log("Receipt provenance: \(newReceiptIDs.count - rewrittenCount) created, \(rewrittenCount) rewritten (pre-existing)")
+        }
+
+        // ── File ownership evidence ───────────────────────────────────────────
+        // Compute a filesystem diff. Each changed path gets a FileOwnershipEvidence
+        // classification based on whether it existed before and whether its ctime
+        // advanced during the install window. This is the per-file authorization gate
+        // that separates "installer wrote this" from "BOM declares this".
+        let changedPaths = FilesystemSnapshot.diff(before: beforeFS, after: afterFS)
+        var evidenceMap: [String: FileOwnershipEvidence] = [:]
+        for path in changedPaths {
+            evidenceMap[path] = FilesystemSnapshot.classifyPath(
+                path, before: beforeFS, after: afterFS, installStart: installStart)
+        }
+        let createdCount  = evidenceMap.values.filter { $0 == .transactionCreated  }.count
+        let replacedCount = evidenceMap.values.filter { $0 == .transactionReplaced }.count
+        await logger.log("Filesystem evidence: \(createdCount) created, \(replacedCount) replaced, \(changedPaths.count - createdCount - replacedCount) other")
+
+        // Store for the record-creation site (read immediately after install() returns).
+        lastPKGEvidenceMap       = evidenceMap
+        lastPKGReceiptProvenance = receiptProvenance
 
         // Codesign any audio plugin bundles modified in the last 5 minutes.
         // Covers the common case: a plain PKG installs AU/VST3/AAX plugins
@@ -2334,7 +2401,7 @@ struct InstallEngine {
     // from receipt file lists. Only returns paths that exist on disk and have a
     // meaningful bundle extension — not every individual file in the manifest.
     static func resolveInstalledBundlesFromReceipts(_ receiptIDs: [String]) -> [InstallRecord.InstalledFile] {
-        let bundleExts: Set<String> = ["component", "vst3", "vst", "aaxplugin", "app", "framework", "plugin"]
+        let bundleExts: Set<String> = ["component", "vst3", "vst", "aaxplugin", "clap", "app", "framework", "plugin"]
         // Suffixes that indicate sample/content/preset packages — skip entirely because
         // they contain thousands of files and cause runProcess pipe-buffer deadlocks.
         let skipSuffixes = [".content", ".presets", ".samples", ".data", ".library"]
@@ -2513,6 +2580,15 @@ struct InstallEngine {
     // non-system vendor directories. This lets diffLibraryTopLevel detect new product
     // subdirectories added to an existing vendor dir (e.g. a fresh "Ozone 12" folder
     // created inside a pre-existing "/Library/Application Support/iZotope/").
+    // Roots that get one-level-deeper vendor-dir watching, in addition to their own
+    // top level: new product subdirectories inside an already-existing vendor dir
+    // (e.g. Application Support/Vendor/NewProduct, or /Users/Shared/Vendor/NewProduct)
+    // are otherwise invisible to a purely-top-level diff, since the vendor dir itself
+    // isn't new. Generic — no vendor/product name is ever referenced here.
+    private static func watchesOneLevelDeeper(_ dir: String) -> Bool {
+        dir.hasSuffix("/Application Support") || dir == "/Users/Shared"
+    }
+
     static func snapshotLibraryTopLevel() -> [String: Set<String>] {
         let home = NSHomeDirectory()
         let dirs = [
@@ -2521,15 +2597,16 @@ struct InstallEngine {
             home + "/Library/Preferences",
             "/Library/Preferences",
             home + "/Library/Caches",
+            "/Users/Shared",
         ]
         var snapshot: [String: Set<String>] = [:]
         let fm = FileManager.default
         for dir in dirs {
             guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
             snapshot[dir] = Set(entries)
-            // One level deeper for Application Support: snapshot existing vendor dirs
-            // so we can detect new product subdirectories added during install.
-            guard dir.hasSuffix("/Application Support") else { continue }
+            // One level deeper: snapshot existing vendor dirs so we can detect new
+            // product subdirectories added during install.
+            guard watchesOneLevelDeeper(dir) else { continue }
             for entry in entries {
                 guard !isSystemEntry(entry) else { continue }
                 let vendorPath = "\(dir)/\(entry)"
@@ -2561,8 +2638,8 @@ struct InstallEngine {
     // Compares current top-level entries to the snapshot and returns full paths
     // of any new entries that appeared (i.e. folders created during install).
     // Filters against the system blocklist to avoid false positives.
-    // Also checks one level deeper in Application Support vendor directories,
-    // capturing new product subdirectories inside pre-existing vendor dirs.
+    // Also checks one level deeper in Application Support / /Users/Shared vendor
+    // directories, capturing new product subdirectories inside pre-existing vendor dirs.
     static func diffLibraryTopLevel(before: [String: Set<String>]) -> [String] {
         let fm = FileManager.default
         var newPaths: [String] = []
@@ -2573,6 +2650,7 @@ struct InstallEngine {
             home + "/Library/Preferences",
             "/Library/Preferences",
             home + "/Library/Caches",
+            "/Users/Shared",
         ]
         for dir in allDirs {
             let prior = before[dir] ?? []
@@ -2581,9 +2659,10 @@ struct InstallEngine {
                 guard !isSystemEntry(entry) else { continue }
                 newPaths.append("\(dir)/\(entry)")
             }
-            // For Application Support: also check for new subdirectories inside
-            // vendor dirs that already existed before the install.
-            guard dir.hasSuffix("/Application Support") else { continue }
+            // Also check for new subdirectories inside vendor dirs that already
+            // existed before the install (e.g. a new product added under an
+            // existing vendor folder).
+            guard watchesOneLevelDeeper(dir) else { continue }
             for entry in currentEntries {
                 guard !isSystemEntry(entry) else { continue }
                 let vendorPath = "\(dir)/\(entry)"
@@ -2598,6 +2677,63 @@ struct InstallEngine {
             }
         }
         return newPaths
+    }
+
+    // Snapshots the top-level bundle names present in every known plugin directory.
+    // Called before an install so diffPluginDirs() can compute what appeared during install.
+    static func snapshotPluginDirs() -> [String: Set<String>] {
+        let home = NSHomeDirectory()
+        let dirs = [
+            "/Library/Audio/Plug-Ins/Components",
+            "/Library/Audio/Plug-Ins/VST3",
+            "/Library/Audio/Plug-Ins/VST",
+            "/Library/Audio/Plug-Ins/CLAP",
+            "/Library/Application Support/Avid/Audio/Plug-Ins",
+            home + "/Library/Audio/Plug-Ins/Components",
+            home + "/Library/Audio/Plug-Ins/VST3",
+            home + "/Library/Audio/Plug-Ins/CLAP",
+        ]
+        var snapshot: [String: Set<String>] = [:]
+        let fm = FileManager.default
+        for dir in dirs {
+            guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            snapshot[dir] = Set(entries.filter { !$0.hasPrefix(".") })
+        }
+        return snapshot
+    }
+
+    // Compares current plugin directory contents to the snapshot.
+    // Returns InstalledFile entries for every new plugin bundle that appeared.
+    // Only tracks top-level bundle roots (not individual files inside bundles).
+    // Format-agnostic: captures .component, .vst3, .vst, .aaxplugin, .clap regardless
+    // of whether the installer registered a pkgutil receipt for each format.
+    static func diffPluginDirs(before: [String: Set<String>]) -> [InstallRecord.InstalledFile] {
+        let home = NSHomeDirectory()
+        let pluginBundleExts: Set<String> = ["component", "vst3", "vst", "aaxplugin", "clap", "app"]
+        let dirs = [
+            "/Library/Audio/Plug-Ins/Components",
+            "/Library/Audio/Plug-Ins/VST3",
+            "/Library/Audio/Plug-Ins/VST",
+            "/Library/Audio/Plug-Ins/CLAP",
+            "/Library/Application Support/Avid/Audio/Plug-Ins",
+            home + "/Library/Audio/Plug-Ins/Components",
+            home + "/Library/Audio/Plug-Ins/VST3",
+            home + "/Library/Audio/Plug-Ins/CLAP",
+        ]
+        var results: [InstallRecord.InstalledFile] = []
+        let fm = FileManager.default
+        for dir in dirs {
+            let prior = before[dir] ?? []
+            guard let current = try? fm.contentsOfDirectory(atPath: dir) else { continue }
+            for entry in current where !prior.contains(entry) && !entry.hasPrefix(".") {
+                let ext = URL(fileURLWithPath: entry).pathExtension.lowercased()
+                guard pluginBundleExts.contains(ext) else { continue }
+                let fullPath = "\(dir)/\(entry)"
+                results.append(InstallRecord.InstalledFile(
+                    sourceName: entry, destinationPath: fullPath))
+            }
+        }
+        return results
     }
 
     // Finds Library dirs entries that were created on or after a given date.
@@ -2799,6 +2935,14 @@ class InstallationManager: ObservableObject {
             )
             if !runtimeCreatedPaths.isEmpty {
                 record.runtimeCreatedPaths = runtimeCreatedPaths
+            }
+            // PKG ownership evidence — only set when the evidence model produced data.
+            // Non-PKG installs leave these nil (legacy behavior applies at uninstall time).
+            if !InstallEngine.lastPKGEvidenceMap.isEmpty {
+                record.fileEvidenceMap = InstallEngine.lastPKGEvidenceMap
+            }
+            if !InstallEngine.lastPKGReceiptProvenance.isEmpty {
+                record.pkgReceiptProvenance = InstallEngine.lastPKGReceiptProvenance
             }
 
             historyStore.add(record)
