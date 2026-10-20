@@ -34,13 +34,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ valid: false, reason: 'no_subscription' })
     }
 
-    const isActive  = subscription.status === 'active' || subscription.status === 'trialing'
-    const isPastDue = subscription.status === 'past_due'
-    const periodEnd = new Date(subscription.current_period_end)
-    const graceEnd  = new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000)
-    const inGrace   = isPastDue && new Date() < graceEnd
+    // ATLAS policy (2026-10-19): active-subscription-only, no exceptions.
+    // trialing, past_due, unpaid, incomplete(_expired), canceled, paused, and
+    // any other non-active status all deny immediately — no free trials, no
+    // payment-failure grace period, no entitlement grace period.
+    const isActive = subscription.status === 'active'
 
-    if (!isActive && !inGrace) {
+    if (!isActive) {
       return NextResponse.json({
         valid: false,
         reason: subscription.status,
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     }
 
     // Entitlement is already fully determined above by subscriptions.status
-    // (active / trialing / past_due-within-grace) — no plan-string check.
+    // (active only) — no plan-string check, no grace window.
 
     // Get current install count from the authoritative, account-wide
     // install_counts table (one row per user_id — the 25-install allowance
@@ -95,7 +95,6 @@ export async function GET(request: Request) {
       status: subscription.status,
       current_period_end: subscription.current_period_end,
       cancel_at_period_end: subscription.cancel_at_period_end,
-      in_grace_period: inGrace,
       features: {
         bulk_queue:            true,
         uninstall_manager:     true,

@@ -118,13 +118,10 @@ final class MonthlyLimitManager: ObservableObject {
     /// reservation's creation (see reserve_install_slot). Returns the reservation ID
     /// to pass to confirmSuccess(reservationID:)/releaseReservation(reservationID:)
     /// once the install's outcome is known.
-    /// Strict offline policy: if the server cannot be reached, this ONLY returns
-    /// `allowed: true` when we have a trustworthy, server-confirmed local count for
-    /// this exact user+device+period AND it shows remaining capacity — and in that
-    /// case there is no real reservation to confirm/release later (offline installs
-    /// are not reservable), so callers must treat a nil reservationID as "proceed,
-    /// but there is nothing to confirm/release afterward." Otherwise it blocks —
-    /// there is no local-only override of server authority.
+    /// ATLAS policy (2026-10-19): zero offline installs. If the server cannot be
+    /// reached or cannot verify the subscription, this always denies — a previously
+    /// confirmed count or remaining quota is never a substitute for a current,
+    /// successful server authorization. See checkOfflineFallback().
     func reserveSlot() async -> (allowed: Bool, reservationID: UUID?, reason: String?) {
         guard !AuthManager.shared.isAdmin else { return (true, nil, nil) }
         guard let token = await AuthManager.shared.currentToken() else {
@@ -190,20 +187,13 @@ final class MonthlyLimitManager: ObservableObject {
         }
     }
 
-    /// Strict/safe offline policy (approved): the server remains authoritative
-    /// whenever reachable. When unreachable, only allow if we have a trustworthy,
-    /// server-confirmed local count for this exact user+device+period showing
-    /// remaining capacity. If there is no trustworthy local state, or the local
-    /// state shows the limit reached, block — never let an unreachable server
-    /// become a bypass.
+    /// ATLAS policy (2026-10-19): zero offline installs, period. A previously
+    /// server-confirmed count and unused quota are NOT a basis for authorizing a
+    /// paid operation without a current, successful server check — a subscription
+    /// could have been cancelled or lapsed since that last confirmation. Always
+    /// fail closed when the server is unreachable or did not return a verdict.
     private func checkOfflineFallback() -> (allowed: Bool, reason: String?) {
-        guard hasServerConfirmedThisPeriod else {
-            return (false, "offline_unknown")
-        }
-        if installsThisPeriod >= currentLimit {
-            return (false, "monthly_limit")
-        }
-        return (true, nil)
+        return (false, "offline_entitlement_unknown")
     }
 
     /// Call ONLY after a product install (started via reserveSlot()) has genuinely,
