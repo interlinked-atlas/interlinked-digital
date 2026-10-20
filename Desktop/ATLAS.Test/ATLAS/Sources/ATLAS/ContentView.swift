@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var showHistory = false
     @State private var rollingBack: InstallRecord? = nil
     @State private var rollbackInProgress = false
+    @State private var isRestoring = false
     @State private var rollbackProgress: Double = 0.0
     @State private var rollbackStep: String = ""
     @State private var rollbackTask: Task<Void, Never>? = nil
@@ -46,6 +47,8 @@ struct ContentView: View {
     @State private var pendingActivationAlerts: [ActivationAlert] = []
     @State private var showActivationAlert = false
     @State private var preInstallWarnings: [PreInstallWarning] = []
+    // ✧ menu-bar "Check for Updates" — v1 informational popup only (no network check).
+    @State private var showUpdateNotice = false
     @ObservedObject private var zipBroker = ZIPPasswordBroker.shared
     @ObservedObject private var appearance   = AppearanceManager.shared
     @ObservedObject private var titanCore    = TitanCore.shared
@@ -126,6 +129,12 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(appearance.override)
+        .onReceive(NotificationCenter.default.publisher(for: .atlasShowUpdateNotice)) { _ in
+            showUpdateNotice = true
+        }
+        .sheet(isPresented: $showUpdateNotice) {
+            UpdateNoticeView { showUpdateNotice = false }
+        }
         .sheet(isPresented: $showDemoAlert, onDismiss: {
             pendingDemoAlerts.removeFirst()
             if !pendingDemoAlerts.isEmpty { showDemoAlert = true }
@@ -260,6 +269,11 @@ struct ContentView: View {
             }
 
             // Main content — always full window width, never resizes for history
+            // Reverted from the "Liquid Chrome Glass shell" — that transparent
+            // window + glass material caused a persistent native-titlebar glass
+            // strip behind the traffic lights with no clean fix, so this is back
+            // to the original solid background (same as Settings/Quarantine/
+            // RecoveryMode).
             mainView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(minWidth: 420, minHeight: 360)
@@ -407,7 +421,7 @@ struct ContentView: View {
             if updateChecker.showBanner, let info = updateChecker.updateInfo {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 13))
+                        .font(.atlasFont(size: 13))
                         .foregroundStyle(Color.atlasAccent)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("ATLAS \(info.version) is available")
@@ -433,7 +447,7 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     Button { updateChecker.dismiss() } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.atlasFont(size: 9, weight: .bold))
                             .foregroundStyle(Color.atlasAccent.opacity(0.55))
                     }
                     .buttonStyle(.plain)
@@ -455,7 +469,7 @@ struct ContentView: View {
             if let notice = auth.planChangeNotice {
                 HStack(spacing: 10) {
                     Image(systemName: auth.isPro ? "star.fill" : "arrow.down.circle.fill")
-                        .font(.system(size: 12))
+                        .font(.atlasFont(size: 12))
                         .foregroundStyle(auth.isPro ? Color.atlasWarning : Color.atlasInfo)
                     Text(notice)
                         .font(.atlasSubhead)
@@ -463,7 +477,7 @@ struct ContentView: View {
                     Spacer()
                     Button { auth.planChangeNotice = nil } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.atlasFont(size: 9, weight: .bold))
                             .foregroundStyle(Color.atlasTertiary)
                     }
                     .buttonStyle(.plain)
@@ -509,7 +523,7 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "clock.arrow.circlepath")
                         .foregroundStyle(Color.atlasInfo)
-                        .font(.system(size: 14))
+                        .font(.atlasFont(size: 14))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Resume previous installs?")
                             .font(.atlasCallout)
@@ -576,19 +590,17 @@ struct ContentView: View {
                     // Greeting shown once on very first launch only
                     if isIdle && !greetingShown {
                         Text("What are we installing today?")
-                            .font(.system(size: 14, weight: .light))
+                            .font(.atlasFont(size: 14, weight: .light))
                             .tracking(0.4)
                             .foregroundStyle(Color.atlasTertiary)
                             .padding(.top, 6)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    // Queue star (each queue row has its own progress bar)
-                    if queue.isProcessing {
-                        InstallingStarView()
-                            .padding(.vertical, 8)
-                            .transition(.opacity.combined(with: .scale))
-                    }
+                    // Note: the batch-level ATLAS-logo visualizer (InstallingStarView) that used
+                    // to show here during bulk installs has been retired — each actively-installing
+                    // row in QueueView now reuses the same ATLASTransferAnimation/progress-bar
+                    // treatment as a single-file install instead, so both paths look identical.
 
                     // Futuristic install overlay for single-file installs
                     let isSingleInstall = (
@@ -666,7 +678,7 @@ struct ContentView: View {
                         .scaleEffect(0.48)
                         .tint(Color.atlasAccent)
                     Text(titanCore.currentAction)
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.atlasFont(size: 10, weight: .medium))
                         .foregroundStyle(Color.atlasAccent)
                         .lineLimit(1)
                 }
@@ -710,7 +722,7 @@ struct ContentView: View {
     var paymentFailedBanner: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 13))
+                .font(.atlasFont(size: 13))
                 .foregroundStyle(Color.atlasDanger)
             Text("Payment failed — update your billing to keep access.")
                 .font(.atlasSubhead)
@@ -721,7 +733,7 @@ struct ContentView: View {
                     NSWorkspace.shared.open(url)
                 }
             }
-            .font(.system(size: 11, weight: .bold))
+            .font(.atlasFont(size: 11, weight: .bold))
             .foregroundStyle(Color.atlasDanger)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -746,7 +758,7 @@ struct ContentView: View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.shield.fill")
                 .foregroundStyle(Color.atlasWarning)
-                .font(.system(size: 14))
+                .font(.atlasFont(size: 14))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Permission\(livePermsMissing.count == 1 ? "" : "s") required: \(livePermsMissing.joined(separator: ", "))")
@@ -762,7 +774,7 @@ struct ContentView: View {
             Button("Fix →") {
                 showPermissionsSheet = true
             }
-            .font(.system(size: 11, weight: .bold))
+            .font(.atlasFont(size: 11, weight: .bold))
             .foregroundStyle(Color.atlasWarning)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -824,25 +836,31 @@ struct ContentView: View {
         return HStack(spacing: 12) {
             // Logo + ATLAS name — tap opens About
             Button { showAbout = true } label: {
-                HStack(spacing: 6) {
+                // Chrome ATLAS star mark — the existing ATLAS.png chrome-star asset
+                // (a plain bundled image, resolved via a direct resource lookup rather
+                // than the AVPlayer-based LiquidMetalView, which can fail to resolve its
+                // video resource in some build contexts and render nothing at all).
+                HStack(spacing: 12) {
                     if let url = Bundle.atlasResources.url(forResource: "ATLAS", withExtension: "png"),
                        let nsImage = NSImage(contentsOf: url) {
                         Image(nsImage: nsImage)
                             .resizable()
                             .interpolation(.high)
-                            .frame(width: 36, height: 36)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 52, height: 52)
                     }
-                    LiquidMetalView(size: 30)
                     VStack(alignment: .leading, spacing: 1) {
                         if colorScheme == .dark {
                             AtlasTitleText(size: 20, tracking: 5)
+                                .atlasChromeSweep()
                         } else {
                             AtlasTitleText(size: 20, tracking: 5)
                                 .colorInvert()
+                                .atlasChromeSweep()
                         }
                         Text("by InterLinked©")
-                            .font(.system(size: 9.5, weight: .regular))
-                            .foregroundStyle(Color.atlasTertiary)
+                            .font(.atlasFont(size: 9.5, weight: .regular))
+                            .foregroundStyle(Color.atlasOnGlassSecondary)
                     }
                 }
             }
@@ -857,7 +875,7 @@ struct ContentView: View {
                         .frame(width: 5, height: 5)
                         .shadow(color: Color.atlasAccent.opacity(0.6), radius: 3)
                     Text("TITAN CORE™")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.atlasFont(size: 9, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(Color.atlasAccent)
                 }
@@ -877,7 +895,7 @@ struct ContentView: View {
             HStack(spacing: 5) {
                 AtlasLabelButton(
                     icon: "books.vertical",
-                    label: "Library",
+                    label: "Dashboard",
                     isActive: showHistory
                 ) {
                     withAnimation(.atlasSpring) { showHistory.toggle() }
@@ -892,7 +910,7 @@ struct ContentView: View {
                         showCancelConfirm = true
                     }
                 } else if !isIdle {
-                    AtlasLabelButton(icon: "arrow.counterclockwise", label: "Reset") {
+                    AtlasLabelButton(icon: "arrow.counterclockwise", label: "Home") {
                         resetAll()
                     }
                 }
@@ -1071,8 +1089,12 @@ struct ContentView: View {
 
     @ViewBuilder
     var mainContent: some View {
-        // Standard plan: pending files ready to continue after lock expires
-        if !auth.isPro && monthlyLimit.hasPendingFiles && !monthlyLimit.isLocked && showDropZone {
+        // Pending files ready to continue once capacity is available again —
+        // shown regardless of plan tier so files persisted while locked stay
+        // visible/usable after the user regains capacity (e.g. by upgrading),
+        // not just after a natural monthly reset. User still explicitly taps
+        // "Continue Install"; nothing here installs automatically.
+        if monthlyLimit.hasPendingFiles && !monthlyLimit.isLocked && showDropZone {
             pendingFilesPanel
         }
 
@@ -1095,7 +1117,7 @@ struct ContentView: View {
                     if rem <= 3 {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
-                                .font(.system(size: 10))
+                                .font(.atlasFont(size: 10))
                             Text("\(rem) install\(rem == 1 ? "" : "s") remaining this month")
                                 .font(.atlasSubhead)
                             Spacer()
@@ -1124,14 +1146,14 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Color.atlasWarning)
-                    .font(.system(size: 12))
+                    .font(.atlasFont(size: 12))
                 Text(warning.message)
                     .font(.atlasCaption)
                     .foregroundStyle(Color.atlasWarning.opacity(0.85))
                     .lineLimit(2)
                 Spacer()
                 Button { preInstallWarnings.removeAll { $0.message == warning.message } } label: {
-                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                    Image(systemName: "xmark").font(.atlasFont(size: 9, weight: .bold))
                         .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
@@ -1209,35 +1231,35 @@ struct ContentView: View {
 
                 VStack(spacing: 14) {
                     Image(systemName: "lock.circle.fill")
-                        .font(.system(size: 36))
+                        .font(.atlasFont(size: 36))
                         .foregroundColor(Color(hex: "#F0A030"))
 
                     VStack(spacing: 4) {
                         Text("Monthly install limit reached")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.atlasFont(size: 14, weight: .semibold))
                             .foregroundColor(Color(hex: "#F0A030"))
                         Text("\(planName) plan: \(cap) installs per month")
-                            .font(.system(size: 11))
+                            .font(.atlasFont(size: 11))
                             .foregroundColor(Color(hex: "#696E7C"))
                     }
 
                     if monthlyLimit.hasPendingFiles {
                         HStack(spacing: 5) {
                             Image(systemName: "clock.badge.fill")
-                                .font(.system(size: 11))
+                                .font(.atlasFont(size: 11))
                                 .foregroundColor(Color(hex: "#696E7C"))
                             Text("\(monthlyLimit.pendingURLs.count) file\(monthlyLimit.pendingURLs.count == 1 ? "" : "s") pending")
-                                .font(.system(size: 11))
+                                .font(.atlasFont(size: 11))
                                 .foregroundColor(Color(hex: "#696E7C"))
                         }
                     }
 
                     HStack(spacing: 5) {
                         Image(systemName: "clock")
-                            .font(.system(size: 11))
+                            .font(.atlasFont(size: 11))
                             .foregroundColor(Color(hex: "#696E7C"))
                         Text("Refills in \(countdown)")
-                            .font(.system(size: 13, weight: .medium).monospacedDigit())
+                            .font(.atlasFont(size: 13, weight: .medium).monospacedDigit())
                             .foregroundColor(Color(hex: "#D0D8F0"))
                     }
 
@@ -1247,7 +1269,7 @@ struct ContentView: View {
                             showUpgrade = true
                         } label: {
                             Text(upgradeMsg)
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.atlasFont(size: 12, weight: .semibold))
                                 .foregroundColor(Color(hex: "#3ECFB2"))
                                 .padding(.horizontal, 16).padding(.vertical, 7)
                                 .background(Color(hex: "#3ECFB2").opacity(0.1))
@@ -1266,7 +1288,7 @@ struct ContentView: View {
     var pendingFilesPanel: some View {
         HStack(spacing: 12) {
             Image(systemName: "clock.badge.checkmark.fill")
-                .font(.system(size: 22))
+                .font(.atlasFont(size: 22))
                 .foregroundStyle(Color.atlasAccent)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -1305,7 +1327,7 @@ struct ContentView: View {
         case .recovered(let action):
             HStack(spacing: 10) {
                 Image(systemName: "cpu.fill")
-                    .font(.system(size: 12))
+                    .font(.atlasFont(size: 12))
                     .foregroundStyle(Color.atlasAccent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TITAN CORE™ recovered the installation")
@@ -1320,7 +1342,7 @@ struct ContentView: View {
                     withAnimation { titanCore.clearLastRecovery() }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9))
+                        .font(.atlasFont(size: 9))
                         .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
@@ -1337,7 +1359,7 @@ struct ContentView: View {
         case .guidance(let message):
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "cpu.fill")
-                    .font(.system(size: 12))
+                    .font(.atlasFont(size: 12))
                     .foregroundStyle(Color.atlasWarning)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 2) {
@@ -1354,7 +1376,7 @@ struct ContentView: View {
                     withAnimation { titanCore.clearLastRecovery() }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9))
+                        .font(.atlasFont(size: 9))
                         .foregroundStyle(Color.atlasTertiary)
                 }
                 .buttonStyle(.plain)
@@ -1379,7 +1401,7 @@ struct ContentView: View {
             Text(appState.scanStep.isEmpty
                  ? "Scanning \(appState.selectedFileURL?.lastPathComponent ?? "")..."
                  : appState.scanStep)
-                .font(.system(size: 13))
+                .font(.atlasFont(size: 13))
                 .foregroundColor(Color.atlasSubtitle)
                 .animation(.easeInOut(duration: 0.2), value: appState.scanStep)
             Spacer()
@@ -1389,7 +1411,7 @@ struct ContentView: View {
                 withAnimation { showDropZone = true }
             } label: {
                 Text("Cancel")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.atlasFont(size: 12, weight: .medium))
                     .foregroundColor(Color.atlasSubtitle)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -1440,12 +1462,12 @@ struct ContentView: View {
                 Label("\(succeeded) installed",
                       systemImage: "checkmark.circle.fill")
                     .foregroundColor(Color(hex: "#2ECC8A"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.atlasFont(size: 13, weight: .medium))
                 if failed > 0 {
                     Label("\(failed) failed",
                           systemImage: "xmark.circle.fill")
                         .foregroundColor(Color(hex: "#E05555"))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.atlasFont(size: 13, weight: .medium))
                 }
                 Spacer()
             }
@@ -1496,40 +1518,46 @@ struct ContentView: View {
 
                 // Header: product name + elapsed timer
                 HStack(spacing: 6) {
-                    Text(rollbackQueueTotal > 1
-                         ? "Uninstalling \(rollbackQueueDone + 1) of \(rollbackQueueTotal)"
-                         : "Uninstalling")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(hex: "#E05555"))
+                    Text(isRestoring
+                         ? "Recovering Files"
+                         : (rollbackQueueTotal > 1
+                            ? "Uninstalling \(rollbackQueueDone + 1) of \(rollbackQueueTotal)"
+                            : "Uninstalling"))
+                        .font(.atlasFont(size: 11, weight: .semibold))
+                        .foregroundColor(isRestoring ? Color(hex: "#3ECFB2") : Color(hex: "#E05555"))
                     Text(rollingBack?.fileName ?? "")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.atlasFont(size: 11, weight: .medium))
                         .foregroundColor(Color.atlasLabel)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
                     let elapsed = rollbackTimerTick.timeIntervalSince(rollbackStartTime)
                     Text(String(format: "%02d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.atlasFont(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 10)
 
-                // Uninstall animation: Mac → files → Trash
-                ATLASTransferAnimation(mode: .uninstall, isAnimating: rollbackInProgress)
+                // Transfer animation: direction depends on operation
+                ATLASTransferAnimation(
+                    mode: isRestoring ? .recovery : .uninstall,
+                    isAnimating: rollbackInProgress)
                     .padding(.horizontal, 32)
                     .padding(.vertical, 8)
 
-                // Progress bar (danger/red)
+                // Progress bar — red for uninstall, teal for recovery
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(Color(hex: "#1A0808"))
+                            .fill(isRestoring ? Color(hex: "#081A17") : Color(hex: "#1A0808"))
                             .frame(height: 7)
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(LinearGradient(
-                                colors: [Color(hex: "#E05555").opacity(0.75), Color(hex: "#E05555")],
+                                colors: isRestoring
+                                    ? [Color(hex: "#3ECFB2").opacity(0.75), Color(hex: "#3ECFB2")]
+                                    : [Color(hex: "#E05555").opacity(0.75), Color(hex: "#E05555")],
                                 startPoint: .leading, endPoint: .trailing))
                             .frame(width: max(14, geo.size.width * rollbackProgress), height: 7)
                             .animation(.spring(response: 0.55, dampingFraction: 0.8), value: rollbackProgress)
@@ -1545,15 +1573,15 @@ struct ContentView: View {
                         ? (rollbackStep.isEmpty ? "Preparing…" : rollbackStep)
                         : rollbackPhase
                     Text(stepLabel)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Color(hex: "#8A6070"))
+                        .font(.atlasFont(size: 11, weight: .medium))
+                        .foregroundColor(isRestoring ? Color(hex: "#2A7060") : Color(hex: "#8A6070"))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .animation(.easeInOut(duration: 0.2), value: stepLabel)
                     Spacer()
                     Text("\(Int(rollbackProgress * 100))%")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(Color(hex: "#4A2030"))
+                        .font(.atlasFont(size: 11, design: .monospaced))
+                        .foregroundColor(isRestoring ? Color(hex: "#1A4035") : Color(hex: "#4A2030"))
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 6)
@@ -1601,21 +1629,21 @@ struct ContentView: View {
                     .foregroundColor(failed == 0
                         ? Color(hex: "#2ECC8A")
                         : Color(hex: "#F0A030"))
-                    .font(.system(size: 14))
+                    .font(.atlasFont(size: 14))
                 Text(failed == 0
                     ? "Session uninstall complete"
                     : "Session uninstall finished with errors")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.atlasFont(size: 13, weight: .semibold))
                     .foregroundColor(Color.atlasLabel)
             }
             HStack(spacing: 16) {
                 Label("\(succeeded) removed", systemImage: "trash")
                     .foregroundColor(Color(hex: "#2ECC8A"))
-                    .font(.system(size: 12))
+                    .font(.atlasFont(size: 12))
                 if failed > 0 {
                     Label("\(failed) failed", systemImage: "xmark.circle")
                         .foregroundColor(Color(hex: "#E05555"))
-                        .font(.system(size: 12))
+                        .font(.atlasFont(size: 12))
                 }
             }
             Button("Done") { resetAll() }
@@ -2062,9 +2090,8 @@ struct ContentView: View {
         pluginScanResults = []
         showPluginScan = false
         Task {
-            let (allowed, _) = await monthlyLimit.checkWithServer()
+            let (allowed, reservationID, _) = await monthlyLimit.reserveSlot()
             guard allowed else { return }
-            monthlyLimit.syncAfterServerGate()
             MenuBarStatusManager.shared.menuStatus = .installing
             InstallationManager.shared.install(
             url: url, appState: appState,
@@ -2077,6 +2104,12 @@ struct ContentView: View {
             // Post notification and update menu bar icon
             switch appState.lastResult {
             case .success(let name, _):
+                // Only a confirmed successful product install consumes a monthly
+                // installation — this is the authoritative success signal for the
+                // single-file install path.
+                if let reservationID {
+                    Task { await monthlyLimit.confirmSuccess(reservationID: reservationID) }
+                }
                 ATLASNotification.send(
                     title: L(.notifySuccessTitle),
                     body: String(format: L(.notifySuccessBody), name))
@@ -2087,6 +2120,9 @@ struct ContentView: View {
                 }
                 pendingDocInfo = nil
             case .failure(let reason):
+                if let reservationID {
+                    Task { await monthlyLimit.releaseReservation(reservationID: reservationID) }
+                }
                 ATLASNotification.send(
                     title: L(.notifyFailedTitle),
                     body: reason)
@@ -2095,11 +2131,17 @@ struct ContentView: View {
                 // TITAN CORE™ handles recovery automatically during install —
                 // no manual activate needed here
             case .unsupportedDAWInstallation(let dawName):
+                if let reservationID {
+                    Task { await monthlyLimit.releaseReservation(reservationID: reservationID) }
+                }
                 MenuBarStatusManager.shared.menuStatus = .idle
                 unsupportedDAWName = dawName
                 showUnsupportedDAWAlert = true
                 pendingDocInfo = nil
             case nil:
+                if let reservationID {
+                    Task { await monthlyLimit.releaseReservation(reservationID: reservationID) }
+                }
                 MenuBarStatusManager.shared.menuStatus = .idle
                 pendingDocInfo = nil
             }
@@ -2264,14 +2306,14 @@ struct ContentView: View {
             }
         }
 
-        // Server-authoritative install-limit gate
-        let (limitAllowed, _) = await monthlyLimit.checkWithServer()
+        // Server-authoritative install-limit gate — atomic reserve, does not
+        // increment usage. The reservation is confirmed on success or released on
+        // failure/unsupported below.
+        let (limitAllowed, reservationID, _) = await monthlyLimit.reserveSlot()
         guard limitAllowed else {
-            await MainActor.run { monthlyLimit.syncAfterServerGate() }
             queue.updateStatus(id: id, status: .failure("Monthly install limit reached"))
             return
         }
-        await MainActor.run { monthlyLimit.syncAfterServerGate() }
         queue.updateStatus(id: id, status: .installing)
         logger.log("Installing: \(item.fileName)")
 
@@ -2349,6 +2391,12 @@ struct ContentView: View {
         if !runtimeCreatedPaths.isEmpty {
             record.runtimeCreatedPaths = runtimeCreatedPaths
         }
+        if !InstallEngine.lastPKGEvidenceMap.isEmpty {
+            record.fileEvidenceMap = InstallEngine.lastPKGEvidenceMap
+        }
+        if !InstallEngine.lastPKGReceiptProvenance.isEmpty {
+            record.pkgReceiptProvenance = InstallEngine.lastPKGReceiptProvenance
+        }
 
         // Log parsed installer documentation summary
         if let doc = record.installerDocInfo, !doc.isEmpty {
@@ -2371,6 +2419,7 @@ struct ContentView: View {
         // No record, no history, no ATLAS LEARN™ upload.
         if case .unsupportedDAWInstallation(let dawName) = finalResult {
             logger.log("DAW installation not supported: \(dawName) — user notified.")
+            if let reservationID { await monthlyLimit.releaseReservation(reservationID: reservationID) }
             queue.updateStatus(id: id, status: .failure("DAW not supported in this version"))
             await MainActor.run {
                 unsupportedDAWName = dawName
@@ -2380,6 +2429,18 @@ struct ContentView: View {
         }
 
         historyStore.add(record)
+
+        // Only a confirmed successful product install consumes a monthly
+        // installation — this is the authoritative success signal for the queue
+        // install path (post retry, post TITAN VERIFY™). Any non-success result
+        // releases the reservation instead, consuming nothing.
+        if case .success = finalResult {
+            if let reservationID {
+                Task { await monthlyLimit.confirmSuccess(reservationID: reservationID) }
+            }
+        } else if let reservationID {
+            Task { await monthlyLimit.releaseReservation(reservationID: reservationID) }
+        }
 
         // ── ATLAS LEARN™ — upload verified clean installs as learned patterns ──
         if verifyPassed && demoWarnings.isEmpty, case .success(let learnName, _) = finalResult {
@@ -2616,6 +2677,7 @@ struct ContentView: View {
         }
 
         rollbackInProgress = true
+        isRestoring = true
         rollbackProgress = 0.0
         rollbackStep = "Restoring..."
         logger.log("--- Recovery initiated: \(record.fileName) ---")
@@ -2623,6 +2685,7 @@ struct ContentView: View {
             let ok = await RollbackEngine.restore(from: backupPath, logger: logger)
             await MainActor.run {
                 rollbackInProgress = false
+                isRestoring = false
                 rollbackProgress = 1.0
                 rollbackStep = ""
                 if ok {
@@ -2653,6 +2716,7 @@ struct ContentView: View {
             // Immediately reset UI so the user sees the result without waiting for the
             // background task to wind down through its current subprocess.
             rollbackInProgress = false
+            isRestoring        = false
             rollbackProgress   = 0.0
             rollbackStep       = ""
             rollbackPhase      = ""
@@ -2767,7 +2831,7 @@ struct ContentView: View {
             ? .failure(reason: failureReason)
             : .success(appName: sourceName)
 
-        let record = InstallLogger.writeLog(
+        var record = InstallLogger.writeLog(
             fileURL:      mission.sourceURL,
             fileType:     mission.sourceURL.pathExtension.uppercased().isEmpty
                               ? "Install"
@@ -2778,6 +2842,10 @@ struct ContentView: View {
             pkgReceiptIDs:    mission.installedPKGReceipts,
             remediationAttempted: false
         )
+
+        if !InstallEngine.lastPKGReceiptProvenance.isEmpty {
+            record.pkgReceiptProvenance = InstallEngine.lastPKGReceiptProvenance
+        }
 
         logger.log(hasFailed ? "⚠️ TITAN mission completed with failures — log saved" : "📋 TITAN mission saved")
 
@@ -2913,7 +2981,7 @@ struct BottomBarIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
+                .font(.atlasFont(size: 12, weight: .medium))
                 .foregroundStyle(hovered ? Color.atlasLabel : Color.atlasSubtitle)
                 .frame(width: 28, height: 28)
                 .background(
@@ -2942,7 +3010,7 @@ struct AtlasIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 13))
+                .font(.atlasFont(size: 13))
                 .foregroundStyle(isActive ? Color.atlasAccent : Color.atlasSubtitle)
                 .frame(width: 30, height: 30)
                 .background(
@@ -2981,9 +3049,9 @@ struct AtlasLabelButton: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 10.5, weight: .medium))
+                    .font(.atlasFont(size: 10.5, weight: .medium))
                 Text(label)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.atlasFont(size: 11, weight: .medium))
             }
             .foregroundStyle(
                 isActive ? Color.atlasAccent
