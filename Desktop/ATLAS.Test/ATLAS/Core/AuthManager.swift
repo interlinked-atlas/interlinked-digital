@@ -20,8 +20,14 @@ final class AuthManager: ObservableObject {
     @Published var planChangeNotice: String? = nil
     private var planSyncTimer: Timer?
 
+    // P0-2: the ONLY source of truth for "may use paid ATLAS functionality."
+    // Populated exclusively by a server round-trip to GET /api/atlas/entitlement
+    // (itself backed by subscriptions.status == 'active'). Never derived from
+    // profile.plan or any other locally-cached/client-side value.
+    @Published private(set) var entitlementActive: Bool = false
+
     var isSignedIn: Bool { session != nil }
-    var isSubscribed: Bool { profile?.isSubscribed ?? false }
+    var isSubscribed: Bool { entitlementActive }
     var isPro: Bool { isSubscribed }  // backward compat alias
 
     static let adminEmail = "titantinstaller@gmail.com"
@@ -89,15 +95,57 @@ final class AuthManager: ObservableObject {
 
     func currentToken() async -> String? { session?.accessToken }
 
+    // MARK: - Entitlement (P0-2)
+    // Server-authoritative check, called at sign-in and on every periodic
+    // re-check tick. A server/network error leaves entitlementActive
+    // unchanged rather than forcing it true or false from a guess — callers
+    // needing a fail-closed decision (e.g. install authorization) go through
+    // their own dedicated server round-trip (check-install), which fails
+    // closed independently. This flag drives UI/feature-gating display.
+    @discardableResult
+    private func checkEntitlement() async -> Bool {
+        guard let token = session?.accessToken else {
+            await MainActor.run { entitlementActive = false }
+            return false
+        }
+        do {
+            let result = try await SupabaseService.shared.fetchEntitlement(accessToken: token)
+            switch result {
+            case .active:
+                await MainActor.run { entitlementActive = true }
+                return true
+            case .notEntitled:
+                await MainActor.run { entitlementActive = false }
+                return false
+            case .serverError:
+                // Could not verify — leave the last-known state as-is rather
+                // than silently granting or revoking on a transient error.
+                return entitlementActive
+            }
+        } catch {
+            return entitlementActive
+        }
+    }
+
     func signOut() {
-        let token  = session?.accessToken
-        let userID = session?.userID
+        let token = session?.accessToken
         clearLocalSession()                   // update UI immediately
-        if let token, let userID {
+        if let token {
             Task {
-                let uuid = atlasHardwareUUID()
-                try? await SupabaseService.shared.removeCurrentDevice(
-                    accessToken: token, userID: userID, hardwareUUID: uuid)
+                // Signing out — whether user-initiated or triggered by the
+                // periodic entitlement/device sync timer's defensive checks —
+                // must never remove the device registration as a side effect.
+                // Device removal is a deliberate, separate action the user
+                // takes explicitly in Account Settings (with its own confirm
+                // dialog, over the website's RLS-protected DELETE endpoint).
+                // This previously called removeCurrentDevice() here too,
+                // which meant any single transient/defensive sign-out
+                // permanently deleted a correctly-registered device — and
+                // since the next sign-in's periodic check would then
+                // correctly (but now wrongly, because of this very call)
+                // find the device missing, it triggered another sign-out,
+                // which removed it again: a self-sustaining loop from one
+                // transient trigger. Only the session itself is revoked here.
                 try? await SupabaseService.shared.signOut(accessToken: token)
             }
         }
@@ -124,8 +172,12 @@ final class AuthManager: ObservableObject {
         devices = []
         authError = nil
         authErrorIsDeviceLimit = false
+        entitlementActive = false
         KeychainManager.clearSession()
         KeychainManager.clearOfflineData()
+        // Reset the monthly-install-limit local cache so a different account signing
+        // in next never briefly sees this account's stale usage numbers.
+        Task { @MainActor in MonthlyLimitManager.shared.resetForSignOut() }
     }
 
     // Public: called by SubscriptionRequiredView "I've subscribed" button
@@ -143,6 +195,8 @@ final class AuthManager: ObservableObject {
         planSyncTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             guard let self = self, let s = self.session, !s.isExpired else { return }
             Task {
+                // P0-2: re-verify server-authoritative entitlement on every tick.
+                await self.checkEntitlement()
                 // Sync profile (plan + subscription status)
                 if let p = try? await SupabaseService.shared.getProfile(
                     accessToken: s.accessToken, userID: s.userID) {
@@ -215,13 +269,14 @@ final class AuthManager: ObservableObject {
             await MainActor.run {
                 profile = p
                 isLoadingProfile = false
-                MonthlyLimitManager.shared.refreshAfterProfileLoad()
+                MonthlyLimitManager.shared.reloadForCurrentIdentity()
             }
             KeychainManager.saveProfile(p)
         } else {
             await MainActor.run { isLoadingProfile = false }
         }
         KeychainManager.saveLastVerified(Date())
+        await checkEntitlement()
         await registerDevice(s)
         await fetchDevices()
         await refreshOfflineToken(s)
@@ -270,6 +325,23 @@ final class AuthManager: ObservableObject {
                 profile = nil
             }
             KeychainManager.clearSession()
+        } catch SupabaseError.notEntitled {
+            // Distinct from device-limit: this account has no active ATLAS
+            // subscription at all. Block entry with a clear, correct message
+            // rather than silently continuing with zero devices registered.
+            await MainActor.run {
+                authError = "This account does not have an active ATLAS subscription. Visit interlinked.digital/atlas to subscribe."
+                session = nil
+                profile = nil
+                entitlementActive = false
+            }
+            KeychainManager.clearSession()
+        } catch SupabaseError.serverUnavailable {
+            // Distinct again: couldn't verify at all (server/network issue),
+            // as opposed to a definitive not-entitled/limit-reached answer.
+            // Do not treat this as either granted or revoked — surfacing it
+            // is left to the caller's own offline/online handling; device
+            // registration simply did not complete this attempt.
         } catch { }
     }
 
@@ -315,6 +387,12 @@ final class AuthManager: ObservableObject {
             await MainActor.run {
                 session = saved
                 profile = offlineProfile
+                // Legitimately issued (server-signed, device-bound, time-
+                // limited) offline authorization — see OfflineTokenVerifier.
+                // Not derived from plan; the token's mere validity is what's
+                // trusted here, unchanged by this pass (P2 covers hardening
+                // this further with asymmetric signing).
+                entitlementActive = true
             }
             return
         }
@@ -326,6 +404,10 @@ final class AuthManager: ObservableObject {
                 session = saved
                 profile = cachedProfile
                 authError = nil
+                // Cached from the last real online entitlement check within
+                // the grace window — same trust boundary as before this pass,
+                // just now expressed via entitlementActive instead of plan.
+                entitlementActive = true
             }
             return
         }
@@ -349,6 +431,7 @@ final class AuthManager: ObservableObject {
         } catch {
             await MainActor.run { isLoadingProfile = false }
         }
+        await checkEntitlement()
         await registerDevice(s)
         await fetchDevices()
         await refreshOfflineToken(s)

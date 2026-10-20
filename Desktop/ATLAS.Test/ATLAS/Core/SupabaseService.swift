@@ -29,9 +29,16 @@ struct ATLASProfile: Codable {
     let billingAnchorDay: Int?      // day of month billing renews (1-31)
     let billingInterval: String?    // "monthly" or "annual"
 
-    var isSubscribed: Bool { ["atlas", "pro", "standard"].contains(plan) }
-    var isPro: Bool { isSubscribed }  // backward compat
-    var isAnnual: Bool { billingInterval == "annual" }
+    // P0-1: profiles.plan is NEVER an entitlement signal — it is display
+    // metadata only. The sole entitlement authority is a server-verified
+    // subscriptions.status == 'active' check (see AuthManager.entitlementActive,
+    // populated via GET /api/atlas/entitlement). This property is deliberately
+    // no longer derived from `plan` and always returns false so nothing can
+    // silently fall back to the old, incorrect plan-string check.
+    @available(*, deprecated, message: "Use AuthManager.shared.isSubscribed (server-verified), not this. Never derive entitlement from plan.")
+    var isSubscribed: Bool { false }
+    @available(*, deprecated, message: "Use AuthManager.shared.isSubscribed (server-verified), not this.")
+    var isPro: Bool { false }
 
     enum CodingKeys: String, CodingKey {
         case id, email, plan
@@ -65,6 +72,8 @@ enum SupabaseError: LocalizedError {
     case notAuthenticated
     case deviceLimitReached
     case emailNotConfirmed
+    case notEntitled
+    case serverUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -75,6 +84,8 @@ enum SupabaseError: LocalizedError {
         case .notAuthenticated:     return "You are not signed in."
         case .deviceLimitReached:   return "ATLAS allows up to 3 devices. Remove a device in Account settings first."
         case .emailNotConfirmed:    return "Please confirm your email before signing in. Check your inbox for a confirmation link."
+        case .notEntitled:          return "This account does not have an active ATLAS subscription."
+        case .serverUnavailable:    return "Couldn't verify with the server. Please try again."
         }
     }
 }
@@ -166,27 +177,40 @@ actor SupabaseService {
         return try decode([ATLASDevice].self, from: data)
     }
 
+    // P0-4: device registration is now atomic and server-authoritative via
+    // POST /api/atlas/devices/register (backed by the register_device RPC).
+    // The Swift client no longer counts devices or inserts rows itself —
+    // that direct-REST path is closed (the devices table's client INSERT RLS
+    // policy was removed). userID is not sent in the request body; the
+    // server derives identity from the verified accessToken.
     func registerDevice(accessToken: String, userID: String,
                         name: String, hardwareUUID: String,
                         isSubscribed: Bool) async throws {
-        let existing = try await getDevices(accessToken: accessToken, userID: userID)
-        let limit = 3  // ATLAS: all subscribers get 3 devices
-        let alreadyRegistered = existing.contains { $0.hardwareUUID == hardwareUUID }
-
-        if !alreadyRegistered && existing.count >= limit {
-            throw SupabaseError.deviceLimitReached
+        guard let url = URL(string: "https://www.interlinked.digital/api/atlas/devices/register") else {
+            throw SupabaseError.invalidURL
         }
-
-        // Upsert — updates last_seen if device already exists
-        let body: [String: String] = [
-            "user_id": userID,
-            "device_name": name,
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: [
             "hardware_uuid": hardwareUUID,
-            "last_seen": ISO8601DateFormatter().string(from: Date())
-        ]
-        _ = try await post(path: "/rest/v1/devices?on_conflict=user_id,hardware_uuid",
-                           body: body, token: accessToken,
-                           extraHeaders: ["Prefer": "resolution=merge-duplicates"])
+            "device_name": name,
+        ])
+        let (data, response) = try await URLSession.shared.data(for: req)
+        let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        guard let http = response as? HTTPURLResponse else { throw SupabaseError.serverUnavailable }
+
+        if http.statusCode == 200 { return }
+
+        let reason = json["reason"] as? String
+        switch reason {
+        case "device_limit":   throw SupabaseError.deviceLimitReached
+        case "not_entitled":   throw SupabaseError.notEntitled
+        case "server_error":   throw SupabaseError.serverUnavailable
+        default:
+            throw SupabaseError.httpError(http.statusCode, reason ?? "Device registration failed")
+        }
     }
 
     func removeDevice(accessToken: String, deviceID: String) async throws {
@@ -287,6 +311,36 @@ actor SupabaseService {
               let token = json["token"] as? String
         else { throw SupabaseError.decodingError("Missing token in response") }
         return token
+    }
+
+    // MARK: - Entitlement (P0-2)
+    // Sole server-authoritative check for "does this account have an active
+    // ATLAS subscription." Never inferred from profiles.plan locally.
+
+    enum EntitlementResult {
+        case active
+        case notEntitled(reason: String?)
+        case serverError
+    }
+
+    func fetchEntitlement(accessToken: String) async throws -> EntitlementResult {
+        guard let url = URL(string: "https://www.interlinked.digital/api/atlas/entitlement") else {
+            throw SupabaseError.invalidURL
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 8
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse else { return .serverError }
+        guard (200...299).contains(http.statusCode) else { return .serverError }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .serverError
+        }
+        if (json["valid"] as? Bool) == true {
+            return .active
+        }
+        return .notEntitled(reason: json["reason"] as? String)
     }
 
     // MARK: - HTTP helpers
