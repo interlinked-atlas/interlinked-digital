@@ -34,24 +34,98 @@ actor GUIInstallerQueue {
 struct InstallEngine {
 
     // MARK: - Cancellation
-
-    // Per-install cancellation: keyed by install job UUID so multiple queue items
-    // never share a cancel token or process handle. Replaces the old single static.
+    //
+    // The install queue (ContentView.swift) processes items strictly serially —
+    // one `for item in queue.items` loop with `await` inside, confirmed — so
+    // today's call graph never has two queue items' processes tracked at once.
+    // `activeProcesses` still exists because several install paths within a
+    // SINGLE item (PKG, ditto-copy, generic sudo runner) each register their own
+    // process, and `cancellationRequested` is a genuinely global signal: the one
+    // Cancel button in the UI (ContentView.swift:2740, its only call site) means
+    // "stop the current item and the whole queue," not "stop one specific job" —
+    // there is no per-row cancel UI, and this fix does not add one.
+    //
+    // Previously, clearing one entry (`activeProcess = nil`) called
+    // `activeProcesses.removeAll()`, wiping every tracked process rather than
+    // just the caller's own — unsafe even though the current serial queue
+    // doesn't yet trigger it in practice. Fixed below: every entry is removed by
+    // its own identity only, never by clearing the whole dictionary.
     static var activeProcesses: [UUID: Process] = [:]
-    static var cancelledJobs:   Set<UUID>       = []
+    static var cancellationRequested = false
 
-    // Legacy single-job shim — used by code paths that don't yet carry a job ID.
-    // New code must prefer activeProcesses[jobID] and cancelledJobs.
-    static var activeProcess: Process? {
-        get { activeProcesses.values.first }
-        set {
-            if let p = newValue { activeProcesses[UUID()] = p }
-            else { activeProcesses.removeAll() }
+    // Removes exactly the given process's own entry, by reference identity —
+    // never clears unrelated entries. Safe to call even if `process` isn't
+    // currently tracked (e.g. already removed) or if other entries exist.
+    static func untrack(_ process: Process) {
+        if let key = activeProcesses.first(where: { $0.value === process })?.key {
+            activeProcesses.removeValue(forKey: key)
         }
     }
-    static var cancellationRequested: Bool {
-        get { !cancelledJobs.isEmpty }
-        set { if newValue { cancelledJobs.insert(UUID()) } else { cancelledJobs.removeAll() } }
+
+    static func track(_ process: Process) {
+        activeProcesses[UUID()] = process
+    }
+
+    // Outcome the UI can act on honestly — never implies a process stopped
+    // unless it was actually confirmed dead.
+    enum CancelOutcome {
+        case terminated(count: Int)
+        case terminationUncertain(stillRunning: Int)
+        case nothingToCancel
+    }
+
+    // Terminates a process AND its real child processes — `.terminate()` alone
+    // only signals the direct Process() object, which for every tracked
+    // installer here is `/usr/bin/sudo` wrapping the actual payload
+    // (`/usr/sbin/installer`, `ditto`, etc.). sudo does not always propagate
+    // SIGTERM to the command it launched, so the wrapper can die while the
+    // real installer keeps running, untracked, in the background — exactly
+    // the "cancel appears to succeed but the installer keeps going" risk this
+    // fix is required to close. `pkill -P <pid>` targets sudo's actual child
+    // by its real parent PID, independent of whether Process() can see it.
+    // Escalates to SIGKILL only if the tree is still alive after a bounded
+    // wait, and reports the true outcome either way — never claims success
+    // without checking.
+    private static func terminateProcessTree(_ process: Process) async -> Bool {
+        let pid = process.processIdentifier
+        process.terminate()
+        if pid > 0 {
+            _ = runProcess(path: "/usr/bin/pkill", arguments: ["-P", String(pid)])
+        }
+        for _ in 0..<10 { // up to ~1s bounded wait
+            if !process.isRunning { return true }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        if process.isRunning {
+            process.terminate()
+            if pid > 0 {
+                _ = runProcess(path: "/bin/kill", arguments: ["-9", String(pid)])
+                _ = runProcess(path: "/usr/bin/pkill", arguments: ["-9", "-P", String(pid)])
+            }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
+        return !process.isRunning
+    }
+
+    // Terminates every currently-tracked process (correct given the confirmed
+    // single global Cancel action — see the comment above) and reports what
+    // actually happened rather than silently doing nothing or claiming success
+    // it didn't verify.
+    static func cancelCurrentInstall() async -> CancelOutcome {
+        cancellationRequested = true
+        let processes = Array(activeProcesses.values)
+        guard !processes.isEmpty else { return .nothingToCancel }
+        var stillRunningCount = 0
+        for process in processes {
+            let confirmedDead = await terminateProcessTree(process)
+            if !confirmedDead { stillRunningCount += 1 }
+            untrack(process)
+        }
+        activeProcesses.removeAll()
+        if stillRunningCount > 0 {
+            return .terminationUncertain(stillRunning: stillRunningCount)
+        }
+        return .terminated(count: processes.count)
     }
 
     // TITAN CORE™ Smart Storage: set before install to route files to a custom volume root.
@@ -198,20 +272,22 @@ struct InstallEngine {
         }
     }
 
-    static func cancelCurrentInstall() {
-        cancellationRequested = true
-        activeProcess?.terminate()
-        activeProcess = nil
-    }
-
     static func resetCancellation() {
         cancellationRequested = false
-        activeProcess = nil
+        activeProcesses.removeAll()
     }
 
+    // journalJobID identifies the WHOLE logical install operation this call is
+    // part of — every sub-step's journal (PKG/patch/managedInstall) and every
+    // retry attempt of the same logical operation must pass the SAME ID, so
+    // the journal is opened once (preserving the earliest baseline) and
+    // cleared exactly once by the caller after the real InstallRecord is
+    // persisted. Defaults to a fresh UUID per call so a caller that truly
+    // doesn't care (e.g. a one-shot, no-retry call) still behaves correctly.
     static func install(
         url: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -262,21 +338,21 @@ struct InstallEngine {
         let (result, files, receipts, isPlugin): (InstallResult, [InstallRecord.InstalledFile], [String], Bool)
         switch type_ {
         case .dmg:
-            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, journalJobID: journalJobID, progress: progress)
         case .iso:
-            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = await installDMG(url: url, logger: logger, journalJobID: journalJobID, progress: progress)
         case .zip:
-            (result, files, receipts, isPlugin) = await installZIP(url: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = await installZIP(url: url, logger: logger, journalJobID: journalJobID, progress: progress)
         case .app:
             if case .blocked(let dawName) = DAWInstallationGate.check(appURL: url) {
                 await logger.log("DAW installation not supported: \(dawName) — user notified.")
                 return (.unsupportedDAWInstallation(dawName: dawName), [], [], false, [])
             }
-            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, journalJobID: journalJobID, progress: progress)
         case .pkg:
             let (r, f, rc) = await installPKG(
                 url: url, installerName: url.lastPathComponent,
-                logger: logger, progress: progress)
+                logger: logger, journalJobID: journalJobID, progress: progress)
             (result, files, receipts, isPlugin) = (r, f, rc, false)
         case .component, .vst3, .vst, .aax:
             await progress(0.2, "Placing plugin in your library…")
@@ -287,7 +363,7 @@ struct InstallEngine {
             let r = await KontaktInstaller.install(libraryFolder: url, logger: logger, progress: progress)
             (result, files, receipts, isPlugin) = (r, [], [], false)
         case .interactiveInstaller:
-            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, progress: progress)
+            (result, files, receipts, isPlugin) = await installAPP(url: url, logger: logger, journalJobID: journalJobID, progress: progress)
         case .exe:
             await logger.log("Windows .exe files are not supported on macOS.")
             (result, files, receipts, isPlugin) = (.failure(reason: "Windows .exe not supported on macOS"), [], [], false)
@@ -310,11 +386,64 @@ struct InstallEngine {
         return (result, files, receipts, isPlugin, runtimePaths)
     }
 
+    // MARK: - Cumulative file-evidence recovery across retries
+    //
+    // Scope: ONLY `installedFiles` (plain path records used for uninstall
+    // tracking). Does NOT touch receiptIDs, lastPKGEvidenceMap, or
+    // lastPKGReceiptProvenance — those remain last-attempt-only by design
+    // (see the call sites below for why: a failed PKG attempt never reaches
+    // the receipt scan at all, and macOS rewrites a PKG's receipt plist/bom
+    // on every reinstall, so a full-plan retry regenerates equivalent
+    // receipt evidence on its own; merging stale receipt IDs from an
+    // abandoned attempt risks attributing something the retry didn't
+    // actually produce).
+    //
+    // Why union, not replace: a multi-step plan can mix journaled step types
+    // (installer/.patch/.managedInstall — tracked via FilesystemSnapshot,
+    // scoped to deepLocations/shallowLocations) with step types that are
+    // NEVER filesystem-snapshot-tracked at all (.app's direct copy,
+    // .plugin's PluginInstallEngine result, .folderCopy's arbitrary
+    // destination — which may lie entirely outside FilesystemSnapshot's
+    // watched locations). Those non-snapshot-tracked entries have no
+    // cross-attempt loss problem (they're deterministically re-appended
+    // every time their step runs) and are NOT reproducible from a baseline
+    // diff — replacing `installedFiles` outright would silently discard
+    // them. Unioning (by destinationPath) recovers what a failed earlier
+    // attempt may have left behind for snapshot-tracked step types, while
+    // preserving every entry the last attempt already correctly produced.
+    //
+    // Returns nil (meaning: caller should leave `installedFiles` as-is) when
+    // no journal entry exists for this jobID — i.e. this logical install
+    // never called beginInstall() at all (e.g. a plan made only of
+    // .app/.plugin/.folderCopy/.manual steps), so there is no baseline to
+    // recompute from and no retry-loss risk to correct.
+    static func recoverCumulativeInstalledFiles(
+        existing: [InstallRecord.InstalledFile],
+        journalJobID: UUID
+    ) -> [InstallRecord.InstalledFile] {
+        guard let entry = OperationJournal.shared.entry(for: journalJobID),
+              let baseline = entry.installBeforeSnapshot?.toSnapshot() else {
+            return existing
+        }
+        let finalSnapshot = FilesystemSnapshot.take()
+        let changedPaths  = FilesystemSnapshot.diff(before: baseline, after: finalSnapshot)
+        let recovered     = FilesystemSnapshot.buildInstalledFiles(changedPaths: changedPaths)
+
+        var seen = Set(existing.map(\.destinationPath))
+        var merged = existing
+        for file in recovered where !seen.contains(file.destinationPath) {
+            seen.insert(file.destinationPath)
+            merged.append(file)
+        }
+        return merged
+    }
+
     // MARK: DMG + ISO
 
     static func installDMG(
         url: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -329,7 +458,7 @@ struct InstallEngine {
             await logger.log("Volume already mounted at \(existing) — reusing")
             return await installFromMountPoint(
                 existing, url: url, logger: logger,
-                shouldDetach: false, progress: progress)
+                shouldDetach: false, journalJobID: journalJobID, progress: progress)
         }
 
         let mountPoint = "/Volumes/ATLAS_\(UUID().uuidString.prefix(8))"
@@ -396,7 +525,7 @@ struct InstallEngine {
         await progress(0.07, "Reading what's inside…")
         return await installFromMountPoint(
             mountPoint, url: url, logger: logger,
-            shouldDetach: true, progress: progress)
+            shouldDetach: true, journalJobID: journalJobID, progress: progress)
     }
 
     private static func installFromMountPoint(
@@ -404,6 +533,7 @@ struct InstallEngine {
         url: URL,
         logger: Logger,
         shouldDetach: Bool,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -512,7 +642,7 @@ struct InstallEngine {
                 case .installer:
                     let (result, files, receipts) = await installPKG(
                         url: step.url, installerName: url.lastPathComponent,
-                        logger: logger, progress: stepProgress)
+                        logger: logger, journalJobID: journalJobID, progress: stepProgress)
                     allFiles.append(contentsOf: files)
                     allReceipts.append(contentsOf: receipts)
                     if case .failure = result { lastResult = result }
@@ -522,13 +652,19 @@ struct InstallEngine {
                     if ext == "pkg" || ext == "mpkg" {
                         let (result, files, receipts) = await installPKG(
                             url: step.url, installerName: url.lastPathComponent,
-                            logger: logger, progress: stepProgress)
+                            logger: logger, journalJobID: journalJobID, progress: stepProgress)
                         allFiles.append(contentsOf: files)
                         allReceipts.append(contentsOf: receipts)
                         if case .failure = result { lastResult = result }
                     } else if ext == "app" {
                         await stepProgress(0.2, "Applying patch...")
                         let patchBefore = FilesystemSnapshot.take()
+                        // Crash-safe journal, shared with every other sub-step of this same
+                        // logical install operation — opened here before the risky patch
+                        // runs; cleared by the caller once the overall InstallRecord is
+                        // persisted (one jobID per logical operation, see beginInstall's docs).
+                        OperationJournal.shared.beginInstall(
+                            jobID: journalJobID, targetIdentifier: step.url.path, before: patchBefore)
                         let ok = await runPatchApp(step.url, logger: logger)
                         if ok {
                             let patchAfter   = FilesystemSnapshot.take()
@@ -562,7 +698,7 @@ struct InstallEngine {
                 case .managedInstall:
                     await stepProgress(0.1, "Preparing manager installer...")
                     let (result, files) = await runManagedInstaller(
-                        step.url, logger: logger, progress: stepProgress)
+                        step.url, logger: logger, journalJobID: journalJobID, progress: stepProgress)
                     allFiles.append(contentsOf: files)
                     if case .failure = result { lastResult = result }
 
@@ -666,7 +802,7 @@ struct InstallEngine {
             await logger.log("ZIP with audio plugins detected: \(zipURL.lastPathComponent)")
             await progress(0.15, "Extracting plugin archive…")
 
-            let (zipResult, zipFiles2, zipReceipts, _) = await installZIP(url: zipURL, logger: logger, progress: progress)
+            let (zipResult, zipFiles2, zipReceipts, _) = await installZIP(url: zipURL, logger: logger, journalJobID: journalJobID, progress: progress)
             if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
             return (zipResult, zipFiles2, zipReceipts, true)
         }
@@ -795,19 +931,21 @@ struct InstallEngine {
     static func installPKG(
         url: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
                 receiptIDs: [String]) {
         return await installPKG(
             url: url, installerName: url.lastPathComponent,
-            logger: logger, progress: progress)
+            logger: logger, journalJobID: journalJobID, progress: progress)
     }
 
     static func installPKG(
         url: URL,
         installerName: String,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -843,6 +981,15 @@ struct InstallEngine {
         let beforeReceipts = await receiptsBeforeTask.value
         let installStart = Date()
 
+        // Crash-safe journal: persisted now, before the risky phase, so a
+        // crash/force-quit/restart during the PKG install still leaves
+        // enough evidence (this exact baseline snapshot) for the next
+        // launch to re-run the same diff logic used below and surface
+        // whatever changed for explicit review — never silently claimed.
+        // Shared with every other sub-step of the same logical install
+        // operation via journalJobID — see beginInstall's docs.
+        OperationJournal.shared.beginInstall(jobID: journalJobID, targetIdentifier: url.path, before: beforeFS)
+
         await progress(0.12, "Running the package installer — this may take a moment…")
         await logger.log("Running installer...")
 
@@ -865,7 +1012,7 @@ struct InstallEngine {
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
             inputPipe.fileHandleForWriting.closeFile()
             installerPID = installerProcess.processIdentifier
-            activeProcesses[UUID()] = installerProcess
+            track(installerProcess)
         } catch {
             return (.failure(reason: "Could not launch installer: \(error.localizedDescription)"), [], [])
         }
@@ -879,7 +1026,7 @@ struct InstallEngine {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
         if cancellationRequested { installerProcess.terminate() }
-        activeProcesses.removeValue(forKey: activeProcesses.first(where: { $0.value === installerProcess })?.key ?? UUID())
+        untrack(installerProcess)
 
         let outData = outputPipe.fileHandleForReading.readDataToEndOfFile()
         let outStr  = String(data: outData, encoding: .utf8) ?? ""
@@ -1003,6 +1150,7 @@ struct InstallEngine {
     private static func installZIP(
         url: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -1112,7 +1260,7 @@ struct InstallEngine {
                 case .installer:
                     let (result, files, receipts) = await installPKG(
                         url: step.url, installerName: url.lastPathComponent,
-                        logger: logger, progress: stepProgress)
+                        logger: logger, journalJobID: journalJobID, progress: stepProgress)
                     allFiles.append(contentsOf: files)
                     allReceipts.append(contentsOf: receipts)
                     if case .failure = result { lastResult = result }
@@ -1122,13 +1270,17 @@ struct InstallEngine {
                     if ext == "pkg" || ext == "mpkg" {
                         let (result, files, receipts) = await installPKG(
                             url: step.url, installerName: url.lastPathComponent,
-                            logger: logger, progress: stepProgress)
+                            logger: logger, journalJobID: journalJobID, progress: stepProgress)
                         allFiles.append(contentsOf: files)
                         allReceipts.append(contentsOf: receipts)
                         if case .failure = result { lastResult = result }
                     } else if ext == "app" {
                         await stepProgress(0.2, "Applying patch...")
                         let patchBefore = FilesystemSnapshot.take()
+                        // Crash-safe journal, shared with every other sub-step of this same
+                        // logical install operation — see beginInstall's docs.
+                        OperationJournal.shared.beginInstall(
+                            jobID: journalJobID, targetIdentifier: step.url.path, before: patchBefore)
                         let ok = await runPatchApp(step.url, logger: logger)
                         if ok {
                             let patchAfter   = FilesystemSnapshot.take()
@@ -1163,7 +1315,7 @@ struct InstallEngine {
                 case .managedInstall:
                     await stepProgress(0.1, "Preparing manager installer...")
                     let (result, files) = await runManagedInstaller(
-                        step.url, logger: logger, progress: stepProgress)
+                        step.url, logger: logger, journalJobID: journalJobID, progress: stepProgress)
                     allFiles.append(contentsOf: files)
                     if case .failure = result { lastResult = result }
 
@@ -1240,7 +1392,7 @@ struct InstallEngine {
                     await progress(seen, label)
                 }
                 let (result, files, receipts, _) = await installDMG(
-                    url: imgURL, logger: logger, progress: imgProgress)
+                    url: imgURL, logger: logger, journalJobID: journalJobID, progress: imgProgress)
                 allFiles.append(contentsOf: files)
                 allReceipts.append(contentsOf: receipts)
                 if case .success = result {
@@ -1264,6 +1416,7 @@ struct InstallEngine {
     private static func installAPP(
         url: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter = { _, _ in }
     ) async -> (result: InstallResult,
                 installedFiles: [InstallRecord.InstalledFile],
@@ -1285,6 +1438,10 @@ struct InstallEngine {
         if looksLikePatch {
             await progress(0.2, "Applying patch…")
             let patchBefore = FilesystemSnapshot.take()
+            // Crash-safe journal, shared with every other sub-step of this same
+            // logical install operation — see beginInstall's docs.
+            OperationJournal.shared.beginInstall(
+                jobID: journalJobID, targetIdentifier: url.path, before: patchBefore)
             let ok = await runPatchApp(url, logger: logger)
             await progress(1.0, "")
             if ok {
@@ -1315,6 +1472,7 @@ struct InstallEngine {
     static func runManagedInstaller(
         _ appURL: URL,
         logger: Logger,
+        journalJobID: UUID = UUID(),
         progress: @escaping ProgressReporter
     ) async -> (InstallResult, [InstallRecord.InstalledFile]) {
 
@@ -1341,6 +1499,7 @@ struct InstallEngine {
         await progress(0.38, "Creating a safety snapshot so you can undo this later…")
         await logger.log("Pre-install snapshot...")
         let beforeFS = FilesystemSnapshot.take()
+        OperationJournal.shared.beginInstall(jobID: journalJobID, targetIdentifier: installedAppURL.path, before: beforeFS)
 
         let procName   = patchProcessName(for: installedAppURL)
         let password   = KeychainManager.loadPassword() ?? ""
@@ -1356,6 +1515,7 @@ struct InstallEngine {
         watcher.standardOutput = Pipe()
         watcher.standardError  = Pipe()
         try? watcher.run()
+        track(watcher)
 
         await logger.log("Launching \(appName) with UI automation...")
         await progress(0.45, "Launching the software's own installer…")
@@ -1374,6 +1534,7 @@ struct InstallEngine {
         }
 
         if watcher.isRunning { watcher.terminate() }
+        untrack(watcher)
 
         // Politely quit the manager app (it may have already exited itself)
         _ = runProcess(path: "/usr/bin/osascript", arguments: ["-e",
@@ -2190,7 +2351,7 @@ struct InstallEngine {
         guard (try? process.run()) != nil else {
             return .failure(reason: "Could not start copy process for \(appName).")
         }
-        activeProcess = process
+        track(process)
 
         let start   = Date()
         let timeout = 1800.0
@@ -2200,15 +2361,15 @@ struct InstallEngine {
             try? await Task.sleep(nanoseconds: 500_000_000)
 
             if cancellationRequested {
-                process.terminate()
-                activeProcess = nil
+                _ = await terminateProcessTree(process)
+                untrack(process)
                 return .failure(reason: "Cancelled")
             }
 
             let elapsed = Int(-start.timeIntervalSinceNow)
             if elapsed > Int(timeout) {
-                process.terminate()
-                activeProcess = nil
+                _ = await terminateProcessTree(process)
+                untrack(process)
                 return .failure(reason: "Copy timed out after 30 min for \(appName).")
             }
 
@@ -2226,10 +2387,10 @@ struct InstallEngine {
             }
         }
 
-        activeProcess = nil
+        untrack(process)
 
         if cancellationRequested {
-            process.terminate()
+            _ = await terminateProcessTree(process)
             return .failure(reason: "Cancelled")
         }
 
@@ -2375,7 +2536,7 @@ struct InstallEngine {
             try process.run()
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
             inputPipe.fileHandleForWriting.closeFile()
-            activeProcess = process
+            track(process)
         } catch {
             return (false, error.localizedDescription)
         }
@@ -2383,9 +2544,9 @@ struct InstallEngine {
         while process.isRunning && !cancellationRequested {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
-        activeProcess = nil
+        untrack(process)
         if cancellationRequested {
-            process.terminate()
+            _ = await terminateProcessTree(process)
             return (false, "Cancelled")
         }
         let out = outputPipe.fileHandleForReading.readDataToEndOfFile()
@@ -2792,6 +2953,20 @@ class InstallationManager: ObservableObject {
             let fileType = self.typeName(type_)
             logger.log("Classified as: \(fileType)")
 
+            // One jobID for the WHOLE logical install operation, generated once
+            // before the TITAN CORE™ pre-flight check and reused across every
+            // TITAN CORE™/legacy remediation retry below — a failed attempt
+            // must not orphan its journal when a retry follows, and the
+            // retry's own writes must be reconciled against the same original
+            // baseline. Declared here (rather than just before Attempt 1) so
+            // the pre-flight block-reason return below can defensively clear
+            // it too, consistent with the DAW-gate early exit further down —
+            // in practice no journal exists yet on either early-exit path
+            // (both run before any beginInstall() call), so the clear is a
+            // no-op safety net, not a behavior change. See
+            // OperationJournal.beginInstall's docs for the ownership model.
+            let journalJobID = UUID()
+
             // ── TITAN CORE™ Pre-flight ────────────────────────────────────
             if TitanCore.shared.isAvailable {
                 let preflight = await TitanCore.shared.preflight(
@@ -2813,6 +2988,13 @@ class InstallationManager: ObservableObject {
                         installedFiles: [], pkgReceiptIDs: [],
                         remediationAttempted: false)
                     historyStore.add(record)
+                    // Defensive, consistent with the DAW-gate exit below — no
+                    // journal has been opened yet at this point in the
+                    // function (beginInstall() is only ever called from
+                    // inside InstallEngine.install(), which has not run yet),
+                    // so this is a safe no-op that simply closes the gap
+                    // where this early-exit path previously never cleared.
+                    OperationJournal.shared.clear(jobID: journalJobID)
                     onComplete(false)
                     return
                 }
@@ -2832,19 +3014,23 @@ class InstallationManager: ObservableObject {
             // Run the actual install off the main thread so blocking calls
             // (PKG installer, filesystem snapshots, receipt scans) don't freeze the UI.
             var (result, installedFiles, receiptIDs, isPlugin, runtimeCreatedPaths) = await Task.detached(priority: .userInitiated) {
-                await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                await InstallEngine.install(url: url, logger: logger, journalJobID: journalJobID, progress: onProgress)
             }.value
             var remediationAttempted = false
 
             // ── DAW gate early exit ───────────────────────────────────────
             // Unsupported DAW installations are intentional refusals, not failures.
-            // No record, no history, no TITAN retry.
+            // No record, no history, no TITAN retry. The DAW gate always runs
+            // before any journal-opening step, so no journal exists yet in
+            // practice — clearing is still correct defensively (a no-op if
+            // nothing was ever written).
             if case .unsupportedDAWInstallation(let dawName) = result {
                 logger.log("DAW installation not supported: \(dawName) — user notified.")
                 await MainActor.run {
                     appState.phase = .idle
                     appState.lastResult = .unsupportedDAWInstallation(dawName: dawName)
                 }
+                OperationJournal.shared.clear(jobID: journalJobID)
                 onComplete(false)
                 return
             }
@@ -2868,7 +3054,7 @@ class InstallationManager: ObservableObject {
                         appState.progress = 0
                         var retryPaths2: [String]
                         (result, installedFiles, receiptIDs, isPlugin, retryPaths2) = await Task.detached(priority: .userInitiated) {
-                            await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                            await InstallEngine.install(url: url, logger: logger, journalJobID: journalJobID, progress: onProgress)
                         }.value
                         runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPaths2))
 
@@ -2885,7 +3071,7 @@ class InstallationManager: ObservableObject {
                                 appState.progress = 0
                                 var retryPaths3: [String]
                                 (result, installedFiles, receiptIDs, isPlugin, retryPaths3) = await Task.detached(priority: .userInitiated) {
-                                    await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                                    await InstallEngine.install(url: url, logger: logger, journalJobID: journalJobID, progress: onProgress)
                                 }.value
                                 runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPaths3))
                             }
@@ -2911,7 +3097,7 @@ class InstallationManager: ObservableObject {
                         appState.progress = 0
                         var retryPathsLegacy: [String]
                         (result, installedFiles, receiptIDs, isPlugin, retryPathsLegacy) =
-                            await InstallEngine.install(url: url, logger: logger, progress: onProgress)
+                            await InstallEngine.install(url: url, logger: logger, journalJobID: journalJobID, progress: onProgress)
                         runtimeCreatedPaths = Array(Set(runtimeCreatedPaths + retryPathsLegacy))
                     } else {
                         logger.log("Remediation could not fix: \(remediation.detail)")
@@ -2923,6 +3109,29 @@ class InstallationManager: ObservableObject {
             if case .success = result {
                 await TitanCore.shared.verify(installedFiles: installedFiles, logger: logger)
             }
+
+            // Recover any filesystem-tracked files a failed earlier attempt
+            // left behind that the final attempt didn't re-touch — recomputed
+            // from the operation's original journal baseline, not from
+            // `result`, so this never changes success/failure. Runs for both
+            // outcomes, since a failed multi-attempt operation's record
+            // should still reflect what actually happened on disk. See
+            // InstallEngine.recoverCumulativeInstalledFiles's docs for why
+            // receipts/evidence maps are deliberately excluded.
+            //
+            // Detached: this class is @MainActor, and this Task{} body
+            // inherits that executor — the same reason every other
+            // FilesystemSnapshot.take() call in this file (e.g. installPKG's
+            // fsBeforeTask/fsAfterTask) is wrapped in Task.detached rather
+            // than called directly. Without this, the recursive deep/shallow
+            // filesystem scan inside recoverCumulativeInstalledFiles would
+            // run synchronously on the main thread right before the UI
+            // transitions to success/failure.
+            let recoveredInstalledFiles = installedFiles
+            installedFiles = await Task.detached(priority: .userInitiated) {
+                InstallEngine.recoverCumulativeInstalledFiles(
+                    existing: recoveredInstalledFiles, journalJobID: journalJobID)
+            }.value
 
             var record = InstallLogger.writeLog(
                 fileURL: url,
@@ -2946,6 +3155,11 @@ class InstallationManager: ObservableObject {
             }
 
             historyStore.add(record)
+            // The durable InstallRecord is now persisted for both success and
+            // failure (InstallLogger.writeLog + historyStore.add is itself the
+            // real persistence step either way) — the journal's job is done,
+            // regardless of how many sub-steps or retries it covered above.
+            OperationJournal.shared.clear(jobID: journalJobID)
 
             switch result {
             case .success(let appName, _):

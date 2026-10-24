@@ -441,6 +441,17 @@ struct RollbackEngine {
                                                    password: password)
         var alreadyGoneCount = 0
 
+        // Crash-safe journal: opened now, right before the risky per-file
+        // move loop begins — everything before this point is pure planning
+        // (no filesystem mutation), so it needs no journal of its own. From
+        // here on, each successful move is recorded individually below, not
+        // batched, so a crash mid-loop still leaves every already-completed
+        // move discoverable on the next launch — previously only
+        // writeTrashManifest() at the very end of this function recorded
+        // anything, which a mid-loop crash would never reach.
+        let journalJobID = UUID()
+        OperationJournal.shared.beginUninstall(jobID: journalJobID, targetIdentifier: record.fileName)
+
         let totalItems = sorted.count
         for (i, path) in sorted.enumerated() {
             if cancellationRequested || Task.isCancelled {
@@ -525,6 +536,10 @@ struct RollbackEngine {
                 removed.append(path)
                 if let tp = trashPath {
                     trashRecords.append(TrashRecord(originalPath: path, trashPath: tp))
+                    OperationJournal.shared.recordUninstallMove(
+                        jobID: journalJobID,
+                        move: JournaledTrashMove(originalPath: path, trashPath: tp)
+                    )
                 }
             case .skipped:
                 alog.notice("[ATLAS-ROLLBACK] Phase3 item \(i + 1)/\(totalItems) SKIPPED (timeout): \(path, privacy: .public)")
@@ -592,6 +607,11 @@ struct RollbackEngine {
 
         // ── Phase 4: Write manifest so Undo Uninstall knows Trash paths ───────
         let manifestPath = writeTrashManifest(trashRecords, for: record.fileName)
+        // The durable manifest (what "Undo Uninstall" actually reads) is now
+        // persisted — every move the journal tracked is reflected there, so
+        // its job is done regardless of whether some items were skipped or
+        // failed above (those were never claimed as moved in the first place).
+        OperationJournal.shared.clear(jobID: journalJobID)
 
         // ── Phase 5: Forget PKG receipts ─────────────────────────────────────
         var forgotCount = 0

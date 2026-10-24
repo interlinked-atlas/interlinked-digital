@@ -54,6 +54,7 @@ struct ContentView: View {
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
+    @ObservedObject private var reviewStore   = PendingReviewStore.shared
     @ObservedObject private var titanVScan      = TitanVScan.shared
     @ObservedObject private var langMgr         = LanguageManager.shared
     @State private var showVScanSheet           = false
@@ -174,6 +175,12 @@ struct ContentView: View {
             PermissionsSetupView { showPermissionsSheet = false }
         }
         .sheet(isPresented: $showAbout) { AboutView() }
+        .sheet(isPresented: Binding(
+            get: { !reviewStore.reviews.isEmpty },
+            set: { _ in } // dismissed only via explicit Confirm/Dismiss actions inside the sheet
+        )) {
+            OperationReviewView(reviewStore: reviewStore, historyStore: historyStore, onDone: {})
+        }
         .sheet(isPresented: $showUpgrade) {
             UpgradeView(feature: upgradeFeature) { showUpgrade = false }
         }
@@ -2287,6 +2294,12 @@ struct ContentView: View {
                     logger.log("⛔ TITAN VSCAN™ — MALWARE BLOCKED: \(item.fileName) [\(vsResult.threats.map(\.name).joined(separator: ", "))]")
                     queue.updateStatus(id: id, status: .failure("TITAN VSCAN™ blocked: \(vsResult.summaryLine)"))
                     return
+                case .scanFailed:
+                    // A scan that could not run is NOT a clean result — never
+                    // auto-proceed with an unverified file in the bulk queue.
+                    logger.log("⚠ TITAN VSCAN™ — scan failed, could not verify \(item.fileName)")
+                    queue.updateStatus(id: id, status: .failure("TITAN VSCAN™ could not scan this file. \(vsResult.summaryLine)"))
+                    return
                 case .bundledThreat:
                     logger.log("⚠ TITAN VSCAN™ — Bundled threat detected in \(item.fileName): \(vsResult.threats.map(\.name).joined(separator: ", "))")
                 case .suspicious:
@@ -2317,8 +2330,16 @@ struct ContentView: View {
         queue.updateStatus(id: id, status: .installing)
         logger.log("Installing: \(item.fileName)")
 
+        // One jobID for the WHOLE logical install operation (this queue item),
+        // generated once before Attempt 1 and reused for the silent retry below
+        // if one happens — a failed first attempt must not orphan its journal
+        // when the retry runs, and the retry's writes must reconcile against
+        // the same original baseline, not a fresh one. See
+        // OperationJournal.beginInstall's docs for the ownership model.
+        let journalJobID = UUID()
+
         var (result, installedFiles, receiptIDs, isPlugin, runtimeCreatedPaths) =
-            await InstallEngine.install(url: item.url, logger: logger) { pct, step in
+            await InstallEngine.install(url: item.url, logger: logger, journalJobID: journalJobID) { pct, step in
                 self.queue.updateProgress(id: id, progress: pct, step: step)
             }
 
@@ -2334,7 +2355,7 @@ struct ContentView: View {
             if !InstallEngine.cancellationRequested {
                 var retryRuntimePaths: [String]
                 (result, installedFiles, receiptIDs, isPlugin, retryRuntimePaths) =
-                    await InstallEngine.install(url: item.url, logger: logger) { pct, step in
+                    await InstallEngine.install(url: item.url, logger: logger, journalJobID: journalJobID) { pct, step in
                         self.queue.updateProgress(id: id, progress: pct, step: step)
                     }
                 // Merge paths from both attempts so nothing discovered during the
@@ -2375,6 +2396,15 @@ struct ContentView: View {
                 }
             }
         }
+
+        // Recover any filesystem-tracked files a failed first attempt left
+        // behind that the silent retry didn't re-touch — recomputed from
+        // this operation's original journal baseline, not from `finalResult`,
+        // so this never changes success/failure. Runs for both outcomes. See
+        // InstallEngine.recoverCumulativeInstalledFiles's docs for why
+        // receipts/evidence maps are deliberately excluded.
+        installedFiles = InstallEngine.recoverCumulativeInstalledFiles(
+            existing: installedFiles, journalJobID: journalJobID)
 
         let type_    = InstallerClassifier.classify(url: item.url)
         let fileType = typeLabel(type_)
@@ -2421,6 +2451,9 @@ struct ContentView: View {
             logger.log("DAW installation not supported: \(dawName) — user notified.")
             if let reservationID { await monthlyLimit.releaseReservation(reservationID: reservationID) }
             queue.updateStatus(id: id, status: .failure("DAW not supported in this version"))
+            // Definitive, intentional non-install conclusion — not a crash.
+            // No record, no history, so the journal's job is done too.
+            OperationJournal.shared.clear(jobID: journalJobID)
             await MainActor.run {
                 unsupportedDAWName = dawName
                 showUnsupportedDAWAlert = true
@@ -2429,6 +2462,12 @@ struct ContentView: View {
         }
 
         historyStore.add(record)
+        // The durable InstallRecord is now persisted — the journal's only
+        // purpose was to survive up to this exact point, so it's cleared
+        // now regardless of whether finalResult was success or failure:
+        // InstallLogger.writeLog() + historyStore.add() above is itself the
+        // real, already-tested persistence step for both outcomes.
+        OperationJournal.shared.clear(jobID: journalJobID)
 
         // Only a confirmed successful product install consumes a monthly
         // installation — this is the authoritative success signal for the queue
@@ -2731,7 +2770,20 @@ struct ContentView: View {
             logger.log("⚠ Uninstall cancelled.")
             return
         } else {
-            InstallEngine.cancelCurrentInstall()
+            Task {
+                let outcome = await InstallEngine.cancelCurrentInstall()
+                switch outcome {
+                case .terminated(let count):
+                    NSLog("[ATLAS-CANCEL] Terminated \(count) tracked process(es).")
+                case .terminationUncertain(let stillRunning):
+                    NSLog("[ATLAS-CANCEL] \(stillRunning) process(es) could not be confirmed stopped.")
+                    await MainActor.run {
+                        logger.log("⚠ Cancel requested, but the installer process may still be finishing in the background.")
+                    }
+                case .nothingToCancel:
+                    NSLog("[ATLAS-CANCEL] Nothing was running to cancel.")
+                }
+            }
             queueTask?.cancel()
             queueTask = nil
             // Mark remaining waiting/installing items as cancelled
