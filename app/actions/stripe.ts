@@ -1,27 +1,18 @@
 'use server'
 
 import { stripe } from '@/lib/stripe'
-import { PRODUCTS, PRICE_IDS } from '@/lib/products'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
+import { resolveCheckoutPrice, decideCheckoutEligibility } from '@/lib/checkoutGuard'
 
 export async function startCheckoutSession(productId: string, email?: string) {
-  const product = PRODUCTS.find((p) => p.id === productId)
-  if (!product) {
-    throw new Error(`Product with id "${productId}" not found`)
-  }
+  // Throws UnknownProductError/NoPriceForProductError for anything other
+  // than the single live "atlas" product — see lib/checkoutGuard.ts and its
+  // test file for the covered cases (tampered/unknown product IDs).
+  const { priceId, planKey } = resolveCheckoutPrice(productId)
 
   const headersList = await headers()
   const origin = headersList.get('origin') || 'https://interlinked.digital'
-
-  // Map product ID to real Stripe price ID. productId is already validated
-  // against PRODUCTS above — only 'atlas' exists there now, so this can
-  // never resolve to the (removed) annual price.
-  const planKey = productId.startsWith('atlas') ? productId : productId.replace('atlas-', '') as keyof typeof PRICE_IDS
-  const priceId = PRICE_IDS[planKey as keyof typeof PRICE_IDS]
-  if (!priceId) {
-    throw new Error(`No Stripe price ID found for product "${productId}"`)
-  }
 
   // Check if user is already logged in
   const supabase = await createClient()
@@ -47,7 +38,7 @@ export async function startCheckoutSession(productId: string, email?: string) {
       .single()
 
     // Block checkout if already on an active subscription — must use upgrade/downgrade instead
-    if (subscription?.status === 'active') {
+    if (decideCheckoutEligibility(subscription) === 'already_subscribed') {
       throw new Error('ALREADY_SUBSCRIBED')
     }
 

@@ -460,7 +460,8 @@ extension RecoveryKitEngine {
     func uploadToCloud(store: HistoryStore) async {
         // Prevent concurrent uploads
         guard cloudState != .uploading else { return }
-        guard let token = AuthManager.shared.session?.accessToken else {
+        guard let token = AuthManager.shared.session?.accessToken,
+              let userID = AuthManager.shared.session?.userID else {
             cloudState = .error("Not signed in.")
             return
         }
@@ -495,7 +496,8 @@ extension RecoveryKitEngine {
                 kitVersion:      kit.kitVersion,
                 recordCount:     kit.records.count,
                 archivedCount:   kit.archivedRecords.count,
-                token:           token
+                token:           token,
+                userID:          userID
             )
             cloudMeta  = [meta] + cloudMeta
             cloudState = .found
@@ -506,14 +508,15 @@ extension RecoveryKitEngine {
     }
 
     func downloadFromCloud(kitId: UUID) async {
-        guard let token = AuthManager.shared.session?.accessToken else {
+        guard let token = AuthManager.shared.session?.accessToken,
+              let userID = AuthManager.shared.session?.userID else {
             cloudState = .error("Not signed in.")
             return
         }
         cloudState = .downloading
         let homeDir = NSHomeDirectory()
         do {
-            let atlaskitData = try await CloudRecoveryKitService.shared.download(kitId: kitId, token: token)
+            let atlaskitData = try await CloudRecoveryKitService.shared.download(kitId: kitId, token: token, userID: userID)
             let rkDecoder = JSONDecoder()
             rkDecoder.dateDecodingStrategy = .iso8601
             let kit = try rkDecoder.decode(AtlasKit.self, from: atlaskitData)

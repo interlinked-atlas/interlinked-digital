@@ -9,6 +9,53 @@ func deviceFriendlyName() -> String {
 
 struct InstallLogger {
 
+    // MARK: - Per-file account ownership (prevents cross-account log upload)
+    //
+    // Local log files live in one shared, account-agnostic directory
+    // (~/Library/Logs/ATLAS/...) — they always have, and that is not changed
+    // here. On a Mac where more than one ATLAS account has ever signed in,
+    // that means a log file created while account A was signed in is still
+    // sitting in the same directory syncExistingLogs() scans later under
+    // whichever account is currently signed in. Confirmed reproducible: if
+    // account A creates a log that never live-uploads (e.g. offline) and
+    // later account B is signed in (with an already-valid cached session) at
+    // a subsequent app launch, syncExistingLogs() would upload A's pending
+    // file using B's access token — the server correctly attributes the row
+    // to whichever token made the request (see app/api/atlas/logs/route.ts),
+    // so the account that NEVER created that log would end up owning it.
+    //
+    // Fix: record which account's user_id created each filename at write
+    // time (before any upload is attempted), and have syncExistingLogs()
+    // refuse to upload a file recorded under a different account than the
+    // one currently signed in — leaving it pending (never deleted, never
+    // uploaded to the wrong account) until the correct account signs back
+    // in. A file with no recorded owner (created before this fix existed, or
+    // in the rare case this call races session teardown) falls back to the
+    // previous behavior rather than being permanently stranded.
+    private static let logOwnerMapKey = "ATLAS.logFileOwnerByFilename"
+
+    static func recordLogOwner(filename: String, userID: String) {
+        var map = UserDefaults.standard.dictionary(forKey: logOwnerMapKey) as? [String: String] ?? [:]
+        map[filename] = userID
+        UserDefaults.standard.set(map, forKey: logOwnerMapKey)
+    }
+
+    static func recordedLogOwner(filename: String) -> String? {
+        (UserDefaults.standard.dictionary(forKey: logOwnerMapKey) as? [String: String])?[filename]
+    }
+
+    // Marks a filename as already synced — called after BOTH a successful
+    // live upload and a successful retroactive-sync upload, so the two paths
+    // can never both upload the same file (previously only the retroactive
+    // path wrote this sentinel, guaranteeing one duplicate row per log; see
+    // syncExistingLogs() below).
+    static func markLogSynced(filename: String) {
+        let sentinelKey = "ATLAS.syncedLogNames"
+        var synced = Set(UserDefaults.standard.stringArray(forKey: sentinelKey) ?? [])
+        synced.insert(filename)
+        UserDefaults.standard.set(Array(synced), forKey: sentinelKey)
+    }
+
     // MARK: - Directories
 
     static var logsDirectory: URL {
@@ -66,18 +113,24 @@ struct InstallLogger {
             let uploadContent  = (try? String(contentsOf: dest, encoding: .utf8)) ?? ""
             let uploadDevice   = deviceFriendlyName()
             let uploadUUID     = atlasHardwareUUID()
+            if let ownerID = KeychainManager.loadSession()?.userID {
+                recordLogOwner(filename: uploadFilename, userID: ownerID)
+            }
             Task.detached {
                 guard UserDefaults.standard.bool(forKey: "ATLAS.privacyConsentGiven") else { return }
                 guard let s = KeychainManager.loadSession(), !s.isExpired else { return }
-                try? await SupabaseService.shared.uploadLog(
-                    accessToken: s.accessToken,
-                    logType:     "crashed",
-                    appName:     "ATLAS",
-                    filename:    uploadFilename,
-                    content:     uploadContent,
-                    deviceName:  uploadDevice,
-                    hardwareUUID: uploadUUID
-                )
+                do {
+                    try await SupabaseService.shared.uploadLog(
+                        accessToken: s.accessToken,
+                        logType:     "crashed",
+                        appName:     "ATLAS",
+                        filename:    uploadFilename,
+                        content:     uploadContent,
+                        deviceName:  uploadDevice,
+                        hardwareUUID: uploadUUID
+                    )
+                    markLogSynced(filename: uploadFilename)
+                } catch {}
             }
         }
 
@@ -211,18 +264,27 @@ struct InstallLogger {
         let uploadContent = finalContent
         let uploadDevice = deviceFriendlyName()
         let uploadUUID = atlasHardwareUUID()
+        if let ownerID = KeychainManager.loadSession()?.userID {
+            recordLogOwner(filename: uploadFilename, userID: ownerID)
+        }
         Task.detached {
             guard UserDefaults.standard.bool(forKey: "ATLAS.privacyConsentGiven") else { return }
             guard let s = KeychainManager.loadSession(), !s.isExpired else { return }
-            try? await SupabaseService.shared.uploadLog(
-                accessToken: s.accessToken,
-                logType: uploadType,
-                appName: uploadAppName,
-                filename: uploadFilename,
-                content: uploadContent,
-                deviceName: uploadDevice,
-                hardwareUUID: uploadUUID
-            )
+            do {
+                try await SupabaseService.shared.uploadLog(
+                    accessToken: s.accessToken,
+                    logType: uploadType,
+                    appName: uploadAppName,
+                    filename: uploadFilename,
+                    content: uploadContent,
+                    deviceName: uploadDevice,
+                    hardwareUUID: uploadUUID
+                )
+                markLogSynced(filename: uploadFilename)
+            } catch {
+                // Leave unsynced — syncExistingLogs() retries at next launch.
+                // The local file itself is already written above regardless.
+            }
         }
 
         return InstallRecord(
@@ -305,18 +367,24 @@ struct InstallLogger {
         let uploadApp = record.fileName
         let uploadDevice = deviceFriendlyName()
         let uploadUUID = atlasHardwareUUID()
+        if let ownerID = KeychainManager.loadSession()?.userID {
+            recordLogOwner(filename: uploadFilename, userID: ownerID)
+        }
         Task.detached {
             guard UserDefaults.standard.bool(forKey: "ATLAS.privacyConsentGiven") else { return }
             guard let s = KeychainManager.loadSession(), !s.isExpired else { return }
-            try? await SupabaseService.shared.uploadLog(
-                accessToken: s.accessToken,
-                logType: "uninstall",
-                appName: uploadApp,
-                filename: uploadFilename,
-                content: uploadContent,
-                deviceName: uploadDevice,
-                hardwareUUID: uploadUUID
-            )
+            do {
+                try await SupabaseService.shared.uploadLog(
+                    accessToken: s.accessToken,
+                    logType: "uninstall",
+                    appName: uploadApp,
+                    filename: uploadFilename,
+                    content: uploadContent,
+                    deviceName: uploadDevice,
+                    hardwareUUID: uploadUUID
+                )
+                markLogSynced(filename: uploadFilename)
+            } catch {}
         }
         return logURL.path
     }
@@ -352,6 +420,16 @@ struct InstallLogger {
                     guard !alreadySynced.contains(name) else { continue }
                     guard let content = try? String(contentsOf: item, encoding: .utf8) else { continue }
 
+                    // Refuse to upload a file recorded as belonging to a DIFFERENT
+                    // account than the one currently signed in — see the
+                    // "Per-file account ownership" comment above. A file with no
+                    // recorded owner (pre-fix, or genuinely offline since before
+                    // this code existed) still falls through to the upload below,
+                    // same as prior behavior — nothing is newly stranded.
+                    if let owner = recordedLogOwner(filename: name), owner != s.userID {
+                        continue
+                    }
+
                     let appName = name
                         .replacingOccurrences(of: "Install_", with: "")
                         .replacingOccurrences(of: "Failed_", with: "")
@@ -359,16 +437,22 @@ struct InstallLogger {
                         .components(separatedBy: "_").dropFirst(2).joined(separator: " ")
                         .replacingOccurrences(of: ".log", with: "")
 
-                    try? await SupabaseService.shared.uploadLog(
-                        accessToken: s.accessToken,
-                        logType: logType,
-                        appName: appName.isEmpty ? name : appName,
-                        filename: name,
-                        content: content,
-                        deviceName: deviceFriendlyName(),
-                        hardwareUUID: atlasHardwareUUID()
-                    )
-                    newlySynced.append(name)
+                    do {
+                        try await SupabaseService.shared.uploadLog(
+                            accessToken: s.accessToken,
+                            logType: logType,
+                            appName: appName.isEmpty ? name : appName,
+                            filename: name,
+                            content: content,
+                            deviceName: deviceFriendlyName(),
+                            hardwareUUID: atlasHardwareUUID()
+                        )
+                        newlySynced.append(name)
+                    } catch {
+                        // Leave unsynced — eligible for retry on the next launch.
+                        // Previously this was `try?`, which silently marked a
+                        // FAILED upload as synced anyway, permanently losing it.
+                    }
                     try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s between uploads
                 }
             }

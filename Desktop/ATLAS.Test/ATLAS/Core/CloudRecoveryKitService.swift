@@ -27,15 +27,28 @@ actor CloudRecoveryKitService {
 
     private let base       = "https://www.interlinked.digital/api/atlas/recovery-kit"
     private let kcService  = "com.atlas.ATLAS"
-    private let dekAccount = "atlas-recovery-kit-dek"
+    // Legacy identifier (pre-account-scoping) — a single Keychain item shared by
+    // whichever ATLAS account happened to sign in first on this Mac. Kept ONLY
+    // for one-time, one-directional migration below; never written to again.
+    private let legacyDEKAccount = "atlas-recovery-kit-dek"
+
+    // Per-account identifier — confirmed necessary: fetchOrLoadDEK() previously
+    // looked up legacyDEKAccount with no user-identity check at all, so signing
+    // out of account A and into account B on the same Mac (signOut() never
+    // cleared this item) would hand B's upload/download calls A's cached DEK
+    // without error. Scoping the Keychain account string by user_id closes
+    // that: a per-account query can only ever return that same account's key.
+    private func dekAccount(for userID: String) -> String {
+        "atlas-recovery-kit-dek-\(userID)"
+    }
 
     // MARK: - DEK Keychain helpers
 
-    private func loadDEK() -> String? {
+    private func loadDEK(account: String) -> String? {
         let q: [String: Any] = [
             kSecClass as String:                kSecClassGenericPassword,
             kSecAttrService as String:          kcService,
-            kSecAttrAccount as String:          dekAccount,
+            kSecAttrAccount as String:          account,
             kSecReturnData as String:           true,
             kSecMatchLimit as String:           kSecMatchLimitOne,
             kSecUseAuthenticationUI as String:  kSecUseAuthenticationUISkip
@@ -46,16 +59,16 @@ actor CloudRecoveryKitService {
         return String(data: data, encoding: .utf8)
     }
 
-    private func saveDEK(_ dek: String) {
+    private func saveDEK(_ dek: String, account: String) {
         let data = Data(dek.utf8)
         let del: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: kcService,
-                                   kSecAttrAccount as String: dekAccount]
+                                   kSecAttrAccount as String: account]
         SecItemDelete(del as CFDictionary)
         var add: [String: Any] = [
             kSecClass as String:          kSecClassGenericPassword,
             kSecAttrService as String:    kcService,
-            kSecAttrAccount as String:    dekAccount,
+            kSecAttrAccount as String:    account,
             kSecValueData as String:      data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
@@ -65,17 +78,42 @@ actor CloudRecoveryKitService {
         SecItemAdd(add as CFDictionary, nil)
     }
 
-    func clearDEK() {
+    private func deleteDEK(account: String) {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: kcService,
-                                 kSecAttrAccount as String: dekAccount]
+                                 kSecAttrAccount as String: account]
         SecItemDelete(q as CFDictionary)
     }
 
-    private func fetchOrLoadDEK(token: String) async throws -> String {
-        if let cached = loadDEK() { return cached }
+    // Clears only the calling (now signing-out) account's own cached DEK.
+    // Called from AuthManager.signOut(). Never touches another account's entry
+    // — each account's Keychain item is independently addressed by userID.
+    func clearDEK(userID: String) {
+        deleteDEK(account: dekAccount(for: userID))
+    }
+
+    private func fetchOrLoadDEK(token: String, userID: String) async throws -> String {
+        let account = dekAccount(for: userID)
+        if let cached = loadDEK(account: account) { return cached }
+
+        // One-time, one-directional migration for existing installs: before this
+        // fix, every account on this Mac shared the single legacy item. If it's
+        // still there, the common case (one account ever used on this Mac) means
+        // it genuinely belongs to this user — adopt it under the new per-account
+        // key so this and future lookups are correctly scoped, and remove the
+        // legacy item so a second account can never again inherit it from here.
+        // This never silently regenerates or replaces a key the server already
+        // has a different value for — apiDEK()/the server remain untouched by
+        // this branch, and existing cloud kits stay decryptable because the same
+        // key bytes are preserved, only their local Keychain location changes.
+        if let legacy = loadDEK(account: legacyDEKAccount) {
+            saveDEK(legacy, account: account)
+            deleteDEK(account: legacyDEKAccount)
+            return legacy
+        }
+
         let dek = try await apiDEK(token: token)
-        saveDEK(dek)
+        saveDEK(dek, account: account)
         return dek
     }
 
@@ -122,9 +160,10 @@ actor CloudRecoveryKitService {
         kitVersion: Int,
         recordCount: Int,
         archivedCount: Int,
-        token: String
+        token: String,
+        userID: String
     ) async throws -> CloudKitMeta {
-        let dek    = try await fetchOrLoadDEK(token: token)
+        let dek    = try await fetchOrLoadDEK(token: token, userID: userID)
         let symKey = try RecoveryKitCrypto.symmetricKey(from: dek)
 
         // Encrypt each file independently — separate random nonces
@@ -225,7 +264,7 @@ actor CloudRecoveryKitService {
 
     // Downloads and decrypts a specific kit by ID.
     // Returns the plaintext kit.atlaskit bytes ready for existing AtlasKit decode + hash verify flow.
-    func download(kitId: UUID, token: String) async throws -> Data {
+    func download(kitId: UUID, token: String, userID: String) async throws -> Data {
         guard let url = URL(string: "\(base)/download-url?kit_id=\(kitId.uuidString)") else {
             throw CloudKitError.invalidURL
         }
@@ -244,7 +283,7 @@ actor CloudRecoveryKitService {
             throw CloudKitError.server("Download failed (HTTP \(http.statusCode))")
         }
 
-        let dek    = try await fetchOrLoadDEK(token: token)
+        let dek    = try await fetchOrLoadDEK(token: token, userID: userID)
         let symKey = try RecoveryKitCrypto.symmetricKey(from: dek)
         return try RecoveryKitCrypto.decrypt(envelopeData: encData, key: symKey)
     }

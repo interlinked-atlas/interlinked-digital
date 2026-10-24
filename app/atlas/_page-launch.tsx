@@ -79,7 +79,7 @@ Piracy, license circumvention, keygen use, or any unlicensed use of software thr
 ATLAS requests Full Disk Access, Accessibility, and Automation permissions solely to perform installations you initiate. Your admin password, if provided, is stored securely in the macOS Keychain and is never transmitted externally.
 
 8. SUBSCRIPTION & BILLING
-ATLAS is available via an ATLAS subscription at $30/month or $300/year. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
+ATLAS is available via an ATLAS subscription at $30/month. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
 
 9. CHANGES
 InterLinked® reserves the right to update these terms at any time. Continued use of ATLAS constitutes acceptance of the current terms.
@@ -594,8 +594,8 @@ export default function AtlasSignupPage() {
                   fontSize: '14px', color: '#525260',
                   lineHeight: 1.6, marginBottom: '36px',
                 }}>
-                  Standard or Pro — both include the core ATLAS engine.
-                  Upgrade for unlimited installs, bulk mode, and TITAN CORE™.
+                  One plan. Bulk installs, uninstall & rollback, TITAN CORE™,
+                  Smart Storage, and full install history — all included.
                 </p>
                 <button
                   className="cta-btn"
@@ -634,7 +634,7 @@ export default function AtlasSignupPage() {
               </div>
             </FadeUp>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '24px' }}>
               {PLANS.map((plan, i) => (
                 <FadeUp key={plan.id} delay={i * 80}>
                   <div

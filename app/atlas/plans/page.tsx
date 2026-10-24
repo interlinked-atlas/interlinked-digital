@@ -359,6 +359,9 @@ export default function PlansPage() {
               <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', marginBottom: '4px' }}>
                 Secure payment via Stripe · Cancel anytime
               </p>
+              <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px', marginBottom: '4px' }}>
+                Requires macOS 12 Monterey or later (Apple Silicon or Intel).
+              </p>
               <p style={{ color: 'var(--atlas-text-dim)', fontSize: '12px' }}>
                 Already subscribed?{' '}
                 <a href="/atlas/account" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Manage your account →</a>

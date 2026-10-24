@@ -62,14 +62,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
   }
 
-  // ATLAS policy (2026-10-20): schedule cancellation for the end of the
-  // current billing period rather than cancelling immediately — the customer
-  // has already paid for this period and keeps access through it. Do NOT
-  // write 'cancelled'/'canceled' to profiles/subscriptions here: the account
-  // remains active until Stripe's customer.subscription.updated (recording
-  // cancel_at_period_end) and, at the actual period end,
-  // customer.subscription.deleted fire and the webhook updates status itself.
-  // Writing a terminal status here would incorrectly revoke access early.
+  // ATLAS policy (2026-10-23): ATLAS access is revoked immediately on
+  // cancellation, not at period end. This route still only schedules the
+  // cancellation in Stripe (cancel_at_period_end: true) rather than calling
+  // stripe.subscriptions.cancel() outright — Stripe keeps billing/charging
+  // for the remainder of the paid period either way (a separate, deliberately
+  // untouched question from ATLAS access itself), and this keeps the
+  // subscription easily reversible via the Stripe-side reversal this same
+  // update call supports. Entitlement itself is NOT written here — the
+  // customer.subscription.updated webhook this call triggers now revokes
+  // access immediately (see app/api/webhooks/stripe/route.ts's
+  // upsertSubscription()), rather than waiting for the eventual
+  // customer.subscription.deleted at period end.
   const updatedSub = await stripe.subscriptions.update(stripeSubId, { cancel_at_period_end: true })
 
   return NextResponse.json({

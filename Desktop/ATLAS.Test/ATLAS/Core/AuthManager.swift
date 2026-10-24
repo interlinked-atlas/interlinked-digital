@@ -167,6 +167,13 @@ final class AuthManager: ObservableObject {
     private func clearLocalSession() {
         planSyncTimer?.invalidate()
         planSyncTimer = nil
+        // Clear this account's cached Recovery Kit encryption key before dropping
+        // the session — same "different account signing in next must never
+        // inherit this account's cached state" reasoning as the install-limit
+        // cache reset below, for the Keychain-cached DEK instead.
+        if let userID = session?.userID {
+            Task { await CloudRecoveryKitService.shared.clearDEK(userID: userID) }
+        }
         session = nil
         profile = nil
         devices = []

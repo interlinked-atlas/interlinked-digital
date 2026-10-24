@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { buildInstallLogRow, decideWritePath } from '@/lib/installLogIdempotency'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
   }
   const body = rawBody as Record<string, unknown>
 
-  const { log_type, app_name, filename, content, device_name, hardware_uuid } = body
+  const { log_type, app_name, filename, content, device_name, hardware_uuid, client_log_id } = body
 
   if (!isNonEmptyString(log_type) || !isNonEmptyString(filename) || !isNonEmptyString(content)) {
     return NextResponse.json({ error: 'Missing or invalid required fields' }, { status: 400 })
@@ -104,17 +105,43 @@ export async function POST(req: NextRequest) {
   if (hardware_uuid !== undefined && typeof hardware_uuid !== 'string') {
     return NextResponse.json({ error: 'Invalid hardware_uuid' }, { status: 400 })
   }
+  if (client_log_id !== undefined && (typeof client_log_id !== 'string' || client_log_id.length > MAX_FIELD_LENGTH)) {
+    return NextResponse.json({ error: 'Invalid client_log_id' }, { status: 400 })
+  }
 
-  const { error: insertError } = await supabase.from('install_logs').insert({
-    user_id:      user.id, // derived from the verified token — never from client-supplied data
-    app_name:     (app_name as string | undefined) ?? filename,
-    log_type:     log_type,
-    filename:     filename,
-    content:      redact(content),
-    device_name:  (device_name as string | undefined) ?? 'Unknown device',
-    hardware_uuid: (hardware_uuid as string | undefined) ?? '',
+  const row = {
+    ...buildInstallLogRow({
+      userId: user.id, // derived from the verified token — never from client-supplied data
+      appName: app_name as string | undefined,
+      filename,
+      logType: log_type,
+      redactedContent: redact(content),
+      deviceName: device_name as string | undefined,
+      hardwareUuid: hardware_uuid as string | undefined,
+      clientLogId: client_log_id as string | undefined,
+    }),
     installed_at: new Date().toISOString(),
-  })
+  }
+
+  // client_log_id is only sent for the log types that have a stable,
+  // globally-unique on-disk filename (see the migration's comment for why
+  // the others must never be deduped this way). Only those use the
+  // idempotent upsert path — everything else keeps the exact prior insert
+  // behavior, unchanged.
+  //
+  // NOTE: this upsert path requires migration
+  // 20261022010000_install_logs_client_log_id.sql to be applied first (the
+  // client_log_id column and its partial unique index). It is unreachable
+  // today because the Mac app does not yet send client_log_id — dormant
+  // until both that migration and the corresponding Mac app update ship
+  // together, per instruction not to apply this migration or depend on it
+  // in production before a separately authorized release step.
+  const { error: insertError } = decideWritePath(client_log_id as string | undefined) === 'idempotent_upsert'
+    ? await supabase.from('install_logs').upsert(row, {
+        onConflict: 'user_id,client_log_id',
+        ignoreDuplicates: true,
+      })
+    : await supabase.from('install_logs').insert(row)
 
   if (insertError) {
     // Log only the error message, never the payload — avoids re-leaking unredacted content on failure.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
+import { isAlreadyCancelledStatus, computeEffectiveEntitlement } from '@/lib/billingStatus'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' })
 // Test-mode counterpart — only used when a test-mode event is received
@@ -76,11 +77,26 @@ async function upsertSubscription(
   periodEnd: number | null,
   cancelAtPeriodEnd: boolean
 ) {
-  const profileStatus = status === 'active' ? 'active' : status
-  const subStatus = status === 'active' ? 'active'
-    : status === 'canceled' ? 'canceled'
-    : status === 'past_due' ? 'past_due'
-    : 'incomplete'
+  // 'cancelled' (British) to match handleCancellation/revokeAccessForCustomer's
+  // spelling for this exact column — previously this wrote Stripe's raw
+  // 'canceled' (American) status string here, which those functions' own
+  // idempotency guards didn't recognize, causing duplicate cancellation
+  // emails/audit rows when a .updated(status: canceled) event was followed
+  // by the matching .deleted event. subscriptions.status is unaffected and
+  // intentionally still uses Stripe's own spelling ('canceled') below, since
+  // nothing else's guard logic depends on that column's exact string.
+  //
+  // ATLAS policy (2026-10-23, supersedes the 2026-10-20 note this replaces):
+  // cancel_at_period_end === true revokes ATLAS access immediately, not at
+  // current_period_end. Stripe's own `status` stays 'active' throughout that
+  // window (Stripe itself only flips status at period end / on
+  // subscription.deleted) — so entitlement here is computed from BOTH
+  // fields, not status alone. This is a pure function of each event's own
+  // fields: a later event reporting cancelAtPeriodEnd === false (the
+  // customer reversed the cancellation) naturally recomputes 'active' again
+  // with no separate reversal branch needed, and no risk of permanently
+  // revoking access past a reversal.
+  const { profileStatus, subStatus } = computeEffectiveEntitlement(status, cancelAtPeriodEnd)
 
   const { error: profileErr } = await supabase
     .from('profiles')
@@ -88,8 +104,13 @@ async function upsertSubscription(
     .eq('id', userId)
   if (profileErr) console.error('[ATLAS] Profile update failed:', profileErr.message)
 
-  // Safe upsert: check for existing row by user_id, then update or insert.
-  // Avoids relying on a unique constraint on stripe_subscription_id.
+  // Atomic upsert keyed on the subscriptions_user_id_key unique constraint
+  // (supabase/migrations/20261022000000_subscriptions_user_id_unique.sql).
+  // A single INSERT ... ON CONFLICT (user_id) DO UPDATE is one statement, so
+  // two concurrent webhook deliveries for the same new subscriber can no
+  // longer both pass a stale "does a row exist" check and insert duplicate
+  // rows — Postgres resolves the race against the constraint itself. This
+  // requires that migration to be applied before this code path is live.
   const subPayload = {
     user_id: userId,
     stripe_customer_id: stripeCustomerId,
@@ -101,18 +122,10 @@ async function upsertSubscription(
     updated_at: new Date().toISOString(),
   }
 
-  const { data: existing } = await supabase
-    .from('subscriptions').select('id').eq('user_id', userId).maybeSingle()
-
-  if (existing) {
-    const { error: updErr } = await supabase
-      .from('subscriptions').update(subPayload).eq('user_id', userId)
-    if (updErr) console.error('[ATLAS] Subscription update failed:', updErr.message)
-  } else {
-    const { error: insErr } = await supabase
-      .from('subscriptions').insert(subPayload)
-    if (insErr) console.error('[ATLAS] Subscription insert failed:', insErr.message)
-  }
+  const { error: upsertErr } = await supabase
+    .from('subscriptions')
+    .upsert(subPayload, { onConflict: 'user_id' })
+  if (upsertErr) console.error('[ATLAS] Subscription upsert failed:', upsertErr.message)
 
   console.log(`[ATLAS] Updated user ${userId} → plan:${plan.profile} status:${profileStatus}`)
 }
@@ -129,12 +142,18 @@ async function handleCancellation(stripeClient: Stripe, customerId: string, stri
   // Idempotency guard: if already cancelled, skip writes and emails.
   // Prevents duplicates when cancel_at_period_end triggers an early cancellation
   // and customer.subscription.deleted fires again at period end.
+  // Checks both spellings: upsertSubscription() can write the raw Stripe
+  // status string ('canceled', American) to this same column, while this
+  // function and revokeAccessForCustomer() write 'cancelled' (British) — a
+  // real, confirmed mismatch that let a .updated event (status: 'canceled')
+  // followed by the matching .deleted event re-send the cancellation email
+  // and audit row, since the guard only recognized one spelling.
   const { data: currentProfile } = await supabase
     .from('profiles')
     .select('subscription_status')
     .eq('id', userId)
     .single()
-  if (currentProfile?.subscription_status === 'cancelled') {
+  if (isAlreadyCancelledStatus(currentProfile?.subscription_status)) {
     console.log(`[ATLAS] handleCancellation: already cancelled for ${email} — skipping`)
     return
   }
@@ -187,7 +206,8 @@ async function revokeAccessForCustomer(customerId: string, reason: string, strip
     .select('subscription_status')
     .eq('id', userId)
     .single()
-  if (currentProfile?.subscription_status === 'cancelled') {
+  // Same both-spellings guard as handleCancellation above.
+  if (isAlreadyCancelledStatus(currentProfile?.subscription_status)) {
     console.log(`[ATLAS] revokeAccessForCustomer(${reason}): already non-active for ${email} — skipping`)
     return
   }
@@ -250,50 +270,44 @@ export async function POST(req: NextRequest) {
   // versa. Falls back to the live client if no test key is configured.
   const stripeClient = event.livemode ? stripe : (stripeTest ?? stripe)
 
-  // Idempotency (requires migration 20261021000000's status/completed_at
-  // columns on stripe_webhook_events — if that table/columns are missing,
-  // this fails open: logs and continues, rather than silently dropping all
-  // webhook processing over an infra gap).
+  // Idempotency + concurrency ownership. Fails CLOSED: if the claim RPC
+  // itself cannot be reached or errors (e.g. migration 20261021000000 isn't
+  // applied yet, or any other RPC-level failure), this request has no
+  // confirmed ownership of the event and must not run any billing,
+  // entitlement, email, or audit side effect. Returning a 500 here causes
+  // Stripe to retry — once the RPC is actually available, that retry
+  // reprocesses normally. This is a deliberate reversal of an earlier
+  // fail-open design (log-and-continue on claim failure), which allowed
+  // exactly the side effects this function exists to prevent.
   //
-  // Only a row whose status is 'succeeded' means "fully done, including side
-  // effects (email/audit/notify) — skip entirely." A row that's 'processing'
-  // or 'failed' means a previous attempt was claimed but never confirmed to
-  // finish (crashed, timed out, or errored) — that is NOT treated as a
-  // duplicate; it's let through to run again. This is what makes "a retry
-  // can complete work a previous attempt only partially performed" true: the
-  // entitlement writes themselves are idempotent SETs (safe to repeat), so
-  // re-running a partially-completed handler converges to the same correct
-  // end state. The side effects (email/admin notify) are NOT perfectly
-  // exactly-once under this design — a crash after the state writes but
-  // before the 'succeeded' marker can cause a repeat email on retry. That is
-  // a known, accepted limitation (documented in the final report), not a
-  // silent gap: the alternative (marking success before side effects run)
-  // would risk the opposite and worse failure — a successful entitlement
-  // change with no customer notification, permanently lost, since a
-  // 'succeeded' row is never retried.
-  const { data: existingEvent } = await supabase
-    .from('stripe_webhook_events')
-    .select('status')
-    .eq('id', event.id)
-    .maybeSingle()
+  // Three explicit outcomes from the atomic RPC on success — see its
+  // definition for the full ownership/liveness reasoning:
+  //   'claimed'            — this request owns the event; run the handler.
+  //   'already_processing' — a concurrent/near-concurrent delivery already
+  //                           owns this event and is still within its
+  //                           liveness window. This request is the losing
+  //                           side of a real race and MUST NOT run any
+  //                           billing/email/audit side effect — return
+  //                           immediately, exactly like a true duplicate.
+  //   'already_succeeded'  — fully done already; return immediately.
+  // The side effects (email/admin notify) remain NOT perfectly exactly-once
+  // across a crash-then-retry sequence (a crash after the state writes but
+  // before the 'succeeded' marker can cause one repeat email on the next
+  // retry) — that specific, narrower case is a known, accepted limitation;
+  // what this resolves is genuine concurrent/near-concurrent delivery, which
+  // can no longer run the handler twice at all.
+  const { data: claimResult, error: claimErr } = await supabase.rpc('atlas_claim_webhook_event', {
+    p_id: event.id,
+    p_type: event.type,
+  })
 
-  if (existingEvent?.status === 'succeeded') {
-    console.log(`[ATLAS] Duplicate webhook delivery for ${event.id} (${event.type}) — already succeeded, skipping`)
-    return NextResponse.json({ received: true, duplicate: true })
+  if (claimErr) {
+    console.error('[ATLAS] atlas_claim_webhook_event failed — refusing to process without confirmed ownership:', claimErr.message)
+    return NextResponse.json({ error: 'Claim failed' }, { status: 500 })
   }
-
-  if (!existingEvent) {
-    const { error: insertErr } = await supabase
-      .from('stripe_webhook_events')
-      .insert({ id: event.id, type: event.type, status: 'processing' })
-    // A 23505 here means a concurrent delivery raced us and claimed it
-    // first — proceed anyway rather than bail, since we don't know whether
-    // that concurrent attempt will succeed; any other insert error is a
-    // genuine infra problem and we fail open (log, continue) rather than
-    // drop the event.
-    if (insertErr && insertErr.code !== '23505') {
-      console.warn('[ATLAS] stripe_webhook_events insert failed (continuing):', insertErr.message)
-    }
+  if (claimResult === 'already_succeeded' || claimResult === 'already_processing') {
+    console.log(`[ATLAS] Not processing ${event.id} (${event.type}) — ${claimResult}`)
+    return NextResponse.json({ received: true, duplicate: true })
   }
 
   try {
@@ -384,14 +398,13 @@ export async function POST(req: NextRequest) {
           }).eq('id', userId)
         }
 
-        // ATLAS policy (2026-10-20): a scheduled cancellation (cancel_at_period_end
-        // === true, status still 'active') preserves access through the period the
-        // customer already paid for — it does NOT revoke immediately. Access only
-        // stops when Stripe's actual customer.subscription.deleted fires at period
-        // end (handled below), or sooner via payment failure, which remains an
-        // immediate revocation under the active-only entitlement policy. This is a
-        // deliberate change from the previous immediate-revoke-on-schedule behavior;
-        // log it for auditability since it affects when access is lost.
+        // ATLAS policy (2026-10-23): scheduling a cancellation
+        // (cancel_at_period_end: true) revokes ATLAS access immediately —
+        // upsertSubscription() above already wrote profiles/subscriptions to
+        // a non-active state for this event, regardless of Stripe's own
+        // status still reading 'active'. This supersedes the 2026-10-20
+        // paid-period-access decision. Logged for auditability since it's a
+        // real access-affecting transition, not merely a metadata change.
         if (sub.cancel_at_period_end && !prevSub?.cancel_at_period_end) {
           await auditLog('subscription.cancellation_scheduled', {
             userId, email, plan: plan.profile,
@@ -401,7 +414,20 @@ export async function POST(req: NextRequest) {
               stripe_customer_id: sub.customer,
               current_period_end: sub.current_period_end,
             },
-            notes: 'Access preserved until current_period_end; no immediate revocation.',
+            notes: 'ATLAS access revoked immediately; Stripe subscription remains active (billed) until current_period_end unless separately cancelled there.',
+          })
+        }
+
+        // Reversal: the customer undid a scheduled cancellation before it took
+        // effect. upsertSubscription() above already recomputed 'active' from
+        // this event's own cancel_at_period_end/status fields — nothing further
+        // needed for entitlement. Logged only for auditability.
+        if (!sub.cancel_at_period_end && prevSub?.cancel_at_period_end) {
+          await auditLog('subscription.cancellation_reversed', {
+            userId, email, plan: plan.profile,
+            stripeEvent: event.type,
+            metadata: { stripe_subscription_id: sub.id, stripe_customer_id: sub.customer },
+            notes: 'ATLAS access restored immediately.',
           })
         }
 
@@ -430,15 +456,20 @@ export async function POST(req: NextRequest) {
         const userId = await getUserByEmail(email)
         if (!userId) break
 
-        await supabase
+        const { data: failedProf } = await supabase
           .from('profiles')
-          .update({ subscription_status: 'payment_failed' })
+          .select('plan')
           .eq('id', userId)
+          .single()
 
-        await supabase
-          .from('subscriptions')
-          .update({ status: 'past_due', updated_at: new Date().toISOString() })
-          .eq('stripe_customer_id', invoice.customer as string)
+        const { error: failedRpcErr } = await supabase.rpc('atlas_set_entitlement_status', {
+          p_user_id: userId,
+          p_stripe_customer_id: invoice.customer as string,
+          p_profile_status: 'payment_failed',
+          p_plan: failedProf?.plan ?? 'free',
+          p_sub_status: 'past_due',
+        })
+        if (failedRpcErr) throw new Error(`atlas_set_entitlement_status failed: ${failedRpcErr.message}`)
 
         // User email
         await sendEmail({ to: email, template: 'payment-failed' })
@@ -473,15 +504,14 @@ export async function POST(req: NextRequest) {
             .single()
 
           if (prof && (prof.subscription_status === 'payment_failed' || prof.subscription_status === 'past_due')) {
-            await supabase
-              .from('profiles')
-              .update({ subscription_status: 'active' })
-              .eq('id', userId)
-
-            await supabase
-              .from('subscriptions')
-              .update({ status: 'active', updated_at: new Date().toISOString() })
-              .eq('stripe_customer_id', invoice.customer as string)
+            const { error: recoveredRpcErr } = await supabase.rpc('atlas_set_entitlement_status', {
+              p_user_id: userId,
+              p_stripe_customer_id: invoice.customer as string,
+              p_profile_status: 'active',
+              p_plan: prof.plan ?? 'free',
+              p_sub_status: 'active',
+            })
+            if (recoveredRpcErr) throw new Error(`atlas_set_entitlement_status failed: ${recoveredRpcErr.message}`)
 
             await sendEmail({ to: email, template: 'subscription-confirmed', data: { renewDate: '' } })
 

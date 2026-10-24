@@ -291,6 +291,15 @@ struct TitanVScanView: View {
                 deleteButton
                 secondaryButton(label: L(.cancel), action: onCancel)
 
+            // ── Scan Failed (inconclusive — never treat as clean) ──────────────
+            case .scanFailed:
+                infoNote(
+                    icon: "exclamationmark.triangle",
+                    text: "TITAN VSCAN™ could not complete this scan. The file has NOT been verified as clean. Try scanning again before proceeding.",
+                    color: Color(hex: "#EF5B5B")
+                )
+                secondaryButton(label: L(.cancel), action: onCancel)
+
             // ── Malware ───────────────────────────────────────────────────────
             case .malware:
                 infoNote(
@@ -390,6 +399,7 @@ struct TitanVScanView: View {
         case .suspicious:    return Color(hex: "#F0A030")
         case .bundledThreat: return Color(hex: "#F0A030")
         case .malware:       return Color(hex: "#EF5B5B")
+        case .scanFailed:    return Color(hex: "#EF5B5B")
         }
     }
 
@@ -397,6 +407,7 @@ struct TitanVScanView: View {
         switch result.verdict {
         case .clean:         return "checkmark.shield.fill"
         case .licenseTool:   return "key.fill"
+        case .scanFailed:    return "exclamationmark.triangle.fill"
         case .suspicious:    return "exclamationmark.triangle.fill"
         case .bundledThreat: return "exclamationmark.shield.fill"
         case .malware:       return "xmark.shield.fill"

@@ -216,10 +216,12 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       const res = await fetch("/api/atlas/cancel", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to cancel")
-      // Cancellation is scheduled for period end, not immediate — the
-      // account keeps paid access until then, so there's nothing to sign
-      // out of or redirect away from. Show the confirmed paid-through date
-      // (from the API's own response, never invented) right here instead.
+      // ATLAS access is revoked immediately (see app/api/webhooks/stripe/route.ts) —
+      // the webhook this cancellation triggers updates profiles/subscriptions
+      // right away, and the Realtime subscription above re-fetches and flips
+      // isCancelled as soon as that lands. json.access_until is Stripe's own
+      // paid-through date — kept only to label when billing itself ends, never
+      // implied as a date ATLAS access continues until.
       setScheduledCancelUntil(typeof json.access_until === "string" ? json.access_until : null)
     } catch (err: unknown) {
       setCancelError(err instanceof Error ? err.message : "Unknown error")
@@ -394,8 +396,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             )}
             {isScheduledToCancel && (
               <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                Cancellation scheduled — you'll keep access
-                {periodEnd ? <> until <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : " until the end of your current billing period"}.
+                Cancellation in progress — ATLAS access is revoked immediately
+                {periodEnd ? <>; billing ends <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : ""}.
               </p>
             )}
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}

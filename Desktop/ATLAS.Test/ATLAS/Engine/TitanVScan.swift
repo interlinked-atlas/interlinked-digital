@@ -73,6 +73,7 @@ enum VScanVerdict: String, Codable {
     case suspicious      // unusual patterns, user decides
     case bundledThreat   // real software + extra malware (can strip components)
     case malware         // no legitimate software — entire file is malicious
+    case scanFailed      // a required scan step could not run — NOT a clean result
 
     var label: String {
         switch self {
@@ -81,9 +82,13 @@ enum VScanVerdict: String, Codable {
         case .suspicious:    return "Suspicious"
         case .bundledThreat: return "Threat Detected"
         case .malware:       return "Malware"
+        case .scanFailed:    return "Scan Failed"
         }
     }
 
+    // scanFailed is deliberately neither blocking nor clear: the caller must
+    // decide (surface an error / retry) rather than treat an inconclusive
+    // scan as either a pass or a detection.
     var isBlocking: Bool  { self == .malware }
     var isWarning: Bool   { self == .suspicious || self == .bundledThreat }
     var isClear: Bool     { self == .clean || self == .licenseTool }
@@ -118,6 +123,8 @@ struct VScanResult {
         case .malware:
             let names = Array(Set(threats.map(\.name))).prefix(2).joined(separator: ", ")
             return "Malware detected: \(names)"
+        case .scanFailed:
+            return "Scan could not complete — file was not verified as clean"
         }
     }
 }
@@ -149,7 +156,7 @@ final class TitanVScan: ObservableObject {
         scanPhase = "Analyzing…"
 
         // Run all heavy work off the main actor in one detached task
-        typealias ScanOut = (hash: String, threats: [ThreatDetail])
+        typealias ScanOut = (hash: String, threats: [ThreatDetail], binaryScanSucceeded: Bool)
         let capturedURL = url
         let capturedExt = ext
         let out: ScanOut = await Task.detached(priority: .utility) {
@@ -158,8 +165,9 @@ final class TitanVScan: ObservableObject {
             if capturedExt == "pkg" || capturedExt == "mpkg" {
                 t.append(contentsOf: titanVScanPKGScripts(capturedURL))
             }
-            t.append(contentsOf: titanVScanBinaryStrings(capturedURL))
-            return (h, t)
+            let binaryResult = titanVScanBinaryStrings(capturedURL)
+            t.append(contentsOf: binaryResult.threats)
+            return (h, t, binaryResult.succeeded)
         }.value
 
         scanPhase = ""
@@ -173,8 +181,13 @@ final class TitanVScan: ObservableObject {
         // ── Verdict ───────────────────────────────────────────────────────────
         // Only the eight defined threat categories can produce a non-clean verdict.
         // Modified, patched, cracked, or unusual software is not a detection criterion.
+        // The primary detector (binary-strings scan) must have actually run on at
+        // least one target for a "clean" verdict to be valid — if every target
+        // failed (e.g. `strings` couldn't run), that is a failed scan, not a pass.
         let verdict: VScanVerdict
-        if uniqueThreats.isEmpty {
+        if !out.binaryScanSucceeded {
+            verdict = .scanFailed
+        } else if uniqueThreats.isEmpty {
             verdict = .clean
         } else {
             let blockingTypes: Set<ThreatType> = [
@@ -269,7 +282,7 @@ private func titanVScanPKGScripts(_ url: URL) -> [ThreatDetail] {
         return threats
     }
 
-private func titanVScanBinaryStrings(_ url: URL) -> [ThreatDetail] {
+private func titanVScanBinaryStrings(_ url: URL) -> (threats: [ThreatDetail], succeeded: Bool) {
         // Collect binary targets to scan
         var targets: [URL] = []
         let fm = FileManager.default
@@ -289,10 +302,12 @@ private func titanVScanBinaryStrings(_ url: URL) -> [ThreatDetail] {
         }
 
         var threats: [ThreatDetail] = []
+        var anyTargetSucceeded = false
 
         for target in targets.prefix(3) {
             let strResult = titanVScanProcess("/usr/bin/strings", args: ["-a", target.path], timeout: 15)
             guard strResult.ok else { continue }
+            anyTargetSucceeded = true
             let strings = strResult.output
             let lower = strings.lowercased()
             let fileName = target.lastPathComponent
@@ -468,7 +483,10 @@ private func titanVScanBinaryStrings(_ url: URL) -> [ThreatDetail] {
             }
         }
 
-        return threats
+        // Fail the scan if there were no targets at all, or every target's
+        // `strings` invocation failed — an empty threat list in that case means
+        // "nothing was checked," not "checked and clean."
+        return (threats, succeeded: !targets.isEmpty && anyTargetSucceeded)
     }
 
 private func titanVScanSHA256(_ url: URL) -> String? {

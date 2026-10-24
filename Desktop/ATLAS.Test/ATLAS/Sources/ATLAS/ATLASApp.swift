@@ -55,6 +55,13 @@ struct ATLASApp: App {
                         // prompt before the splash is even visible.
                         InstallLogger.captureCrashLogs()
                         InstallLogger.syncExistingLogs()
+                        // Crash-safe operation journal: detects any
+                        // install/uninstall left mid-operation by a prior
+                        // crash/force-quit/restart. Read-only evidence
+                        // gathering only — ContentView presents a review
+                        // sheet if this finds anything; nothing here ever
+                        // claims ownership or mutates the filesystem itself.
+                        PendingReviewStore.shared.reconcileAtLaunch()
                     }
                     .transition(.opacity)
                 } else {

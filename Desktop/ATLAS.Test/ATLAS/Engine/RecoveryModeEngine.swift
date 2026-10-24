@@ -160,7 +160,11 @@ final class RecoveryModeEngine: ObservableObject {
             }
         }
 
-        let outcome = await InstallEngine.install(url: url, logger: logger, progress: progressReporter)
+        // One jobID for this Recovery Mode install, generated before the call
+        // (no retry in this path, but ownership must still be explicit rather
+        // than inferred from a mutable global — see beginInstall's docs).
+        let journalJobID = UUID()
+        let outcome = await InstallEngine.install(url: url, logger: logger, journalJobID: journalJobID, progress: progressReporter)
 
         guard let finalIdx = slots.firstIndex(where: { $0.id == id }) else {
             if let reservationID {
@@ -170,6 +174,7 @@ final class RecoveryModeEngine: ObservableObject {
                     await MonthlyLimitManager.shared.releaseReservation(reservationID: reservationID)
                 }
             }
+            OperationJournal.shared.clear(jobID: journalJobID)
             return
         }
 
@@ -225,6 +230,10 @@ final class RecoveryModeEngine: ObservableObject {
             }
             slots[finalIdx].state = .failure("DAW installation not supported: \(dawName)")
         }
+        // Every branch above has now reached a definitive, already-persisted
+        // (or deliberately-not-persisted, per the failure-path comment)
+        // conclusion — the journal's job is done.
+        OperationJournal.shared.clear(jobID: journalJobID)
 
         // Check after every individual install — enables per-slot completion screen,
         // not just after installAllReady().
