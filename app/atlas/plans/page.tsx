@@ -81,6 +81,9 @@ export default function PlansPage() {
   const [heroIn, setHeroIn] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
   const [hintVisible, setHintVisible] = useState(false)
+  const [compatOpen, setCompatOpen] = useState(false)
+  const [compatWarning, setCompatWarning] = useState(false)
+  const [pendingPriceId, setPendingPriceId] = useState<string | null>(null)
   const compareRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -107,7 +110,15 @@ export default function PlansPage() {
   }, [])
 
   function handleSelectPlan(priceId: string) {
-    const dest = `/atlas/checkout?plan=${priceId}`
+    setPendingPriceId(priceId)
+    setCompatWarning(false)
+    setCompatOpen(true)
+  }
+
+  function proceedToCheckout() {
+    if (!pendingPriceId) return
+    const dest = `/atlas/checkout?plan=${pendingPriceId}`
+    setCompatOpen(false)
     if (loggedIn) {
       router.push(dest)
     } else {
@@ -496,6 +507,106 @@ export default function PlansPage() {
         </footer>
 
       </main>
+
+      {/* ── macOS compatibility check ── */}
+      {compatOpen && (
+        <div
+          onClick={() => setCompatOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(8,8,9,0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#0E0E10',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 16,
+              padding: '28px 28px 24px',
+              width: '100%', maxWidth: 400,
+              fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            }}
+          >
+            {!compatWarning ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div>
+                    <p style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', marginBottom: 6 }}>
+                      Before you continue
+                    </p>
+                    <p style={{ color: '#8A8A96', fontSize: 13, lineHeight: 1.5 }}>
+                      Are you running <strong style={{ color: '#C8C8D0' }}>macOS 12 Monterey or later</strong>?
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCompatOpen(false)}
+                    style={{ background: 'none', border: 'none', color: '#44444E', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 0 0 12px' }}
+                  >×</button>
+                </div>
+
+                <p style={{ color: '#6A6A76', fontSize: 11, marginBottom: 18, lineHeight: 1.5 }}>
+                  Click the Apple menu → About This Mac to check your version if you&apos;re not sure.
+                </p>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setCompatWarning(true)}
+                    style={{
+                      flex: 1, padding: '11px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 9,
+                      background: 'none', color: '#8A8A96', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={proceedToCheckout}
+                    style={{
+                      flex: 1, padding: '11px', border: 'none', borderRadius: 9,
+                      background: 'linear-gradient(135deg, #3ECFB2, #2ABEAA)',
+                      color: '#080809', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Yes, continue →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: '#F0A030', fontSize: 20 }}>⚠</span>
+                    <p style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>
+                      ATLAS won&apos;t run on your Mac
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCompatOpen(false)}
+                    style={{ background: 'none', border: 'none', color: '#44444E', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 0 0 12px' }}
+                  >×</button>
+                </div>
+                <p style={{ color: '#8A8A96', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+                  ATLAS requires <strong style={{ color: '#C8C8D0' }}>macOS 12 Monterey or later</strong>. Subscribing now would
+                  give you access you can&apos;t currently use — we&apos;d rather you upgrade macOS first (or wait for a future ATLAS
+                  update) than pay for something that won&apos;t run.
+                </p>
+                <button
+                  onClick={() => setCompatOpen(false)}
+                  style={{
+                    width: '100%', padding: '11px', border: 'none', borderRadius: 9,
+                    background: 'rgba(255,255,255,0.08)',
+                    color: '#C8C8D0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Got it
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
