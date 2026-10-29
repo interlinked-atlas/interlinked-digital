@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { TermsBody } from './terms-content'
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
@@ -33,7 +34,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
 ]
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({ title, onClose, children, maxWidth = 440 }: { title: string; onClose: () => void; children: React.ReactNode; maxWidth?: number }) {
   return (
     <div
       onClick={onClose}
@@ -51,7 +52,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
           border: '1px solid rgba(255,255,255,0.09)',
           borderRadius: 16,
           padding: '24px 24px 28px',
-          width: '100%', maxWidth: 440,
+          width: '100%', maxWidth,
           maxHeight: '80vh',
           overflowY: 'auto',
           fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -69,6 +70,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         {children}
       </div>
     </div>
+  )
+}
+
+function TermsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Terms of Service" onClose={onClose} maxWidth={560}>
+      <p style={{ color: '#6B7399', fontSize: 12, margin: '-8px 0 20px' }}>
+        Effective Date: August 15, 2026 &nbsp;·&nbsp; Last Updated: August 15, 2026
+      </p>
+      <TermsBody />
+    </Modal>
   )
 }
 
@@ -175,12 +187,15 @@ function SupportModal({ onClose }: { onClose: () => void }) {
 }
 
 export function SiteFooterLinks() {
-  const [open, setOpen] = useState<'faq' | 'support' | null>(null)
+  const [open, setOpen] = useState<'terms' | 'faq' | 'support' | null>(null)
 
   return (
     <>
       <p style={{ textAlign: 'center', marginTop: 10 }}>
-        <a href="/atlas/terms" style={{ color: '#44444E', fontSize: 12, textDecoration: 'none' }}>Terms of Service</a>
+        <button
+          onClick={() => setOpen('terms')}
+          style={{ background: 'none', border: 'none', color: '#44444E', fontSize: 12, cursor: 'pointer', padding: 0 }}
+        >Terms of Service</button>
         <span style={{ color: '#2A2A32', fontSize: 12, margin: '0 10px' }}>·</span>
         <button
           onClick={() => setOpen('support')}
@@ -193,6 +208,7 @@ export function SiteFooterLinks() {
         >FAQ</button>
       </p>
 
+      {open === 'terms' && <TermsModal onClose={() => setOpen(null)} />}
       {open === 'faq' && <FaqModal onClose={() => setOpen(null)} />}
       {open === 'support' && <SupportModal onClose={() => setOpen(null)} />}
     </>
