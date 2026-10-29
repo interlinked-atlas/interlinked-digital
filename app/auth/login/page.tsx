@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { SiteFooterLinks } from '@/components/site-footer-links'
 
 function EyeIcon() {
   return (
@@ -221,6 +222,8 @@ function LoginContent() {
               </div>
             </form>
           </div>
+
+          <SiteFooterLinks />
 
           <p style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', textAlign: 'center', marginTop: '28px', letterSpacing: '0.04em' }}>
             InterLinked© · All rights reserved

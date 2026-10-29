@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch'
 
 interface SendOptions {
   to: string
@@ -60,6 +60,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'demo-features-announcement': {
       subject: 'ATLAS — New Demo: Features Overview',
       html: demoFeaturesAnnouncementEmail(),
+    },
+    'oct31-launch': {
+      subject: 'ATLAS is here — October 31st.',
+      html: oct31LaunchEmail(),
     },
   }
 
@@ -517,6 +521,57 @@ function demoFeaturesAnnouncementEmail() {
       ${tealBtn('Watch the Demo', demoUrl)}
 
       ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+      </p>
+    </div>
+  `)
+}
+
+function oct31LaunchEmail() {
+  return base('ATLAS is here — October 31st.', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('It’s Launch Day')}
+
+      <!-- macOS badge -->
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+        <tr>
+          <td valign="middle" style="padding-right:8px;">
+            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
+          </td>
+          <td valign="middle">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
+          </td>
+        </tr>
+      </table>
+
+      ${heading('ATLAS is here.')}
+      <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
+        You've been waiting — and it's finally here. Starting <strong style="color:${WHITE};font-weight:600;">October 31st</strong>, ATLAS is live for macOS.
+        No more remote-install services, no more handing a stranger access to your Mac, no more paying per file. ATLAS installs, tracks,
+        and cleanly uninstalls your plugins and software automatically — all on your own machine, privately.
+      </p>
+
+      ${infoBox([
+        'TITAN MEMORY™ — learns every installer you run',
+        'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
+        'Bulk installation &amp; full install history',
+        'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
+        'Built-in virus scanner &amp; ATLAS CLEANER™',
+        'One flat plan — $30/month, everything included',
+      ], TEAL)}
+
+      ${divider()}
+
+      <!-- Secondary: Windows teaser -->
+      <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;letter-spacing:-0.01em;">Windows Version of ATLAS Coming Soon.</p>
+      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">Stay tuned for more updates.</p>
+
+      ${divider()}
+
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
         You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
       </p>
