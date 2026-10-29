@@ -92,6 +92,12 @@ export default function DownloadPage() {
           <p className="text-center text-white/30 text-xs mt-3">
             Windows support is coming soon — you&apos;ll be notified the moment it&apos;s available.
           </p>
+          <p className="text-center text-white/40 text-sm mt-4">
+            Your account is ready.{' '}
+            <Link href="/atlas/account" className="text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
+              View account dashboard →
+            </Link>
+          </p>
         </div>
 
         {/* Setup guide */}
@@ -152,14 +158,6 @@ export default function DownloadPage() {
             tracking, and clean uninstall whenever you need it.
           </StepCard>
         </div>
-
-        {/* Account link */}
-        <p className="text-center text-white/40 text-sm mt-10">
-          Your account is ready.{' '}
-          <Link href="/atlas/account" className="text-[#4ecdc4] hover:text-[#7c6fee] transition-colors">
-            View account dashboard →
-          </Link>
-        </p>
       </div>
     </div>
   )
