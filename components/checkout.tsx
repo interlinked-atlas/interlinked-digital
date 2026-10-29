@@ -16,7 +16,7 @@ export default function Checkout({ productId }: { productId: string }) {
   const router = useRouter()
   
   const fetchClientSecret = useCallback(
-    () => startCheckoutSession(productId),
+    () => startCheckoutSession(productId).then(r => (r.ok ? r.url : '')),
     [productId],
   )
 

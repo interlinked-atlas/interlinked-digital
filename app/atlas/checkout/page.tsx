@@ -19,14 +19,16 @@ function CheckoutContent() {
     if (!planId || !product) return
     setLoading(true)
     startCheckoutSession(planId)
-      .then(url => { window.location.href = url })
-      .catch(err => {
-        if (err.message === 'ALREADY_SUBSCRIBED') {
-          window.location.href = '/atlas/account'
+      .then(result => {
+        if (result.ok) {
+          window.location.href = result.url
         } else {
-          setError(err.message)
-          setLoading(false)
+          window.location.href = '/atlas/account'
         }
+      })
+      .catch(err => {
+        setError(err.message)
+        setLoading(false)
       })
   }, [planId])
 

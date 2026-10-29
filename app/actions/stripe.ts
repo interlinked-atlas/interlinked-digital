@@ -5,7 +5,17 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { resolveCheckoutPrice, decideCheckoutEligibility } from '@/lib/checkoutGuard'
 
-export async function startCheckoutSession(productId: string, email?: string) {
+// Returns a discriminated result rather than throwing for the
+// already-subscribed case: in production, Next.js redacts Server Action
+// error messages before they reach the client, so the caller could never
+// reliably match `err.message === 'ALREADY_SUBSCRIBED'` — it would only
+// ever see a generic digest-only error. That's what was happening live
+// (confirmed via Vercel runtime error logs, 4 occurrences since July).
+// Returning a plain object sidesteps the redaction entirely.
+export async function startCheckoutSession(
+  productId: string,
+  email?: string
+): Promise<{ ok: true; url: string } | { ok: false; code: 'ALREADY_SUBSCRIBED' }> {
   // Throws UnknownProductError/NoPriceForProductError for anything other
   // than the single live "atlas" product — see lib/checkoutGuard.ts and its
   // test file for the covered cases (tampered/unknown product IDs).
@@ -39,7 +49,7 @@ export async function startCheckoutSession(productId: string, email?: string) {
 
     // Block checkout if already on an active subscription — must use upgrade/downgrade instead
     if (decideCheckoutEligibility(subscription) === 'already_subscribed') {
-      throw new Error('ALREADY_SUBSCRIBED')
+      return { ok: false, code: 'ALREADY_SUBSCRIBED' }
     }
 
     // Set client_reference_id so webhook matches user by ID (not just email)
@@ -56,7 +66,7 @@ export async function startCheckoutSession(productId: string, email?: string) {
 
   const session = await stripe.checkout.sessions.create(sessionConfig)
 
-  return session.url!
+  return { ok: true, url: session.url! }
 }
 
 export async function getCheckoutSessionStatus(sessionId: string) {
