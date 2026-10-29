@@ -61,9 +61,10 @@ function SuccessContent() {
           if (cancelled) return
           setStatus("success")
           // Whether or not the webhook confirmed within the poll window, the
-          // account page is Realtime-backed and will reflect the real state
-          // the moment it lands — we never grant access here, only navigate.
-          setTimeout(() => router.push("/atlas/account?welcome=1"), entitled ? 800 : 0)
+          // account page (and the download page's own links) are backed by
+          // real entitlement state and will reflect it the moment it lands —
+          // we never grant access here, only navigate.
+          setTimeout(() => router.push(entitled ? "/atlas/download" : "/atlas/account?welcome=1"), entitled ? 800 : 0)
         })
         .catch(() => { if (!cancelled) setStatus("error") })
     } else {
