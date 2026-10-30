@@ -79,6 +79,20 @@ final class TitanMission: ObservableObject {
     /// reservation was denied (device already at 25 confirmed+active this period).
     @Published var limitReached = false
 
+    // Set by cancel() — checked between steps in execute()'s loop. This only stops
+    // steps that haven't started yet; it cannot interrupt a step's subprocess that
+    // is already running (e.g. installer mid-flight), since the per-step executors
+    // (runPkg, runScript, etc.) have no kill-switch of their own. The user-visible
+    // effect this fixes: previously, tapping Cancel only hid the UI — the mission's
+    // Task kept executing every remaining step in the background regardless, so a
+    // "cancelled" install actually still fully installed, silently, with no
+    // indication to the user it ever happened.
+    private(set) var cancellationRequested = false
+
+    func cancel() {
+        cancellationRequested = true
+    }
+
     // Source context
     let mountPoint: String
     let sourceURL: URL
@@ -465,6 +479,12 @@ final class TitanMission: ObservableObject {
         let libSnapshot = InstallEngine.snapshotLibraryTopLevel()
 
         for i in steps.indices {
+            if cancellationRequested {
+                for j in i..<steps.count { steps[j].status = .skipped }
+                currentNote = "Cancelled"
+                break
+            }
+
             // Capture step for execution (avoid passing inout to async)
             let step = steps[i]
             steps[i].status = .running
@@ -512,7 +532,10 @@ final class TitanMission: ObservableObject {
 
         // Record runtime-created paths only when the mission succeeded.
         // A failed install should not leave ownership claims on the filesystem.
-        let didFail = steps.contains(where: { $0.status == .failed })
+        // A cancellation counts as not-succeeded too — otherwise the loop's
+        // cancellation break (no step ever reaches .failed) would let a
+        // cancelled mission confirm its reservation as a success below.
+        let didFail = cancellationRequested || steps.contains(where: { $0.status == .failed })
         runtimeCreatedPaths = didFail ? [] : InstallEngine.diffLibraryTopLevel(before: libSnapshot)
 
         // Confirm the mission-level reservation on overall success, release on

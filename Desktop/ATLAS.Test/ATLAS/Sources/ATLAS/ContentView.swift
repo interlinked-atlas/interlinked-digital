@@ -598,6 +598,12 @@ struct ContentView: View {
                         withAnimation { showDropZone = true }
                     },
                     onCancel: {
+                        // Tell the mission itself to stop — previously this only hid the
+                        // UI and nil'd our local reference, which does NOT cancel the
+                        // Task running mission.execute() in the background. The mission
+                        // kept running every remaining step (including the real installer)
+                        // to completion regardless of what the UI showed.
+                        mission.cancel()
                         showTitanMission = false
                         activeTitanMission = nil
                         appState.reset()
@@ -2137,7 +2143,7 @@ struct ContentView: View {
                         // Standard plan: let user pick which product to install
                         showMultipleProductsGate = true
                     } else {
-                        startTitanInstall(mission: mission)
+                        showTitanMission = true
                     }
                 }
             }
@@ -2907,6 +2913,14 @@ struct ContentView: View {
             logger.log("⚠ Uninstall cancelled.")
             return
         } else {
+            // Stop any running TITAN mission too — cancelCurrentInstall() below only
+            // knows about the generic (non-TITAN) install engine's tracked processes.
+            // Without this, Stop did nothing at all for a TITAN mission (e.g. Serum's
+            // dedicated recipe): the install kept running fully in the background with
+            // no indication anything was ever cancelled.
+            if let mission = activeTitanMission {
+                mission.cancel()
+            }
             Task {
                 let outcome = await InstallEngine.cancelCurrentInstall()
                 switch outcome {
