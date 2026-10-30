@@ -10,13 +10,10 @@ struct ContentView: View {
     @State private var isTargeted = false
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
                                            || !UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey)
-                                           || !UserDefaults.standard.bool(forKey: CombinedAgreementView.eulaKey)
     // Live permission state for the in-app warning banner shown after onboarding.
     @State private var livePermsMissing: [String] = []
     @State private var permCheckTimer: Timer? = nil
     @State private var unsupportedExtension: String? = nil
-    @State private var installLimitBlockedMessage: String? = nil
-    @State private var queueCapMessage: String? = nil
     @State private var showHistory = false
     @State private var rollingBack: InstallRecord? = nil
     @State private var rollbackInProgress = false
@@ -89,10 +86,6 @@ struct ContentView: View {
 
     // TITAN CORE™ mission state
     @State private var activeTitanMission: TitanMission? = nil
-    // Guards against double-saving a Titan mission's record: set true the moment
-    // the mission's completion is saved (either automatically on isComplete, or
-    // via the Done button — whichever happens first), reset per new mission id.
-    @State private var titanRecordSavedMissionID: ObjectIdentifier? = nil
     @State private var showTitanMission            = false
     @State private var showTitanNoInstructions     = false
     @State private var showMultipleProductsGate    = false
@@ -132,14 +125,7 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // The legacy "atlas.onboardingDone" flag predates the admin-password
-            // requirement — trusting it alone let existing users skip SetupWizardView
-            // (and therefore ever saving a password) forever. Now also requires a
-            // Keychain password to actually exist, so anyone whose stored password
-            // was just invalidated by migrateAccessControlIfNeeded() gets routed back
-            // into SetupWizardView to re-enter it, instead of being silently stuck.
-            if !setupComplete && UserDefaults.standard.bool(forKey: "atlas.onboardingDone")
-                && KeychainManager.hasPassword() {
+            if !setupComplete && UserDefaults.standard.bool(forKey: "atlas.onboardingDone") {
                 setupComplete = true
             }
         }
@@ -584,12 +570,8 @@ struct ContentView: View {
                     mission: mission,
                     adminPassword: KeychainManager.loadPassword() ?? "",
                     onDone: {
-                        // Save only if the automatic isComplete-triggered save (below)
-                        // hasn't already run for this mission — otherwise this is a
-                        // no-op guard, not the primary save path anymore.
-                        if titanRecordSavedMissionID != ObjectIdentifier(mission) {
-                            titanRecordSavedMissionID = ObjectIdentifier(mission)
-                            saveTitanRecord(mission: mission)
+                        if let m = activeTitanMission, m.isComplete {
+                            saveTitanRecord(mission: m)
                         }
                         showTitanMission = false
                         activeTitanMission = nil
@@ -598,39 +580,11 @@ struct ContentView: View {
                         withAnimation { showDropZone = true }
                     },
                     onCancel: {
-                        // Tell the mission itself to stop — previously this only hid the
-                        // UI and nil'd our local reference, which does NOT cancel the
-                        // Task running mission.execute() in the background. The mission
-                        // kept running every remaining step (including the real installer)
-                        // to completion regardless of what the UI showed.
-                        mission.cancel()
                         showTitanMission = false
                         activeTitanMission = nil
                         appState.reset()
                         detachTitanPreScanMount()
                         withAnimation { showDropZone = true }
-                    },
-                    onAutoSave: {
-                        // Save the moment the mission finishes, independent of whether
-                        // the user ever clicks "Done" — previously the record (log,
-                        // history entry, Library card) was only written on that button
-                        // press. If the user switched away (e.g. to check Dashboard/
-                        // Products) before pressing it, the install had genuinely
-                        // succeeded on disk but ATLAS never recorded it anywhere:
-                        // no history.json entry, no Installed/ log file. That silent
-                        // gap — not a Library-rendering bug — is what made a real,
-                        // successful install (e.g. Serum v2.1.5) never show up.
-                        //
-                        // This must be wired from inside TitanMissionView (via its
-                        // onAutoSave callback), not via .onChange attached here —
-                        // ContentView holds activeTitanMission as a plain @State
-                        // reference, so it never re-renders purely because an
-                        // internal @Published property of that class changed, and an
-                        // .onChange placed at this level silently never re-evaluates.
-                        if titanRecordSavedMissionID != ObjectIdentifier(mission) {
-                            titanRecordSavedMissionID = ObjectIdentifier(mission)
-                            saveTitanRecord(mission: mission)
-                        }
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -674,8 +628,6 @@ struct ContentView: View {
                         progressBar
                     }
                     unsupportedWarning
-                    installLimitBlockedWarning
-                    queueCapWarning
                     rollbackBanner
                     mainContent
 
@@ -1566,65 +1518,6 @@ struct ContentView: View {
         }
     }
 
-    // Shown when beginInstall()'s reserveSlot() denies a single-file drop
-    // (e.g. the account has hit its monthly install limit). Mirrors the
-    // bulk/queue path's existing, already-correct behavior of surfacing
-    // "Monthly install limit reached" as a visible reason rather than
-    // silently doing nothing — the single-file path previously had no
-    // equivalent message at all.
-    @ViewBuilder
-    var installLimitBlockedWarning: some View {
-        if let message = installLimitBlockedMessage {
-            HStack(spacing: 10) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.atlasWarning)
-                Text(message)
-                    .font(.atlasBody)
-                    .foregroundStyle(Color.atlasLabel)
-                Spacer()
-                Button("Dismiss") { installLimitBlockedMessage = nil }
-                    .font(.atlasSubhead)
-                    .foregroundStyle(Color.atlasSubtitle)
-                    .buttonStyle(.plain)
-            }
-            .padding(12)
-            .background(Color.atlasWarning.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
-                    .strokeBorder(Color.atlasWarning.opacity(0.25), lineWidth: 0.75)
-            )
-        }
-    }
-
-    // Shown when handleFilesDrop() truncates a batch larger than
-    // InstallQueue.maxQueueSize — the excess files are not added, and this
-    // says so explicitly rather than silently dropping them.
-    @ViewBuilder
-    var queueCapWarning: some View {
-        if let message = queueCapMessage {
-            HStack(spacing: 10) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.atlasWarning)
-                Text(message)
-                    .font(.atlasBody)
-                    .foregroundStyle(Color.atlasLabel)
-                Spacer()
-                Button("Dismiss") { queueCapMessage = nil }
-                    .font(.atlasSubhead)
-                    .foregroundStyle(Color.atlasSubtitle)
-                    .buttonStyle(.plain)
-            }
-            .padding(12)
-            .background(Color.atlasWarning.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
-                    .strokeBorder(Color.atlasWarning.opacity(0.25), lineWidth: 0.75)
-            )
-        }
-    }
-
     @ViewBuilder
     var rollbackBanner: some View {
         if rollbackInProgress {
@@ -1713,8 +1606,6 @@ struct ContentView: View {
                 removedFiles: result.removedFiles,
                 failedFiles: result.failedFiles,
                 appName: rollingBack?.fileName ?? "",
-                resultSuccess: result.success,
-                resultDetail: result.detail,
                 onDone: resetAll,
                 onRecover: result.manifestPath != nil ? {
                     if let record = historyStore.records.first(where: {
@@ -1782,17 +1673,6 @@ struct ContentView: View {
 
     private func handleFilesDrop(urls: [URL]) {
         guard !urls.isEmpty else { return }
-
-        // Cap a single drag-drop batch — excess files are not added, not
-        // silently dropped: the user is told explicitly via queueCapMessage.
-        // Checked before anything else so every downstream branch (Standard/
-        // Pro, BundleGrouper, monthly-limit pending logic) operates on the
-        // already-capped list, unchanged otherwise.
-        var urls = urls
-        if urls.count > InstallQueue.maxQueueSize {
-            queueCapMessage = "Only \(InstallQueue.maxQueueSize) files can be added at once — the rest were not added."
-            urls = Array(urls.prefix(InstallQueue.maxQueueSize))
-        }
 
         // Block ATLAS installers
         if urls.contains(where: { InstallerClassifier.isAtlasItself($0) }) {
@@ -2218,17 +2098,7 @@ struct ContentView: View {
         showPluginScan = false
         Task {
             let (allowed, reservationID, _) = await monthlyLimit.reserveSlot()
-            guard allowed else {
-                // Mirrors the bulk/queue path's existing behavior (which already
-                // surfaces "Monthly install limit reached" per item) — previously
-                // this just silently returned with the drop zone left hidden and
-                // no explanation at all.
-                await MainActor.run {
-                    installLimitBlockedMessage = "Monthly install limit reached"
-                    withAnimation { showDropZone = true }
-                }
-                return
-            }
+            guard allowed else { return }
             MenuBarStatusManager.shared.menuStatus = .installing
             InstallationManager.shared.install(
             url: url, appState: appState,
@@ -2468,19 +2338,6 @@ struct ContentView: View {
         // OperationJournal.beginInstall's docs for the ownership model.
         let journalJobID = UUID()
 
-        // Every queued item — including DMG/ISO — always runs through the
-        // Standard engine (InstallEngine.install), never TitanMission, even
-        // though a single-file DMG/ISO drop is routed through TitanMission
-        // elsewhere (see startTitanInstall). This is a known, deliberate
-        // scope boundary, confirmed during this engagement's audit — not an
-        // oversight. It means the registration/evidence-authorization/
-        // directory-grouping reliability fixes made this engagement apply to
-        // single-file drops only; bulk/queued installs do not get
-        // TitanMission's step-by-step verification flow. Routing bulk items
-        // through TitanMission instead was evaluated and explicitly deferred
-        // (Option B — materially larger change, real regression risk to the
-        // currently-working bulk path for every file type, not just DMG/ISO)
-        // in favor of this documented-boundary approach (Option A).
         var (result, installedFiles, receiptIDs, isPlugin, runtimeCreatedPaths) =
             await InstallEngine.install(url: item.url, logger: logger, journalJobID: journalJobID) { pct, step in
                 self.queue.updateProgress(id: id, progress: pct, step: step)
@@ -2913,14 +2770,6 @@ struct ContentView: View {
             logger.log("⚠ Uninstall cancelled.")
             return
         } else {
-            // Stop any running TITAN mission too — cancelCurrentInstall() below only
-            // knows about the generic (non-TITAN) install engine's tracked processes.
-            // Without this, Stop did nothing at all for a TITAN mission (e.g. Serum's
-            // dedicated recipe): the install kept running fully in the background with
-            // no indication anything was ever cancelled.
-            if let mission = activeTitanMission {
-                mission.cancel()
-            }
             Task {
                 let outcome = await InstallEngine.cancelCurrentInstall()
                 switch outcome {
@@ -2993,22 +2842,11 @@ struct ContentView: View {
         }
     }
 
-    // Returns whether the mission is ultimately being recorded as a failure —
-    // this is the real outcome (post TITAN VERIFY™, which runs inside this
-    // function, after mission.execute() has already returned), not just
-    // mission.steps' statuses. Callers that must report success/failure to
-    // the user (startTitanInstall) need this real value, not an earlier guess.
-    @discardableResult
-    private func saveTitanRecordAsync(mission: TitanMission) async -> Bool {
+    private func saveTitanRecordAsync(mission: TitanMission) async {
         let sourceName = mission.sourceURL.lastPathComponent
         // .failed is only assigned to critical steps (installPkg, UI automation) in execute().
         // Non-critical failures (codesign, metadata) get .warning and never gate success.
-        // !mission.isComplete also counts as failure: it means run() exited before reaching
-        // its normal end (e.g. a denied slot reservation returns before any step executes),
-        // so no step would otherwise be marked .failed — without this, such a mission would
-        // be wrongly recorded as a success with zero installed files instead of a diagnosable
-        // failure.
-        var hasFailed = !mission.isComplete || mission.steps.contains(where: { $0.status == .failed })
+        var hasFailed = mission.steps.contains(where: { $0.status == .failed })
 
         // Build detailed log entries — include resultNote so failures are diagnosable
         var entries: [String] = mission.steps.map { step in
@@ -3144,8 +2982,6 @@ struct ContentView: View {
         }
 
         logger.log(Features.rollback ? "📋 TITAN mission saved to history — rollback available" : "📋 TITAN mission saved to history")
-
-        return hasFailed
     }
 
     private func installOneFromMultiple(step: TitanMissionStep) {
@@ -3154,83 +2990,7 @@ struct ContentView: View {
         single.steps = [step]
         activeTitanMission = single
         showMultipleProductsGate = false
-        startTitanInstall(mission: single)
-    }
-
-    // Routes a built TitanMission through the EXISTING, unmodified standard
-    // installation visualizer (StandardInstallProgressView) instead of the
-    // separate TitanMissionView + "Begin Install" gate. This is a routing/
-    // progress-reporting change only — TitanMission.execute()'s own step
-    // logic, authorization (Keychain password, unchanged), and the monthly
-    // reservation lifecycle (reserve/confirm/release, entirely inside
-    // execute() itself) are not touched. Starting immediately on drop also
-    // matches how the Standard (non-Titan) install path already behaves —
-    // it never required a separate confirmation tap either.
-    //
-    // appState/logger are the SAME objects StandardInstallProgressView reads
-    // for a non-Titan install; InstallationManager/InstallEngine (the
-    // Standard engine) is never invoked here, so there is no risk of running
-    // two install engines for the same drop.
-    private func startTitanInstall(mission: TitanMission) {
-        appState.selectedFileURL = mission.sourceURL
-        appState.progress = 0
-        appState.progressStep = ""
-        appState.phase = .installing
-        let pw = KeychainManager.loadPassword() ?? ""
-
-        Task {
-            await mission.execute(adminPassword: pw) { progress, note in
-                Task { @MainActor in
-                    appState.progress = progress
-                    appState.progressStep = note
-                    logger.log(note)
-                }
-            }
-
-            if mission.limitReached {
-                await MainActor.run {
-                    // Denied quota reservation — mirrors the old pre-start "← Back"
-                    // outcome: nothing was attempted, so nothing is saved.
-                    appState.reset()
-                    detachTitanPreScanMount()
-                    withAnimation { showDropZone = true }
-                }
-                return
-            }
-
-            // Await the real save — this is what actually runs TITAN VERIFY™
-            // and persists the InstallRecord. It must complete (and its real
-            // outcome, not just mission.steps' pre-verification statuses, must
-            // be known) BEFORE appState.phase flips to .success/.failure, since
-            // resultBanner (shown exactly when phase is .success/.failure) reads
-            // historyStore.records.first — showing that banner before the
-            // record exists would show a stale/missing record, and reporting
-            // success from mission.steps alone would ignore a later TITAN
-            // VERIFY™ failure. Idempotency guard unchanged.
-            let hasFailed: Bool
-            if titanRecordSavedMissionID != ObjectIdentifier(mission) {
-                titanRecordSavedMissionID = ObjectIdentifier(mission)
-                hasFailed = await saveTitanRecordAsync(mission: mission)
-            } else {
-                hasFailed = mission.steps.contains { $0.status == .failed }
-            }
-
-            await MainActor.run {
-                // Report the real, now-persisted outcome.
-                appState.phase = hasFailed ? .failure : .success
-
-                activeTitanMission = nil
-                detachTitanPreScanMount()
-                withAnimation { showDropZone = true }
-                // appState.reset() is intentionally NOT called here. Resetting
-                // immediately after setting .success/.failure gave SwiftUI no
-                // render opportunity, making resultBanner's success/failure
-                // card invisible — this is the regression being fixed. The
-                // Standard (non-Titan) install path never resets on completion
-                // either; resultBanner's own onDone (resetAll()) is the only
-                // reset path, triggered by explicit user dismissal.
-            }
-        }
+        showTitanMission = true
     }
 
     private func detachTitanPreScanMount() {

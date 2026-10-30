@@ -17,14 +17,7 @@ struct ATLASApp: App {
     init() {
         // Build stamp — verify in Console.app (filter by subsystem: digital.interlinked.atlas).
         // This appears on every launch when the correct binary is running.
-        ATLASApp.alog.notice("[ATLAS-BUILD-v19] ATLAS launched — Keychain ACL migration now runs at startup (fixes stale pre-fix password items going silently unreadable after rebuild/resign)")
-        // One-time cleanup of any Keychain password item saved under the old restrictive
-        // ACL (before KeychainManager's open-access fix existed). Without this, a password
-        // saved before that fix survives every rebuild but silently becomes unreadable the
-        // moment the app is re-signed with a new ad-hoc signature — loadPassword() returns
-        // nil instead of erroring, which surfaces downstream as "Installation failed: No
-        // password stored." Must run before anything calls KeychainManager.loadPassword().
-        KeychainManager.migrateAccessControlIfNeeded()
+        ATLASApp.alog.notice("[ATLAS-BUILD-v18s] ATLAS launched — fixed self-trash (atlas/interlinked in receipt skipWords); VSCAN now runs in queue path (blocks malware, warns on suspicious/bundled)")
         ATLASApp.registerFonts()
     }
 

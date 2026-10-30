@@ -1,6 +1,5 @@
 import Foundation
 import Security
-import Darwin
 
 typealias ProgressReporter = (Double, String) async -> Void
 
@@ -469,7 +468,7 @@ struct InstallEngine {
         var mountResult = runProcess(
             path: "/usr/bin/hdiutil",
             arguments: ["attach", url.path, "-mountpoint", mountPoint, "-nobrowse"]
-        , timeout: 90)
+        )
 
         // "Resource busy" = same disc content already mounted under a different path.
         // Detach all stale ATLAS volumes and retry once.
@@ -480,7 +479,7 @@ struct InstallEngine {
             mountResult = runProcess(
                 path: "/usr/bin/hdiutil",
                 arguments: ["attach", url.path, "-mountpoint", mountPoint, "-nobrowse"]
-            , timeout: 90)
+            )
         }
 
         // Some DMGs embed a Software License Agreement that causes hdiutil to
@@ -566,19 +565,7 @@ struct InstallEngine {
             return (.unsupportedDAWInstallation(dawName: dawName), [], [], false)
         }
 
-        // A DMG can have the exact "Applications symlink + one top-level .app" shape
-        // without actually being a drag-to-install product — some installers (NI-style
-        // custom installers among them) ship as a single standalone .app that must be
-        // LAUNCHED to run its own setup wizard, not copied straight into /Applications.
-        // Without this check, that installer app silently lands in /Applications having
-        // never been run — no password filled, no wizard clicked through, no error either,
-        // since the copy itself succeeds. isManagerApp's keyword check (installer/setup/
-        // wizard/etc. in the name) is the same test the full planning path already uses
-        // for exactly this distinction — applying it here closes the gap in the fast path.
-        let singleAppIsManagerApp = topLevelApps.count == 1 &&
-            InstallIntelligence.isManagerApp(url: URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0]))
-
-        if hasDragTarget && noPKG && topLevelApps.count == 1 && !singleAppIsManagerApp {
+        if hasDragTarget && noPKG && topLevelApps.count == 1 {
             let appURL  = URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0])
             let appName = appURL.lastPathComponent
             await logger.log("Drag-to-install DMG: copying \(appName) to /Applications")
@@ -920,7 +907,7 @@ struct InstallEngine {
     // Returns the mount point if the image at imagePath is already attached.
     static func findExistingMount(for imagePath: String) -> String? {
         let result = runProcess(path: "/usr/bin/hdiutil",
-                               arguments: ["info", "-plist"], timeout: 90)
+                               arguments: ["info", "-plist"])
         guard result.success,
               let data = result.output.data(using: .utf8),
               let plist = try? PropertyListSerialization.propertyList(
@@ -1149,37 +1136,9 @@ struct InstallEngine {
         // Only pull meaningful bundle types — not every individual file in the receipt.
         await progress(0.97, "Finding installed files…")
         let receiptSnapshot = newReceiptIDs
-        let receiptFiles = await Task.detached(priority: .utility) {
+        let installedFiles = await Task.detached(priority: .utility) {
             resolveInstalledBundlesFromReceipts(receiptSnapshot)
         }.value
-
-        // Merge in the already-computed filesystem diff (changedPaths above).
-        // resolveInstalledBundlesFromReceipts depends on `pkgutil --files --only-dirs`
-        // finishing inside a 15s timeout; for receipts with very large file counts
-        // (known risk: Serum's presets receipt carries 10k+ files) that enumeration can
-        // time out and return nothing, even though the plugin files are genuinely on
-        // disk and were already correctly detected by the filesystem diff above. Without
-        // this merge, a timeout silently produced an empty installedFiles list, so the
-        // install succeeded but never appeared in the Library.
-        //
-        // changedPaths itself (not evidenceMap) is the right source here: diff()'s own
-        // contract is "paths installed during this session" — that covers both deep
-        // locations (ctime/mtime-advanced) AND shallow locations (new top-level items,
-        // e.g. Avid/Audio/Plug-Ins — see FilesystemSnapshot's shallowLocations). evidenceMap
-        // only classifies .deep paths (classifyPath checks after.deep[path]), so a shallow
-        // new item is always .bomOnly there regardless of how genuinely new it is — that
-        // classification answers a different question (is this BOM-declared path one the
-        // installer actually wrote, vs. pre-existing) and is correct for its own purpose,
-        // but filtering changedPaths through it here would silently drop every newly
-        // created shallow-location file (e.g. a newly-installed AAX plugin) from the
-        // Library record.
-        let diffFiles = FilesystemSnapshot.buildInstalledFiles(changedPaths: changedPaths)
-
-        var seenPaths = Set<String>()
-        var installedFiles: [InstallRecord.InstalledFile] = []
-        for file in receiptFiles + diffFiles where seenPaths.insert(file.destinationPath).inserted {
-            installedFiles.append(file)
-        }
         for f in installedFiles { await logger.log("  Installed: \(f.destinationPath)") }
 
         await progress(1.0, "")
@@ -1972,7 +1931,7 @@ struct InstallEngine {
         let escapedApp = appURL.path.replacingOccurrences(of: "'", with: "'\\''")
         let escapedPwd = password.replacingOccurrences(of: "'", with: "'\\''")
         let gatekeeperAssess = runProcess(path: "/usr/sbin/spctl",
-                                          arguments: ["--assess", "--type", "execute", appURL.path], timeout: 90)
+                                          arguments: ["--assess", "--type", "execute", appURL.path])
         if !gatekeeperAssess.success {
             await logger.log("Establishing Gatekeeper exception for \(appName)")
             let spctlAdd = runProcess(path: "/bin/bash", arguments: ["-c",
@@ -2537,27 +2496,27 @@ struct InstallEngine {
     private static func detachDMG(mountPoint: String, logger: Logger) async {
         await logger.log("Unmounting \(mountPoint)...")
         var r = runProcess(path: "/usr/bin/hdiutil",
-                          arguments: ["detach", mountPoint, "-quiet"], timeout: 90)
+                          arguments: ["detach", mountPoint, "-quiet"])
         if !r.success {
             r = runProcess(path: "/usr/bin/hdiutil",
-                          arguments: ["detach", mountPoint, "-force", "-quiet"], timeout: 90)
+                          arguments: ["detach", mountPoint, "-force", "-quiet"])
         }
         await logger.log(r.success ? "Unmounted successfully" : "Warning: could not unmount \(mountPoint)")
     }
 
     // Detaches any lingering ATLAS_* volumes left by a previous crashed session.
     static func cleanupStaleMounts() {
-        let info = runProcess(path: "/usr/bin/hdiutil", arguments: ["info"], timeout: 90)
+        let info = runProcess(path: "/usr/bin/hdiutil", arguments: ["info"])
         guard info.success else { return }
         for line in info.output.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("/Volumes/ATLAS_") else { continue }
             let mountPath = trimmed.components(separatedBy: .whitespaces).first ?? trimmed
             var r = runProcess(path: "/usr/bin/hdiutil",
-                              arguments: ["detach", mountPath, "-quiet"], timeout: 90)
+                              arguments: ["detach", mountPath, "-quiet"])
             if !r.success {
                 r = runProcess(path: "/usr/bin/hdiutil",
-                              arguments: ["detach", mountPath, "-force", "-quiet"], timeout: 90)
+                              arguments: ["detach", mountPath, "-force", "-quiet"])
             }
         }
     }
@@ -2712,115 +2671,67 @@ struct InstallEngine {
         return String(data: outputData, encoding: .utf8) ?? ""
     }
 
-    // Bounded-wait subprocess runner — synchronous (no async/await), so no
-    // caller anywhere needs to change. Mirrors the already-shipped, already-
-    // tested pattern in Engine/TitanVerify.swift's shell(_:timeout:): a
-    // terminationHandler registered before run(), a DispatchSemaphore with a
-    // bounded wait (never the unbounded process.waitUntilExit() this
-    // replaced), SIGTERM then SIGKILL escalation if the deadline passes, and
-    // output drained via readabilityHandler so a large write never deadlocks
-    // waiting for a reader. Unlike TitanVerify.shell, this does read
-    // terminationStatus — safe here because it is only ever read after the
-    // semaphore confirms the terminationHandler actually fired, the same
-    // safety property TitanVerify.shell relies on for its own callers.
-    private static func runBoundedProcess(
-        executableURL: URL,
-        arguments: [String],
-        environment: [String: String]? = nil,
-        stdinText: String? = nil,
-        timeout: TimeInterval
-    ) -> (success: Bool, output: String) {
-        let process = Process()
-        let outputPipe = Pipe()
-        process.executableURL  = executableURL
-        process.arguments      = arguments
-        if let environment { process.environment = environment }
-        process.standardOutput = outputPipe
-        process.standardError  = outputPipe
-
-        let outputLock = NSLock()
-        var outputData = Data()
-        outputPipe.fileHandleForReading.readabilityHandler = { handle in
-            let chunk = handle.availableData
-            guard !chunk.isEmpty else { return }
-            outputLock.lock(); outputData.append(chunk); outputLock.unlock()
-        }
-
-        let doneSemaphore = DispatchSemaphore(value: 0)
-        let doneLock = NSLock()
-        var alreadySignaled = false
-        process.terminationHandler = { _ in
-            doneLock.lock()
-            if !alreadySignaled { alreadySignaled = true; doneSemaphore.signal() }
-            doneLock.unlock()
-        }
-
-        var inputPipe: Pipe?
-        if stdinText != nil {
-            let p = Pipe()
-            process.standardInput = p
-            inputPipe = p
-        }
-
-        do {
-            try process.run()
-            if let stdinText, let inputPipe {
-                inputPipe.fileHandleForWriting.write((stdinText + "\n").data(using: .utf8)!)
-                inputPipe.fileHandleForWriting.closeFile()
-            }
-        } catch {
-            outputPipe.fileHandleForReading.readabilityHandler = nil
-            return (false, error.localizedDescription)
-        }
-
-        var confirmedTerminated = doneSemaphore.wait(timeout: .now() + timeout) == .success
-        if !confirmedTerminated {
-            process.terminate()                                       // SIGTERM
-            if doneSemaphore.wait(timeout: .now() + 2) == .success {
-                confirmedTerminated = true
-            } else {
-                kill(process.processIdentifier, SIGKILL)               // escalate
-                confirmedTerminated = doneSemaphore.wait(timeout: .now() + 1) == .success
-            }
-        }
-
-        outputPipe.fileHandleForReading.readabilityHandler = nil
-        outputLock.lock()
-        let trailing = outputPipe.fileHandleForReading.availableData   // non-blocking
-        if !trailing.isEmpty { outputData.append(trailing) }
-        let out = String(data: outputData, encoding: .utf8) ?? ""
-        outputLock.unlock()
-
-        guard confirmedTerminated else { return (false, out) }
-        return (process.terminationStatus == 0, out)
-    }
-
     // Run a shell script with extra environment variables and optional admin password
     static func runShellWithEnv(
         _ script: String,
         env: [String: String],
-        adminPassword: String,
-        timeout: TimeInterval = 30
+        adminPassword: String
     ) -> (success: Bool, output: String) {
+        let process = Process()
+        let pipe = Pipe()
         var environment = ProcessInfo.processInfo.environment
         for (k, v) in env { environment[k] = v }
-        return runBoundedProcess(
-            executableURL: URL(fileURLWithPath: "/bin/bash"),
-            arguments: ["-c", script],
-            environment: environment,
-            stdinText: adminPassword.isEmpty ? nil : adminPassword,
-            timeout: timeout
-        )
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = ["-c", script]
+        process.environment = environment
+        process.standardOutput = pipe
+        process.standardError = pipe
+        if !adminPassword.isEmpty {
+            let inputPipe = Pipe()
+            process.standardInput = inputPipe
+            do {
+                try process.run()
+                inputPipe.fileHandleForWriting.write((adminPassword + "\n").data(using: .utf8)!)
+                inputPipe.fileHandleForWriting.closeFile()
+            } catch {
+                return (false, error.localizedDescription)
+            }
+        } else {
+            do { try process.run() } catch { return (false, error.localizedDescription) }
+        }
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return (process.terminationStatus == 0, String(data: data, encoding: .utf8) ?? "")
     }
 
     static func runProcess(
-        path: String, arguments: [String], timeout: TimeInterval = 30
+        path: String, arguments: [String]
     ) -> (success: Bool, output: String) {
-        runBoundedProcess(
-            executableURL: URL(fileURLWithPath: path),
-            arguments: arguments,
-            timeout: timeout
-        )
+        let process = Process()
+        let pipe    = Pipe()
+        process.executableURL  = URL(fileURLWithPath: path)
+        process.arguments      = arguments
+        process.standardOutput = pipe
+        process.standardError  = pipe
+
+        // Drain the pipe on a background thread before waitUntilExit(). If the
+        // subprocess writes more than the macOS pipe buffer (~64 KB) and we read
+        // only after waitUntilExit(), the write side blocks and we deadlock.
+        var outputData = Data()
+        let sema = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .utility).async {
+            outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            sema.signal()
+        }
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return (false, error.localizedDescription)
+        }
+        _ = sema.wait(timeout: .now() + 30)
+        return (process.terminationStatus == 0, String(data: outputData, encoding: .utf8) ?? "")
     }
 
     // MARK: - Library snapshot helpers
@@ -2848,16 +2759,6 @@ struct InstallEngine {
             "/Library/Preferences",
             home + "/Library/Caches",
             "/Users/Shared",
-            // Top-level only (never passed to watchesOneLevelDeeper — see its
-            // own gate below) — catches an installer script relocating its
-            // own payload to a brand-new top-level folder outside any of the
-            // watched locations above (e.g. a postinstall script that rsyncs
-            // its content to ~/Library/<Product>/ and deletes the original
-            // PKG payload location, leaving the PKG receipt pointing at files
-            // that no longer exist). Confirmed real-world case: TUFF NERDS
-            // LEADR's postinstall script does exactly this.
-            home + "/Library",
-            "/Library",
         ]
         var snapshot: [String: Set<String>] = [:]
         let fm = FileManager.default
@@ -2911,9 +2812,6 @@ struct InstallEngine {
             "/Library/Preferences",
             home + "/Library/Caches",
             "/Users/Shared",
-            // Top-level only — see matching comment in snapshotLibraryTopLevel().
-            home + "/Library",
-            "/Library",
         ]
         for dir in allDirs {
             let prior = before[dir] ?? []

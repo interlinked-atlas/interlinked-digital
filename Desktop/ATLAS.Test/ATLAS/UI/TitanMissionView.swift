@@ -8,15 +8,6 @@ struct TitanMissionView: View {
     let adminPassword: String
     let onDone: () -> Void
     let onCancel: () -> Void
-    // Fired once, the instant mission.isComplete flips true — independent of
-    // the Done button. Must live here (not on the caller's view) because only
-    // this view holds @ObservedObject var mission: a plain @State reference to
-    // a TitanMission held one level up (in ContentView) does not itself cause
-    // that ancestor view's body to re-run when mission's @Published properties
-    // change, so an .onChange attached up there never re-evaluates and never
-    // fires. This view's own @ObservedObject subscription is what makes the
-    // change observable at all.
-    var onAutoSave: () -> Void = {}
 
     @State private var hasStarted = false
     @State private var showDetails = false
@@ -68,8 +59,6 @@ struct TitanMissionView: View {
             VStack(spacing: 16) {
 
                 // Product name
-                // (onAutoSave wiring is on the outer VStack below, where the
-                // @ObservedObject subscription keeps it reactive)
                 Text(fileName)
                     .font(.atlasFont(size: 15, weight: .semibold))
                     .foregroundColor(Color(hex: "#C8D0F0"))
@@ -144,13 +133,7 @@ struct TitanMissionView: View {
 
                     Button("Begin Install") {
                         hasStarted = true
-                        // Re-fetch rather than trust the `adminPassword` property passed in
-                        // at this view's construction — that value is captured once and can
-                        // go stale if a password gets saved/changed in Settings after this
-                        // view was built but before Begin Install is actually tapped.
-                        // Falls back to the passed-in value only if Keychain is somehow
-                        // unreadable here, never silently worse than before this change.
-                        let pw = KeychainManager.loadPassword() ?? adminPassword
+                        let pw = adminPassword
                         Task {
                             // mission.execute() now performs its own atomic
                             // install-limit reservation internally (see
@@ -161,12 +144,6 @@ struct TitanMissionView: View {
                             if mission.limitReached {
                                 await MainActor.run { hasStarted = false }
                             }
-                            // Direct, sequential save — guaranteed to run once execute()
-                            // returns, independent of view lifecycle or SwiftUI
-                            // re-rendering (this Task is not cancelled if the view is
-                            // dismissed). The .onChange below remains as a redundant,
-                            // idempotency-guarded safety net.
-                            onAutoSave()
                         }
                     }
                     .font(.atlasFont(size: 13, weight: .semibold))
@@ -252,9 +229,6 @@ struct TitanMissionView: View {
                 }
             }
             .background(Color.atlasDeepBG)
-        }
-        .onChange(of: mission.isComplete) { completed in
-            if completed { onAutoSave() }
         }
     }
 

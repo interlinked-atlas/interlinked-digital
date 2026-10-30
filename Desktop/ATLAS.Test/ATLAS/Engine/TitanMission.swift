@@ -79,20 +79,6 @@ final class TitanMission: ObservableObject {
     /// reservation was denied (device already at 25 confirmed+active this period).
     @Published var limitReached = false
 
-    // Set by cancel() — checked between steps in execute()'s loop. This only stops
-    // steps that haven't started yet; it cannot interrupt a step's subprocess that
-    // is already running (e.g. installer mid-flight), since the per-step executors
-    // (runPkg, runScript, etc.) have no kill-switch of their own. The user-visible
-    // effect this fixes: previously, tapping Cancel only hid the UI — the mission's
-    // Task kept executing every remaining step in the background regardless, so a
-    // "cancelled" install actually still fully installed, silently, with no
-    // indication to the user it ever happened.
-    private(set) var cancellationRequested = false
-
-    func cancel() {
-        cancellationRequested = true
-    }
-
     // Source context
     let mountPoint: String
     let sourceURL: URL
@@ -426,31 +412,8 @@ final class TitanMission: ObservableObject {
 
     // MARK: - Execute all steps
 
-    // onStep: optional progress-reporting hook, called once per step after
-    // its real outcome is known (never before, never fabricated). Added so a
-    // caller can bridge this mission's progress into AppState/Logger and
-    // render it through StandardInstallProgressView — nothing about this
-    // loop's own step ordering, authorization, or success/failure logic is
-    // changed by adding this call.
-    func execute(adminPassword: String, onStep: ((Double, String) -> Void)? = nil) async {
+    func execute(adminPassword: String) async {
         guard !steps.isEmpty else { return }
-
-        // An empty password here previously fell through silently: runPkg (and the
-        // other step executors) build their sudo prefix as `adminPassword.isEmpty
-        // ? "" : "echo '...' | sudo -S "` — so an empty password doesn't fail loudly,
-        // it just runs the installer with NO elevation at all, which then hits
-        // installer's own blocked interactive-auth prompt and surfaces as a bare,
-        // meaningless "Password:" with no explanation. Failing here, once, with a
-        // clear reason, replaces that confusing per-step failure for every step type
-        // that needs a password (installPkg, runScript, runBinary, editHosts,
-        // shellCommand, installZIP, installLicenseAsset, copyFile).
-        guard !adminPassword.isEmpty else {
-            steps[0].status = .failed
-            steps[0].resultNote = "No admin password available — open Settings, re-enter your Mac password, then try again."
-            isComplete = true
-            MenuBarStatusManager.shared.menuStatus = .idle
-            return
-        }
 
         // Server-authoritative install-limit gate — atomic reserve. The current
         // architecture has no authoritative way to distinguish independent
@@ -479,12 +442,6 @@ final class TitanMission: ObservableObject {
         let libSnapshot = InstallEngine.snapshotLibraryTopLevel()
 
         for i in steps.indices {
-            if cancellationRequested {
-                for j in i..<steps.count { steps[j].status = .skipped }
-                currentNote = "Cancelled"
-                break
-            }
-
             // Capture step for execution (avoid passing inout to async)
             let step = steps[i]
             steps[i].status = .running
@@ -517,25 +474,17 @@ final class TitanMission: ObservableObject {
                     for j in (i + 1)..<steps.count {
                         steps[j].status = .skipped
                     }
-                    // Report this step's real (failed) outcome before breaking —
-                    // the caller must see the failure, not silence.
-                    onStep?(Double(i + 1) / Double(steps.count), "Failed: \(step.title)")
                     break
                 } else {
                     // Non-critical failure — warn but continue
                     steps[i].status = .warning
                 }
             }
-
-            onStep?(Double(i + 1) / Double(steps.count), step.title)
         }
 
         // Record runtime-created paths only when the mission succeeded.
         // A failed install should not leave ownership claims on the filesystem.
-        // A cancellation counts as not-succeeded too — otherwise the loop's
-        // cancellation break (no step ever reaches .failed) would let a
-        // cancelled mission confirm its reservation as a success below.
-        let didFail = cancellationRequested || steps.contains(where: { $0.status == .failed })
+        let didFail = steps.contains(where: { $0.status == .failed })
         runtimeCreatedPaths = didFail ? [] : InstallEngine.diffLibraryTopLevel(before: libSnapshot)
 
         // Confirm the mission-level reservation on overall success, release on
