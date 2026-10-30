@@ -565,7 +565,19 @@ struct InstallEngine {
             return (.unsupportedDAWInstallation(dawName: dawName), [], [], false)
         }
 
-        if hasDragTarget && noPKG && topLevelApps.count == 1 {
+        // A DMG can have the exact "Applications symlink + one top-level .app" shape
+        // without actually being a drag-to-install product — some installers (NI-style
+        // custom installers among them) ship as a single standalone .app that must be
+        // LAUNCHED to run its own setup wizard, not copied straight into /Applications.
+        // Without this check, that installer app silently lands in /Applications having
+        // never been run — no password filled, no wizard clicked through, no error either,
+        // since the copy itself succeeds. isManagerApp's keyword check (installer/setup/
+        // wizard/etc. in the name) is the same test the full planning path already uses
+        // for exactly this distinction — applying it here closes the gap in the fast path.
+        let singleAppIsManagerApp = topLevelApps.count == 1 &&
+            InstallIntelligence.isManagerApp(url: URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0]))
+
+        if hasDragTarget && noPKG && topLevelApps.count == 1 && !singleAppIsManagerApp {
             let appURL  = URL(fileURLWithPath: mountPoint).appendingPathComponent(topLevelApps[0])
             let appName = appURL.lastPathComponent
             await logger.log("Drag-to-install DMG: copying \(appName) to /Applications")
