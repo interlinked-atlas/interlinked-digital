@@ -1831,13 +1831,29 @@ struct InstallEngine {
     //   5. Default → try user context first, fall back to root if it fails
     private static func prefersRootExecution(appURL: URL, exec: URL) -> Bool {
         // Signal 1: installbuilder.sh
-        if exec.lastPathComponent == "installbuilder.sh" { return true }
+        if exec.lastPathComponent == "installbuilder.sh" {
+            NSLog("[ATLAS-PATCH-AUTH] \(exec.lastPathComponent): root (installbuilder.sh)")
+            return true
+        }
 
-        // Signals 2 & 3: GUI app detection
+        // Signals 2 & 3: GUI app detection.
+        // Previously returned false here (user-context + pre-authorized cache), on the
+        // assumption a failed user-context attempt fails FAST so runPatchApp's existing
+        // "retry as root" fallback kicks in. That assumption breaks for installers whose
+        // own Authorization Services dialog blocks indefinitely waiting for a human to
+        // click it (confirmed case: Massive XL's InstallBuilder-style wizard) — the
+        // process never exits, so the fallback never triggers; ATLAS just sits there.
+        // runPatchApp already always appends --mode unattended regardless of this
+        // decision, so there is no real unattended-execution reason left to prefer user
+        // context for a GUI app specifically — root (the same sudo -S mechanism already
+        // reliable for every .pkg install) avoids the hang entirely.
         let infoPlist = appURL.appendingPathComponent("Contents/Info.plist")
         if let dict = NSDictionary(contentsOf: infoPlist),
            let pc = dict["NSPrincipalClass"] as? String,
-           pc.contains("Application") { return false }
+           pc.contains("Application") {
+            NSLog("[ATLAS-PATCH-AUTH] \(exec.lastPathComponent): root (GUI app, NSPrincipalClass)")
+            return true
+        }
 
         let macosDir = appURL.appendingPathComponent("Contents/MacOS")
         let candidates = (try? FileManager.default.contentsOfDirectory(
@@ -1845,15 +1861,21 @@ struct InstallEngine {
         for binary in candidates where binary.pathExtension.isEmpty {
             let otool = runProcess(path: "/usr/bin/otool", arguments: ["-L", binary.path])
             if otool.output.contains("/System/Library/Frameworks/AppKit.framework") {
-                return false  // GUI app — user context with pre-authorized cache
+                NSLog("[ATLAS-PATCH-AUTH] \(exec.lastPathComponent): root (GUI app, links AppKit)")
+                return true
             }
         }
 
         // Signal 4: unsigned AuthServices caller
-        if assessUnsignedAuthServicesUsage(in: macosDir) { return true }
+        if assessUnsignedAuthServicesUsage(in: macosDir) {
+            NSLog("[ATLAS-PATCH-AUTH] \(exec.lastPathComponent): root (unsigned AuthServices caller)")
+            return true
+        }
 
-        // Default: try user context first (runPatchApp will fall back to root if needed)
-        return false
+        // Default: root. Same reasoning as above — nothing here actually needs a real
+        // interactive user session, since --mode unattended is always passed either way.
+        NSLog("[ATLAS-PATCH-AUTH] \(exec.lastPathComponent): root (default)")
+        return true
     }
 
     // Scans Contents/MacOS for any Mach-O binary that is (a) unsigned and
