@@ -412,8 +412,31 @@ final class TitanMission: ObservableObject {
 
     // MARK: - Execute all steps
 
-    func execute(adminPassword: String) async {
+    // onStep: optional progress-reporting hook, called once per step after
+    // its real outcome is known (never before, never fabricated). Added so a
+    // caller can bridge this mission's progress into AppState/Logger and
+    // render it through StandardInstallProgressView — nothing about this
+    // loop's own step ordering, authorization, or success/failure logic is
+    // changed by adding this call.
+    func execute(adminPassword: String, onStep: ((Double, String) -> Void)? = nil) async {
         guard !steps.isEmpty else { return }
+
+        // An empty password here previously fell through silently: runPkg (and the
+        // other step executors) build their sudo prefix as `adminPassword.isEmpty
+        // ? "" : "echo '...' | sudo -S "` — so an empty password doesn't fail loudly,
+        // it just runs the installer with NO elevation at all, which then hits
+        // installer's own blocked interactive-auth prompt and surfaces as a bare,
+        // meaningless "Password:" with no explanation. Failing here, once, with a
+        // clear reason, replaces that confusing per-step failure for every step type
+        // that needs a password (installPkg, runScript, runBinary, editHosts,
+        // shellCommand, installZIP, installLicenseAsset, copyFile).
+        guard !adminPassword.isEmpty else {
+            steps[0].status = .failed
+            steps[0].resultNote = "No admin password available — open Settings, re-enter your Mac password, then try again."
+            isComplete = true
+            MenuBarStatusManager.shared.menuStatus = .idle
+            return
+        }
 
         // Server-authoritative install-limit gate — atomic reserve. The current
         // architecture has no authoritative way to distinguish independent
@@ -474,12 +497,17 @@ final class TitanMission: ObservableObject {
                     for j in (i + 1)..<steps.count {
                         steps[j].status = .skipped
                     }
+                    // Report this step's real (failed) outcome before breaking —
+                    // the caller must see the failure, not silence.
+                    onStep?(Double(i + 1) / Double(steps.count), "Failed: \(step.title)")
                     break
                 } else {
                     // Non-critical failure — warn but continue
                     steps[i].status = .warning
                 }
             }
+
+            onStep?(Double(i + 1) / Double(steps.count), step.title)
         }
 
         // Record runtime-created paths only when the mission succeeded.
