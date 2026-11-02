@@ -6,10 +6,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Display offset — only you and I know this
-const DISPLAY_OFFSET = 1000
-const DAILY_INCREMENT = 4
-const START_DATE = new Date('2026-07-12T00:00:00Z')
+// Display offset — frozen as of 2026-11-02. No longer auto-increments;
+// only real atlas_waitlist signups move this number from here on.
+const FROZEN_OFFSET = 1452
 
 export async function GET() {
   const { count } = await supabase
@@ -17,8 +16,7 @@ export async function GET() {
     .select('*', { count: 'exact', head: true })
 
   const real = count ?? 0
-  const daysSinceStart = Math.floor((Date.now() - START_DATE.getTime()) / 86_400_000)
-  const display = real + DISPLAY_OFFSET + (daysSinceStart * DAILY_INCREMENT)
+  const display = real + FROZEN_OFFSET
 
   return NextResponse.json({ count: display })
 }
