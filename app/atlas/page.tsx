@@ -1302,10 +1302,10 @@ export default function ATLASWaitlistPage() {
                 </div>
               </div>
 
-              <p className="eyebrow">Coming October</p>
+              <p className="eyebrow">Coming November</p>
               <h1 className="heading">ATLAS for macOS.</h1>
               <p className="subtext">
-                ATLAS for macOS will be available this October. Join the waitlist — you'll be among the first to know when it launches.
+                ATLAS for macOS will be available November 12th. Join the waitlist — you'll be among the first to know when it launches.
               </p>
 
               <div className="divider" />

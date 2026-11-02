@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch'
 
 interface SendOptions {
   to: string
@@ -64,6 +64,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'oct31-launch': {
       subject: 'ATLAS is here — October 31st.',
       html: oct31LaunchEmail(),
+    },
+    'nov12-launch': {
+      subject: 'ATLAS — New Launch Date: November 12th',
+      html: nov12LaunchEmail(),
     },
   }
 
@@ -563,6 +567,54 @@ function oct31LaunchEmail() {
         'Built-in virus scanner &amp; ATLAS CLEANER™',
         'One flat plan — $30/month, everything included',
       ], TEAL)}
+
+      ${divider()}
+
+      <!-- Secondary: Windows teaser -->
+      <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;letter-spacing:-0.01em;">Windows Version of ATLAS Coming Soon.</p>
+      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">Stay tuned for more updates.</p>
+
+      ${divider()}
+
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+      </p>
+    </div>
+  `)
+}
+
+function nov12LaunchEmail() {
+  return base('ATLAS — New Launch Date: November 12th', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Updated Release Date')}
+
+      <!-- macOS badge -->
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+        <tr>
+          <td valign="middle" style="padding-right:8px;">
+            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
+          </td>
+          <td valign="middle">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
+          </td>
+        </tr>
+      </table>
+
+      ${heading('A quick update on launch.')}
+      <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
+        We're moving the ATLAS launch to <strong style="color:${WHITE};font-weight:600;">November 12th</strong>.
+      </p>
+      <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
+        We ran into a few last-minute things we wanted to get right before putting ATLAS in your hands — rather than rush them out the door, we're taking the extra time to make sure version 1 launches the way it should.
+      </p>
+      <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
+        The response to ATLAS has been incredible, and the anticipation for this release is higher than we expected — which is exactly why we want to get it right. Thank you for your patience. You're on the waitlist, so you'll be the first to know the moment it's live.
+      </p>
+
+      ${tealBtn('Learn More', 'https://www.interlinked.digital/atlas')}
 
       ${divider()}
 
