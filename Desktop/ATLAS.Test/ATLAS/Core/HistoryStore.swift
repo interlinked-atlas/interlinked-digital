@@ -165,7 +165,31 @@ class HistoryStore: ObservableObject {
             }
         } catch {
             print("[ATLAS] Could not load history: \(error)")
+            // Preserve the original unreadable file rather than silently
+            // destroying it — the very next save() call would otherwise
+            // overwrite it with an empty array, permanently losing whatever
+            // was actually in it (e.g. a future incompatible schema change,
+            // or ordinary corruption). The app still starts cleanly with an
+            // empty in-memory history either way.
+            Self.preserveUnreadableFile(storeURL, label: "history")
             records = []
+        }
+    }
+
+    // Renames an unreadable JSON file aside with a timestamp so it is never
+    // silently destroyed by a later save() call. Never overwrites an
+    // existing preserved-aside file from an earlier failure.
+    private static func preserveUnreadableFile(_ url: URL, label: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = formatter.string(from: Date())
+        let preservedURL = url.deletingLastPathComponent()
+            .appendingPathComponent("\(label)-unreadable-\(timestamp).json")
+        do {
+            try FileManager.default.moveItem(at: url, to: preservedURL)
+            print("[ATLAS] Preserved unreadable \(label) file at \(preservedURL.lastPathComponent)")
+        } catch {
+            print("[ATLAS] Could not preserve unreadable \(label) file: \(error)")
         }
     }
 
@@ -185,6 +209,7 @@ class HistoryStore: ObservableObject {
             archivedRecords = try JSONDecoder().decode([InstallRecord].self, from: data)
         } catch {
             print("[ATLAS] Could not load archive: \(error)")
+            Self.preserveUnreadableFile(archiveURL, label: "archived")
             archivedRecords = []
         }
     }

@@ -1064,6 +1064,29 @@ struct InstallIntelligence {
             if managerKeywords.contains(where: { bid.contains($0) }) { return true }
         }
 
+        // Check for known InstallBuilder launcher executables inside Contents/MacOS.
+        // Name/bundle-ID keyword matching above is English-only and misses any
+        // custom-named installer whose filename happens not to contain a recognized
+        // word (confirmed concretely: an app named e.g. "SampleContentDeluxe.app"
+        // with bundle ID "com.vendor.SampleContentDeluxe" matches none of the
+        // keywords above and would otherwise be silently copied to /Applications by
+        // installFromMountPoint's drag-to-install fast path, never launched or
+        // automated). These exact filenames are the same signatures
+        // TitanMission.runAppBundle's Strategy 1 already looks for
+        // (installBuilderPriority) and Strategy 2 already excludes (ibNames) — this
+        // reuses that established, narrow signature set rather than inventing a new
+        // one, and only reads a directory listing (no execution, no content
+        // inspection, no recursion beyond this one known location).
+        let installBuilderExecutableNames: Set<String> = [
+            "installbuilder.sh", "osx-arm64", "osx-x86_64", "osx-x86", "installbuilder"
+        ]
+        let macosDir = url.appendingPathComponent("Contents/MacOS")
+        if let contents = try? FileManager.default.contentsOfDirectory(atPath: macosDir.path) {
+            if contents.contains(where: { installBuilderExecutableNames.contains($0.lowercased()) }) {
+                return true
+            }
+        }
+
         return false
     }
 

@@ -1,0 +1,112 @@
+END-USER LICENSE AGREEMENT FOR ATLAS
+
+ATLAS by InterLinked® Developed and published by Titan Installation Service LLC
+Version 1.0
+
+This End-User License Agreement ("EULA") is a legal agreement between you, whether an individual or a legal entity ("User"), and Titan Installation Service LLC ("Licensor"), governing your installation and use of the ATLAS software application, branded as ATLAS by InterLinked®, including its associated software components, documentation, updates, and related materials (collectively, the "Product").
+By downloading, installing, copying, or using ATLAS, you acknowledge that you have read and understood this EULA and agree to be bound by its terms. If you do not agree to these terms, you must discontinue use of the Product and remove all copies from your devices, subject to any rights or obligations under applicable law.
+
+1 COPYRIGHT AND INTELLECTUAL PROPERTY NOTICE
+Unless otherwise expressly stated, ATLAS, including its software code, architecture, design, graphical user interface, visual assets, documentation, branding, and associated materials, is owned by Titan Installation Service LLC or is used under appropriate authorization.
+The ATLAS name and InterLinked® branding, together with associated logos, marks, and other distinctive elements, may not be reproduced or used in a manner that implies authorization, affiliation, or endorsement without the prior written permission of the applicable rights holder.
+All applicable copyrights, trademarks, and other intellectual property rights remain with their respective owners. No ownership rights are transferred to the User by this EULA.
+Except as expressly permitted by this EULA or applicable law, the unauthorized reproduction, extraction, modification, distribution, publication, or commercial exploitation of the Product or its protected elements is prohibited.
+    
+2 GRANT OF LICENSE
+Subject to compliance with this EULA, Titan Installation Service LLC grants the User a limited, non-exclusive, non-transferable license to install and use ATLAS on compatible Apple macOS devices owned or controlled by the User, in accordance with the licensing terms applicable to the version acquired.
+The license does not transfer ownership of ATLAS or any associated intellectual property to the User.
+The User may not sell, sublicense, rent, lease, lend, redistribute, or commercially exploit the Product or any substantial portion thereof without prior written authorization from Titan Installation Service LLC, except where expressly permitted by applicable law.
+All rights not expressly granted under this EULA are reserved by Titan Installation Service LLC and the respective owners of any third-party components.
+    
+3 RESTRICTIONS ON USE
+The User agrees not to:
+a. Copy, reproduce, distribute, publish, or commercially exploit the Product except as expressly authorized by the Licensor.
+b. Modify, adapt, translate, merge, or create derivative works of the Product without prior written permission, except where such restrictions are prohibited by applicable law.
+c. Reverse engineer, decompile, disassemble, or otherwise attempt to derive the source code of the Product, except to the extent expressly permitted by applicable law.
+d. Remove, alter, or obscure copyright notices, trademarks, license notices, or other proprietary information included in the Product.
+e. Circumvent or interfere with license verification, security mechanisms, or technical restrictions implemented in the Product.
+f. Use the Product for any unlawful purpose or in violation of applicable laws or regulations.
+g. Redistribute, sublicense, or resell any part of the Product without prior written authorization.
+Nothing in this section restricts rights that cannot lawfully be restricted under applicable law.
+   
+4 THIRD-PARTY COMPONENTS
+The Product may contain or rely on third-party libraries, frameworks, software components, or services.
+Such components may be governed by separate license agreements or notices. Where applicable, the relevant third-party terms will govern the use of those components.
+The Licensor does not claim ownership of third-party materials that belong to their respective rights holders.
+The inclusion of third-party components does not transfer ownership of those components to the User, nor does it grant rights beyond those provided under their applicable licenses.
+    
+5 EVALUATION AND DEMONSTRATION VERSIONS
+If the Licensor makes an evaluation, trial, or demonstration version of ATLAS available, the User may use that version solely for the evaluation purposes and duration specified by the Licensor.
+Unless expressly authorized by the applicable license terms, evaluation versions may not be used for commercial purposes, redistributed for payment, or used to circumvent purchasing or licensing requirements.
+Evaluation versions may have limited functionality, usage restrictions, or expiration dates.
+The Licensor makes no commitment that an evaluation version will be converted into a paid or unrestricted version or that continued access will be available.
+This section applies only if an evaluation or demonstration version of ATLAS is offered.
+    
+6 UPDATES AND SUPPORT
+The Licensor may, at its discretion, provide updates, upgrades, patches, maintenance releases, or additional features for ATLAS.
+Unless otherwise stated in a separate agreement or required by applicable law, the Licensor is not obligated to provide updates, technical support, maintenance, or future versions of the Product.
+Updates may include changes to features, functionality, system requirements, or compatibility with macOS and other software.
+The Licensor may discontinue support for particular versions of the Product where legally permitted.
+    
+7 LIMITED WARRANTIES
+To the extent expressly stated by the Licensor in the applicable product description or a separate written agreement, the Product will substantially conform to that description.
+The Licensor does not guarantee that ATLAS will operate without interruption, defects, or errors, or that it will be compatible with every macOS version, hardware configuration, or third-party application.
+
+The User acknowledges that software may contain defects and that updates or changes to operating systems and third-party components may affect the Product's operation.
+Where the Product fails to meet an express warranty provided by the Licensor, the Licensor may, subject to applicable law and at its discretion where legally permitted, attempt to repair or correct the issue, provide a replacement or corrected version, or offer another remedy required by law or agreed in writing.
+
+Any warranty or remedy under this section does not apply to problems caused by unauthorized modifications, misuse, operation outside the Product's documented requirements, or third-party systems beyond the Licensor's reasonable control, except where applicable law provides otherwise.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE PRODUCT IS PROVIDED "AS IS" AND "AS AVAILABLE," EXCEPT FOR ANY EXPRESS WARRANTIES THAT THE LICENSOR HAS PROVIDED AND ANY WARRANTIES THAT CANNOT LAWFULLY BE EXCLUDED.
+THE LICENSOR DISCLAIMS IMPLIED WARRANTIES, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT, TO THE EXTENT SUCH DISCLAIMERS ARE PERMITTED BY APPLICABLE LAW.
+    
+8 LIMITATION OF LIABILITY
+Nothing in this EULA excludes or limits liability for death or personal injury caused by negligence, fraud or fraudulent misrepresentation, intentional misconduct, or any other liability that cannot lawfully be excluded or limited.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR SHALL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES, INCLUDING LOSS OF PROFITS, LOSS OF REVENUE, LOSS OF BUSINESS OPPORTUNITIES, LOSS OR CORRUPTION OF DATA, BUSINESS INTERRUPTION, OR LOSS OF GOODWILL ARISING FROM OR RELATED TO THE USE OF, OR INABILITY TO USE, ATLAS.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR'S TOTAL AGGREGATE LIABILITY FOR CLAIMS ARISING OUT OF OR RELATING TO THE PRODUCT OR THIS EULA SHALL NOT EXCEED THE AMOUNT PAID BY THE USER SPECIFICALLY FOR ATLAS DURING THE TWELVE (12) MONTHS PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
+IF ATLAS IS PROVIDED FREE OF CHARGE, THE FOREGOING MONETARY LIMIT SHALL APPLY AS ZERO ONLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+The User is responsible for maintaining appropriate backups of important data and for determining whether ATLAS is suitable for the User's intended purpose.
+The Licensor is not responsible for failures, damage, or data loss attributable to third-party software, hardware, operating systems, or services outside its reasonable control, except to the extent such liability cannot lawfully be excluded.
+    
+9 USER RESPONSIBILITIES
+The User is responsible for ensuring that the installation and use of ATLAS comply with applicable laws and regulations.
+The User must have the necessary rights and permissions for any data, files, or other materials used in connection with the Product.
+The User is responsible for maintaining the security of their devices, protecting relevant credentials, and taking reasonable precautions to prevent data loss.
+The User must not use ATLAS in a manner that infringes the rights of the Licensor or any third party.
+    
+10 PRIVACY AND DATA HANDLING
+The handling of personal information in connection with ATLAS, if any, will depend on the Product's actual functionality and configuration.
+Where the Product collects, stores, or transmits personal information, the applicable privacy policy and relevant legal requirements will govern that processing.
+The Licensor will not be deemed to collect or transmit personal information merely because this EULA permits the use of ATLAS.
+The User should consult the applicable privacy policy or product documentation for information about any data processing features that ATLAS actually provides.
+    
+11 TERMINATION
+This EULA remains effective until terminated.
+The User may terminate this EULA at any time by discontinuing use of ATLAS and removing the Product from the User's devices, subject to applicable retention requirements.
+If the User materially breaches this EULA, the Licensor may terminate the license in accordance with applicable law and any applicable notice or cure requirements.
+Upon termination, the User must discontinue all use of the Product and remove copies that the User is no longer entitled to retain.
+Termination does not affect rights, obligations, or remedies that accrued before termination. Provisions that by their nature are intended to survive termination will remain effective to the extent permitted by applicable law.
+    
+12 EXPORT AND LEGAL COMPLIANCE
+The User agrees to comply with applicable export control, sanctions, and other laws governing the use, transfer, or distribution of software.
+The User may not use or transfer ATLAS in violation of applicable legal restrictions.
+    
+13 APPLICABLE LAW
+This EULA shall be governed by the laws of the jurisdiction in which the Licensor is legally established, without regard to conflict-of-law principles, except where applicable law requires otherwise.
+Any dispute arising from or relating to this EULA shall be subject to the jurisdiction of the competent courts, subject to mandatory consumer protection laws and any non-waivable rights available under applicable law.
+    
+14 SEVERABILITY
+If any provision of this EULA is found to be invalid or unenforceable, that provision shall be modified to the minimum extent necessary to make it enforceable, where permitted by law. If modification is not possible, the provision shall be severed, and the remaining provisions shall remain in effect.
+    
+15 AMENDMENTS
+The Licensor may publish revised versions of this EULA for future releases of ATLAS.
+Any changes to the terms governing an existing license will be handled in accordance with applicable law. Where required, the Licensor will provide notice or obtain the User's consent.
+    
+16 ENTIRE AGREEMENT
+This EULA constitutes the agreement between the User and the Licensor concerning the licensed use of ATLAS, except where a separate written agreement, applicable third-party license, or mandatory legal requirement provides otherwise.
+If any additional licensing terms are supplied with a particular version or distribution of ATLAS, those terms will apply to the extent expressly stated and legally enforceable.
+    
+17 CONTACT INFORMATION
+Licensor: Titan Installation Service LLC Product: ATLAS by InterLinked® Email: interlinked.digital@gmail.com
+
+END OF END-USER LICENSE AGREEMENT

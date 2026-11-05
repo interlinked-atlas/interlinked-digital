@@ -31,7 +31,17 @@ struct FilesystemSnapshot {
         "/Library/Audio/Plug-Ins/VST",
         "/Library/Audio/Plug-Ins/AAX",
         "/Library/Audio/Plug-Ins/CLAP",
-        "/Library/Application Support/Avid",
+        // NOTE: Avid's folder is deliberately NOT here — see shallowLocations below.
+        // Unlike every other vendor directory in this list, Avid/Audio/Plug-Ins is a
+        // SHARED, cross-vendor registration path used by every AAX-format plugin from
+        // every vendor, not one vendor's private directory. Many PKG installers run a
+        // recursive chown/chmod over their install prefix during postinstall; when that
+        // touches the shared Avid tree, it advances ctime on every file underneath —
+        // including other vendors' pre-existing, unrelated AAX plugins — even though it
+        // never wrote their contents. Treating Avid as "deep" caused exactly that: one
+        // product's install/uninstall wrongly claimed ownership of a different, already-
+        // installed product's .aaxplugin and trashed it on uninstall. Shallow semantics
+        // (new top-level children only) give the correct safety property here.
         "/Library/Application Support/Native Instruments",
         "/Library/Application Support/Steinberg",
         "/Library/Application Support/iZotope",
@@ -63,7 +73,6 @@ struct FilesystemSnapshot {
         NSHomeDirectory() + "/Library/Audio/Plug-Ins/VST",
         NSHomeDirectory() + "/Library/Audio/Plug-Ins/CLAP",
         NSHomeDirectory() + "/Library/Audio/Plug-Ins/AAX",
-        NSHomeDirectory() + "/Library/Application Support/Avid",
         NSHomeDirectory() + "/Library/Application Support/Baby Audio",
         NSHomeDirectory() + "/Library/LaunchAgents",
         // User-local fonts installed by PKG postinstall scripts
@@ -80,6 +89,12 @@ struct FilesystemSnapshot {
         "/Library/Preferences",
         NSHomeDirectory() + "/Library/Application Support",
         NSHomeDirectory() + "/Library/Preferences",
+        // Avid's folder is shared across every AAX-format vendor (see the note next to
+        // the removed deepLocations entries above) — shallow semantics (new top-level
+        // items only) prevent a permissions touch on this shared tree from misattributing
+        // another vendor's pre-existing plugin to the installer that merely touched it.
+        "/Library/Application Support/Avid/Audio/Plug-Ins",
+        NSHomeDirectory() + "/Library/Application Support/Avid/Audio/Plug-Ins",
     ]
 
     // MARK: - Snapshot

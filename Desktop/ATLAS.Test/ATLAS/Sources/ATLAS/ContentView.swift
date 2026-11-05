@@ -125,7 +125,7 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            if !setupComplete && UserDefaults.standard.bool(forKey: "atlas.onboardingDone") {
+            if !setupComplete && PermissionsManager.hasCompletedOnboarding && KeychainManager.hasPassword() {
                 setupComplete = true
             }
         }
@@ -912,7 +912,17 @@ struct ContentView: View {
                 .tourAnchor("history")
 
                 if queue.isProcessing || appState.phase == .installing ||
-                   appState.phase == .processing || rollbackInProgress {
+                   appState.phase == .processing || rollbackInProgress ||
+                   activeTitanMission != nil {
+                    // activeTitanMission != nil added directly — TitanMission.swift never
+                    // touches appState at all (it's a separate class with no reference to
+                    // it), so relying solely on appState.phase == .installing to show
+                    // Cancel during a TITAN mission was fragile: if that flag wasn't held
+                    // for any reason, the button silently vanished and fell through to
+                    // "Home" instead, with no way to stop a running install at all.
+                    // activeTitanMission is guaranteed non-nil for the mission's entire
+                    // duration (set before startTitanInstall, cleared only on completion),
+                    // so this is a direct, reliable signal independent of appState's timing.
                     AtlasLabelButton(icon: "stop.circle", label: "Cancel") {
                         showCancelConfirm = true
                     }
@@ -2770,6 +2780,14 @@ struct ContentView: View {
             logger.log("⚠ Uninstall cancelled.")
             return
         } else {
+            // Stop any running TITAN mission too — cancelCurrentInstall() below only
+            // knows about the generic (non-TITAN) install engine's tracked processes.
+            // Without this, Stop did nothing at all for a TITAN mission: the install
+            // (and any GUI-wizard-driving loop it had running) kept going fully in the
+            // background with no indication anything was ever cancelled.
+            if let mission = activeTitanMission {
+                mission.cancel()
+            }
             Task {
                 let outcome = await InstallEngine.cancelCurrentInstall()
                 switch outcome {

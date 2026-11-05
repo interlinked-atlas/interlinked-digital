@@ -545,6 +545,8 @@ struct UninstallSummaryCard: View {
     let removedFiles: [String]
     let failedFiles: [String]
     let appName: String
+    var resultSuccess: Bool? = nil   // RollbackResult.success — authoritative when provided
+    var resultDetail: String? = nil  // RollbackResult.detail — shown verbatim on the nothing-attempted path
     var onDone: (() -> Void)? = nil
     var onRecover: (() -> Void)? = nil
 
@@ -552,7 +554,10 @@ struct UninstallSummaryCard: View {
     @State private var detailsExpanded  = false  // collapsed by default
     @State private var failuresExpanded = false
 
-    private var succeeded: Bool { failedFiles.isEmpty }
+    // Falls back to the old failedFiles-only inference only when resultSuccess
+    // isn't supplied, so existing call sites that don't pass it are unaffected.
+    private var succeeded: Bool { resultSuccess ?? failedFiles.isEmpty }
+    private var nothingAttempted: Bool { removedFiles.isEmpty && failedFiles.isEmpty }
 
     // Separate meaningful plugin/app files from generic support paths for display
     private var primaryFiles: [String] {
@@ -572,7 +577,8 @@ struct UninstallSummaryCard: View {
         if !primaries.isEmpty {
             return "\(URL(fileURLWithPath: primaries[0]).lastPathComponent) + \(primaries.count - 1) more removed"
         }
-        return succeeded ? "\(appName) uninstalled" : "\(appName) partially uninstalled"
+        if succeeded { return "\(appName) uninstalled" }
+        return nothingAttempted ? "\(appName) could not be uninstalled" : "\(appName) partially uninstalled"
     }
 
     var body: some View {
@@ -589,7 +595,11 @@ struct UninstallSummaryCard: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.atlasLabel)
                         .lineLimit(1)
-                    if !succeeded {
+                    if !succeeded && nothingAttempted {
+                        Text(resultDetail ?? "Nothing was removed — no owned files were found to uninstall")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#F0A030"))
+                    } else if !succeeded {
                         Text("\(failedFiles.count) item\(failedFiles.count == 1 ? "" : "s") could not be removed")
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#F0A030"))

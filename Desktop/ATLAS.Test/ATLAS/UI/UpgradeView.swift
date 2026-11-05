@@ -13,7 +13,7 @@ struct UpgradeView: View {
 
     private let featureList: [(String, String)] = [
         ("checkmark.circle.fill", "Up to 3 devices"),
-        ("checkmark.circle.fill", "25 installs / month"),
+        ("checkmark.circle.fill", "25 installs / month, per device"),
         ("checkmark.circle.fill", "Bulk queue installation"),
         ("checkmark.circle.fill", "TITAN CORE™ & Smart Storage"),
         ("checkmark.circle.fill", "Uninstall, Rollback & Recovery"),

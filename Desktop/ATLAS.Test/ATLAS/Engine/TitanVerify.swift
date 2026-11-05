@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import ApplicationServices
+import Darwin
 
 // MARK: - Result types
 
@@ -385,15 +386,22 @@ struct TitanVerify {
                                detail: "Component present (no AU keys — third-party format)")
         }
         // Retry up to 3 times with 2s delay — AU registration can lag post-install.
+        // Each attempt is bounded to 10s — auval has been observed to hang
+        // indefinitely on some Audio Units in this environment; a hang must
+        // degrade to the same non-blocking "not yet registered" outcome as a
+        // normal failure, never block the mission's save pipeline forever.
         for attempt in 1...3 {
-            let out = shell("auval -v \(shellEscape(type)) \(shellEscape(subtype)) \(shellEscape(manufacturer)) 2>&1")
+            let out = shell("auval -v \(shellEscape(type)) \(shellEscape(subtype)) \(shellEscape(manufacturer)) 2>&1",
+                             timeout: 10)
             if out.contains("PASS") || out.contains("successfully opened") {
                 return VerifyCheck(label: "AU (\(name))", passed: true, detail: "auval passed")
             }
             if attempt < 3 { try? await Task.sleep(nanoseconds: 2_000_000_000) }
         }
-        // Still failing after 3 attempts — non-blocking warning.
+        // Still failing (or timing out) after 3 attempts — non-blocking warning.
         // Files are confirmed present; AU may register on first DAW load or after activation.
+        // This is never reported as passed verification — a timeout is treated
+        // identically to any other failed auval run, not as success.
         return VerifyCheck(label: "AU (\(name))", passed: false,
                            detail: "AU not yet registered — open in your DAW to confirm activation",
                            isBlocker: false)
@@ -431,15 +439,71 @@ struct TitanVerify {
     // MARK: - Shell helper
 
     @discardableResult
-    private static func shell(_ command: String) -> String {
+    // Bounded-time shell execution. The un-timed version of this (plain
+    // `p.waitUntilExit()` with no deadline) is what let a single hung `auval`
+    // call block TITAN VERIFY — and therefore saveTitanRecordAsync's entire
+    // save pipeline (InstallLogger.writeLog, historyStore.add) — forever.
+    // A genuinely successful install sat with no durable record until that
+    // one subprocess was killed by hand.
+    //
+    // Output is drained via a readabilityHandler (not readDataToEndOfFile)
+    // so a hung child can never deadlock us by filling the pipe buffer while
+    // we're not reading. Termination is observed via terminationHandler, not
+    // by polling `.isRunning` or reading `.terminationStatus` directly — the
+    // handler only fires once Foundation's own termination bookkeeping for
+    // the process is complete, which is the only point reading that state
+    // would be safe, and this implementation never reads it at all since no
+    // caller here depends on exit codes (only on text output). On timeout,
+    // terminate() (SIGTERM) is given a short grace period, then SIGKILL is
+    // sent directly to the pid as a last resort — so a timeout can never
+    // leave the child process running in the background.
+    private static func shell(_ command: String, timeout: TimeInterval = 10) -> String {
         let p = Process()
         p.launchPath = "/bin/bash"
         p.arguments  = ["-c", command]
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError  = pipe
-        try? p.run(); p.waitUntilExit()
-        return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+        let outputLock = NSLock()
+        var outputData = Data()
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            outputLock.lock(); outputData.append(chunk); outputLock.unlock()
+        }
+
+        let doneSemaphore = DispatchSemaphore(value: 0)
+        let doneLock = NSLock()
+        var alreadySignaled = false
+        p.terminationHandler = { _ in
+            doneLock.lock()
+            if !alreadySignaled { alreadySignaled = true; doneSemaphore.signal() }
+            doneLock.unlock()
+        }
+
+        do {
+            try p.run()
+        } catch {
+            pipe.fileHandleForReading.readabilityHandler = nil
+            return ""
+        }
+
+        if doneSemaphore.wait(timeout: .now() + timeout) == .timedOut {
+            p.terminate()
+            if doneSemaphore.wait(timeout: .now() + 2) == .timedOut {
+                // SIGTERM wasn't honored in time — force-kill directly by pid.
+                // kill() on an already-exited pid is a harmless no-op (ESRCH).
+                kill(p.processIdentifier, SIGKILL)
+                _ = doneSemaphore.wait(timeout: .now() + 1)
+            }
+        }
+
+        pipe.fileHandleForReading.readabilityHandler = nil
+        outputLock.lock()
+        let result = String(data: outputData, encoding: .utf8) ?? ""
+        outputLock.unlock()
+        return result
     }
 
     private static func shellEscape(_ s: String) -> String {

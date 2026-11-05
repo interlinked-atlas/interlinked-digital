@@ -10,6 +10,7 @@ struct PermissionsSetupView: View {
     @State private var auto:     Bool = false
     @State private var checkingAuto = false
     @State private var pollTimer: Timer? = nil
+    @State private var justRechecked = false
     @State private var showRestartTip = false
 
     private var allGranted: Bool { acc && fda && auto }
@@ -66,7 +67,6 @@ struct PermissionsSetupView: View {
                         detail: "Required to auto-fill password dialogs during installation.",
                         granted: acc,
                         onGrant: {
-                            PermissionsManager.requestAccessibility()
                             PermissionsManager.openAccessibilitySettings()
                         }
                     )
@@ -99,7 +99,7 @@ struct PermissionsSetupView: View {
             // ── Bottom bar ────────────────────────────────────
             bottomBar
         }
-        .frame(minWidth: 460, minHeight: 560)
+        .frame(width: 640, height: 600)
         .background(Color.atlasPanelBG.ignoresSafeArea())
         .preferredColorScheme(appearance.override)
         .onAppear { refresh(); startPolling() }
@@ -313,25 +313,18 @@ struct PermissionsSetupView: View {
 
     var bottomBar: some View {
         HStack(spacing: 10) {
-            // Quit
-            Button("Quit") { NSApplication.shared.terminate(nil) }
-                .font(.atlasFont(size: 12))
-                .foregroundColor(Color.atlasSubtitle)
-                .padding(.horizontal, 14).padding(.vertical, 9)
-                .background(Color.atlasDeepBG)
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.atlasBorder, lineWidth: 1))
-                .buttonStyle(.plain)
-
             // Recheck
             Button {
-                refresh()
+                NSLog("[ATLAS] Recheck button tapped")
+                refresh {
+                    justRechecked = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { justRechecked = false }
+                }
             } label: {
                 HStack(spacing: 5) {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: justRechecked ? "checkmark" : "arrow.clockwise")
                         .font(.atlasFont(size: 11, weight: .semibold))
-                    Text("Recheck")
+                    Text(justRechecked ? "Checked" : "Recheck")
                         .font(.atlasFont(size: 12, weight: .medium))
                 }
                 .foregroundColor(Color.atlasSubtitle)
@@ -342,6 +335,22 @@ struct PermissionsSetupView: View {
                     .stroke(Color.atlasBorder, lineWidth: 1))
             }
             .buttonStyle(.plain)
+
+            // Skip — dismisses without requiring all permissions granted.
+            // Unlike Continue, this doesn't set hasCompletedOnboarding, so the
+            // permissions banner stays and the user can return via "Fix →" later.
+            Button("Skip") {
+                NSLog("[ATLAS] Skip button tapped")
+                onComplete()
+            }
+                .font(.atlasFont(size: 12))
+                .foregroundColor(Color.atlasSubtitle)
+                .padding(.horizontal, 14).padding(.vertical, 9)
+                .background(Color.atlasDeepBG)
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.atlasBorder, lineWidth: 1))
+                .buttonStyle(.plain)
 
             Spacer()
 
@@ -385,18 +394,24 @@ struct PermissionsSetupView: View {
 
     // MARK: - Polling & detection
 
-    private func refresh() {
+    private func refresh(completion: (() -> Void)? = nil) {
         // Sync checks
         acc = PermissionsManager.hasAccessibility
         fda = PermissionsManager.hasFullDiskAccess
 
-        // Async automation check
+        // Async automation check — completion fires only once this real check
+        // actually resolves, not immediately on tap.
         if !checkingAuto {
             checkingAuto = true
             PermissionsManager.checkAutomationPermission { granted in
                 self.auto         = granted
                 self.checkingAuto = false
+                completion?()
             }
+        } else {
+            // A check is already in flight (e.g. from the poll timer) — don't
+            // wait on it, just confirm the sync checks above already ran.
+            completion?()
         }
 
         // Show restart tip if any permission was granted but not reading yet

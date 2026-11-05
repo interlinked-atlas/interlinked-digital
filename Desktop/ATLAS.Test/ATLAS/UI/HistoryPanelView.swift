@@ -1311,7 +1311,14 @@ struct LibraryItemCard: View {
             } else {
                 exists = false
             }
-            DispatchQueue.main.async { trashFilesExist = exists }
+            DispatchQueue.main.async {
+                trashFilesExist = exists
+                if !exists,
+                   let liveRecord = store.records.first(where: { $0.id == record.id }),
+                   liveRecord.status == .uninstalled {
+                    store.remove(id: record.id)
+                }
+            }
         }
     }
 }

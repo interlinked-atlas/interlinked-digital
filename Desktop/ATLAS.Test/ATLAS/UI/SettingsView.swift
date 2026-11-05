@@ -56,6 +56,7 @@ struct SettingsView: View {
     @State private var notifPermissionDenied = false
     @State private var showTitanMemory = false
     @State private var showQuarantinedFiles = false
+    @State private var showPasswordReentry = false
     @State private var isInternalNotifUpdate = false
 
     private static let notifKey = "ATLAS.notificationsEnabled"
@@ -251,6 +252,19 @@ struct SettingsView: View {
                             }
                         }
                         .padding(.horizontal, 12).padding(.vertical, 10)
+                        Divider().background(Color.atlasSeparator).padding(.leading, 48)
+                        // Re-enter admin password — reuses the same Keychain
+                        // save path the one-time Setup Wizard uses. Previously
+                        // the only way to fix a stale/out-of-sync stored
+                        // password was a Terminal UserDefaults reset to replay
+                        // the whole wizard; this makes it directly reachable.
+                        infoRow(
+                            icon: "key.fill",
+                            iconColor: Color(hex: "#5B8DEF"),
+                            title: "Admin Password",
+                            subtitle: "Re-enter if installs or uninstalls stop working",
+                            action: { showPasswordReentry = true }
+                        )
                     }
                     .atlasCard()
                     .padding(.horizontal, 16)
@@ -390,6 +404,14 @@ struct SettingsView: View {
                         )
                         Divider().background(Color.atlasSeparator).padding(.leading, 44)
                         infoRow(
+                            icon: "arrow.triangle.2.circlepath",
+                            iconColor: Color(hex: "#3ECFB2"),
+                            title: "Check for Updates",
+                            subtitle: "Checks interlinked.digital for a newer version",
+                            action: { AppDelegate.updaterController.checkForUpdates(nil) }
+                        )
+                        Divider().background(Color.atlasSeparator).padding(.leading, 44)
+                        infoRow(
                             icon: "doc.text.fill",
                             iconColor: Color.atlasSubtitle,
                             title: L(.viewLogs),
@@ -432,6 +454,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showQuarantinedFiles) {
             QuarantinedFilesView()
+        }
+        .sheet(isPresented: $showPasswordReentry) {
+            PasswordSetupView {
+                showPasswordReentry = false
+            }
         }
         .preferredColorScheme(appearance.override)
     }

@@ -75,6 +75,14 @@ private struct PersistedQueueItem: Codable {
 class InstallQueue: ObservableObject {
     static let shared = InstallQueue()
 
+    // Maximum files accepted from a single drag-drop batch. Enforced by the
+    // drop handler (Sources/ATLAS/ContentView.swift's handleFilesDrop), not
+    // here — add(url:) itself is intentionally uncapped so the unrelated
+    // "Continue Install" pending-resume flow (a different, already
+    // self-limiting mechanism tied to the monthly install count) is
+    // unaffected.
+    static let maxQueueSize = 5
+
     @Published var items: [QueueItem] = []
     @Published var isProcessing = false
     @Published var currentIndex: Int? = nil

@@ -1,5 +1,6 @@
 import Foundation
 import os
+import Darwin
 
 struct RollbackResult {
     let success: Bool
@@ -108,20 +109,24 @@ struct RollbackEngine {
             }
         }
 
-        // Pre-flight: destination path collision check
-        // If any tracked installed file path is also in another live record, halt.
+        // Destination path collision — informational only, never a hard halt.
+        // A path can legitimately appear in two products' installedFiles (e.g. a shared
+        // bookkeeping/history file a common installer framework writes on every run,
+        // such as "installHistory.plist" — not a real ownership conflict). otherOwnedPaths
+        // (built just above) already excludes any such colliding path from this product's
+        // candidates at the point it's assembled (see the `!otherOwnedPaths.contains(path)`
+        // guard below) — the shared file is never deleted either way. Previously this
+        // pre-flight hard-aborted the ENTIRE uninstall over one shared path, blocking
+        // removal of everything this product uniquely owns. Now it only logs.
         if !record.installedFiles.isEmpty {
             let myPaths = Set(record.installedFiles.map(\.destinationPath))
             let liveOthers = otherRecords.filter { $0.id != record.id && $0.status == .success }
             for other in liveOthers {
                 let otherPaths = other.installedFiles.map(\.destinationPath)
                 if let collidingPath = myPaths.first(where: { otherPaths.contains($0) }) {
-                    let selfName  = URL(fileURLWithPath: record.fileName).deletingPathExtension().lastPathComponent
                     let otherName = URL(fileURLWithPath: other.fileName).deletingPathExtension().lastPathComponent
-                    let msg = "Cannot safely uninstall \"\(selfName)\" — destination path \"\(collidingPath)\" is also claimed by \"\(otherName)\". Resolve the conflict manually."
-                    await logger.log("⛔ \(msg)")
-                    alog.notice("[ATLAS-ROLLBACK] PRE-FLIGHT HALT — path collision: \(collidingPath, privacy: .public) shared with \(otherName, privacy: .public)")
-                    return RollbackResult(success: false, removedFiles: [], failedFiles: [], detail: msg)
+                    await logger.log("ℹ Shared path \"\(collidingPath)\" also claimed by \"\(otherName)\" — excluded from this uninstall, rest proceeds normally")
+                    alog.notice("[ATLAS-ROLLBACK] path collision (non-fatal, excluded): \(collidingPath, privacy: .public) shared with \(otherName, privacy: .public)")
                 }
             }
         }
@@ -257,22 +262,35 @@ struct RollbackEngine {
                         }
                     }
                 } else {
+                    // Receipt-enumerated files are authorized by receipt membership
+                    // itself, not by fileEvidenceMap coverage. fileEvidenceMap comes
+                    // from an install-time filesystem-diff snapshot that was never
+                    // scoped to cover a full PKG receipt's recursive file tree (e.g. a
+                    // large preset library) — requiring its coverage here caused
+                    // legitimate, uniquely-owned content to be wrongly preserved.
+                    // This remains safe because three independent checks already gate
+                    // this exact data: receiptID is confirmed to be one of this
+                    // record's own pkgReceiptIDs (the loop this branch is inside);
+                    // the pre-flight check above halts the whole uninstall if that
+                    // receipt ID collides with any other live product's receipt; and
+                    // both otherOwnedPaths and otherLiveReceiptPaths (the latter not
+                    // previously applied in this branch — added here) exclude any
+                    // path also claimed by another installed product's manifest or
+                    // live receipts. fileEvidenceMap-based evidence is unaffected —
+                    // the installedFiles branch above this one still requires it,
+                    // exactly as before.
                     var authorizedCount = 0
                     var preservedCount = 0
-                    for f in files where !otherOwnedPaths.contains(f) {
-                        let authorized = evidenceAuthorizesDeletion(
-                            path: f, fileEvidence: nil,
-                            evidenceMap: record.fileEvidenceMap, hasEvidenceModel: hasEvidenceModel)
-                        if authorized {
-                            candidates.insert(f)
-                            positivelyOwnedPaths.insert(f)
-                            authorizedCount += 1
-                        } else {
-                            preservedCount += 1
-                        }
+                    for f in files
+                    where !otherOwnedPaths.contains(f)
+                       && !otherLiveReceiptPaths.contains(f) {
+                        candidates.insert(f)
+                        positivelyOwnedPaths.insert(f)
+                        authorizedCount += 1
                     }
+                    preservedCount = files.count - authorizedCount
                     if preservedCount > 0 {
-                        await logger.log("  \(receiptID): \(authorizedCount) authorized, \(preservedCount) preserved (no exclusive ownership evidence)")
+                        await logger.log("  \(receiptID): \(authorizedCount) authorized, \(preservedCount) preserved (claimed by another installed product)")
                     }
                 }
             }
@@ -284,10 +302,17 @@ struct RollbackEngine {
         // Only paths whose filename stem exactly matches the derived product name are included.
         // This covers installers (e.g. InstallBuilder) that don't use Apple PKG receipts and
         // were installed before ATLAS began tracking individual files.
-        if record.installedFiles.isEmpty && record.pkgReceiptIDs.isEmpty && candidates.isEmpty {
+        // Also runs when installedFiles is empty but pkgReceiptIDs was non-empty and every
+        // receipt query still came back empty on THIS machine (receipts are per-machine,
+        // not synced — a record created or carried over from another device/install can
+        // have receipt IDs that pkgutil simply has nothing for locally). Deliberately NOT
+        // widened to the installedFiles-non-empty case: there, an empty candidates set can
+        // mean the evidence model correctly, intentionally preserved every file (fail-closed
+        // on shared/replaced content) — a name-based scan must never override that.
+        if record.installedFiles.isEmpty && candidates.isEmpty {
             let productName = deriveProductName(from: record.fileName)
-            alog.notice("[ATLAS-ROLLBACK] LEGACY NAME SCAN — productName=\(productName, privacy: .public)")
-            await logger.log("No tracking data found. Searching installed locations for \"\(productName)\"...")
+            alog.notice("[ATLAS-ROLLBACK] LEGACY NAME SCAN — productName=\(productName, privacy: .public) (installedFiles=\(record.installedFiles.count) pkgReceiptIDs=\(record.pkgReceiptIDs.count))")
+            await logger.log("No candidates from manifest/receipts. Searching installed locations for \"\(productName)\"...")
             let found = legacyNameScan(productName: productName)
             if found.isEmpty {
                 let msg = "No installed components found for \"\(productName)\". The software may already be uninstalled or may be installed to a non-standard location."
@@ -691,7 +716,11 @@ struct RollbackEngine {
         }
 
         let detail: String
-        if uniqueFailed.isEmpty {
+        if uniqueRemoved.isEmpty && uniqueFailed.isEmpty {
+            // Nothing was even attempted — surface exactly why so a failure here is
+            // self-diagnosing instead of requiring a separate log pull.
+            detail = "Moved 0 item(s) to Trash. (manifest: \(record.installedFiles.count) file(s), \(record.pkgReceiptIDs.count) receipt(s), \(candidates.count) candidate(s) found)"
+        } else if uniqueFailed.isEmpty {
             detail = "Moved \(uniqueRemoved.count) item(s) to Trash."
         } else if uniqueRemoved.isEmpty {
             detail = "Could not move any files to Trash."
@@ -1189,6 +1218,12 @@ struct RollbackEngine {
         var current    = Set(paths)
         var changed    = true
         var iteration  = 0
+        // Grows as directories are promoted, so a grandparent whose only
+        // remaining child is an already-collapsed subdirectory can also be
+        // promoted on a later iteration — proof of ownership propagates
+        // upward instead of stalling after one directory level. Starts as a
+        // copy of the caller's set; never removes anything from it.
+        var provenOwned = positivelyOwned
 
         while changed {
             changed = false
@@ -1215,16 +1250,26 @@ struct RollbackEngine {
                 let allItems   = (try? FileManager.default.contentsOfDirectory(atPath: parent)) ?? []
                 let directItems = allItems.filter { !fsMetadata.contains($0) }
                 // Ownership invariant: every real item in the directory must be positively owned.
-                // Count-matching alone is not sufficient — identity of each item is verified.
+                // Count-matching alone is not sufficient — identity of each item is verified
+                // against provenOwned (the original ownership set, plus any directory already
+                // promoted by a prior iteration of this same loop).
                 let fullyOwned = !directItems.isEmpty && directItems.allSatisfy { item in
-                    positivelyOwned.contains((parent as NSString).appendingPathComponent(item))
+                    provenOwned.contains((parent as NSString).appendingPathComponent(item))
                 }
                 let parentIsVendorRoot = aggregates.contains(
                     URL(fileURLWithPath: parent).deletingLastPathComponent().path
                 ) || aggregates.contains(parent)
 
-                if !protected.contains(parent) && !parentIsVendorRoot && fullyOwned && positivelyOwned.contains(parent) {
+                // A directory is promoted into a single operation whenever every real
+                // item inside it is individually, verifiably owned (fullyOwned) — the
+                // directory's own path does not separately need to have been in the
+                // caller's ownership set, since that set is only ever populated with
+                // individual file paths or known-bundle-extension roots, never plain
+                // directory paths, which made this promotion unreachable for ordinary
+                // folders (e.g. a flat presets directory) before this fix.
+                if !protected.contains(parent) && !parentIsVendorRoot && fullyOwned {
                     next.insert(parent)
+                    provenOwned.insert(parent)
                     changed = true
                 } else {
                     children.forEach { next.insert($0) }
@@ -1654,6 +1699,76 @@ struct RollbackEngine {
 
     // Timeout: 30s covers large sudo mv operations. Polls cancellation flag so Cancel
     // stops the next pending operation rather than waiting for a hung process forever.
+    // Bridges Process.terminationHandler into async/await without blocking a
+    // Swift Concurrency thread (a blocking DispatchSemaphore.wait, as used by
+    // TitanVerify.shell, would tie up a cooperative-pool thread if used
+    // directly inside an async function). File-private to this file — not a
+    // shared utility.
+    //
+    // Race-safety: wait(seconds:) registers at most one continuation at a
+    // time (runWithPassword never calls it concurrently with itself). Exactly
+    // one of markTerminated() or the internal timer task resumes that
+    // continuation — both check-and-clear `continuation` before resuming,
+    // serialized by actor isolation, so neither can double-resume and a late
+    // call from the other is always a harmless no-op. The timer task is
+    // unstructured and never awaited by anything, so — unlike a TaskGroup
+    // racing a continuation-holding child against a sleeping one, where
+    // cancelAll() does not resume an externally-held continuation and the
+    // group would hang waiting for that child — there is nothing here that
+    // can be left suspended: the timer unconditionally resumes the
+    // continuation if no one else already has, bounding wait() to `seconds`.
+    private actor TerminationGate {
+        private var terminated = false
+        private var continuation: CheckedContinuation<Bool, Never>?
+
+        /// Called from Process.terminationHandler. Idempotent.
+        func markTerminated() {
+            guard !terminated else { return }
+            terminated = true
+            if let c = continuation {
+                continuation = nil
+                c.resume(returning: true)
+            }
+        }
+
+        /// Non-suspending fast check.
+        func isTerminated() -> Bool { terminated }
+
+        /// Waits up to `seconds` for termination to be CONFIRMED. Returns
+        /// true iff confirmed within the window; false means the window
+        /// elapsed first — callers must treat false as "unconfirmed," never
+        /// as "terminated," and must not read terminationStatus on it.
+        func wait(seconds: Double) async -> Bool {
+            if terminated { return true }
+            return await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                self.continuation = cont
+                let nanos = UInt64(max(0, seconds) * 1_000_000_000)
+                Task {
+                    try? await Task.sleep(nanoseconds: nanos)
+                    await self.fireTimeout()
+                }
+            }
+        }
+
+        private func fireTimeout() {
+            guard let c = continuation else { return }   // already resumed by markTerminated() — harmless no-op
+            continuation = nil
+            c.resume(returning: false)
+        }
+    }
+
+    // Lock-protected mutable buffer boxed in a reference type so the
+    // readabilityHandler closure (runs on a GCD thread, outside any actor)
+    // can safely mutate it under Swift 6 strict concurrency checking —
+    // mutating a captured `var` directly from that closure inside an async
+    // function is flagged as unsafe by the debug/test build configuration
+    // (the earlier release build didn't enable this check, which is why this
+    // was only caught once the test target was built).
+    private final class OutputBox: @unchecked Sendable {
+        let lock = NSLock()
+        var data = Data()
+    }
+
     @discardableResult
     private static func runWithPassword(password: String,
                                         arguments: [String],
@@ -1667,17 +1782,31 @@ struct RollbackEngine {
         process.standardOutput = outputPipe
         process.standardError  = outputPipe
 
+        let gate = TerminationGate()
+        process.terminationHandler = { _ in Task { await gate.markTerminated() } }
+
+        // Bounded, incremental drain — mirrors TitanVerify.shell's proven
+        // approach. Never blocks waiting for pipe EOF (readDataToEndOfFile()
+        // would be unbounded if any descendant retained the write-end fd);
+        // instead accumulates whatever arrives and is read synchronously,
+        // non-blockingly, at return time.
+        let box = OutputBox()
+        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            box.lock.lock(); box.data.append(chunk); box.lock.unlock()
+        }
+
         do {
             try process.run()
             inputPipe.fileHandleForWriting.write((password + "\n").data(using: .utf8)!)
             inputPipe.fileHandleForWriting.closeFile()
-            // Close our copy of the output pipe write end so readDataToEndOfFile() sees EOF on process exit.
+            // Close our copy of the output pipe write end so the read side sees EOF on process exit.
             outputPipe.fileHandleForWriting.closeFile()
         } catch {
+            outputPipe.fileHandleForReading.readabilityHandler = nil
             return (false, error.localizedDescription)
         }
-
-        let pipeReadTask = Task.detached { outputPipe.fileHandleForReading.readDataToEndOfFile() }
 
         let deadline = Date().addingTimeInterval(timeout)
         var timedOut = false
@@ -1690,14 +1819,39 @@ struct RollbackEngine {
                 break
             }
         }
-        if process.isRunning {
+
+        var confirmedTerminated = await gate.isTerminated()
+
+        if !confirmedTerminated && process.isRunning {
             timedOut = !cancelledMidway
-            process.terminate()
+            process.terminate()                                    // SIGTERM
+            confirmedTerminated = await gate.wait(seconds: 2.0)
+            if !confirmedTerminated {
+                kill(process.processIdentifier, SIGKILL)            // escalate
+                confirmedTerminated = await gate.wait(seconds: 1.0)
+            }
+        } else if !confirmedTerminated {
+            // isRunning already false but the handler hasn't fired yet —
+            // give it one short bounded grace window rather than trusting
+            // isRunning alone.
+            confirmedTerminated = await gate.wait(seconds: 0.5)
         }
-        let outputData = await pipeReadTask.value
+
+        outputPipe.fileHandleForReading.readabilityHandler = nil
+        box.lock.lock()
+        let trailing = outputPipe.fileHandleForReading.availableData   // non-blocking
+        if !trailing.isEmpty { box.data.append(trailing) }
+        let out = String(data: box.data, encoding: .utf8) ?? ""
+        box.lock.unlock()
+
+        guard confirmedTerminated else {
+            // Never read terminationStatus without confirmation. Report the
+            // already-known reason we stopped waiting rather than fabricate
+            // a cancelled/completed claim we can't back up.
+            return (false, out)
+        }
 
         let exitCode = process.terminationStatus
-        let out = String(data: outputData, encoding: .utf8) ?? ""
         return (exitCode == 0 && !timedOut, out)
     }
 

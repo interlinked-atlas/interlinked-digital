@@ -127,9 +127,12 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    func signOut() {
+    func signOut(reason: String? = nil) {
         let token = session?.accessToken
         clearLocalSession()                   // update UI immediately
+        if let reason {
+            authError = reason
+        }
         if let token {
             Task {
                 // Signing out — whether user-initiated or triggered by the
@@ -211,7 +214,10 @@ final class AuthManager: ObservableObject {
                     let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
                     // Force sign-out immediately if subscription was cancelled or payment failed
                     if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
-                        await MainActor.run { self.signOut() }
+                        let msg = p.subscriptionStatus == "payment_failed"
+                            ? "Your last payment failed. Visit interlinked.digital/atlas to update your billing info."
+                            : "Your subscription has been cancelled. Visit interlinked.digital/atlas to subscribe again."
+                        await MainActor.run { self.signOut(reason: msg) }
                         return
                     }
                     if planChanged || statusChanged {
@@ -227,7 +233,9 @@ final class AuthManager: ObservableObject {
                     let myUUID = atlasHardwareUUID()
                     let stillRegistered = list.contains { $0.hardwareUUID == myUUID }
                     if !stillRegistered {
-                        await MainActor.run { self.signOut() }
+                        await MainActor.run {
+                            self.signOut(reason: "This device is no longer registered on your account. Sign in again to continue.")
+                        }
                         return
                     }
                     await MainActor.run { self.devices = list }
@@ -254,7 +262,51 @@ final class AuthManager: ObservableObject {
 
     // MARK: - Private
 
+    // Minimum-supported-version gate. Strictly fail-open: returns true
+    // (allowed to proceed) on any network failure, timeout, or malformed
+    // response — it only ever returns false on an explicit, successfully-
+    // received update_required: true from a reachable server. Inert today
+    // (the server's minimum is 0.0.0, which every real version satisfies);
+    // reserved for a future V2 release that needs to force V1 out. Never
+    // called from the offline-restore path (handleOfflineRestore) — that
+    // path already has its own, separate, already-working 24h offline grace
+    // period, which this must never interfere with.
+    private func checkMinimumVersion() async -> Bool {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        guard let url = URL(string: "https://www.interlinked.digital/api/atlas/version?platform=mac&current=\(version)") else {
+            return true
+        }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return true
+            }
+            if let required = json["update_required"] as? Bool, required {
+                return false
+            }
+            return true
+        } catch {
+            return true
+        }
+    }
+
+    // Shared block-and-sign-out action for checkMinimumVersion() returning
+    // false — mirrors the existing cancelled/payment_failed pattern below.
+    private func blockForRequiredUpdate(_ s: ATLASSession) async {
+        await MainActor.run {
+            isLoadingProfile = false
+            session = nil
+            authError = "Please update ATLAS to continue — download the latest version at interlinked.digital/atlas."
+        }
+        KeychainManager.clearSession()
+        try? await SupabaseService.shared.signOut(accessToken: s.accessToken)
+    }
+
     private func completeAuth(_ s: ATLASSession) async {
+        if await checkMinimumVersion() == false {
+            await blockForRequiredUpdate(s)
+            return
+        }
         await MainActor.run { session = s; isLoadingProfile = true }
         KeychainManager.saveSession(s)
         if let p = try? await SupabaseService.shared.getProfile(
@@ -428,6 +480,10 @@ final class AuthManager: ObservableObject {
     }
 
     private func loadProfileAndDevices(_ s: ATLASSession) async {
+        if await checkMinimumVersion() == false {
+            await blockForRequiredUpdate(s)
+            return
+        }
         await MainActor.run { isLoadingProfile = true }
         do {
             let p = try await SupabaseService.shared.getProfile(

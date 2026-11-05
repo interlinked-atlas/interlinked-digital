@@ -21,6 +21,10 @@ struct VirusScanView: View {
                 Text(result.summaryLine)
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#8A8A96"))
+                Text("Local check only — not a substitute for antivirus software.")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#5A5A66"))
+                    .padding(.top, 2)
             }
             .padding(.top, 16)
             .padding(.horizontal, 24)
@@ -136,31 +140,28 @@ struct VirusScanView: View {
 
     private var title: String {
         switch result.verdict {
-        case .clean:      return "File is clean"
-        case .unknown:    return "File not recognized"
-        case .pua:        return "Crack / keygen detected"
-        case .suspicious: return "Suspicious file"
-        case .malicious:  return "Malware detected"
+        case .clean, .unknown, .unscanned: return "No known threats found"
+        case .pua:                         return "Crack / keygen detected"
+        case .suspicious:                  return "Suspicious file"
+        case .malicious:                   return "Malware detected"
         }
     }
 
     private var badgeIcon: String {
         switch result.verdict {
-        case .clean:      return "checkmark.shield.fill"
-        case .unknown:    return "questionmark.circle.fill"
-        case .pua:        return "exclamationmark.triangle.fill"
-        case .suspicious: return "exclamationmark.triangle.fill"
-        case .malicious:  return "xmark.shield.fill"
+        case .clean, .unknown, .unscanned: return "checkmark.shield.fill"
+        case .pua:                         return "exclamationmark.triangle.fill"
+        case .suspicious:                  return "exclamationmark.triangle.fill"
+        case .malicious:                   return "xmark.shield.fill"
         }
     }
 
     private var badgeColor: Color {
         switch result.verdict {
-        case .clean:      return Color(hex: "#3ECFB2")
-        case .unknown:    return Color(hex: "#8A8A96")
-        case .pua:        return Color(hex: "#F0A030")
-        case .suspicious: return Color(hex: "#F0A030")
-        case .malicious:  return Color(hex: "#EF5B5B")
+        case .clean, .unknown, .unscanned: return Color(hex: "#3ECFB2")
+        case .pua:                         return Color(hex: "#F0A030")
+        case .suspicious:                  return Color(hex: "#F0A030")
+        case .malicious:                   return Color(hex: "#EF5B5B")
         }
     }
 

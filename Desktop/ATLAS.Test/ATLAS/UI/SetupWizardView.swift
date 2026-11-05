@@ -277,7 +277,6 @@ struct SetupWizardView: View {
                         detail: "Required to auto-fill password dialogs during installation.",
                         granted: permAcc,
                         onGrant: {
-                            PermissionsManager.requestAccessibility()
                             PermissionsManager.openAccessibilitySettings()
                         }
                     )

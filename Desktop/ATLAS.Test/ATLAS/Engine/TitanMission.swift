@@ -79,6 +79,24 @@ final class TitanMission: ObservableObject {
     /// reservation was denied (device already at 25 confirmed+active this period).
     @Published var limitReached = false
 
+    // Checked between steps in execute()'s loop. Set true by cancel(), which also
+    // cancels runningTask directly so Task.isCancelled becomes visible to any nested
+    // await call already in progress (e.g. MacUIAutomator.driveWizard's own loop) —
+    // cancellationRequested alone only stops steps that haven't started yet; a step
+    // already in progress needs the actual Task cancelled to be interrupted mid-flight.
+    private(set) var cancellationRequested = false
+
+    // The Task actually running execute() — set by whoever starts the mission
+    // (TitanMissionView's Begin Install handler). Without a stored reference here,
+    // cancel() had nothing to call .cancel() on, so Task.isCancelled could never
+    // become true anywhere in the call chain no matter what checked it.
+    var runningTask: Task<Void, Never>?
+
+    func cancel() {
+        cancellationRequested = true
+        runningTask?.cancel()
+    }
+
     // Source context
     let mountPoint: String
     let sourceURL: URL
@@ -442,6 +460,12 @@ final class TitanMission: ObservableObject {
         let libSnapshot = InstallEngine.snapshotLibraryTopLevel()
 
         for i in steps.indices {
+            if cancellationRequested || Task.isCancelled {
+                for j in i..<steps.count { steps[j].status = .skipped }
+                currentNote = "Cancelled"
+                break
+            }
+
             // Capture step for execution (avoid passing inout to async)
             let step = steps[i]
             steps[i].status = .running
@@ -484,7 +508,10 @@ final class TitanMission: ObservableObject {
 
         // Record runtime-created paths only when the mission succeeded.
         // A failed install should not leave ownership claims on the filesystem.
-        let didFail = steps.contains(where: { $0.status == .failed })
+        // A cancellation counts as not-succeeded too — otherwise the loop's
+        // cancellation break (no step ever reaches .failed) would let a
+        // cancelled mission confirm its reservation as a success below.
+        let didFail = cancellationRequested || steps.contains(where: { $0.status == .failed })
         runtimeCreatedPaths = didFail ? [] : InstallEngine.diffLibraryTopLevel(before: libSnapshot)
 
         // Confirm the mission-level reservation on overall success, release on
@@ -1013,14 +1040,79 @@ final class TitanMission: ObservableObject {
                 _ = InstallEngine.runProcess(path: "/bin/chmod", arguments: ["+x", launcher.path])
                 let pwdEscaped = adminPassword.replacingOccurrences(of: "'", with: "'\\''")
                 let pwdLine = pwdEscaped.isEmpty ? "" : "echo '\(pwdEscaped)' | sudo -S "
-                let script = "\(pwdLine)'\(launcher.path)' --mode unattended 2>&1"
+                // Invoke .sh launchers explicitly via /bin/sh rather than relying solely on
+                // the chmod above — a prior fix (commit cb03026) found that chmod can fail
+                // silently in some conditions, and sudo in particular won't fall back to
+                // the shebang line the way a normal exec would. /bin/sh works regardless of
+                // whether the execute bit actually landed. InstallationManager.runPatchApp
+                // already uses this same pattern; this brings Strategy 1 in line with it.
+                let isShellScript = launcher.pathExtension == "sh"
+                let runner = isShellScript ? "/bin/sh '\(launcher.path)'" : "'\(launcher.path)'"
+                let script = "\(pwdLine)\(runner) --mode unattended 2>&1"
+                // Previously this call had no concurrent auth watcher at all — if the
+                // installer internally raised its own Authorization Services dialog for
+                // a specific privileged action (separate from the top-level sudo -S this
+                // script already uses), runShell just blocked forever waiting for a human
+                // to click it, since nothing was running to fill it. Strategy 3 (GUI path,
+                // below) already starts a watcher around its blocking work; this brings
+                // Strategy 1 in line with that same protection.
+                let strategy1Watcher = InstallEngine.startAuthWatcher(password: adminPassword)
+                // Some installers ignore --mode unattended and raise a real GUI window
+                // anyway (confirmed case: Massive XL's InstallBuilder-based patcher — the
+                // sudo'd process runs fine as root, but a second GUI child process spawns
+                // alongside it and just sits there waiting for Next to be clicked, which
+                // nothing was ever watching for since this strategy assumed truly headless
+                // execution). Driving the wizard concurrently, the same way Strategy 3
+                // already does as a last resort, means a window that appears here gets
+                // clicked through instead of blocking runShell forever. If no window ever
+                // appears (the common, actually-headless case), this task simply exits once
+                // runShell's underlying process tree is gone.
+                let strategy1WizardTask = Task {
+                    await driveInstallerWizardByPath(
+                        pathSubstring: macosDir.path, displayName: appName, timeout: 1800)
+                }
                 let r = InstallEngine.runShell(script)
+                strategy1Watcher.terminate()
                 let ok = r.success || r.output.lowercased().contains("finish") || r.output.lowercased().contains("success")
+                log.info("[ATLAS-TITAN-PATCH] Strategy 1 (InstallBuilder \(candidate, privacy: .public)) for \(appName, privacy: .public): ok=\(ok, privacy: .public) exit=\(r.success, privacy: .public) output=\(r.output.prefix(300), privacy: .public)")
                 if ok {
+                    // Headless attempt already reported success — the wizard task, if it
+                    // ever found a window, is redundant now. Cancel without waiting: its
+                    // own process-liveness check will see runShell's process tree is gone
+                    // (confirmed, since runShell has already returned) and exit on its own
+                    // within one poll cycle regardless, so nothing is leaked by not awaiting.
+                    strategy1WizardTask.cancel()
                     return await recordInstall(note: "Patch applied (unattended)")
                 }
-                log.info("[ATLAS] InstallBuilder unattended failed for \(appName, privacy: .public) — trying generic headless")
-                break
+                // Headless attempt did NOT report success — this is exactly the case
+                // (confirmed live: Massive XL) where --mode unattended gets ignored and a
+                // GUI wizard appears instead, which strategy1WizardTask may already have
+                // driven to completion concurrently. Previously this result was discarded
+                // entirely (`strategy1WizardTask.cancel()` with no read of its outcome),
+                // so a wizard that actually finished the install was reported as a failed
+                // attempt anyway. Await it now — bounded in practice, not an unconditional
+                // blocking wait: runShell returning means the process tree is already gone,
+                // so driveWizard(pid:)'s own kill -0 check resolves this within roughly one
+                // poll interval (~1-2s) even if cancel() races ahead of it.
+                strategy1WizardTask.cancel()
+                let wizardResult = await strategy1WizardTask.value
+                switch wizardResult {
+                case .succeeded:
+                    log.info("[ATLAS-TITAN-PATCH] Strategy 1 (InstallBuilder \(candidate, privacy: .public)) for \(appName, privacy: .public): headless reported failure, but wizard automation completed it")
+                    return await recordInstall(note: "Patch applied (wizard automation)")
+                case .failed, .timedOut:
+                    log.info("[ATLAS-TITAN-PATCH] Strategy 1 (InstallBuilder \(candidate, privacy: .public)) for \(appName, privacy: .public): wizard automation also did not complete (\(String(describing: wizardResult), privacy: .public))")
+                case .cancelled:
+                    break
+                }
+                log.info("[ATLAS] InstallBuilder unattended failed for \(appName, privacy: .public) — trying next candidate")
+                // Was `break` — defeated installBuilderPriority's own fallback ordering by
+                // abandoning the whole strategy after the first candidate found on disk,
+                // even though the list exists specifically to name further candidates to
+                // try if an earlier one fails. `continue` lets the loop actually reach
+                // them, in the same priority order, with no change to what happens on
+                // success (the `return` above already exits the loop and the function).
+                continue
             }
         }
 
@@ -1045,24 +1137,66 @@ final class TitanMission: ObservableObject {
             let prefix = archPrefix(for: exec)
             let sudoPrefix = pwd.isEmpty ? "" : "echo '\(pwd)' | sudo -S "
             // Attempt 2a: unattended mode — exits cleanly for installers that support it
+            // Same concurrent-watcher gap as Strategy 1 — without this, an installer that
+            // raises its own Authorization Services dialog mid-run blocks here forever.
+            let strategy2aWatcher = InstallEngine.startAuthWatcher(password: adminPassword)
+            let strategy2aWizardTask = Task {
+                await driveInstallerWizardByPath(
+                    pathSubstring: macosDir.path, displayName: appName, timeout: 1800)
+            }
             let r1 = InstallEngine.runShellWithEnv(
                 "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exe)' --mode unattended 2>&1",
                 env: ["ATLAS_PASSWORD": adminPassword], adminPassword: adminPassword)
+            strategy2aWatcher.terminate()
             let out1 = r1.output.lowercased()
+            log.info("[ATLAS-TITAN-PATCH] Strategy 2a (generic unattended) for \(appName, privacy: .public): exit=\(r1.success, privacy: .public) output=\(r1.output.prefix(300), privacy: .public)")
             if r1.success || out1.contains("finish") || out1.contains("success") || out1.contains("license") {
+                strategy2aWizardTask.cancel()
                 log.info("[ATLAS] Generic headless (unattended) succeeded for \(appName, privacy: .public)")
                 return await recordInstall(note: "Patch applied (headless)")
             }
+            // See Strategy 1's matching comment — same reasoning, same bounded await.
+            strategy2aWizardTask.cancel()
+            switch await strategy2aWizardTask.value {
+            case .succeeded:
+                log.info("[ATLAS-TITAN-PATCH] Strategy 2a for \(appName, privacy: .public): headless reported failure, but wizard automation completed it")
+                return await recordInstall(note: "Patch applied (wizard automation)")
+            case .failed, .timedOut:
+                log.info("[ATLAS-TITAN-PATCH] Strategy 2a for \(appName, privacy: .public): wizard automation also did not complete")
+            case .cancelled:
+                break
+            }
             // Attempt 2b: bare execution — for installers that ignore --mode unattended
+            let strategy2bWatcher = InstallEngine.startAuthWatcher(password: adminPassword)
+            let strategy2bWizardTask = Task {
+                await driveInstallerWizardByPath(
+                    pathSubstring: macosDir.path, displayName: appName, timeout: 1800)
+            }
             let r2 = InstallEngine.runShellWithEnv(
                 "cd '\(dir)' && \(sudoPrefix)\(prefix)'\(exe)' 2>&1",
                 env: ["ATLAS_PASSWORD": adminPassword], adminPassword: adminPassword)
+            strategy2bWatcher.terminate()
             let out2 = r2.output.lowercased()
+            log.info("[ATLAS-TITAN-PATCH] Strategy 2b (generic bare) for \(appName, privacy: .public): exit=\(r2.success, privacy: .public) output=\(r2.output.prefix(300), privacy: .public)")
             if r2.success || out2.contains("finish") || out2.contains("success") || out2.contains("license") {
+                strategy2bWizardTask.cancel()
                 log.info("[ATLAS] Generic headless (bare) succeeded for \(appName, privacy: .public)")
                 return await recordInstall(note: "Patch applied (headless)")
             }
+            // See Strategy 1's matching comment — same reasoning, same bounded await.
+            strategy2bWizardTask.cancel()
+            switch await strategy2bWizardTask.value {
+            case .succeeded:
+                log.info("[ATLAS-TITAN-PATCH] Strategy 2b for \(appName, privacy: .public): headless reported failure, but wizard automation completed it")
+                return await recordInstall(note: "Patch applied (wizard automation)")
+            case .failed, .timedOut:
+                log.info("[ATLAS-TITAN-PATCH] Strategy 2b for \(appName, privacy: .public): wizard automation also did not complete")
+            case .cancelled:
+                break
+            }
             log.info("[ATLAS] Generic headless exhausted for \(appName, privacy: .public) — proceeding to GUI path")
+        } else {
+            log.info("[ATLAS-TITAN-PATCH] Strategy 2 skipped for \(appName, privacy: .public) — no primaryExec found in \(macosDir.path, privacy: .public)")
         }
 
         // ── Strategy 3: GUI execution with Gatekeeper pre-authorization ───────────────
@@ -1120,7 +1254,9 @@ final class TitanMission: ObservableObject {
         // Authorization Services instead of (or in addition to) shell-level sudo.
         // The PID guard (kill -0 <appPID>) ensures the watcher stops the moment the
         // patcher process exits — ATLAS never fills auth dialogs from unrelated processes.
-        let appPID = MacUIAutomator.findApp(named: appName)?.processIdentifier ?? 0
+        let matchedRunningApp = MacUIAutomator.findApp(named: appName)
+        let appPID = matchedRunningApp?.processIdentifier ?? 0
+        log.info("[ATLAS-TITAN-PATCH] Strategy 3 GUI launch for \(appName, privacy: .public): matchedProcessName=\(matchedRunningApp?.localizedName ?? "none", privacy: .public) appPID=\(appPID, privacy: .public) authWatcherWillStart=\(appPID > 0, privacy: .public)")
         let authWatcher: Process? = appPID > 0
             ? InstallEngine.startAuthWatcher(password: adminPassword, installerPID: appPID)
             : nil
@@ -1173,6 +1309,43 @@ final class TitanMission: ObservableObject {
             success: ok,
             note: ok ? "Installer completed" : "Installer wizard timed out after \(Int(timeout / 60)) min"
         )
+    }
+
+    // Outcome of a driveInstallerWizardByPath call — previously this was discarded
+    // entirely at every call site (the function returned Void), so a wizard that
+    // actually completed the install (e.g. after a headless --mode unattended attempt
+    // was ignored and a GUI appeared anyway) was indistinguishable from one that was
+    // never needed, timed out, or failed to even find a window.
+    private enum WizardAutomationResult {
+        case succeeded        // driveWizard(pid:) clicked through to completion
+        case failed            // a window was found and driven, but it never completed
+        case timedOut          // no matching PID ever appeared within `timeout`
+        case cancelled          // stopped via Task.isCancelled before finding a PID
+    }
+
+    // PID-based counterpart for a bare subprocess launched directly via Process/shell
+    // (e.g. an InstallBuilder binary invoked by Strategy 1/2 under sudo) — such a
+    // process can still create and own real windows, but never registers with Launch
+    // Services, so driveInstallerWizard(appName:)'s NSWorkspace-based lookup can never
+    // find it no matter how long it waits. Polls for a PID whose command line contains
+    // `pathSubstring` (the installer's own working directory — unique per DMG mount,
+    // so this cannot match an unrelated process), then drives that exact PID's windows.
+    nonisolated private func driveInstallerWizardByPath(
+        pathSubstring: String, displayName: String, timeout: TimeInterval = 1800
+    ) async -> WizardAutomationResult {
+        await GUIInstallerQueue.shared.acquire()
+        defer { Task { await GUIInstallerQueue.shared.release() } }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if Task.isCancelled { return .cancelled }
+            if let pid = MacUIAutomator.findPID(commandLineContains: pathSubstring) {
+                let ok = await MacUIAutomator.driveWizard(pid: pid, label: displayName, timeout: timeout)
+                return ok ? .succeeded : .failed
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        return .timedOut
     }
 
     private func runScript(url: URL, adminPassword: String) async -> StepResult {

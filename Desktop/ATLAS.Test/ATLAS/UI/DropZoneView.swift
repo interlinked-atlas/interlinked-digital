@@ -74,6 +74,77 @@ struct DropZoneView: View {
     @ObservedObject private var langMgr = LanguageManager.shared
 
     var body: some View {
+        if isQueuing {
+            compactQueuingBody
+        } else {
+            fullBody
+        }
+    }
+
+    // Compact "add more files" affordance shown while a queue is already
+    // processing — replaces the full 200pt drop zone so it no longer
+    // dominates the bottom of the window during bulk installs. Same visual
+    // language (chrome glass, chrome rim border, drag-over brighten) as the
+    // full drop zone, just at pill scale. The initial (non-queuing) drop
+    // zone below is completely unchanged.
+    private var compactQueuingBody: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    isTargeted
+                        ? AnyShapeStyle(Color.atlasChromeUndertone.opacity(0.08))
+                        : AnyShapeStyle(Color.clear)
+                )
+                .atlasGlass(.surface, cornerRadius: 12)
+
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(
+                    Color.chromeRimGradient.opacity(isTargeted ? 1.0 : 0.7),
+                    lineWidth: isTargeted ? 2.25 : 1.5
+                )
+
+            Button(action: openFilePicker) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                isTargeted
+                                    ? Color.atlasChromeUndertone.opacity(0.18)
+                                    : Color(hex: scheme == .dark ? "#0F1228" : "#E8EAFF").opacity(0.8)
+                            )
+                            .frame(width: 22, height: 22)
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color.chromeRimGradient)
+                    }
+                    Text(isTargeted ? "Release to add to queue" : "Add more files")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.atlasOnGlassPrimary)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+            }
+            .buttonStyle(.plain)
+
+            DropTargetView(
+                onHover: { hovering in withAnimation(.atlasSnap) { isTargeted = hovering } },
+                onDrop: { urls in handleDrop(urls: urls) }
+            )
+        }
+        .scaleEffect(isTargeted ? 1.006 : 1.0)
+        .animation(.atlasSnap, value: isTargeted)
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .shadow(
+            color: isTargeted
+                ? Color.atlasChromeUndertone.opacity(0.08)
+                : (scheme == .dark ? .black.opacity(0.14) : .black.opacity(0.05)),
+            radius: isTargeted ? 10 : 6,
+            y: 1
+        )
+    }
+
+    private var fullBody: some View {
         ZStack {
             // Surface — Liquid Chrome Glass: translucent base + directional wash + chrome edge,
             // brightening on drag-over. Replaces the prior flat-gradient/teal-tint surface.

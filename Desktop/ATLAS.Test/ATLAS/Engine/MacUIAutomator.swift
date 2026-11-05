@@ -37,6 +37,30 @@ struct MacUIAutomator {
         AXUIElementCreateApplication(app.processIdentifier)
     }
 
+    static func axApp(forPID pid: pid_t) -> AXUIElement {
+        AXUIElementCreateApplication(pid)
+    }
+
+    // Finds the PID of a running process whose full command line contains the given
+    // path substring. Used for bare subprocesses launched directly via Process/shell
+    // (e.g. a patch installer's own InstallBuilder binary run under sudo) — these never
+    // appear in NSWorkspace.shared.runningApplications, since that only lists apps
+    // registered with Launch Services. A process can still create and own real windows
+    // without ever being "launched" that way, and findApp(named:) has no way to see it.
+    static func findPID(commandLineContains pathSubstring: String) -> pid_t? {
+        let result = InstallEngine.runProcess(path: "/bin/ps", arguments: ["-axo", "pid=,command="])
+        guard result.success else { return nil }
+        for line in result.output.components(separatedBy: "\n") {
+            guard line.contains(pathSubstring) else { continue }
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard let spaceIdx = trimmed.firstIndex(of: " ") else { continue }
+            if let pid = Int32(trimmed[trimmed.startIndex..<spaceIdx]) {
+                return pid
+            }
+        }
+        return nil
+    }
+
     private static func attr<T>(_ key: String, of el: AXUIElement) -> T? {
         var v: CFTypeRef?
         guard AXUIElementCopyAttributeValue(el, key as CFString, &v) == .success,
@@ -54,6 +78,16 @@ struct MacUIAutomator {
         let d: String = attr(kAXDescriptionAttribute as String, of: el) ?? ""
         if !d.isEmpty { return d }
         return attr(kAXValueAttribute as String, of: el) as String? ?? ""
+    }
+
+    // X screen position, used only by the label-less-button positional fallback in
+    // driveWizard — every other caller in this file matches elements by label/role,
+    // never by position.
+    static func xPosition(of el: AXUIElement) -> CGFloat? {
+        guard let v: AXValue = attr(kAXPositionAttribute as String, of: el) else { return nil }
+        var point = CGPoint.zero
+        guard AXValueGetValue(v, .cgPoint, &point) else { return nil }
+        return point.x
     }
 
     static func doubleValue(of el: AXUIElement) -> Double? {
@@ -558,15 +592,156 @@ struct MacUIAutomator {
             }
 
             if !clicked && !tickedAgreement && selectedFormats.isEmpty {
-                // Nothing actionable — might be a transition; just wait
+                // A positional (rightmost-button) fallback was tried here and removed —
+                // confirmed live on Massive XL's installer that the rightmost of its 3
+                // label-less buttons was NOT "Next": repeatedly clicking it triggered the
+                // installer's own "Do you want to abort the installation process?"
+                // confirmation, i.e. it was closer to Cancel/Abort. Position-based
+                // guessing is unsafe for a window with no labels to verify against — do
+                // not reintroduce it. This installer's wizard cannot be driven blind;
+                // nothing here clicks when it can't identify a button by label.
                 NSLog("[ATLAS-WIZARD] %@: no actionable element found — waiting", appName)
+                let allRoles = allEls.map { "\(role(of: $0)):'\(label(of: $0))'" }.joined(separator: ", ")
+                NSLog("[ATLAS-WIZARD-DEBUG] %@: %d element(s) in window: %@", appName, allEls.count, allRoles)
             }
 
+            if Task.isCancelled {
+                NSLog("[ATLAS-WIZARD] %@: cancelled — stopping", appName)
+                return false
+            }
             try? await Task.sleep(nanoseconds: 2_000_000_000)
         }
 
         NSLog("[ATLAS-WIZARD] %@: wizard timed out after %.0f min", appName, timeout / 60)
         await quitApp(named: appName)
+        return false
+    }
+
+    // PID-based variant of driveWizard — identical click-through logic, but targets a
+    // specific known process ID directly via AXUIElementCreateApplication(pid) instead
+    // of looking the app up by name through NSWorkspace. Needed for a patch installer's
+    // real binary, launched as a bare subprocess (Process/shell under sudo, not `open`/
+    // Launch Services) — such a process can still own real windows, but never appears
+    // in NSWorkspace.shared.runningApplications, so driveWizard(appName:) can never find
+    // it no matter how long it waits. Liveness is checked via kill -0 on the PID instead
+    // of findApp(named:) != nil.
+    static func driveWizard(pid: pid_t, label displayName: String, timeout: TimeInterval = 1800) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        let pluginFormatStems: [String] = [
+            "au", "audio unit", "audio units", "audiounit",
+            "vst", "vst2", "vst 2",
+            "vst3", "vst 3",
+            "aax", "aax plug-in", "aax plugin", "aax (avid audio extension)",
+            "clap", "lv2", "rtas",
+        ]
+        let avoidStems: [String] = [
+            "standalone", "preset", "presets", "documentation", "manual",
+            "samples", "content", "tutorial", "tutorials", "demo", "readme",
+            "extras", "resources", "help",
+        ]
+        let finishLabels   = ["Done", "Finish", "Finished", "Close"]
+        let agreeLabels    = ["I Agree", "I Accept", "Agree", "Accept"]
+        let progressLabels = ["Install", "Next", "Continue", "Proceed"]
+        let agreeCBKeys    = ["agree", "accept", "terms", "license"]
+
+        func isAlive() -> Bool {
+            InstallEngine.runProcess(path: "/bin/kill", arguments: ["-0", "\(pid)"]).success
+        }
+
+        while Date() < deadline {
+            guard isAlive() else {
+                NSLog("[ATLAS-WIZARD-PID] %@ (pid %d) exited — installation complete", displayName, pid)
+                return true
+            }
+            guard let win = frontWindow(of: axApp(forPID: pid)) else {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                continue
+            }
+
+            let allEls      = allElements(under: win)
+            let buttons     = allEls.filter { role(of: $0) == "AXButton" }
+            let checkboxes  = findCheckboxes(under: win)
+            let hasBar      = findProgressBar(under: win) != nil
+
+            if let finBtn = buttons.first(where: { finishLabels.contains(label(of: $0)) }) {
+                let lbl = label(of: finBtn)
+                NSLog("[ATLAS-WIZARD-PID] %@: clicking '%@' — done", displayName, lbl)
+                press(finBtn)
+                _ = await waitFor(timeout: 15) { !isAlive() }
+                return true
+            }
+
+            if hasBar {
+                NSLog("[ATLAS-WIZARD-PID] %@: installation in progress — waiting", displayName)
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                continue
+            }
+
+            var tickedAgreement = false
+            for cb in checkboxes {
+                let lbl = label(of: cb).lowercased()
+                guard agreeCBKeys.contains(where: { lbl.contains($0) }) else { continue }
+                if (doubleValue(of: cb) ?? 0) == 0 {
+                    press(cb)
+                    tickedAgreement = true
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                }
+            }
+
+            var selectedFormats: [String] = []
+            for cb in checkboxes {
+                let raw = label(of: cb)
+                let lbl = raw.lowercased().trimmingCharacters(in: .whitespaces)
+                if agreeCBKeys.contains(where: { lbl.contains($0) }) { continue }
+                if avoidStems.contains(where: { lbl == $0 || lbl.contains($0) }) { continue }
+                let isFormat = pluginFormatStems.contains(where: {
+                    lbl == $0 ||
+                    lbl.hasPrefix($0 + " ") || lbl.hasSuffix(" " + $0) ||
+                    lbl.contains(" " + $0 + " ") || lbl.contains("(" + $0 + ")")
+                })
+                if isFormat && (doubleValue(of: cb) ?? 0) == 0 {
+                    press(cb)
+                    selectedFormats.append(raw)
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                }
+            }
+            if !selectedFormats.isEmpty {
+                NSLog("[ATLAS-WIZARD-PID] %@: selected formats: %@",
+                      displayName, selectedFormats.joined(separator: ", "))
+                try? await Task.sleep(nanoseconds: 600_000_000)
+            }
+
+            var clicked = false
+            if let agreeBtn = buttons.first(where: { agreeLabels.contains(label(of: $0)) }) {
+                let lbl = label(of: agreeBtn)
+                NSLog("[ATLAS-WIZARD-PID] %@: clicking '%@'", displayName, lbl)
+                press(agreeBtn)
+                clicked = true
+            } else if let progBtn = buttons.first(where: { progressLabels.contains(label(of: $0)) }) {
+                let lbl = label(of: progBtn)
+                NSLog("[ATLAS-WIZARD-PID] %@: clicking '%@'", displayName, lbl)
+                press(progBtn)
+                clicked = true
+            }
+
+            if !clicked && !tickedAgreement && selectedFormats.isEmpty {
+                // Positional (rightmost-button) guessing was tried here and removed —
+                // confirmed live on Massive XL's installer that it clicks the wrong
+                // button (triggered the installer's own abort-confirmation dialog). See
+                // driveWizard(appName:)'s matching comment for the full account. Do not
+                // reintroduce position-based guessing — nothing here clicks blind.
+                NSLog("[ATLAS-WIZARD-PID] %@: no actionable element found — waiting", displayName)
+            }
+
+            if Task.isCancelled {
+                NSLog("[ATLAS-WIZARD-PID] %@: cancelled — stopping", displayName)
+                return false
+            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+
+        NSLog("[ATLAS-WIZARD-PID] %@: wizard timed out after %.0f min", displayName, timeout / 60)
         return false
     }
 }

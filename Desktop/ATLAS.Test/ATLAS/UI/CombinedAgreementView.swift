@@ -5,17 +5,20 @@ struct CombinedAgreementView: View {
 
     static let tosKey     = "ATLAS.tosAccepted"
     static let privacyKey = "ATLAS.privacyConsentGiven"
+    static let eulaKey    = "ATLAS.eulaAccepted"
 
     @State private var tosChecked      = false
     @State private var privacyChecked  = false
+    @State private var eulaChecked     = false
     @State private var tosExpanded     = false
     @State private var privacyExpanded = false
+    @State private var eulaExpanded    = false
     @State private var cardOpacity: Double = 0
     @State private var cardOffset: CGFloat = 20
     @State private var continueHovered = false
     @State private var exitHovered     = false
 
-    var canContinue: Bool { tosChecked && privacyChecked }
+    var canContinue: Bool { tosChecked && privacyChecked && eulaChecked }
 
     var body: some View {
         ZStack {
@@ -81,6 +84,18 @@ struct CombinedAgreementView: View {
                             .fill(Color(hex: "#1E2132"))
                             .frame(height: 1)
 
+                        // Row 3 — EULA
+                        AgreementRow(
+                            checked: $eulaChecked,
+                            expanded: $eulaExpanded,
+                            label: "License Agreement",
+                            fullText: EULAContent.fullText
+                        )
+
+                        Rectangle()
+                            .fill(Color(hex: "#1E2132"))
+                            .frame(height: 1)
+
                         // Buttons
                         HStack(spacing: 10) {
                             // Exit
@@ -104,6 +119,7 @@ struct CombinedAgreementView: View {
                                 guard canContinue else { return }
                                 UserDefaults.standard.set(true, forKey: Self.tosKey)
                                 UserDefaults.standard.set(true, forKey: Self.privacyKey)
+                                UserDefaults.standard.set(true, forKey: Self.eulaKey)
                                 onAccept()
                             } label: {
                                 HStack(spacing: 6) {
@@ -247,4 +263,20 @@ private struct AgreementRow: View {
             }
         }
     }
+}
+
+// MARK: - EULA content
+
+// Reads the real, shipped EULA.txt from the app bundle's Resources at
+// runtime rather than duplicating it as a second hardcoded copy — the file
+// on disk (Contents/Resources/EULA.txt) stays the single source of truth.
+enum EULAContent {
+    static let fullText: String = {
+        guard let path = Bundle.main.path(forResource: "EULA", ofType: "txt"),
+              let text = try? String(contentsOfFile: path, encoding: .utf8)
+        else {
+            return "The End User License Agreement could not be loaded. Contact support@interlinked.digital before continuing."
+        }
+        return text
+    }()
 }

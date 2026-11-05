@@ -7,6 +7,16 @@ struct RecoveryKitView: View {
     @ObservedObject private var auth = AuthManager.shared
     @ObservedObject private var langMgr = LanguageManager.shared
 
+    // The cloud kit belonging to THIS device, not just whichever device
+    // uploaded most recently account-wide. A Recovery Kit's contents are
+    // inherently device-specific (what's installed on that Mac), so showing
+    // — or worse, recovering from — a different device's kit on this one is
+    // both misleading and potentially harmful. Falls back to nil (never to
+    // some other device's kit) when this device has never uploaded one.
+    private var currentDeviceMeta: CloudKitMeta? {
+        engine.cloudMeta.first(where: { $0.deviceName == deviceFriendlyName() })
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             exportRow
@@ -177,7 +187,7 @@ struct RecoveryKitView: View {
                 .font(.system(size: 10))
                 .foregroundColor(Color.atlasSubtitle.opacity(0.45))
         case .found:
-            if let meta = engine.cloudMeta.first {
+            if let meta = currentDeviceMeta {
                 VStack(alignment: .leading, spacing: 1) {
                     // Show recovery result if this specific backup was the one recovered
                     if let result = engine.lastRecoveryResult, result.kitId == meta.id {
@@ -196,16 +206,16 @@ struct RecoveryKitView: View {
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#3ECFB2"))
                     }
-                    if let name = meta.deviceName {
-                        Text("\(meta.recordCount) items · \(name)")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color.atlasSubtitle.opacity(0.5))
-                    } else {
-                        Text("\(meta.recordCount) items")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color.atlasSubtitle.opacity(0.5))
-                    }
+                    Text("\(meta.recordCount) items · this device")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.atlasSubtitle.opacity(0.5))
                 }
+            } else if !engine.cloudMeta.isEmpty {
+                // The account has cloud kit(s), but none from this specific
+                // device — never show another device's name/date here.
+                Text("Not backed up on this device")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color.atlasSubtitle.opacity(0.45))
             } else {
                 Text("Backed up")
                     .font(.system(size: 10))
@@ -253,7 +263,11 @@ struct RecoveryKitView: View {
                     .buttonStyle(.plain)
                 }
 
-                let currentMetaId = engine.cloudMeta.first?.id
+                // currentDeviceMeta (not cloudMeta.first) — the recovery action must
+                // operate on the exact same kit the card above displays. Recovering
+                // from a different device's kit onto this one would silently apply
+                // the wrong device's software list — never allowed.
+                let currentMetaId = currentDeviceMeta?.id
                 let recoveredThisBackup = engine.lastRecoveryResult.map { $0.kitId == currentMetaId } ?? false
 
                 if case .success = engine.lastRecoveryResult, recoveredThisBackup {
@@ -277,11 +291,12 @@ struct RecoveryKitView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .buttonStyle(.plain)
                     }
-                } else {
+                } else if let kitId = currentMetaId {
+                    // Only ever offered when this device has its own kit — no
+                    // button is shown at all otherwise, rather than one that
+                    // would silently do nothing or act on another device's kit.
                     Button(L(.recover)) {
-                        if let kitId = engine.cloudMeta.first?.id {
-                            Task { await engine.downloadFromCloud(kitId: kitId) }
-                        }
+                        Task { await engine.downloadFromCloud(kitId: kitId) }
                     }
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.white)

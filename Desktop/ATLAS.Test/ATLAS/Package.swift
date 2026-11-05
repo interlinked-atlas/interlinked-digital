@@ -36,6 +36,7 @@ let package = Package(
                 .copy("AtlasResources/SF Intellivised.ttf"),
                 .copy("AtlasResources/atlas-splash.mp4"),
                 .copy("AtlasResources/atlas-splash-light.mp4"),
+                .copy("AtlasResources/KnownMalwareHashes.json"),
                 .copy("Resources/TitanMemory")
             ],
             swiftSettings: [

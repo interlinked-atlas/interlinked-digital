@@ -5,6 +5,7 @@ import UserNotifications
 import Combine
 import QuartzCore
 import os
+import Sparkle
 
 @main
 struct ATLASApp: App {
@@ -17,7 +18,17 @@ struct ATLASApp: App {
     init() {
         // Build stamp — verify in Console.app (filter by subsystem: digital.interlinked.atlas).
         // This appears on every launch when the correct binary is running.
-        ATLASApp.alog.notice("[ATLAS-BUILD-v18s] ATLAS launched — fixed self-trash (atlas/interlinked in receipt skipWords); VSCAN now runs in queue path (blocks malware, warns on suspicious/bundled)")
+        ATLASApp.alog.notice("[ATLAS-BUILD-v20] ATLAS launched — Keychain ACL migration restored (lost in a mid-session revert on 2026-10-31, never re-added until now); Strategy 1 fallback fix, wizard-result propagation, isManagerApp executable-marker detection")
+        // One-time cleanup of any Keychain password item saved under the old restrictive
+        // ACL (before KeychainManager's open-access fix existed). Without this, a password
+        // saved before that fix survives every rebuild but silently becomes unreadable the
+        // moment the app is re-signed with a new ad-hoc signature — loadPassword() returns
+        // nil instead of erroring, which surfaces downstream as "Installation failed: No
+        // password stored." Must run before anything calls KeychainManager.loadPassword().
+        // This call existed earlier in this same engagement, was lost when ATLASApp.swift
+        // was reverted to undo an unrelated regression, and was never re-applied — confirmed
+        // via git status showing this file as otherwise unmodified from that revert point.
+        KeychainManager.migrateAccessControlIfNeeded()
         ATLASApp.registerFonts()
     }
 
@@ -93,6 +104,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // Stored once at launch so we never lose the reference — NSApp.windows.first
     // can return nil or a wrong auxiliary window (sheet/dialog) after orderOut.
     static var mainWindow: NSWindow?
+
+    // Sparkle. startingUpdater:true begins its own standard schedule
+    // immediately (honors SUEnableAutomaticChecks / SUScheduledCheckInterval
+    // from Info.plist — currently a daily background check). Shared so both
+    // the menu-bar item and the Settings panel's row can trigger a manual
+    // check through the same instance.
+    static let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     // Routes files opened via `open -a ATLAS file.iso` to ContentView.
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
@@ -196,8 +215,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        NSLog("[ATLAS] applicationShouldTerminate called, menuStatus=\(MenuBarStatusManager.shared.menuStatus)")
         // Show a warning if an install, uninstall, or TITAN mission is in progress.
         guard MenuBarStatusManager.shared.menuStatus == .installing else {
+            NSLog("[ATLAS] returning .terminateNow")
             return .terminateNow
         }
 
@@ -222,6 +243,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // interfering with our fade-in when the window is orderOut'd).
     func applicationShouldHandleReopen(
         _ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSLog("[ATLAS-DOCK] applicationShouldHandleReopen fired, hasVisibleWindows=\(flag)")
         openMainWindow()
         return false
     }
@@ -361,8 +383,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     }
 
     @objc func openMainWindow() {
+        NSLog("[ATLAS-DOCK] openMainWindow called")
         // Prefer the stored reference; fall back to the first app window.
-        guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else { return }
+        guard let window = AppDelegate.mainWindow ?? NSApp.windows.first else {
+            NSLog("[ATLAS-DOCK] no window found — returning early")
+            return
+        }
 
         window.level = .normal
         // Liquid Chrome Glass shell: transparent window so ContentView's root
@@ -460,13 +486,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         InstallLogger.openLogsInFinder()
     }
 
-    // v1: informational only — no network/version check, no Sparkle, no
-    // automatic updater. Opens the main window and shows a simple notice
-    // that updates ship on the website when v2 is announced. See
-    // UI/UpdateNoticeView.swift.
+    // Triggers Sparkle's own standard check UI (release notes, Install /
+    // Remind Me Later / Skip This Version). Silent no-op if already up to
+    // date — Sparkle shows nothing unless an update actually exists.
     @objc private func checkForUpdates() {
-        openMainWindow()
-        NotificationCenter.default.post(name: .atlasShowUpdateNotice, object: nil)
+        AppDelegate.updaterController.checkForUpdates(nil)
     }
 
 }

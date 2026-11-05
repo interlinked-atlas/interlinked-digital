@@ -133,8 +133,12 @@ struct TitanMissionView: View {
 
                     Button("Begin Install") {
                         hasStarted = true
-                        let pw = adminPassword
-                        Task {
+                        // Re-fetch rather than trust the `adminPassword` property passed in
+                        // at this view's construction — that value is captured once and can
+                        // go stale if a password gets saved/changed in Settings after this
+                        // view was built but before Begin Install is actually tapped.
+                        let pw = KeychainManager.loadPassword() ?? adminPassword
+                        let task = Task {
                             // mission.execute() now performs its own atomic
                             // install-limit reservation internally (see
                             // Engine/TitanMission.swift) — the separate mission-start
@@ -145,6 +149,12 @@ struct TitanMissionView: View {
                                 await MainActor.run { hasStarted = false }
                             }
                         }
+                        // Stored so Cancel can actually stop this mission — without this,
+                        // mission.cancel() has no Task reference to call .cancel() on, and
+                        // Task.isCancelled can never become true anywhere in the call chain
+                        // (including inside MacUIAutomator.driveWizard's own polling loop),
+                        // no matter what checks for it.
+                        mission.runningTask = task
                     }
                     .font(.atlasFont(size: 13, weight: .semibold))
                     .foregroundColor(Color(hex: "#08090E"))
