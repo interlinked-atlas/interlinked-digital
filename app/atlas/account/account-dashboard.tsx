@@ -380,7 +380,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
             {isCancelled && (
-              <Link href="/atlas" style={{
+              <Link href="/atlas/checkout?plan=atlas" style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
                 background: "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
@@ -441,7 +441,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Your Plan Features</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
             <FeatureCell label="Devices"              value="Up to 3"          active />
-            <FeatureCell label="Monthly Installs"     value="25/month"         active />
+            <FeatureCell label="Monthly Installs"     value="25/month per device" active />
             <FeatureCell label="Bulk Queue"           value="Enabled"          active />
             <FeatureCell label="Uninstall & Rollback" value="Enabled"          active />
             <FeatureCell label="TITAN CORE™"          value="Enabled"          active />

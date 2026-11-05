@@ -38,7 +38,7 @@ export const PRODUCTS: Product[] = [
       'Recovery Kit & Recovery Mode',
       'Full installation history',
       'Up to 3 devices',
-      '25 installs/month',
+      '25 installs/month, per device',
       'Notifications & alerts',
     ],
     popular: true,

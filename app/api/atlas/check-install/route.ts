@@ -6,13 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Atomic reserve — the authoritative capacity decision. Locks the single
-// account-wide install_counts row (keyed by user_id) and creates a
-// reservation in the same transaction as the capacity check, closing the
+// Atomic reserve — the authoritative capacity decision. Locks the
+// (user_id, hardware_uuid) install_counts row and creates a reservation in
+// the same transaction as the capacity check, closing the
 // check-then-install-then-record race. Does NOT increment
 // installs_this_month — see /api/atlas/install-count for confirm/release.
-// Limit is a flat 25 per account per billing period, shared across every
-// device on the account (not per device), regardless of billing cadence.
+// Limit is 25 per device per billing period (product decision 2026-11-05;
+// previously account-wide) — each device on the account has its own pool.
 // hardware_uuid is still required and stored on the reservation as
 // metadata/audit information, but does not affect which pool is checked.
 // Idempotent: retrying with the same reservation_id returns the existing

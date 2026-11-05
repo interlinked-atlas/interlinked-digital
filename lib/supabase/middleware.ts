@@ -39,9 +39,11 @@ export async function updateSession(request: NextRequest) {
      request.nextUrl.pathname.startsWith('/atlas/checkout')) &&
     !user
   ) {
+    const dest = request.nextUrl.pathname + request.nextUrl.search
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
-    url.searchParams.set('next', request.nextUrl.pathname)
+    url.search = ''
+    url.searchParams.set('redirect', dest)
     return NextResponse.redirect(url)
   }
 

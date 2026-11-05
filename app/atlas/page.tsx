@@ -232,7 +232,7 @@ export default function ATLASWaitlistPage() {
   // Full $30/mo plan feature list — copied verbatim from app/atlas/plans/page.tsx.
   const PLAN_FEATURES = [
     'Up to 3 devices',
-    '25 installs / month',
+    '25 installs / month, per device',
     'TITAN CORE™',
     'Smart Storage',
     'Full install history',

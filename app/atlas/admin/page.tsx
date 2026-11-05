@@ -337,7 +337,12 @@ export default function AdminPage() {
     return monthlyUsage.find(m => m.user_id === uid && new Date(m.period_end) >= now)
   }
   function userGateCount(uid: string) {
-    return gateUsage.find(g => g.user_id === uid)
+    // 25 installs is now a per-device limit (2026-11-05) — a user can have one
+    // install_counts row per registered device, so this sums across all of
+    // them for a "total across devices" figure rather than showing just one.
+    const rows = gateUsage.filter(g => g.user_id === uid)
+    if (rows.length === 0) return undefined
+    return { installs_this_month: rows.reduce((sum, r) => sum + (r.installs_this_month ?? 0), 0) }
   }
 
   const filteredUsers = subSearch.trim()

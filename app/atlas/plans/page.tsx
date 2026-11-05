@@ -11,7 +11,7 @@ const MONTHLY = {
   price: '$30', period: '/mo', priceId: 'atlas',
   features: [
     'Up to 3 devices',
-    '25 installs / month',
+    '25 installs / month, per device',
     'TITAN CORE™',
     'Smart Storage',
     'Full install history',
