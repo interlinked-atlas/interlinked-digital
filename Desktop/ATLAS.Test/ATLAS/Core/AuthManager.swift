@@ -384,6 +384,16 @@ final class AuthManager: ObservableObject {
                 profile = nil
             }
             KeychainManager.clearSession()
+        } catch SupabaseError.deviceSlotCooldown {
+            // A device was recently removed from this account — this Mac is
+            // unfamiliar to it, so registration is briefly held back as an
+            // anti-abuse measure (see device_slot_cooldown migration).
+            await MainActor.run {
+                authError = "A device was recently removed from this account. Please wait up to 24 hours before adding a new device."
+                session = nil
+                profile = nil
+            }
+            KeychainManager.clearSession()
         } catch SupabaseError.notEntitled {
             // Distinct from device-limit: this account has no active ATLAS
             // subscription at all. Block entry with a clear, correct message

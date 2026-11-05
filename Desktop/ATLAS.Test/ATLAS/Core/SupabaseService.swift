@@ -74,6 +74,7 @@ enum SupabaseError: LocalizedError {
     case emailNotConfirmed
     case notEntitled
     case serverUnavailable
+    case deviceSlotCooldown
 
     var errorDescription: String? {
         switch self {
@@ -86,6 +87,7 @@ enum SupabaseError: LocalizedError {
         case .emailNotConfirmed:    return "Please confirm your email before signing in. Check your inbox for a confirmation link."
         case .notEntitled:          return "This account does not have an active ATLAS subscription."
         case .serverUnavailable:    return "Couldn't verify with the server. Please try again."
+        case .deviceSlotCooldown:   return "A device was recently removed from this account. Please wait up to 24 hours before adding a new device."
         }
     }
 }
@@ -208,6 +210,7 @@ actor SupabaseService {
         case "device_limit":   throw SupabaseError.deviceLimitReached
         case "not_entitled":   throw SupabaseError.notEntitled
         case "server_error":   throw SupabaseError.serverUnavailable
+        case "device_slot_cooldown": throw SupabaseError.deviceSlotCooldown
         default:
             throw SupabaseError.httpError(http.statusCode, reason ?? "Device registration failed")
         }
