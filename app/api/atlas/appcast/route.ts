@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS-latest.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '1.0.0'   // must match CFBundleVersion (100)
+const CURRENT_VERSION  = '100'     // must match CFBundleVersion exactly (Info.plist currently has "100")
 const SHORT_VERSION    = '1.0'
 const RELEASE_DATE     = 'Tue, 15 Aug 2026 12:00:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS-latest.dmg'
@@ -21,7 +21,7 @@ const RELEASE_NOTES = `
   <li>Initial public release</li>
   <li>TITAN MEMORY™ — AI-powered install intelligence</li>
   <li>TITAN CORE™ — Universal installer engine</li>
-  <li>Pro and Standard plan support</li>
+  <li>Full subscription support</li>
 </ul>
 `.trim()
 

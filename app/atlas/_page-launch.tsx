@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { startCheckoutSession } from '@/app/actions/stripe'
 
 const PLANS = [
   {
@@ -13,7 +14,7 @@ const PLANS = [
     recommended: true,
     features: [
       'Up to 3 devices',
-      '25 installs per month',
+      '25 installs per month, per device',
       'Bulk installation',
       'Uninstall & Rollback',
       'TITAN CORE™',
@@ -282,21 +283,29 @@ export default function AtlasSignupPage() {
       return
     }
 
-    // 2. Create dynamic Stripe Checkout Session with user ID locked in
-    const res = await fetch('/api/atlas/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: selectedPlan.id, email, userId: signUpData.userId }),
-    })
-    const data = await res.json()
+    // 2. Create Stripe Checkout Session. The browser has no Supabase session
+    // yet (signup above used the admin API, which doesn't set auth cookies),
+    // so this takes the email-only branch inside startCheckoutSession — no
+    // client_reference_id is set, but the webhook's checkout.session.completed
+    // handler already falls back to matching the account by email, which
+    // resolves correctly since /api/atlas/signup just created that exact
+    // profile row.
+    let result
+    try {
+      result = await startCheckoutSession(selectedPlan.id, email)
+    } catch (err) {
+      setLoading(false)
+      setError('Failed to create checkout session. Please try again.')
+      return
+    }
     setLoading(false)
 
-    if (!res.ok || !data.url) {
-      setError(data.error ?? 'Failed to create checkout session. Please try again.')
+    if (!result.ok) {
+      setError('This email already has an active subscription.')
       return
     }
 
-    window.location.href = data.url
+    window.location.href = result.url
   }
 
   return (
