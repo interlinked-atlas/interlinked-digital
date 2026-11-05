@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 // POST /api/atlas/login
 // macOS app sends email + password, receives JWT session
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
         { error: 'Email and password are required' },
         { status: 400 }
       )
+    }
+
+    const ip = getClientIp(request)
+    if (!(await checkRateLimit(`ip:${ip}`, 'login', 10, 600))) {
+      return NextResponse.json({ error: 'Too many requests, please try again later.' }, { status: 429 })
     }
 
     const supabase = await createClient()

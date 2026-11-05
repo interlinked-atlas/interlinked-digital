@@ -102,7 +102,7 @@ async function upsertSubscription(
     .from('profiles')
     .update({ plan: plan.profile, subscription_status: profileStatus })
     .eq('id', userId)
-  if (profileErr) console.error('[ATLAS] Profile update failed:', profileErr.message)
+  if (profileErr) throw new Error('Profile update failed: ' + profileErr.message)
 
   // Atomic upsert keyed on the subscriptions_user_id_key unique constraint
   // (supabase/migrations/20261022000000_subscriptions_user_id_unique.sql).
@@ -125,7 +125,7 @@ async function upsertSubscription(
   const { error: upsertErr } = await supabase
     .from('subscriptions')
     .upsert(subPayload, { onConflict: 'user_id' })
-  if (upsertErr) console.error('[ATLAS] Subscription upsert failed:', upsertErr.message)
+  if (upsertErr) throw new Error('Subscription upsert failed: ' + upsertErr.message)
 
   console.log(`[ATLAS] Updated user ${userId} → plan:${plan.profile} status:${profileStatus}`)
 }
@@ -326,7 +326,13 @@ export async function POST(req: NextRequest) {
           // Prefer matching by Supabase user ID (set via dynamic checkout), fall back to email
           const supabaseUserId = session.client_reference_id ?? session.metadata?.supabase_user_id
           const userId = supabaseUserId ?? await getUserByEmail(email)
-          if (!userId) break
+          if (!userId) {
+            await notifyAdmin(
+              `🚨 Payment received, no account matched — ${email}`,
+              `Stripe Checkout completed and payment was captured for ${email}, but no Supabase user could be matched (no client_reference_id/metadata, and no profile with this email).\n\nStripe Customer: ${sub.customer}\nStripe Sub: ${sub.id}\nSession: ${session.id}\nTime: ${new Date().toUTCString()}\n\nThis customer is paying with no ATLAS account provisioned. Manual reconciliation required.`
+            )
+            throw new Error(`checkout.session.completed: no Supabase user matched for ${email} (session ${session.id})`)
+          }
 
           await upsertSubscription(
             userId, sub.customer as string, sub.id,
@@ -370,7 +376,7 @@ export async function POST(req: NextRequest) {
         const sub = event.data.object as Stripe.Subscription
         const prevSub = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined
         const priceId = sub.items.data[0]?.price.id ?? ''
-        const plan = PRICE_PLAN[priceId] ?? { profile: 'standard', subscription: 'standard' }
+        const plan = PRICE_PLAN[priceId] ?? { profile: 'atlas', subscription: 'atlas' }
         let customer: Stripe.Customer | Stripe.DeletedCustomer
         try { customer = await stripeClient.customers.retrieve(sub.customer as string) } catch { break }
         if (customer.deleted) break

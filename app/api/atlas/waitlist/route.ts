@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +14,11 @@ export async function POST(req: NextRequest) {
   const { email } = await req.json()
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
+  }
+
+  const ip = getClientIp(req)
+  if (!(await checkRateLimit(`ip:${ip}`, 'waitlist', 5, 600))) {
+    return NextResponse.json({ error: 'Too many requests, please try again later.' }, { status: 429 })
   }
 
   const { error } = await supabase.from('atlas_waitlist').insert({ email })

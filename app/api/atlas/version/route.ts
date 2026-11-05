@@ -12,6 +12,18 @@ const DOWNLOAD_URLS: Record<string, string> = {
   windows: 'https://www.interlinked.digital/atlas',
 }
 
+// Minimum version still allowed to sign in. Stays at '0.0.0' (every real
+// version satisfies it, so update_required is always false) until a future
+// V2 release is ready to force V1 out — raising this later is the only
+// change needed on this side. Client-side enforcement lives in
+// AuthManager.swift and is strictly fail-open: it only ever blocks login on
+// an explicit, successfully-received update_required: true from this
+// endpoint — never on a network failure or unreachable server.
+const MINIMUM_SUPPORTED: Record<string, string> = {
+  mac:     '0.0.0',
+  windows: '0.0.0',
+}
+
 function semverGreater(a: string, b: string): boolean {
   const pa = a.split('.').map(Number)
   const pb = b.split('.').map(Number)
@@ -29,11 +41,15 @@ export async function GET(req: NextRequest) {
 
   const latest      = LATEST[platform]      ?? LATEST.mac
   const downloadUrl = DOWNLOAD_URLS[platform] ?? DOWNLOAD_URLS.mac
+  const minimum     = MINIMUM_SUPPORTED[platform] ?? MINIMUM_SUPPORTED.mac
   const updateAvailable = semverGreater(latest, current)
+  const updateRequired  = semverGreater(minimum, current)
 
   return NextResponse.json({
     update_available: updateAvailable,
+    update_required:  updateRequired,
     version:          latest,
+    minimum_version:  minimum,
     download_url:     downloadUrl,
     release_notes:    updateAvailable ? `ATLAS ${latest} is available.` : '',
   })

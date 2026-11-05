@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { Resend } from 'resend'
 import { generateDemoToken } from '../demo-token/route'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,6 +27,11 @@ export async function POST(req: NextRequest) {
   const { email, code, token, ts } = await req.json()
   if (!email || !code || !token || !ts) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+
+  const ip = getClientIp(req)
+  if (!(await checkRateLimit(`ip:${ip}`, 'verify-code', 10, 600))) {
+    return NextResponse.json({ error: 'Too many requests, please try again later.' }, { status: 429 })
   }
 
   // Check expiry

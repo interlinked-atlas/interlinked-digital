@@ -242,12 +242,11 @@ function welcomeEmail(name: string) {
 
 function subscriptionConfirmedEmail(renewDate: string) {
   const features = [
-    'Up to 3 devices',
-    '25 installs/month',
-    'Bulk queue installation',
-    'TITAN CORE™ &amp; Smart Storage',
-    'Uninstall, Rollback &amp; Recovery',
-    'Virus Scanner &amp; ATLAS CLEANER™',
+    'TITAN MEMORY™ — learns every installer you run',
+    'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
+    'Bulk installation &amp; full install history',
+    'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
+    'Built-in virus scanner &amp; ATLAS CLEANER™',
   ]
 
   return base('ATLAS — Subscription Confirmed', `
@@ -284,7 +283,7 @@ function subscriptionCancelledEmail(endDate: string) {
         </td></tr>
       </table>
 
-      ${ghostBtn('Re-subscribe to ATLAS', 'https://www.interlinked.digital/atlas', TEAL)}
+      ${ghostBtn('Re-subscribe to ATLAS', 'https://www.interlinked.digital/atlas/checkout?plan=atlas', TEAL)}
 
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
@@ -355,15 +354,25 @@ function passwordResetEmail(resetUrl: string) {
   `)
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function adminNotificationEmail(subject: string, bodyText: string) {
+  const safeSubject = escapeHtml(subject)
   const lines = bodyText.split('\n').map(l =>
-    `<p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${SUBTLE};line-height:1.7;">${l || '&nbsp;'}</p>`
+    `<p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${SUBTLE};line-height:1.7;">${escapeHtml(l) || '&nbsp;'}</p>`
   ).join('')
-  return base(`ATLAS Admin — ${subject}`, `
+  return base(`ATLAS Admin — ${safeSubject}`, `
     <div style="height:2px;background:#7C6FEE;"></div>
     <div style="padding:36px 36px 40px;">
       ${eyebrow('Admin Notification')}
-      ${heading(subject)}
+      ${heading(safeSubject)}
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
         <tr><td style="padding:18px 20px;">${lines}</td></tr>
       </table>
@@ -388,9 +397,8 @@ function launchEmail() {
       ${infoBox([
         'TITAN MEMORY™ — learns every installer you run',
         'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
-        'TITAN VSCAN™ — built-in malware scanner (Pro)',
-        'One-click rollback &amp; recovery (Pro)',
-        'Standard and Pro plans available',
+        'Built-in virus scanner &amp; ATLAS CLEANER™',
+        'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
       ], TEAL)}
 
       ${tealBtn('Download ATLAS', 'https://www.interlinked.digital/atlas')}

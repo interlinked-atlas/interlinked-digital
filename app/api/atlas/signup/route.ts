@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest) {
   }
   if (password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+  }
+
+  const ip = getClientIp(req)
+  if (!(await checkRateLimit(`ip:${ip}`, 'signup', 5, 600))) {
+    return NextResponse.json({ error: 'Too many requests, please try again later.' }, { status: 429 })
   }
 
   // Create user via admin API — marks email as confirmed immediately so

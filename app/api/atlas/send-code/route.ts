@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { Resend } from 'resend'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
@@ -14,6 +15,15 @@ export async function POST(req: NextRequest) {
   const { email } = await req.json()
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
+  }
+
+  const ip = getClientIp(req)
+  const [ipOk, emailOk] = await Promise.all([
+    checkRateLimit(`ip:${ip}`, 'send-code', 3, 600),
+    checkRateLimit(`email:${email.toLowerCase()}`, 'send-code', 3, 600),
+  ])
+  if (!ipOk || !emailOk) {
+    return NextResponse.json({ error: 'Too many requests, please try again later.' }, { status: 429 })
   }
 
   // 5-digit code, zero-padded
