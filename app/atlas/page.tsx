@@ -1405,7 +1405,7 @@ export default function ATLASWaitlistPage() {
             {[
               { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
               { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
-              { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices.' },
+              { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices, each with its own 25-install-per-month allowance.' },
               { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
               { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
             ].map(item => (
@@ -1422,7 +1422,7 @@ export default function ATLASWaitlistPage() {
           {/* Share with a friend */}
           <div className="share-section" style={{ marginTop: 20 }}>
             <p className="share-heading">Know someone who'd love this?</p>
-            <p className="share-sub">Enter their email and we'll send them a personal invite to join the waitlist.</p>
+            <p className="share-sub">Enter their email and we'll send them a personal invite to try ATLAS.</p>
             {shareStatus === 'sent' ? (
               <p className="share-sent">✓ Invite sent — they'll hear from us shortly.</p>
             ) : (

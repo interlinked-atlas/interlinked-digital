@@ -41,6 +41,12 @@ function LoginContent() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    const checkRes = await fetch('/api/atlas/login-check', { method: 'POST' })
+    if (checkRes.status === 429) {
+      setLoading(false)
+      setError('Too many login attempts. Please try again later.')
+      return
+    }
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (authError) {
