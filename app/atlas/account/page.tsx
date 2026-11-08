@@ -11,6 +11,7 @@ const supabaseAdmin = createAdminClient(
 )
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
+const ATLAS_MONTHLY_LIMIT = 25
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -29,7 +30,7 @@ export default async function AccountPage() {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan, subscription_status, billing_interval")
+      .select("plan, subscription_status, billing_interval, billing_anchor_day")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -53,6 +54,38 @@ export default async function AccountPage() {
   const devices = (devicesResult.data ?? []) as any[]
   const rawLogs = (logsResult.data ?? []) as any[]
 
+  // Monthly install usage — same billing-anchor-aware period calculation and
+  // per-device enforcement (install_counts.hardware_uuid) as reserve_install_slot
+  // and /api/atlas/entitlement use; shown per device, not blended into one
+  // account-wide number, since the 25-install cap is enforced per device.
+  const { data: periodStart } = await supabaseAdmin.rpc('atlas_period_start', {
+    p_billing_interval: profile?.billing_interval ?? null,
+    p_billing_anchor_day: profile?.billing_anchor_day ?? null,
+  })
+  const { data: nextPeriodStart } = await supabaseAdmin.rpc('atlas_next_period_start', {
+    p_billing_interval: profile?.billing_interval ?? null,
+    p_billing_anchor_day: profile?.billing_anchor_day ?? null,
+  })
+  const { data: countRows } = await supabaseAdmin
+    .from('install_counts')
+    .select('hardware_uuid, installs_this_month')
+    .eq('user_id', user.id)
+    .eq('period_start', periodStart)
+
+  const usageByDevice = new Map<string, number>()
+  for (const r of countRows ?? []) {
+    usageByDevice.set(r.hardware_uuid, (usageByDevice.get(r.hardware_uuid) ?? 0) + (r.installs_this_month ?? 0))
+  }
+  const monthlyResetDate = nextPeriodStart ? new Date(nextPeriodStart as string).toISOString() : null
+  const devicesWithUsage = devices.map(d => {
+    const used = usageByDevice.get(d.hardware_uuid) ?? 0
+    return {
+      ...d,
+      monthly_installs_used: used,
+      monthly_installs_remaining: Math.max(0, ATLAS_MONTHLY_LIMIT - used),
+    }
+  })
+
   const logs = rawLogs.map((l: any) => ({
     id: l.id,
     log_type: l.log_type ?? "install",
@@ -69,9 +102,11 @@ export default async function AccountPage() {
       user={user}
       subscription={subscription}
       profile={profile}
-      devices={devices}
+      devices={devicesWithUsage}
       logs={logs}
       isAdmin={isAdmin}
+      monthlyLimit={ATLAS_MONTHLY_LIMIT}
+      monthlyResetDate={monthlyResetDate}
     />
   )
 }

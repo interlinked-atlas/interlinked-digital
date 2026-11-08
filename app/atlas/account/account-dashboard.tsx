@@ -19,6 +19,8 @@ interface Profile { plan: string; subscription_status: string; billing_interval?
 interface Device {
   id: string; device_name: string; hardware_uuid: string
   last_seen: string; created_at: string
+  monthly_installs_used?: number
+  monthly_installs_remaining?: number
 }
 interface LogEntry {
   id: string; log_type: string; app_name: string | null
@@ -44,9 +46,11 @@ interface Props {
   devices: Device[]
   logs: LogEntry[]
   isAdmin: boolean
+  monthlyLimit?: number
+  monthlyResetDate?: string | null
 }
 
-export default function AccountDashboard({ user, subscription, profile, devices, logs, isAdmin }: Props) {
+export default function AccountDashboard({ user, subscription, profile, devices, logs, isAdmin, monthlyLimit = 25, monthlyResetDate }: Props) {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -493,6 +497,34 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                     Last active {new Date(device.last_seen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     {" · "}Registered {new Date(device.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
+                  {typeof device.monthly_installs_used === "number" && (
+                    <div style={{ marginTop: "8px", maxWidth: "220px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "1px", color: "var(--atlas-text-label)", textTransform: "uppercase" }}>Installs this period</span>
+                        <span style={{
+                          fontSize: "11px", fontWeight: 600,
+                          color: device.monthly_installs_used >= monthlyLimit ? "#E05555" : device.monthly_installs_used >= monthlyLimit * 0.8 ? "#F0A030" : "var(--atlas-text-mid)",
+                        }}>
+                          {device.monthly_installs_used} / {monthlyLimit}
+                        </span>
+                      </div>
+                      <div style={{ height: "4px", borderRadius: "2px", background: "var(--atlas-border-color)", marginTop: "4px", overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%",
+                          width: `${Math.min(100, (device.monthly_installs_used / monthlyLimit) * 100)}%`,
+                          background: device.monthly_installs_used >= monthlyLimit ? "#E05555" : device.monthly_installs_used >= monthlyLimit * 0.8 ? "#F0A030" : "#3ECFB2",
+                          transition: "width 0.3s ease",
+                        }} />
+                      </div>
+                      {device.monthly_installs_used >= monthlyLimit * 0.8 && (
+                        <p style={{ fontSize: "10px", color: device.monthly_installs_used >= monthlyLimit ? "#E05555" : "#F0A030", marginTop: "4px" }}>
+                          {device.monthly_installs_used >= monthlyLimit
+                            ? "Limit reached for this device this period."
+                            : `Only ${device.monthly_installs_remaining} install${device.monthly_installs_remaining === 1 ? "" : "s"} left this period.`}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => { setRemoveDeviceError(""); setDeviceToRemove(device) }} disabled={loading === device.id}
                   style={{ fontSize: "11px", color: "var(--atlas-text-faint)", background: "none", border: "none", cursor: "pointer", flexShrink: 0, marginTop: "2px" }}
@@ -506,6 +538,11 @@ export default function AccountDashboard({ user, subscription, profile, devices,
           <div style={{ padding: "10px 22px", borderTop: "1px solid var(--atlas-divider-subtle)", background: "var(--atlas-row-footer-bg)" }}>
             <p style={{ fontSize: "10px", color: "var(--atlas-text-ghost)", lineHeight: 1.6 }}>
               When you sign in to ATLAS, your Mac&apos;s hardware identifier is registered here. ATLAS will not open on a new Mac if your plan&apos;s device limit is reached. Remove an existing device to free up a slot.
+              {monthlyResetDate && (
+                <> Each device gets {monthlyLimit} installs per period, resetting on{" "}
+                  {new Date(monthlyResetDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.
+                </>
+              )}
             </p>
             {removeDeviceError && !deviceToRemove && <p style={{ fontSize: "11px", color: "#E05555", marginTop: "6px" }}>{removeDeviceError}</p>}
           </div>

@@ -337,12 +337,25 @@ export default function AdminPage() {
     return monthlyUsage.find(m => m.user_id === uid && new Date(m.period_end) >= now)
   }
   function userGateCount(uid: string) {
-    // 25 installs is now a per-device limit (2026-11-05) — a user can have one
+    // 25 installs is a per-device limit (2026-11-05) — a user can have one
     // install_counts row per registered device, so this sums across all of
-    // them for a "total across devices" figure rather than showing just one.
+    // them for a rough "total across devices" figure.
     const rows = gateUsage.filter(g => g.user_id === uid)
     if (rows.length === 0) return undefined
     return { installs_this_month: rows.reduce((sum, r) => sum + (r.installs_this_month ?? 0), 0) }
+  }
+  function userDeviceUsage(uid: string) {
+    // Per-device breakdown — matches how the limit is actually enforced
+    // (reserve_install_slot gates per hardware_uuid, not per account), so this
+    // is the figure that answers "is THIS device close to its cap," which the
+    // blended userGateCount() total above cannot show for multi-device users.
+    const devs = userDevices(uid)
+    return gateUsage
+      .filter(g => g.user_id === uid)
+      .map(g => ({
+        device_name: devs.find(d => d.hardware_uuid === g.hardware_uuid)?.device_name ?? g.hardware_uuid.slice(0, 8) + '…',
+        installs_this_month: g.installs_this_month ?? 0,
+      }))
   }
 
   const filteredUsers = subSearch.trim()
@@ -509,6 +522,16 @@ export default function AdminPage() {
                                   <p style={{ fontSize:"12px", color: f.color ?? "#A0A8C8", fontWeight: f.bold ? 600 : 400, margin:0 }}>{f.val}</p>
                                 </div>
                               ))}
+                              {userDeviceUsage(u.id).length > 0 && (
+                                <div style={{ gridColumn: "span 2" }}>
+                                  <span style={labelStyle}>Installs This Period, Per Device</span>
+                                  {userDeviceUsage(u.id).map((d, i) => (
+                                    <p key={i} style={{ fontSize: "12px", margin: "2px 0", color: d.installs_this_month >= 25 ? "#E05555" : d.installs_this_month >= 20 ? "#F0A030" : "#A0A8C8", fontWeight: d.installs_this_month >= 20 ? 600 : 400 }}>
+                                      {d.device_name}: {d.installs_this_month} / 25
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
                               {sub?.stripe_customer_id && (
                                 <div style={{ gridColumn:"span 2" }}>
                                   <span style={labelStyle}>Stripe Customer ID</span>

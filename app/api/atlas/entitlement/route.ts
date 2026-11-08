@@ -75,12 +75,22 @@ export async function GET(request: Request) {
       p_billing_anchor_day: billingProfile?.billing_anchor_day ?? null,
     })
 
+    // reserve_install_slot (the function that actually enforces the 25-install
+    // cap) gates per hardware_uuid, not per account — each device has its own
+    // independent 25/period allowance. Keep that per-device breakdown here
+    // (installs_used/installs_remaining on each device below) rather than only
+    // the blended account-wide total, which reads misleadingly against a
+    // single "25" for anyone with more than one device.
     const { data: countRows } = await supabaseAdmin
       .from('install_counts')
-      .select('installs_this_month')
+      .select('hardware_uuid, installs_this_month')
       .eq('user_id', user.id)
       .eq('period_start', periodStart)
 
+    const usageByDevice = new Map<string, number>()
+    for (const r of countRows ?? []) {
+      usageByDevice.set(r.hardware_uuid, (usageByDevice.get(r.hardware_uuid) ?? 0) + (r.installs_this_month ?? 0))
+    }
     const monthlyUsed = (countRows ?? []).reduce((sum, r) => sum + (r.installs_this_month ?? 0), 0)
     const resetDate   = new Date(nextPeriodStart as string).toISOString()
 
@@ -107,12 +117,17 @@ export async function GET(request: Request) {
       activations: {
         current: devices?.length ?? 0,
         max:     ATLAS_MAX_DEVICES,
-        devices: devices?.map(d => ({
-          id:           d.id,
-          device_name:  d.device_name,
-          activated_at: d.created_at,
-          last_seen_at: d.last_seen,
-        })),
+        devices: devices?.map(d => {
+          const used = usageByDevice.get(d.hardware_uuid) ?? 0
+          return {
+            id:                 d.id,
+            device_name:        d.device_name,
+            activated_at:       d.created_at,
+            last_seen_at:       d.last_seen,
+            monthly_installs_used:      used,
+            monthly_installs_remaining: Math.max(0, ATLAS_MONTHLY_LIMIT - used),
+          }
+        }),
       },
     })
   } catch {

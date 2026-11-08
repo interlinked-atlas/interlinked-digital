@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const { data: patterns, error: pErr } = await supabase
     .from('install_patterns')
-    .select('id, product_name, success_count, device_uuids, last_confirmed_at, match_patterns, installed_paths')
+    .select('id, product_name, success_count, device_uuids, last_confirmed_at, match_patterns, installed_paths, admin_verified')
     .order('success_count', { ascending: false })
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
