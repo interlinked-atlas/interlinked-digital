@@ -43,54 +43,14 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         {/* Logo */}
         <div
           className={cn("relative transition-all duration-1000", phase >= 1 ? "opacity-100 scale-100" : "opacity-0 scale-90")}
-          style={{ width: "90px", height: "90px" }}
+          style={{ width: "220px" }}
         >
           <img
-            src="/images/interlinked-icon.png"
+            src="/images/interlinked-logo-full.png"
             alt="InterLinked"
-            className={cn("w-full h-full object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
+            className={cn("w-full h-auto object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
             style={{ filter: "drop-shadow(0 0 14px var(--il-glow))" }}
           />
-          {["-16px", "-28px"].map((inset, i) => (
-            <div
-              key={i}
-              className={cn(
-                "absolute rounded-full transition-all duration-700",
-                i === 0 ? "animate-spin-slow" : "animate-spin-slower",
-                phase >= 2 ? "opacity-100" : "opacity-0"
-              )}
-              style={{
-                inset,
-                border: `1px solid var(--il-border)`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Wordmark */}
-        <div
-          className={cn("text-center transition-all duration-700", phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}
-        >
-          <p style={{
-            fontFamily: "'Vipnagorgialla', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontSize: "28px",
-            fontWeight: "normal",
-            letterSpacing: "0.12em",
-            color: "var(--il-primary)",
-            lineHeight: 1,
-            display: "inline-flex",
-            alignItems: "baseline",
-          }}>
-            InterLinked
-            <sup style={{
-              fontSize: "0.28em",
-              color: "var(--il-secondary)",
-              marginLeft: "3px",
-              verticalAlign: "super",
-              letterSpacing: 0,
-              fontFamily: "-apple-system, sans-serif",
-            }}>©</sup>
-          </p>
         </div>
 
         {/* Loading bar */}

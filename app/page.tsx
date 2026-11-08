@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { ProductCard } from "@/components/product-card"
-import { InterLinkedWordmark } from "@/components/liquid-metal-text"
 import { SplashScreen } from "@/components/splash-screen"
 
 export default function Home() {
@@ -44,7 +43,11 @@ export default function Home() {
           <section className="flex-1 flex flex-col items-center justify-center px-6 pt-24 pb-12">
             <div className="text-center mb-16">
               <h1 className="animate-fade-in-1" style={{ lineHeight: 1, marginBottom: "0" }}>
-                <InterLinkedWordmark />
+                <img
+                  src="/images/interlinked-logo-full.png"
+                  alt="InterLinked"
+                  style={{ width: "clamp(220px, 34vw, 380px)", height: "auto", display: "inline-block" }}
+                />
               </h1>
             </div>
           </section>
