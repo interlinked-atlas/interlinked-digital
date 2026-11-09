@@ -285,7 +285,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   async function handleSignOut() {
     setLoading("signout")
     await supabase.auth.signOut()
-    router.push("/")
+    router.push("/auth/login?redirect=%2Fatlas%2Faccount")
   }
 
   async function handleCancelSubscription() {
