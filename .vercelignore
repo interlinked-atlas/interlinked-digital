@@ -1,12 +1,19 @@
-# Exclude home directory folders not part of the Next.js project
-Library/
-Desktop/
-Applications/
-Movies/
-Music/
-Pictures/
-Documents/
-Downloads/
+# Exclude home directory folders not part of the Next.js project.
+# Anchored with a leading slash on purpose — without it, a gitignore-style
+# pattern matches a directory of that name at ANY depth, which is exactly
+# what broke downloads: unanchored "Downloads/" also matched this project's
+# own public/downloads/ and app/downloads/ folders and silently dropped
+# everything inside them from every deployment, regardless of filename or
+# extension — the real cause of ATLAS.dmg (and even a fresh test .txt file)
+# 404ing in production, not .vercelignore's *.dmg rule as first suspected.
+/Library/
+/Desktop/
+/Applications/
+/Movies/
+/Music/
+/Pictures/
+/Documents/
+/Downloads/
 
 # Dot dirs
 .installbuilder/
@@ -50,4 +57,4 @@ node_modules/
 
 # Mac noise
 .DS_Store
-Library/Saved Application State/
+/Library/Saved Application State/
