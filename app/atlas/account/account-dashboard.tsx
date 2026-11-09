@@ -51,6 +51,8 @@ interface BillingInvoice {
   hosted_invoice_url: string | null
   invoice_pdf: string | null
 }
+type TabId = "billing" | "recovery" | "devices" | "logs" | "support" | "settings" | "downloads"
+
 interface Props {
   user: User
   subscription: Subscription | null
@@ -97,6 +99,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [kitDownloading, setKitDownloading] = useState<string | null>(null)
   const [logsExpanded, setLogsExpanded] = useState(false)
   const [kitsExpanded, setKitsExpanded] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabId>("billing")
   const router = useRouter()
   const supabase = createClient()
 
@@ -143,9 +146,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   useEffect(() => { loadCloudKits() }, [loadCloudKits])
   useEffect(() => { loadBillingHistory() }, [loadBillingHistory])
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#billing-history") {
+    if (typeof window === "undefined") return
+    if (window.location.hash === "#billing-history") {
       setBillingHistoryExpanded(true)
+      setActiveTab("billing")
     }
+    const tabParam = new URLSearchParams(window.location.search).get("tab") as TabId | null
+    const validTabs: TabId[] = ["billing", "recovery", "devices", "logs", "support", "settings", "downloads"]
+    if (tabParam && validTabs.includes(tabParam)) setActiveTab(tabParam)
   }, [])
 
   useEffect(() => {
@@ -426,7 +434,38 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         )}
         <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: "4px" }}>Account</h1>
 
+        {/* ── Tab Nav ── */}
+        <div style={{
+          display: "flex", gap: "4px", overflowX: "auto", paddingBottom: "2px",
+          borderBottom: "1px solid var(--atlas-divider)", marginBottom: "4px",
+        }}>
+          {([
+            { id: "billing", label: "Billing" },
+            { id: "recovery", label: "Recovery Kits" },
+            { id: "devices", label: "Devices" },
+            { id: "logs", label: "Logs" },
+            { id: "support", label: "Support" },
+            { id: "settings", label: "Settings" },
+            { id: "downloads", label: "Downloads" },
+          ] as { id: TabId; label: string }[]).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                flexShrink: 0, padding: "9px 14px", fontSize: "12px", fontWeight: 600,
+                background: "none", border: "none", cursor: "pointer",
+                color: activeTab === tab.id ? "#3ECFB2" : "var(--atlas-text-label)",
+                borderBottom: activeTab === tab.id ? "2px solid #3ECFB2" : "2px solid transparent",
+                marginBottom: "-1px", transition: "color 0.15s",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Subscription ── */}
+        {activeTab === "billing" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
           <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
             <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "10px" }}>Subscription</p>
@@ -475,9 +514,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             {cancelError && <p style={{ fontSize: "11px", color: "#E05555" }}>{cancelError}</p>}
           </div>
         </section>
+        )}
 
         {/* ── Payment & Billing ── */}
-        {subscription && !subscription.stripe_customer_id?.startsWith("admin") && (
+        {activeTab === "billing" && subscription && !subscription.stripe_customer_id?.startsWith("admin") && (
           <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
             <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Payment & Billing</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -509,6 +549,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         )}
 
         {/* ── Plan Features ── */}
+        {activeTab === "settings" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Your Plan Features</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
@@ -520,8 +561,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <FeatureCell label="Smart Storage"        value="Enabled"          active />
           </div>
         </section>
+        )}
 
         {/* ── Activated Devices ── */}
+        {activeTab === "devices" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
           <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--atlas-divider)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
@@ -615,8 +658,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             {removeDeviceError && !deviceToRemove && <p style={{ fontSize: "11px", color: "#E05555", marginTop: "6px" }}>{removeDeviceError}</p>}
           </div>
         </section>
+        )}
 
         {/* ── Installation Logs ── */}
+        {activeTab === "logs" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
           <div style={{ padding: "18px 22px 14px", borderBottom: logsExpanded ? "1px solid var(--atlas-divider)" : "none" }}>
             <button onClick={() => setLogsExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: logsExpanded ? "12px" : 0 }}>
@@ -706,8 +751,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
           )}
         </section>
+        )}
 
         {/* ── Get Help ── */}
+        {activeTab === "support" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
           <div style={{ padding: "18px 22px 16px", borderBottom: "1px solid var(--atlas-divider)" }}>
             <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "4px" }}>Get Help</p>
@@ -757,8 +804,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </>)}
           </div>
         </section>
+        )}
 
         {/* ── Notifications ── */}
+        {activeTab === "settings" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Notifications</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -766,8 +815,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <NotifRow label="Payment alerts" description="Email if a payment fails" enabled={true} onChange={() => {}} locked />
           </div>
         </section>
+        )}
 
         {/* ── Download ── */}
+        {activeTab === "downloads" && (
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Download ATLAS</p>
           {isActive && !isCancelled ? (
@@ -805,9 +856,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </p>
           )}
         </section>
+        )}
 
         {/* ── Recovery Kits ── */}
-        {(isSubscribed || (!cloudKitsLoading && cloudKits.length > 0)) && (
+        {activeTab === "recovery" && (isSubscribed || (!cloudKitsLoading && cloudKits.length > 0)) && (
           <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }}>
             <button onClick={() => setKitsExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "18px 22px 14px", borderBottom: kitsExpanded ? "1px solid var(--atlas-divider)" : "none", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
               <div>
@@ -867,7 +919,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         )}
 
         {/* ── Payment History ── */}
-        {(isSubscribed || (!billingHistoryLoading && billingHistory.length > 0)) && (
+        {activeTab === "billing" && (isSubscribed || (!billingHistoryLoading && billingHistory.length > 0)) && (
           <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }} id="billing-history">
             <button onClick={() => setBillingHistoryExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "18px 22px 14px", borderBottom: billingHistoryExpanded ? "1px solid var(--atlas-divider)" : "none", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
               <div>
