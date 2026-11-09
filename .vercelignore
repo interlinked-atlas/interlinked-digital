@@ -47,6 +47,12 @@ node_modules/
 *.log
 *.dmg
 *.zip
+# Exception: the one real production installer asset. The *.dmg rule above
+# exists to stop stray local test builds from being swept into a deploy by
+# accident — it was also silently excluding this one legitimate file from
+# every deployment, which is why interlinked.digital/downloads/ATLAS.dmg
+# 404'd in production despite being correctly committed and pushed to git.
+!public/downloads/ATLAS.dmg
 
 # Mac noise
 .DS_Store
