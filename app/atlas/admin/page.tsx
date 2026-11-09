@@ -52,6 +52,13 @@ export default function AdminPage() {
   const [subSearch, setSubSearch]       = useState("")
   const [userEmail, setUserEmail]       = useState("")
 
+  const [limitInput, setLimitInput]   = useState<Record<string, string>>({})
+  const [limitSavingId, setLimitSavingId] = useState<string | null>(null)
+  const [resettingId, setResettingId]     = useState<string | null>(null)
+  const [bulkLimitInput, setBulkLimitInput] = useState("")
+  const [bulkSaving, setBulkSaving]         = useState(false)
+  const [bulkResetting, setBulkResetting]   = useState(false)
+
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
   const [fixStatus, setFixStatus] = useState("investigating")
@@ -146,7 +153,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -194,6 +201,78 @@ export default function AdminPage() {
     }
     setTickets(t => t.map((x: any) => x.id === id ? { ...x, status: "resolved" } : x))
     if (expandedTicket === id) setExpandedTicket(null)
+  }
+
+  async function saveInstallLimit(userID: string) {
+    const raw = limitInput[userID]?.trim() ?? ""
+    const limit = raw === "" ? null : parseInt(raw, 10)
+    if (limit !== null && (!Number.isInteger(limit) || limit < 1)) {
+      showToast("Enter a positive number, or leave blank for the standard 25")
+      return
+    }
+    setLimitSavingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/install-limit", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, monthly_install_limit: limit }),
+    })
+    setLimitSavingId(null)
+    if (!res.ok) { showToast("Failed to save limit"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, monthly_install_limit: limit } : x))
+    showToast(limit === null ? "Reverted to standard 25/month" : `Limit set to ${limit}/month`)
+  }
+
+  async function resetInstallUsage(userID: string) {
+    if (!confirm("Reset this client's install count to 0 for the current period? This lets them install again immediately.")) return
+    setResettingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/install-limit", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, reset_usage: true }),
+    })
+    setResettingId(null)
+    if (!res.ok) { showToast("Failed to reset usage"); return }
+    setGateUsage(g => g.map(row => row.user_id === userID ? { ...row, installs_this_month: 0 } : row))
+    showToast("Usage reset — they can install again now")
+  }
+
+  async function bulkSetLimit() {
+    const raw = bulkLimitInput.trim()
+    const limit = raw === "" ? null : parseInt(raw, 10)
+    if (limit !== null && (!Number.isInteger(limit) || limit < 1)) {
+      showToast("Enter a positive number, or leave blank to revert everyone to the standard 25")
+      return
+    }
+    const label = limit === null ? "revert every active subscriber back to the standard 25/month" : `set every active subscriber's install limit to ${limit}/month`
+    if (!confirm(`This will ${label} (${activeUsers.length} active subscriber${activeUsers.length === 1 ? "" : "s"}). Continue?`)) return
+    setBulkSaving(true)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/install-limit", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ scope: "all_active", monthly_install_limit: limit }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBulkSaving(false)
+    if (!res.ok) { showToast(data?.error ? `Failed: ${data.error}` : "Failed to apply bulk limit"); return }
+    const activeIDs = new Set(activeUsers.map(u => u.id))
+    setUsers(u => u.map(x => activeIDs.has(x.id) ? { ...x, monthly_install_limit: limit } : x))
+    showToast(`Applied to ${data.affected ?? activeUsers.length} active subscriber${(data.affected ?? activeUsers.length) === 1 ? "" : "s"}`)
+  }
+
+  async function bulkResetUsage() {
+    if (!confirm(`Reset install usage to 0 for ALL ${activeUsers.length} active subscribers? This unlocks every one of them for the current period immediately.`)) return
+    setBulkResetting(true)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/install-limit", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ scope: "all_active", reset_usage: true }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBulkResetting(false)
+    if (!res.ok) { showToast(data?.error ? `Failed: ${data.error}` : "Failed to reset usage"); return }
+    const activeIDs = new Set(activeUsers.map(u => u.id))
+    setGateUsage(g => g.map(row => activeIDs.has(row.user_id) ? { ...row, installs_this_month: 0 } : row))
+    showToast(`Usage reset for ${data.affected ?? activeUsers.length} active subscriber${(data.affected ?? activeUsers.length) === 1 ? "" : "s"}`)
   }
 
   async function saveFailureFix() {
@@ -440,6 +519,37 @@ export default function AdminPage() {
               {subSearch && <button onClick={() => setSubSearch("")} style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"var(--atlas-text-label)", cursor:"pointer", fontSize:"16px", lineHeight:1 }}>×</button>}
             </div>
 
+            <div style={{ ...card, padding: "14px 18px", border: "1px solid rgba(240,160,48,0.25)" }}>
+              <span style={labelStyle}>Bulk: All {activeUsers.length} Active Subscribers</span>
+              <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap", marginTop:"6px" }}>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="25 (standard)"
+                  value={bulkLimitInput}
+                  onChange={e => setBulkLimitInput(e.target.value)}
+                  style={{ ...inputStyle, width: "110px" }}
+                />
+                <button
+                  onClick={bulkSetLimit}
+                  disabled={bulkSaving || activeUsers.length === 0}
+                  style={{ fontSize:"11px", fontWeight:600, color:"#08090E", background:"#3ECFB2", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                >
+                  {bulkSaving ? "Applying…" : "Apply Limit to All Active"}
+                </button>
+                <button
+                  onClick={bulkResetUsage}
+                  disabled={bulkResetting || activeUsers.length === 0}
+                  style={{ fontSize:"11px", fontWeight:600, color:"#F0A030", background:"rgba(240,160,48,0.08)", border:"1px solid rgba(240,160,48,0.3)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                >
+                  {bulkResetting ? "Resetting…" : "Reset Usage For All Active (Unlock Now)"}
+                </button>
+              </div>
+              <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                Applies only to subscribers with an active subscription right now — computed fresh from the subscriptions table, not from what's currently on screen. Leave the field blank and click Apply to revert everyone to the standard 25/month.
+              </p>
+            </div>
+
             {filteredUsers.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>{subSearch ? "No users match." : "No users yet."}</div>}
             {filteredUsers.map(u => {
               const sub      = subByUser[u.id]
@@ -515,21 +625,63 @@ export default function AdminPage() {
                                 { label:"Log Sync",           val: u.privacy_consent ? "On" : "Off", color: u.privacy_consent ? "#3ECFB2" : "var(--atlas-text-mid)" },
                                 { label:"Billing Cadence",    val: u.billing_interval === "annual" ? "Annual" : u.billing_interval === "monthly" ? "Monthly" : "—" },
                                 { label:"Billing Anchor",     val: u.billing_anchor_day != null ? `Day ${u.billing_anchor_day} of month` : "—" },
-                                { label:"Current Period Installs", val: (() => { const g = userGateCount(u.id); return g != null ? `${g.installs_this_month} / 25` : "—" })(), color: (() => { const g = userGateCount(u.id); return g != null && g.installs_this_month >= 20 ? "#F0A030" : "#3ECFB2" })(), bold: true },
+                                { label:"Current Period Installs", val: (() => { const g = userGateCount(u.id); const lim = u.monthly_install_limit ?? 25; return g != null ? `${g.installs_this_month} / ${lim}` : `— / ${lim}` })(), color: (() => { const g = userGateCount(u.id); const lim = u.monthly_install_limit ?? 25; return g != null && g.installs_this_month >= lim - 5 ? "#F0A030" : "#3ECFB2" })(), bold: true },
                               ].map(f => (
                                 <div key={f.label}>
                                   <span style={labelStyle}>{f.label}</span>
                                   <p style={{ fontSize:"12px", color: f.color ?? "#A0A8C8", fontWeight: f.bold ? 600 : 400, margin:0 }}>{f.val}</p>
                                 </div>
                               ))}
+                              <div style={{ gridColumn: "span 2" }}>
+                                <span style={labelStyle}>Install Limit Override (per device, per period)</span>
+                                <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    placeholder={u.monthly_install_limit != null ? String(u.monthly_install_limit) : "25 (standard)"}
+                                    value={limitInput[u.id] ?? (u.monthly_install_limit != null ? String(u.monthly_install_limit) : "")}
+                                    onChange={e => setLimitInput(m => ({ ...m, [u.id]: e.target.value }))}
+                                    style={{ ...inputStyle, width: "110px" }}
+                                  />
+                                  <button
+                                    onClick={() => saveInstallLimit(u.id)}
+                                    disabled={limitSavingId === u.id}
+                                    style={{ fontSize:"11px", fontWeight:600, color:"#08090E", background:"#3ECFB2", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                  >
+                                    {limitSavingId === u.id ? "Saving…" : "Save Limit"}
+                                  </button>
+                                  {u.monthly_install_limit != null && (
+                                    <button
+                                      onClick={() => { setLimitInput(m => ({ ...m, [u.id]: "" })); saveInstallLimit(u.id) }}
+                                      disabled={limitSavingId === u.id}
+                                      style={{ fontSize:"11px", color:"var(--atlas-text-label)", background:"none", border:"1px solid var(--atlas-border-color)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                    >
+                                      Revert to 25
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => resetInstallUsage(u.id)}
+                                    disabled={resettingId === u.id}
+                                    style={{ fontSize:"11px", fontWeight:600, color:"#F0A030", background:"rgba(240,160,48,0.08)", border:"1px solid rgba(240,160,48,0.3)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                  >
+                                    {resettingId === u.id ? "Resetting…" : "Reset Usage (Unlock Now)"}
+                                  </button>
+                                </div>
+                                <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                  Leave blank for the standard 25/month. Takes effect on their next install attempt — no app update needed. "Reset Usage" zeroes their count for the current period only; it doesn't change their limit.
+                                </p>
+                              </div>
                               {userDeviceUsage(u.id).length > 0 && (
                                 <div style={{ gridColumn: "span 2" }}>
                                   <span style={labelStyle}>Installs This Period, Per Device</span>
-                                  {userDeviceUsage(u.id).map((d, i) => (
-                                    <p key={i} style={{ fontSize: "12px", margin: "2px 0", color: d.installs_this_month >= 25 ? "#E05555" : d.installs_this_month >= 20 ? "#F0A030" : "#A0A8C8", fontWeight: d.installs_this_month >= 20 ? 600 : 400 }}>
-                                      {d.device_name}: {d.installs_this_month} / 25
-                                    </p>
-                                  ))}
+                                  {userDeviceUsage(u.id).map((d, i) => {
+                                    const lim = u.monthly_install_limit ?? 25
+                                    return (
+                                      <p key={i} style={{ fontSize: "12px", margin: "2px 0", color: d.installs_this_month >= lim ? "#E05555" : d.installs_this_month >= lim - 5 ? "#F0A030" : "#A0A8C8", fontWeight: d.installs_this_month >= lim - 5 ? 600 : 400 }}>
+                                        {d.device_name}: {d.installs_this_month} / {lim}
+                                      </p>
+                                    )
+                                  })}
                                 </div>
                               )}
                               {sub?.stripe_customer_id && (

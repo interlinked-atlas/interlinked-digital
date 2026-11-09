@@ -6,8 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const ATLAS_MONTHLY_LIMIT = 25
-
 // POST /api/atlas/install-count
 // Confirms or releases a reservation created by /api/atlas/check-install
 // (reserve_install_slot). This is the ONLY place installs_this_month is
@@ -68,7 +66,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     allowed:    true,
     used:       data.used,
-    limit:      ATLAS_MONTHLY_LIMIT,
+    limit:      data.limit,
     remaining:  data.remaining,
   })
 }

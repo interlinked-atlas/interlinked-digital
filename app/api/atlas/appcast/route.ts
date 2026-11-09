@@ -8,15 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '120'
-const SHORT_VERSION    = '1.2'
-const RELEASE_DATE     = 'Mon, 09 Nov 2026 13:30:00 +0000'
+const CURRENT_VERSION  = '130'
+const SHORT_VERSION    = '1.3'
+const RELEASE_DATE     = 'Mon, 09 Nov 2026 15:00:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19593770'
-const ED_SIGNATURE     = '0qaIvHU+92PipGNOjW/VdsWOwO0/+2ThbXzBT9618mzJEiQFqG91BBeu+QzRui4dC7QOSKm3h8tZl4nyqFpUAA=='
+const DMG_LENGTH       = '19595546'
+const ED_SIGNATURE     = 'zFepUsNFeJCXGEB3SCPMsAyNxAOMphBtTOuq0CkS4SjcwCDmPwC6wVWVRDKa9UU6n1NpWv9J4ybgU9B8BQlGAg=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>The app now correctly reflects any custom install-limit changes made by support, instead of always assuming 25/month</li>
   <li>Fixed: the monthly install-limit screen now actually appears when you reach your cap, with a notification and a Support button</li>
   <li>Fixed: newly installed products now show up in the Library immediately instead of after a delay</li>
   <li>Fixed: quitting ATLAS or checking for updates while Settings was open could get stuck — Settings is now its own window</li>
