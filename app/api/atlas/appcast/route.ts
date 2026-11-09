@@ -8,20 +8,20 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS-latest.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '100'     // must match CFBundleVersion exactly (Info.plist currently has "100")
-const SHORT_VERSION    = '1.0'
-const RELEASE_DATE     = 'Tue, 15 Aug 2026 12:00:00 +0000'
+const CURRENT_VERSION  = '120'
+const SHORT_VERSION    = '1.2'
+const RELEASE_DATE     = 'Mon, 09 Nov 2026 13:30:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS-latest.dmg'
-const DMG_LENGTH       = '20931549' // bytes — update per release (run: stat -f%z ATLAS-latest.dmg)
-// EdDSA signature — run sign_update on the DMG before each release
-const ED_SIGNATURE     = 'HVUrWJZlShs3c1zaY0ProF4XOU5+CDlxLPKwoTyuI1bUxOg0fY8/IbiH6iaFicXLHmlIZt447FnpaK5BPDc1CA=='
+const DMG_LENGTH       = '19593770'
+const ED_SIGNATURE     = '0qaIvHU+92PipGNOjW/VdsWOwO0/+2ThbXzBT9618mzJEiQFqG91BBeu+QzRui4dC7QOSKm3h8tZl4nyqFpUAA=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Initial public release</li>
-  <li>TITAN MEMORY™ — AI-powered install intelligence</li>
-  <li>TITAN CORE™ — Universal installer engine</li>
-  <li>Full subscription support</li>
+  <li>Fixed: the monthly install-limit screen now actually appears when you reach your cap, with a notification and a Support button</li>
+  <li>Fixed: newly installed products now show up in the Library immediately instead of after a delay</li>
+  <li>Fixed: quitting ATLAS or checking for updates while Settings was open could get stuck — Settings is now its own window</li>
+  <li>Fixed: an issue that could silently sign you out after quitting and relaunching</li>
+  <li>The Library panel now closes automatically after being idle, or as soon as you start a new install</li>
 </ul>
 `.trim()
 
