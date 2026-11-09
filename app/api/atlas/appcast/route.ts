@@ -8,15 +8,17 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '140'
-const SHORT_VERSION    = '1.4'
-const RELEASE_DATE     = 'Mon, 09 Nov 2026 16:00:00 +0000'
+const CURRENT_VERSION  = '150'
+const SHORT_VERSION    = '1.5'
+const RELEASE_DATE     = 'Mon, 09 Nov 2026 17:00:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19627831'
-const ED_SIGNATURE     = 'kdXPAHMNqvOlaEH/SysKPFZnp5IZ/FFuopo67OJvt7Yv9uMhLeF6gpbs2jILZ5nUY3+q55ReixlOe6iQv3zgCA=='
+const DMG_LENGTH       = '19633658'
+const ED_SIGNATURE     = '1EmhIrpfZm+nfouOugB3yJ5Xv1exwYwSZQRLKxtkgC7fwUpC963F0oJQ5NBw8ZwigfMv40UImcDt6wb25lz/BQ=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>A support-granted install-limit change now takes effect within seconds instead of requiring a later install attempt to notice — the app checks periodically, on launch, and whenever it's brought to the foreground or Settings is opened</li>
+  <li>Settings now shows your current monthly install usage and limit</li>
   <li>Fixed: a support-granted install-limit change or usage reset could fail to clear the "limit reached" screen until a later install attempt — it now checks automatically when that screen appears, and a "Check Again" button was added</li>
   <li>The app now correctly reflects any custom install-limit changes made by support, instead of always assuming 25/month</li>
   <li>Fixed: the monthly install-limit screen now actually appears when you reach your cap, with a notification and a Support button</li>
