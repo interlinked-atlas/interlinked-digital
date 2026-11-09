@@ -74,6 +74,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [supportSubmitting, setSupportSubmitting] = useState(false)
   const [supportDone, setSupportDone] = useState(false)
   const [cloudKits, setCloudKits] = useState<CloudKit[]>([])
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState("")
   const [cloudKitsLoading, setCloudKitsLoading] = useState(false)
   const [cloudKitsError, setCloudKitsError] = useState("")
   const [kitDownloading, setKitDownloading] = useState<string | null>(null)
@@ -192,6 +194,31 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       // silently fail — button re-enables
     } finally {
       setKitDownloading(null)
+    }
+  }
+
+  async function handleAtlasDownload() {
+    setDownloadError("")
+    setDownloading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        setDownloadError("Your session expired — please sign in again.")
+        return
+      }
+      const res = await fetch("/api/atlas/download-url?platform=mac", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const body = await res.json()
+      if (!res.ok || !body.download_url) {
+        setDownloadError(body.error ?? "Could not start the download. Please try again.")
+        return
+      }
+      window.location.href = body.download_url
+    } catch {
+      setDownloadError("Could not start the download. Please try again.")
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -703,10 +730,12 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", padding: "18px 22px" }}>
           <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "14px" }}>Download ATLAS</p>
           {isActive && !isCancelled ? (
-            <a href="/downloads/ATLAS-latest.dmg" download="ATLAS.dmg" style={{
-              display: "flex", alignItems: "center", gap: "14px",
+            <>
+            <button type="button" onClick={handleAtlasDownload} disabled={downloading} style={{
+              width: "100%", display: "flex", alignItems: "center", gap: "14px",
               padding: "14px 16px", background: "var(--atlas-log-bg)", borderRadius: "10px",
-              border: "1px solid #1E2240", textDecoration: "none",
+              border: "1px solid #1E2240", textDecoration: "none", textAlign: "left",
+              cursor: downloading ? "wait" : "pointer", opacity: downloading ? 0.7 : 1,
               transition: "border-color 0.15s",
             }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(62,207,178,0.3)")}
@@ -721,9 +750,13 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "2px" }}>Version 3.0 · Universal · Intel &amp; Apple Silicon</p>
               </div>
               <div style={{ marginLeft: "auto", fontSize: "10px", color: "var(--atlas-text-faint)", fontWeight: 600, letterSpacing: "1px" }}>
-                ↓ DMG
+                {downloading ? "…" : "↓ DMG"}
               </div>
-            </a>
+            </button>
+            {downloadError && (
+              <p style={{ fontSize: "11px", color: "#E05555", marginTop: "8px" }}>{downloadError}</p>
+            )}
+            </>
           ) : (
             <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>
               {isCancelled ? "Re-subscribe to download ATLAS." : "Subscribe to download ATLAS."}
