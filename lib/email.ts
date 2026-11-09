@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-renewed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch' | 'release'
 
 interface SendOptions {
   to: string
@@ -20,6 +20,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'subscription-confirmed': {
       subject: 'ATLAS — Subscription Confirmed',
       html: subscriptionConfirmedEmail(data.renewDate ?? ''),
+    },
+    'subscription-renewed': {
+      subject: 'ATLAS — Payment Receipt',
+      html: subscriptionRenewedEmail(data.amount ?? '', data.chargeDate ?? '', data.nextRenewDate ?? '', data.receiptUrl ?? ''),
     },
     'subscription-cancelled': {
       subject: 'Your ATLAS subscription has been cancelled',
@@ -68,6 +72,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'nov12-launch': {
       subject: 'ATLAS — New Launch Date: November 12th',
       html: nov12LaunchEmail(),
+    },
+    'release': {
+      subject: 'ATLAS V1 is live — you get it first.',
+      html: releaseEmail(),
     },
   }
 
@@ -261,6 +269,35 @@ function subscriptionConfirmedEmail(renewDate: string) {
       ${infoBox(features, TEAL)}
 
       ${tealBtn('View Account Dashboard', 'https://www.interlinked.digital/atlas/account')}
+    </div>
+  `)
+}
+
+function subscriptionRenewedEmail(amount: string, chargeDate: string, nextRenewDate: string, receiptUrl: string) {
+  const rows = [
+    `Amount charged: <strong style="color:${WHITE};">${amount}</strong>`,
+    chargeDate ? `Billed on: <strong style="color:${WHITE};">${chargeDate}</strong>` : '',
+    nextRenewDate ? `Next renewal: <strong style="color:${WHITE};">${nextRenewDate}</strong>` : '',
+  ].filter(Boolean)
+
+  return base('ATLAS — Payment Receipt', `
+    <!-- Top teal bar -->
+    <div style="height:2px;background:${TEAL};"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Receipt')}
+      ${heading('Your ATLAS subscription renewed.')}
+      ${body(`Thanks for staying subscribed to <strong style="color:${WHITE};font-weight:600;">ATLAS</strong>. Here's your receipt for this billing period.`)}
+
+      ${infoBox(rows, TEAL)}
+
+      ${tealBtn('View Payment History', 'https://www.interlinked.digital/atlas/account#billing-history')}
+      ${receiptUrl ? `<div style="height:10px;"></div>${ghostBtn('View Official Stripe Receipt', receiptUrl, SUBTLE)}` : ''}
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
+        Questions about this charge? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
+      </p>
     </div>
   `)
 }
@@ -623,6 +660,59 @@ function nov12LaunchEmail() {
       </p>
 
       ${tealBtn('Learn More', 'https://www.interlinked.digital/atlas')}
+
+      ${divider()}
+
+      <!-- Secondary: Windows teaser -->
+      <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;letter-spacing:-0.01em;">Windows Version of ATLAS Coming Soon.</p>
+      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">Stay tuned for more updates.</p>
+
+      ${divider()}
+
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
+        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+      </p>
+    </div>
+  `)
+}
+
+function releaseEmail() {
+  return base('ATLAS V1 is live', `
+    <!-- Top teal/indigo gradient bar -->
+    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Waitlist Exclusive · Live Now')}
+
+      <!-- macOS badge -->
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+        <tr>
+          <td valign="middle" style="padding-right:8px;">
+            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
+          </td>
+          <td valign="middle">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
+          </td>
+        </tr>
+      </table>
+
+      ${heading('ATLAS V1 is here. You get it first.')}
+      <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
+        You joined the ATLAS waitlist before anyone else — which means before we open this up to anyone else,
+        <strong style="color:${WHITE};font-weight:600;">you're first in line.</strong> ATLAS V1 for macOS is live right now.
+        No more remote-install services, no more handing a stranger access to your Mac, no more paying per file.
+        ATLAS installs, tracks, and cleanly uninstalls your plugins and software automatically — all on your own machine, privately.
+      </p>
+
+      ${infoBox([
+        'TITAN MEMORY™ — learns every installer you run',
+        'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
+        'Bulk installation &amp; full install history',
+        'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
+        'Built-in virus scanner &amp; ATLAS CLEANER™',
+      ], TEAL)}
+
+      ${tealBtn('Get ATLAS V1', 'https://www.interlinked.digital/atlas')}
 
       ${divider()}
 

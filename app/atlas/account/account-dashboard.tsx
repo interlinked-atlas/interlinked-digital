@@ -39,6 +39,18 @@ interface CloudKit {
   atlaskit_size: number | null
   txt_size: number | null
 }
+interface BillingInvoice {
+  id: string
+  amount: number
+  currency: string
+  status: string
+  date: number
+  billing_reason: string | null
+  card_brand: string | null
+  card_last4: string | null
+  hosted_invoice_url: string | null
+  invoice_pdf: string | null
+}
 interface Props {
   user: User
   subscription: Subscription | null
@@ -76,6 +88,10 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [cloudKits, setCloudKits] = useState<CloudKit[]>([])
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState("")
+  const [billingHistory, setBillingHistory] = useState<BillingInvoice[]>([])
+  const [billingHistoryLoading, setBillingHistoryLoading] = useState(false)
+  const [billingHistoryError, setBillingHistoryError] = useState("")
+  const [billingHistoryExpanded, setBillingHistoryExpanded] = useState(false)
   const [cloudKitsLoading, setCloudKitsLoading] = useState(false)
   const [cloudKitsError, setCloudKitsError] = useState("")
   const [kitDownloading, setKitDownloading] = useState<string | null>(null)
@@ -105,7 +121,32 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     }
   }, [supabase])
 
+  const loadBillingHistory = useCallback(async () => {
+    setBillingHistoryLoading(true)
+    setBillingHistoryError("")
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setBillingHistoryLoading(false); return }
+      const res = await fetch("/api/atlas/billing-history", {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setBillingHistory(json.invoices ?? [])
+    } catch (e: any) {
+      setBillingHistoryError(e?.message ?? "Failed to load payment history")
+    } finally {
+      setBillingHistoryLoading(false)
+    }
+  }, [supabase])
+
   useEffect(() => { loadCloudKits() }, [loadCloudKits])
+  useEffect(() => { loadBillingHistory() }, [loadBillingHistory])
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#billing-history") {
+      setBillingHistoryExpanded(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (searchParams.get("welcome") === "1") {
@@ -817,6 +858,58 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                           Delete
                         </button>
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Payment History ── */}
+        {(isSubscribed || (!billingHistoryLoading && billingHistory.length > 0)) && (
+          <section style={{ background: "var(--atlas-card)", borderRadius: "14px", border: "1px solid var(--atlas-border-color)", overflow: "hidden" }} id="billing-history">
+            <button onClick={() => setBillingHistoryExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "18px 22px 14px", borderBottom: billingHistoryExpanded ? "1px solid var(--atlas-divider)" : "none", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+              <div>
+                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "2px", color: "var(--atlas-text-label)", textTransform: "uppercase", marginBottom: "2px" }}>Payment History</p>
+                <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginBottom: 0 }}>Every charge to your account — amount, date, and card used.</p>
+              </div>
+              <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", transform: billingHistoryExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease", flexShrink: 0, marginTop: "2px" }}>▶</span>
+            </button>
+            {!billingHistoryExpanded ? null : billingHistoryLoading ? (
+              <div style={{ padding: "20px 22px", color: "var(--atlas-text-label)", fontSize: "12px" }}>Loading…</div>
+            ) : billingHistoryError ? (
+              <div style={{ padding: "20px 22px", color: "#E05555", fontSize: "12px" }}>{billingHistoryError}</div>
+            ) : billingHistory.length === 0 ? (
+              <div style={{ padding: "20px 22px", color: "var(--atlas-text-label)", fontSize: "12px" }}>No charges yet.</div>
+            ) : (
+              <div>
+                {billingHistory.map((inv, i) => {
+                  const date = new Date(inv.date * 1000)
+                  const label = date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                  const amount = `$${(inv.amount / 100).toFixed(2)}`
+                  const statusColor = inv.status === "paid" ? "#3ECFB2" : inv.status === "open" ? "#F0A030" : "#E05555"
+                  const statusLabel = inv.status === "paid" ? "Paid" : inv.status === "open" ? "Pending" : "Failed"
+                  return (
+                    <div key={inv.id} style={{ padding: "14px 22px", borderBottom: i < billingHistory.length - 1 ? "1px solid var(--atlas-divider-faint)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+                      <div>
+                        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--atlas-fg)", margin: 0 }}>{amount} · {label}</p>
+                        <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
+                          <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+                          {inv.card_brand && inv.card_last4 ? ` · ${inv.card_brand.toUpperCase()} •••• ${inv.card_last4}` : ""}
+                          {inv.billing_reason === "subscription_create" ? " · First payment" : inv.billing_reason === "subscription_cycle" ? " · Renewal" : ""}
+                        </p>
+                      </div>
+                      {(inv.hosted_invoice_url || inv.invoice_pdf) && (
+                        <a
+                          href={inv.hosted_invoice_url ?? inv.invoice_pdf ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", border: "1px solid var(--atlas-kit-btn-border)", borderRadius: "6px", padding: "5px 10px", flexShrink: 0, textDecoration: "none" }}
+                        >
+                          View Receipt
+                        </a>
+                      )}
                     </div>
                   )
                 })}

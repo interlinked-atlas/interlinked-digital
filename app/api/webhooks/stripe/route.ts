@@ -528,11 +528,33 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Routine renewal receipt — only for an actual recurring cycle charge,
+        // never the first invoice (checkout.session.completed already sends
+        // welcome + subscription-confirmed for that one) and never a proration
+        // or manual adjustment invoice.
+        if (invoice.billing_reason === 'subscription_cycle') {
+          const amount = `$${((invoice.amount_paid ?? 0) / 100).toFixed(2)}`
+          const chargeDate = new Date((invoice.status_transitions?.paid_at ?? invoice.created) * 1000)
+            .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          const sub = typeof invoice.subscription === 'string'
+            ? await stripeClient.subscriptions.retrieve(invoice.subscription)
+            : null
+          const nextRenewDate = sub?.current_period_end
+            ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : ''
+
+          await sendEmail({
+            to: email,
+            template: 'subscription-renewed',
+            data: { amount, chargeDate, nextRenewDate, receiptUrl: invoice.hosted_invoice_url ?? '' },
+          })
+        }
+
         // Audit log every successful charge
         await auditLog('payment.succeeded', {
           userId, email,
           stripeEvent: event.type,
-          metadata: { invoice_id: invoice.id, amount_paid: invoice.amount_paid, stripe_customer_id: invoice.customer },
+          metadata: { invoice_id: invoice.id, amount_paid: invoice.amount_paid, stripe_customer_id: invoice.customer, billing_reason: invoice.billing_reason },
           notes: `$${((invoice.amount_paid ?? 0) / 100).toFixed(2)} charged successfully`,
         })
         break
