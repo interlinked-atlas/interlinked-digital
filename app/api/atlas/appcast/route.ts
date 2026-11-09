@@ -6,12 +6,12 @@ import { NextResponse } from 'next/server'
 
 // ─── UPDATE THESE WITH EACH RELEASE ────────────────────────────────────────
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
-// Run: .build/artifacts/sparkle/bin/sign_update ATLAS-latest.dmg  → paste signature below
+// Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
 const CURRENT_VERSION  = '120'
 const SHORT_VERSION    = '1.2'
 const RELEASE_DATE     = 'Mon, 09 Nov 2026 13:30:00 +0000'
-const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS-latest.dmg'
+const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
 const DMG_LENGTH       = '19593770'
 const ED_SIGNATURE     = '0qaIvHU+92PipGNOjW/VdsWOwO0/+2ThbXzBT9618mzJEiQFqG91BBeu+QzRui4dC7QOSKm3h8tZl4nyqFpUAA=='
 
