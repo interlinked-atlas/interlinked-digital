@@ -45,14 +45,15 @@ node_modules/
 .env*
 .vercel/
 *.log
-*.dmg
-*.zip
-# Exception: the one real production installer asset. The *.dmg rule above
-# exists to stop stray local test builds from being swept into a deploy by
-# accident — it was also silently excluding this one legitimate file from
-# every deployment, which is why interlinked.digital/downloads/ATLAS.dmg
-# 404'd in production despite being correctly committed and pushed to git.
-!public/downloads/ATLAS.dmg
+# *.dmg and *.zip were excluded here — removed. Stray local test DMGs
+# already can't reach a deploy via the Desktop/ rule above, and this
+# blanket rule was also silently dropping public/downloads/ATLAS.dmg
+# (the one real production asset) from every deployment regardless of
+# git tracking, which is why that download 404'd in production despite
+# being correctly committed and pushed. A "!public/downloads/ATLAS.dmg"
+# negation here did not override it — Vercel's ignore-file parser
+# apparently doesn't support git-style negation, so removing the rule
+# outright was the actual fix.
 
 # Mac noise
 .DS_Store
