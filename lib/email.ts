@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-renewed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch' | 'release'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-renewed' | 'subscription-cancelled' | 'payment-failed' | 'password-reset' | 'new-device-signin' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch' | 'release'
 
 interface SendOptions {
   to: string
@@ -36,6 +36,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'password-reset': {
       subject: 'ATLAS — Reset your password',
       html: passwordResetEmail(data.resetUrl ?? ''),
+    },
+    'new-device-signin': {
+      subject: 'ATLAS — New Device Signed In',
+      html: newDeviceSigninEmail(data.deviceName ?? 'Unknown Mac', data.signInTime ?? ''),
     },
     'admin-notification': {
       subject: data.subject ?? 'ATLAS Admin Alert',
@@ -386,6 +390,34 @@ function passwordResetEmail(resetUrl: string) {
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
         If you didn't request a password reset, you can safely ignore this email — your password won't change.
+      </p>
+    </div>
+  `)
+}
+
+function newDeviceSigninEmail(deviceName: string, signInTime: string) {
+  return base('ATLAS — New Device Signed In', `
+    <!-- Top amber bar -->
+    <div style="height:2px;background:#F0A030;"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Security Alert')}
+      ${heading('A new device signed in to your ATLAS account.')}
+      ${body(`<strong style="color:${WHITE};font-weight:600;">${escapeHtml(deviceName)}</strong> was just activated on your account${signInTime ? ` at <strong style="color:${WHITE};font-weight:600;">${escapeHtml(signInTime)}</strong>` : ''}. If this was you, no action is needed.`)}
+
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
+        <tr><td style="padding:18px 20px;">
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${SUBTLE};line-height:1.7;">
+            Wasn't you? Remove this device from your account immediately, then change your password.
+          </p>
+        </td></tr>
+      </table>
+
+      ${tealBtn('Review Devices', 'https://www.interlinked.digital/atlas/account?tab=devices')}
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
+        Need help? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
       </p>
     </div>
   `)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,6 +43,20 @@ export async function POST(req: NextRequest) {
     console.error('[devices/register] RPC error:', error)
     // Fail closed — an unverifiable registration is never a granted one.
     return NextResponse.json({ allowed: false, reason: 'server_error' }, { status: 503 })
+  }
+
+  // Genuinely new device (not a re-registration of one already on the
+  // account) — alert the user in case this wasn't them.
+  if (data?.allowed && data?.already_registered === false && user.email) {
+    // Pinned to UTC explicitly — this runs server-side, so without a fixed
+    // zone the label would otherwise depend on whatever timezone the server
+    // process happens to be in, which is ambiguous and not the user's own
+    // local time either way.
+    const signInTime = new Date().toLocaleString('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      timeZone: 'UTC', timeZoneName: 'short',
+    })
+    await sendEmail({ to: user.email, template: 'new-device-signin', data: { deviceName, signInTime } })
   }
 
   const status = data?.allowed ? 200 : 403
