@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var permCheckTimer: Timer? = nil
     @State private var unsupportedExtension: String? = nil
     @State private var showHistory = false
+    @State private var libraryLastActivity = Date()
+    @State private var libraryIdleTimer: Timer? = nil
     @State private var rollingBack: InstallRecord? = nil
     @State private var rollbackInProgress = false
     @State private var isRestoring = false
@@ -60,10 +62,11 @@ struct ContentView: View {
     @State private var showVScanSheet           = false
     @State private var pendingVScanURL:         URL? = nil
     @State private var pendingVScanResult:      VScanResult? = nil
-    @State private var showSettings  = false
     @State private var showAbout     = false
     @State private var showUpgrade   = false
     @State private var upgradeFeature = ""
+    @State private var showSupportFromLimit = false
+    @State private var checkingLimitAgain = false
     @State private var showStorageSelection = false
     @State private var pendingInstallURL: URL? = nil
     @State private var pendingScanResult: ScanResult? = nil
@@ -183,6 +186,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showUpgrade) {
             UpgradeView(feature: upgradeFeature) { showUpgrade = false }
+        }
+        .sheet(isPresented: $showSupportFromLimit) {
+            SupportView()
         }
         // Standard plan — let user pick which product to install when multiple are found
         .sheet(isPresented: $showMultipleProductsGate) {
@@ -333,6 +339,12 @@ struct ContentView: View {
                 .transition(.move(edge: .trailing))
                 .zIndex(50)
                 .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showHistory)
+                // Any tap/scroll/drag inside the panel counts as activity and
+                // resets the 30s auto-close countdown. simultaneousGesture so
+                // it never blocks the panel's own buttons/scrolling.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0).onChanged { _ in libraryLastActivity = Date() }
+                )
             }
 
             // Tour overlay — injected via overlayPreferenceValue below
@@ -343,8 +355,31 @@ struct ContentView: View {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false }
             }
         }
+        .onChange(of: showHistory) { isShowing in
+            libraryIdleTimer?.invalidate()
+            libraryIdleTimer = nil
+            guard isShowing else { return }
+            libraryLastActivity = Date()
+            // Auto-close the Library if it sits idle for 30s — checked every
+            // second rather than scheduled once, since any tap/scroll inside
+            // the panel pushes libraryLastActivity forward and should keep
+            // postponing the close instead of firing on a stale deadline.
+            libraryIdleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                guard Date().timeIntervalSince(libraryLastActivity) >= 30 else { return }
+                libraryIdleTimer?.invalidate()
+                libraryIdleTimer = nil
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false }
+            }
+        }
         .onChange(of: rollbackInProgress) { inProgress in
             if inProgress { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { showHistory = false } }
+        }
+        .onChange(of: appState.tourStartRequested) { requested in
+            guard requested else { return }
+            appState.tourStartRequested = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                showTour = true
+            }
         }
         .onChange(of: appState.pendingOpenURLs) { urls in
             guard !urls.isEmpty else { return }
@@ -589,6 +624,9 @@ struct ContentView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(.opacity)
+                .onChange(of: mission.isComplete) { complete in
+                    if complete { saveTitanRecord(mission: mission) }
+                }
             } else {
 
             ScrollView {
@@ -646,14 +684,6 @@ struct ContentView: View {
 
             bottomBar
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(onStartTour: {
-                // Wait for the sheet dismiss animation to finish before showing tour
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                    showTour = true
-                }
-            })
-        }
     }
 
     // MARK: - Bottom bar
@@ -665,7 +695,7 @@ struct ContentView: View {
         return HStack(spacing: 2) {
             // Settings — disabled while installing/uninstalling
             BottomBarIconButton(icon: "gearshape", tooltip: busy ? "Unavailable during install" : "Settings") {
-                showSettings = true
+                SettingsWindowController.shared.show()
             }
             .disabled(busy)
             .opacity(busy ? 0.3 : 1)
@@ -926,10 +956,6 @@ struct ContentView: View {
                     AtlasLabelButton(icon: "stop.circle", label: "Cancel") {
                         showCancelConfirm = true
                     }
-                } else if !isIdle {
-                    AtlasLabelButton(icon: "arrow.counterclockwise", label: "Home") {
-                        resetAll()
-                    }
                 }
             }
             .confirmationDialog(
@@ -1125,7 +1151,20 @@ struct ContentView: View {
         }
 
         if showDropZone && !rollbackInProgress {
-            if !auth.isPro && monthlyLimit.isLocked {
+            // Was `!auth.isPro && monthlyLimit.isLocked` — isPro is just an
+            // isSubscribed alias, so this never showed the lock screen to an
+            // actual (subscribed) ATLAS user, meaning real users never saw
+            // any block/alert at the cap: the drop zone and Choose File
+            // button stayed fully usable, and installs just silently never
+            // started. Admins are already exempted separately inside
+            // MonthlyLimitManager.isMonthlyLocked, so this needs no isPro
+            // check here at all.
+            // Forced update takes priority over the monthly-limit lock — an
+            // admin-required version must be installed before the app is
+            // usable at all, regardless of install-cap state.
+            if monthlyLimit.isForcedUpdatePending {
+                forcedUpdateZone
+            } else if monthlyLimit.isLocked {
                 monthlyLimitLockedZone
             } else {
                 // Standard: show remaining installs counter while not locked
@@ -1219,6 +1258,53 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Forced update UI
+
+    var forcedUpdateZone: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.atlasDeepBG)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color(hex: "#E05555").opacity(0.4),
+                                style: StrokeStyle(lineWidth: 1.5, dash: [6]))
+                )
+
+            VStack(spacing: 14) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.atlasFont(size: 36))
+                    .foregroundColor(Color(hex: "#E05555"))
+
+                VStack(spacing: 4) {
+                    Text("A required update is available")
+                        .font(.atlasFont(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: "#E05555"))
+                    if let v = monthlyLimit.forcedUpdateVersion {
+                        Text("ATLAS \(v) must be installed to continue")
+                            .font(.atlasFont(size: 11))
+                            .foregroundColor(Color(hex: "#696E7C"))
+                    }
+                }
+
+                Button {
+                    AppDelegate.updaterController.checkForUpdates(nil)
+                } label: {
+                    Text("Update Now")
+                        .font(.atlasFont(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#08090E"))
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                        .background(Color(hex: "#E05555"))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 200)
+        .onAppear {
+            Task { await monthlyLimit.refreshUsage() }
+        }
+    }
+
     // MARK: - Monthly limit UI
 
     var monthlyLimitLockedZone: some View {
@@ -1234,8 +1320,6 @@ struct ContentView: View {
 
             let planName   = "ATLAS"
             let cap        = monthlyLimit.currentLimit
-            let nextPlan   = "ATLAS"
-            let upgradeMsg = "Subscribe to ATLAS"
 
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
@@ -1280,12 +1364,30 @@ struct ContentView: View {
                             .foregroundColor(Color(hex: "#D0D8F0"))
                     }
 
-                    if !auth.isPro {
+                    HStack(spacing: 10) {
                         Button {
-                            upgradeFeature = nextPlan
-                            showUpgrade = true
+                            checkingLimitAgain = true
+                            Task {
+                                await monthlyLimit.refreshUsage()
+                                checkingLimitAgain = false
+                            }
                         } label: {
-                            Text(upgradeMsg)
+                            Text(checkingLimitAgain ? "Checking…" : "Check Again")
+                                .font(.atlasFont(size: 12, weight: .semibold))
+                                .foregroundColor(Color(hex: "#D0D8F0"))
+                                .padding(.horizontal, 16).padding(.vertical, 7)
+                                .background(Color(hex: "#D0D8F0").opacity(0.08))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color(hex: "#D0D8F0").opacity(0.25), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(checkingLimitAgain)
+
+                        Button {
+                            showSupportFromLimit = true
+                        } label: {
+                            Text("Need Support?")
                                 .font(.atlasFont(size: 12, weight: .semibold))
                                 .foregroundColor(Color(hex: "#3ECFB2"))
                                 .padding(.horizontal, 16).padding(.vertical, 7)
@@ -1299,6 +1401,16 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 200)
+            .onAppear {
+                // Admin-side "Reset Usage"/limit changes land in the DB
+                // immediately, but this app's lock state is a local cache
+                // that normally only refreshes via an actual install
+                // attempt — which this very screen blocks from happening.
+                // Checking automatically the moment this screen appears
+                // means a client who got reset mid-period sees it clear
+                // without needing to know to tap "Check Again" themselves.
+                Task { await monthlyLimit.refreshUsage() }
+            }
         }
     }
 
@@ -1488,10 +1600,36 @@ struct ContentView: View {
                 }
                 Spacer()
             }
-            installMoreButton
+            HStack(spacing: 10) {
+                installMoreButton
+                homeButton
+            }
         }
         .padding(14)
         .atlasCard()
+    }
+
+    var homeButton: some View {
+        Button {
+            resetAll()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.counterclockwise")
+                    .foregroundStyle(Color.atlasSubtitle)
+                Text("Home")
+                    .foregroundStyle(Color.atlasLabel)
+            }
+            .font(.atlasHeadline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.atlasPanelBG)
+            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                    .strokeBorder(Color.atlasBorder, lineWidth: 0.75)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -1683,6 +1821,12 @@ struct ContentView: View {
 
     private func handleFilesDrop(urls: [URL]) {
         guard !urls.isEmpty else { return }
+
+        // Close the Library panel the moment a file is dropped/selected so
+        // it never sits open over the install that's about to start.
+        if showHistory {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false }
+        }
 
         // Block ATLAS installers
         if urls.contains(where: { InstallerClassifier.isAtlasItself($0) }) {
@@ -2294,22 +2438,16 @@ struct ContentView: View {
         guard let item = queue.items.first(where: { $0.id == id }) else { return }
 
         // TITAN VSCAN™ — Pro only, runs only when user has enabled the scanner.
-        // Blocking verdicts (.malware) halt this item; warnings are logged and install continues.
+        // Alerts only — no verdict halts the install; all warnings are logged and the install continues.
         if Features.titanVScan && titanVScanEnabled {
             queue.updateStatus(id: id, status: .scanning)
             queue.updateProgress(id: id, progress: 0.05, step: "TITAN VSCAN™…")
             if let vsResult = await titanVScan.scan(url: item.url) {
                 switch vsResult.verdict {
                 case .malware:
-                    logger.log("⛔ TITAN VSCAN™ — MALWARE BLOCKED: \(item.fileName) [\(vsResult.threats.map(\.name).joined(separator: ", "))]")
-                    queue.updateStatus(id: id, status: .failure("TITAN VSCAN™ blocked: \(vsResult.summaryLine)"))
-                    return
+                    logger.log("⚠ TITAN VSCAN™ — severe threat detected (install continuing): \(item.fileName) [\(vsResult.threats.map(\.name).joined(separator: ", "))]")
                 case .scanFailed:
-                    // A scan that could not run is NOT a clean result — never
-                    // auto-proceed with an unverified file in the bulk queue.
-                    logger.log("⚠ TITAN VSCAN™ — scan failed, could not verify \(item.fileName)")
-                    queue.updateStatus(id: id, status: .failure("TITAN VSCAN™ could not scan this file. \(vsResult.summaryLine)"))
-                    return
+                    logger.log("⚠ TITAN VSCAN™ — scan failed, could not verify \(item.fileName) (install continuing)")
                 case .bundledThreat:
                     logger.log("⚠ TITAN VSCAN™ — Bundled threat detected in \(item.fileName): \(vsResult.threats.map(\.name).joined(separator: ", "))")
                 case .suspicious:
@@ -2861,6 +2999,11 @@ struct ContentView: View {
     }
 
     private func saveTitanRecordAsync(mission: TitanMission) async {
+        // Guard against a double save — this now also fires as soon as the
+        // mission completes (see the onChange below), not only on "Done".
+        guard !mission.historyRecordSaved else { return }
+        mission.historyRecordSaved = true
+
         let sourceName = mission.sourceURL.lastPathComponent
         // .failed is only assigned to critical steps (installPkg, UI automation) in execute().
         // Non-critical failures (codesign, metadata) get .warning and never gate success.

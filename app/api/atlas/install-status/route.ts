@@ -24,8 +24,15 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('atlas_forced_update_version')
+    .eq('id', user.id)
+    .maybeSingle()
+  const forcedUpdateVersion = profile?.atlas_forced_update_version ?? null
+
   if (user.email?.toLowerCase() === 'titantinstaller@gmail.com') {
-    return NextResponse.json({ used: 0, limit: 999999, remaining: 999999 })
+    return NextResponse.json({ used: 0, limit: 999999, remaining: 999999, forced_update_version: forcedUpdateVersion })
   }
 
   let body: { hardware_uuid?: string } = {}
@@ -43,5 +50,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'server_error' }, { status: 503 })
   }
 
-  return NextResponse.json(data)
+  return NextResponse.json({ ...data, forced_update_version: forcedUpdateVersion })
 }

@@ -148,6 +148,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         ) { _, _ in }
 
         NSApp.activate(ignoringOtherApps: true)
+        MonthlyLimitManager.shared.startLiveSync()
         InstallEngine.cleanupStaleMounts()
         InstallEngine.killLeakedAuthWatchers()
         // Check for queue items that survived a crash or force-quit last session.
@@ -216,7 +217,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         NSLog("[ATLAS] applicationShouldTerminate called, menuStatus=\(MenuBarStatusManager.shared.menuStatus)")
-        // Show a warning if an install, uninstall, or TITAN mission is in progress.
+
+        // Settings used to be a SwiftUI sheet attached to mainWindow — that
+        // attachment was found (via Console: zero applicationShouldTerminate
+        // log lines fired while it was open, vs. firing instantly once
+        // closed) to silently swallow the Quit Apple Event outright. It's
+        // now its own NSWindow, so closing it here is a plain, synchronous
+        // window close with no such entanglement — no need to defer
+        // termination for it to take effect.
+        SettingsWindowController.shared.close()
+
         guard MenuBarStatusManager.shared.menuStatus == .installing else {
             NSLog("[ATLAS] returning .terminateNow")
             return .terminateNow
@@ -236,6 +246,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     func applicationShouldTerminateAfterLastWindowClosed(
         _ sender: NSApplication) -> Bool {
         return false
+    }
+
+    // Bringing the app back to the foreground is a natural moment someone
+    // would expect a limit change to already be visible — don't make them
+    // wait for the next poll tick.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Task { await MonthlyLimitManager.shared.refreshUsage() }
     }
 
     // Called every time the user clicks the Dock icon.
@@ -490,9 +507,65 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // Remind Me Later / Skip This Version). Silent no-op if already up to
     // date — Sparkle shows nothing unless an update actually exists.
     @objc private func checkForUpdates() {
+        SettingsWindowController.shared.close()
         AppDelegate.updaterController.checkForUpdates(nil)
     }
 
+}
+
+// MARK: - Settings window
+// A plain NSWindow, not a SwiftUI .sheet. A sheet attached to mainWindow was
+// found to silently swallow the Quit Apple Event entirely while it was open
+// (confirmed via Console: applicationShouldTerminate never logged while the
+// sheet was up, but fired instantly the moment it was closed) and to block
+// Sparkle's own "Install & Relaunch" window from taking clicks. A standalone
+// window has no attachment to mainWindow, so neither case can occur.
+@MainActor
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+    static let shared = SettingsWindowController()
+
+    private init() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 640),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        window.contentView = NSHostingView(rootView: SettingsView(
+            onStartTour: { AppState.shared.tourStartRequested = true },
+            onClose: { [weak self] in self?.close() }
+        ))
+    }
+
+    required init?(coder: NSCoder) { fatalError("Not designed for storyboard/XIB use") }
+
+    func show() {
+        // Center on the main ATLAS window (where the old sheet used to
+        // appear) rather than the whole screen, so it doesn't jump to a
+        // different spot depending on monitor/window position.
+        if let settingsWindow = window, let main = AppDelegate.mainWindow {
+            let mainFrame = main.frame
+            let size = settingsWindow.frame.size
+            let origin = NSPoint(
+                x: mainFrame.midX - size.width  / 2,
+                y: mainFrame.midY - size.height / 2)
+            settingsWindow.setFrameOrigin(origin)
+        } else {
+            window?.center()
+        }
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        AppState.shared.settingsIsOpen = true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        AppState.shared.settingsIsOpen = false
+    }
 }
 
 // MARK: - Notification Helper

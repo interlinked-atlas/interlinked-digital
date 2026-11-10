@@ -5,6 +5,27 @@ final class MonthlyLimitManager: ObservableObject {
     static let shared = MonthlyLimitManager()
     private init() { load() }
 
+    // MARK: - Live sync
+    // Lightweight polling rather than a true push/Realtime subscription —
+    // this is a per-user, security-sensitive value (unlike TITAN MEMORY's
+    // public-table Realtime sync), so a second authenticated WebSocket
+    // stack wasn't worth the added fragility for "an admin-changed limit
+    // shows up in well under a minute." refreshUsage() is already a safe,
+    // side-effect-free no-op when signed out, so this can just run
+    // continuously from app launch rather than needing explicit
+    // start/stop calls tied to sign-in/out.
+    private var pollTask: Task<Void, Never>? = nil
+
+    func startLiveSync() {
+        guard pollTask == nil else { return }
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.refreshUsage()
+                try? await Task.sleep(nanoseconds: 18_000_000_000)
+            }
+        }
+    }
+
     // MARK: - Limits
     /// Flat 25/month for every plan tier, per registered device. Intentional —
     /// not Pro/Advanced/Atlas-specific.
@@ -22,9 +43,41 @@ final class MonthlyLimitManager: ObservableObject {
     /// a previous account/device/period can never be mistaken for a trustworthy one.
     @Published private(set) var hasServerConfirmedThisPeriod: Bool = false
 
+    /// Per-account override from profiles.monthly_install_limit, reported back
+    /// by reserve_install_slot/confirm_install_reservation on every call. nil
+    /// means "server hasn't told us otherwise yet" — falls back to the
+    /// standard 25 so a brand-new/offline session still shows a sane number.
+    @Published private(set) var serverLimit: Int? = nil
+
+    /// Admin-pushed required version from profiles.atlas_forced_update_version, as
+    /// reported back by refreshUsage() on every poll. nil means no forced update
+    /// pending. When set and newer than the app's own running version, the UI blocks
+    /// with an update-required screen (see AppState.forcedUpdateVersion).
+    @Published private(set) var forcedUpdateVersion: String? = nil
+
     // MARK: - Derived limits
 
-    var currentLimit: Int { Self.atlasMonthlyLimit }
+    var currentLimit: Int { serverLimit ?? Self.atlasMonthlyLimit }
+
+    /// True when the admin has pushed a forced version strictly newer than the one
+    /// actually running — compares CFBundleShortVersionString numerically (e.g. "1.6"
+    /// > "1.5"), not as strings, so "1.10" correctly beats "1.9".
+    var isForcedUpdatePending: Bool {
+        guard let forced = forcedUpdateVersion else { return false }
+        let running = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0"
+        return Self.semverGreater(forced, running)
+    }
+
+    private static func semverGreater(_ a: String, _ b: String) -> Bool {
+        let pa = a.split(separator: ".").compactMap { Int($0) }
+        let pb = b.split(separator: ".").compactMap { Int($0) }
+        for i in 0..<max(pa.count, pb.count) {
+            let x = i < pa.count ? pa[i] : 0
+            let y = i < pb.count ? pb[i] : 0
+            if x != y { return x > y }
+        }
+        return false
+    }
 
     // MARK: - Lock state
 
@@ -118,6 +171,39 @@ final class MonthlyLimitManager: ObservableObject {
     /// reservation's creation (see reserve_install_slot). Returns the reservation ID
     /// to pass to confirmSuccess(reservationID:)/releaseReservation(reservationID:)
     /// once the install's outcome is known.
+    /// Read-only status refresh — does NOT create a reservation, so it's safe to
+    /// call any time, including while the app believes it's locked. This is the
+    /// only way the app can ever learn its local cache is stale: the normal path
+    /// (reserveSlot → server) only runs on an actual install attempt, and the
+    /// lock screen blocks that attempt before it reaches the server at all. So
+    /// if an admin resets a client's usage or raises their limit mid-period,
+    /// this is what actually clears the lock on their end — reserveSlot() alone
+    /// never would, since it'd never get called.
+    func refreshUsage() async {
+        guard !AuthManager.shared.isAdmin else { return }
+        guard let token = await AuthManager.shared.currentToken() else { return }
+        guard let url = URL(string: "https://www.interlinked.digital/api/atlas/install-status") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 6
+        struct Body: Encodable { let hardware_uuid: String }
+        req.httpBody = try? JSONEncoder().encode(Body(hardware_uuid: atlasHardwareUUID()))
+
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return }
+        struct Result: Decodable { let used: Int?; let limit: Int?; let forced_update_version: String? }
+        guard let result = try? JSONDecoder().decode(Result.self, from: data) else { return }
+        if let used = result.used {
+            installsThisPeriod = used
+            hasServerConfirmedThisPeriod = true
+        }
+        if let limit = result.limit { serverLimit = limit }
+        forcedUpdateVersion = result.forced_update_version
+        save()
+    }
+
     /// ATLAS policy (2026-10-19): zero offline installs. If the server cannot be
     /// reached or cannot verify the subscription, this always denies — a previously
     /// confirmed count or remaining quota is never a substitute for a current,
@@ -145,6 +231,7 @@ final class MonthlyLimitManager: ObservableObject {
             let allowed: Bool
             let reason: String?
             let monthly_used: Int?
+            let monthly_limit: Int?
         }
 
         do {
@@ -175,8 +262,9 @@ final class MonthlyLimitManager: ObservableObject {
             if let mu = result.monthly_used {
                 installsThisPeriod = mu
                 hasServerConfirmedThisPeriod = true
-                save()
             }
+            if let limit = result.monthly_limit { serverLimit = limit }
+            save()
             return (result.allowed, result.allowed ? reservationID : nil, result.reason)
         } catch {
             // Genuinely could not reach the server at all — this remains the
@@ -216,12 +304,35 @@ final class MonthlyLimitManager: ObservableObject {
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             return
         }
-        struct Result: Decodable { let used: Int? }
-        if let result = try? JSONDecoder().decode(Result.self, from: data), let used = result.used {
-            installsThisPeriod = used
-            hasServerConfirmedThisPeriod = true
+        struct Result: Decodable { let used: Int?; let limit: Int? }
+        if let result = try? JSONDecoder().decode(Result.self, from: data) {
+            if let used = result.used {
+                installsThisPeriod = used
+                hasServerConfirmedThisPeriod = true
+            }
+            if let limit = result.limit { serverLimit = limit }
             save()
+            notifyIfJustReachedLimit()
         }
+    }
+
+    // MARK: - Limit-reached notification
+
+    /// Fires a native notification the moment usage reaches the monthly cap —
+    /// once per (identity, period), not on every re-check/relaunch. The flag
+    /// resets alongside the other per-period caches in refreshIfExpired() and
+    /// resetForSignOut(), same key scheme as cacheKeySuffix.
+    private func notifyIfJustReachedLimit() {
+        guard !AuthManager.shared.isAdmin else { return }
+        guard installsThisPeriod >= currentLimit else { return }
+        let key = "atlas_month_limit_notified_\(cacheKeySuffix)"
+        let ud = UserDefaults.standard
+        guard !ud.bool(forKey: key) else { return }
+        ud.set(true, forKey: key)
+        ATLASNotification.send(
+            title: "Monthly install limit reached",
+            body: "You've used all \(currentLimit) installs for this device this period. It resets \(nextMonthlyResetDate.formatted(date: .abbreviated, time: .omitted))."
+        )
     }
 
     /// Call when a product install started via reserveSlot() fails, is cancelled,
@@ -270,6 +381,8 @@ final class MonthlyLimitManager: ObservableObject {
         installsThisPeriod = 0
         hasServerConfirmedThisPeriod = false
         periodStart = currentPeriodStart()
+        serverLimit = nil
+        UserDefaults.standard.removeObject(forKey: "atlas_month_limit_notified_\(cacheKeySuffix)")
         save()
     }
 
@@ -280,6 +393,7 @@ final class MonthlyLimitManager: ObservableObject {
             installsThisPeriod = 0
             hasServerConfirmedThisPeriod = false
             periodStart = currentPeriodStart()
+            UserDefaults.standard.removeObject(forKey: "atlas_month_limit_notified_\(cacheKeySuffix)")
             save()
         }
     }
@@ -305,6 +419,11 @@ final class MonthlyLimitManager: ObservableObject {
         ud.set(installsThisPeriod, forKey: "atlas_installs_month_\(suffix)")
         ud.set(periodStart.timeIntervalSinceReferenceDate, forKey: "atlas_month_start_\(suffix)")
         ud.set(hasServerConfirmedThisPeriod, forKey: "atlas_month_confirmed_\(suffix)")
+        if let limit = serverLimit {
+            ud.set(limit, forKey: "atlas_month_limit_\(suffix)")
+        } else {
+            ud.removeObject(forKey: "atlas_month_limit_\(suffix)")
+        }
     }
 
     private func savePending() {
@@ -320,6 +439,8 @@ final class MonthlyLimitManager: ObservableObject {
         let ti = ud.double(forKey: "atlas_month_start_\(suffix)")
         periodStart = ti > 0 ? Date(timeIntervalSinceReferenceDate: ti) : currentPeriodStart()
         hasServerConfirmedThisPeriod = ud.bool(forKey: "atlas_month_confirmed_\(suffix)")
+        let cachedLimit = ud.object(forKey: "atlas_month_limit_\(suffix)") as? Int
+        serverLimit = cachedLimit
 
         today = now
 

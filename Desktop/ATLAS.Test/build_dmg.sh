@@ -51,18 +51,21 @@ codesign --force --deep --sign - \
 echo "==> Building DMG..."
 rm -f "$DMG_OUT"
 # create-dmg lays out a real Finder window: background image, the ATLAS.app
-# icon on the left, an Applications-folder shortcut on the right — matching
-# the dmg-background.png design (900x560, two outline boxes at roughly
-# x=223/y=251 and x=677/y=251). Previously this was a bare `hdiutil create`,
-# which packaged just the .app with no background/Applications shortcut at
-# all — opening the old DMG showed a blank Finder window with only the icon.
+# icon on the left, an Applications-folder shortcut on the right. Layout
+# (window size, icon size, icon positions) is copied exactly from the
+# reference DMG at ~/Downloads/ATLAS 2.dmg — read via its .DS_Store (Iloc/
+# bwsp entries): 960x560 window, 128px icons, ATLAS.app at (240,270),
+# Applications at (712,270). Only that DMG's background image was reused;
+# nothing else from it. Previously this was a bare `hdiutil create`, which
+# packaged just the .app with no background/Applications shortcut at all —
+# opening the old DMG showed a blank Finder window with only the icon.
 create-dmg \
   --volname "ATLAS" \
-  --background "$PROJ/AtlasResources/dmg-background.png" \
-  --window-size 900 560 \
-  --icon-size 160 \
-  --icon "ATLAS.app" 223 251 \
-  --app-drop-link 677 251 \
+  --background "$PROJ/AtlasResources/dmg-background.tiff" \
+  --window-size 960 540 \
+  --icon-size 128 \
+  --icon "ATLAS.app" 240 270 \
+  --app-drop-link 712 270 \
   --hide-extension "ATLAS.app" \
   --no-internet-enable \
   "$DMG_OUT" \

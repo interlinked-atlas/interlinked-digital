@@ -59,6 +59,11 @@ export default function AdminPage() {
   const [bulkSaving, setBulkSaving]         = useState(false)
   const [bulkResetting, setBulkResetting]   = useState(false)
 
+  const [pushVersionInput, setPushVersionInput]   = useState<Record<string, string>>({})
+  const [pushingId, setPushingId]                 = useState<string | null>(null)
+  const [bulkPushVersionInput, setBulkPushVersionInput] = useState("")
+  const [bulkPushing, setBulkPushing]             = useState(false)
+
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
   const [fixStatus, setFixStatus] = useState("investigating")
@@ -153,7 +158,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -273,6 +278,49 @@ export default function AdminPage() {
     const activeIDs = new Set(activeUsers.map(u => u.id))
     setGateUsage(g => g.map(row => activeIDs.has(row.user_id) ? { ...row, installs_this_month: 0 } : row))
     showToast(`Usage reset for ${data.affected ?? activeUsers.length} active subscriber${(data.affected ?? activeUsers.length) === 1 ? "" : "s"}`)
+  }
+
+  async function pushUpdate(userID: string) {
+    const raw = pushVersionInput[userID]?.trim() ?? ""
+    const version = raw === "" ? null : raw
+    if (version !== null && !/^\d+(\.\d+){1,2}$/.test(version)) {
+      showToast("Enter a version like 1.6, or leave blank to clear")
+      return
+    }
+    if (version !== null && !confirm(`Force this client to update to v${version}? ATLAS will block with an update-required screen until they do.`)) return
+    setPushingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/push-update", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, forced_update_version: version }),
+    })
+    setPushingId(null)
+    if (!res.ok) { showToast("Failed to push update"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, atlas_forced_update_version: version } : x))
+    showToast(version === null ? "Forced update cleared" : `Pushed v${version} — takes effect within ~18s`)
+  }
+
+  async function bulkPushUpdate() {
+    const raw = bulkPushVersionInput.trim()
+    const version = raw === "" ? null : raw
+    if (version !== null && !/^\d+(\.\d+){1,2}$/.test(version)) {
+      showToast("Enter a version like 1.6, or leave blank to clear everyone")
+      return
+    }
+    const label = version === null ? "clear the forced update for every active subscriber" : `force every active subscriber to update to v${version}`
+    if (!confirm(`This will ${label} (${activeUsers.length} active subscriber${activeUsers.length === 1 ? "" : "s"}). Continue?`)) return
+    setBulkPushing(true)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/push-update", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ scope: "all_active", forced_update_version: version }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBulkPushing(false)
+    if (!res.ok) { showToast(data?.error ? `Failed: ${data.error}` : "Failed to push update"); return }
+    const activeIDs = new Set(activeUsers.map(u => u.id))
+    setUsers(u => u.map(x => activeIDs.has(x.id) ? { ...x, atlas_forced_update_version: version } : x))
+    showToast(version === null ? `Cleared for ${data.affected ?? activeUsers.length} subscriber(s)` : `Pushed v${version} to ${data.affected ?? activeUsers.length} subscriber(s)`)
   }
 
   async function saveFailureFix() {
@@ -550,6 +598,29 @@ export default function AdminPage() {
               </p>
             </div>
 
+            <div style={{ ...card, padding: "14px 18px", border: "1px solid rgba(224,85,85,0.25)" }}>
+              <span style={labelStyle}>Bulk: Force Update — All {activeUsers.length} Active Subscribers</span>
+              <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap", marginTop:"6px" }}>
+                <input
+                  type="text"
+                  placeholder="e.g. 1.6"
+                  value={bulkPushVersionInput}
+                  onChange={e => setBulkPushVersionInput(e.target.value)}
+                  style={{ ...inputStyle, width: "110px" }}
+                />
+                <button
+                  onClick={bulkPushUpdate}
+                  disabled={bulkPushing || activeUsers.length === 0}
+                  style={{ fontSize:"11px", fontWeight:600, color:"#fff", background:"#E05555", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                >
+                  {bulkPushing ? "Pushing…" : "Force Update For All Active"}
+                </button>
+              </div>
+              <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                Blocks ATLAS with an update-required screen until the client updates to this version — takes effect within ~18 seconds via the app's live sync. Leave blank and click to clear the force for everyone.
+              </p>
+            </div>
+
             {filteredUsers.length === 0 && <div style={{...card,padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>{subSearch ? "No users match." : "No users yet."}</div>}
             {filteredUsers.map(u => {
               const sub      = subByUser[u.id]
@@ -669,6 +740,40 @@ export default function AdminPage() {
                                 </div>
                                 <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
                                   Leave blank for the standard 25/month. Takes effect on their next install attempt — no app update needed. "Reset Usage" zeroes their count for the current period only; it doesn't change their limit.
+                                </p>
+                              </div>
+                              <div style={{ gridColumn: "span 2" }}>
+                                <span style={labelStyle}>Force Update</span>
+                                <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                  <input
+                                    type="text"
+                                    placeholder={u.atlas_forced_update_version ? u.atlas_forced_update_version : "e.g. 1.6"}
+                                    value={pushVersionInput[u.id] ?? (u.atlas_forced_update_version ?? "")}
+                                    onChange={e => setPushVersionInput(m => ({ ...m, [u.id]: e.target.value }))}
+                                    style={{ ...inputStyle, width: "110px" }}
+                                  />
+                                  <button
+                                    onClick={() => pushUpdate(u.id)}
+                                    disabled={pushingId === u.id}
+                                    style={{ fontSize:"11px", fontWeight:600, color:"#fff", background:"#E05555", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                  >
+                                    {pushingId === u.id ? "Pushing…" : "Push & Force Update"}
+                                  </button>
+                                  {u.atlas_forced_update_version && (
+                                    <button
+                                      onClick={() => { setPushVersionInput(m => ({ ...m, [u.id]: "" })); pushUpdate(u.id) }}
+                                      disabled={pushingId === u.id}
+                                      style={{ fontSize:"11px", color:"var(--atlas-text-label)", background:"none", border:"1px solid var(--atlas-border-color)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                    >
+                                      Clear Force
+                                    </button>
+                                  )}
+                                  {u.atlas_forced_update_version && (
+                                    <span style={{ fontSize:"9px", fontWeight:700, color:"#E05555" }}>Currently forced to v{u.atlas_forced_update_version}</span>
+                                  )}
+                                </div>
+                                <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                  Blocks ATLAS with an update-required screen until they're on this version. Takes effect within ~18s via the app's live sync — no manual check needed on their end.
                                 </p>
                               </div>
                               {userDeviceUsage(u.id).length > 0 && (

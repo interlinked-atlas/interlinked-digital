@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
+	<key>CFBundleExecutable</key>
+	<string>ATLAS</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.atlas.ATLAS</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleName</key>
+	<string>ATLAS</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.6</string>
+	<key>CFBundleVersion</key>
+	<string>160</string>
+	<key>SUFeedURL</key>
+	<string>https://www.interlinked.digital/api/atlas/appcast</string>
+	<key>SUPublicEDKey</key>
+	<string>5YnyT62CnS6sfYf2LC76QXVHWwIBRchJTG46610hdC8=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>ATLAS needs Accessibility access to auto-fill password dialogs during software installation.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>ATLAS needs to control System Events to automate software installations.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 InterLinked™ — All Rights Reserved</string>
+	<key>CFBundleGetInfoString</key>
+	<string>© 2026 InterLinked™ — All Rights Reserved</string>
+</dict>
+</plist>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Current release versions — update these when a new build ships
 const LATEST: Record<string, string> = {
-  mac:     '1.5',
+  mac:     '1.6',
   windows: '1.0.0',
 }
 
