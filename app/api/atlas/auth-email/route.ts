@@ -4,34 +4,40 @@ import { sendEmail } from '@/lib/email'
 
 // Supabase Auth Hook — Custom Email
 // URL: https://www.interlinked.digital/api/atlas/auth-email
-// Supabase sends HMAC-SHA256 signature in Authorization header as Bearer whsec_...
-
-function verifyHookSignature(rawBody: string, authHeader: string, secret: string): boolean {
+//
+// Supabase signs these using the Standard Webhooks spec (https://www.standardwebhooks.com),
+// NOT a bearer token or a single x-supabase-signature header — confirmed directly
+// from a real request's headers: webhook-id, webhook-timestamp, webhook-signature.
+// Signed content is `${webhook-id}.${webhook-timestamp}.${rawBody}`, HMAC-SHA256
+// with the base64-decoded secret (after stripping its "whsec_" prefix), output
+// base64-encoded. webhook-signature can list multiple space-separated "v1,<sig>"
+// candidates; any one matching is sufficient.
+function verifyHookSignature(rawBody: string, id: string, timestamp: string, signatureHeader: string, secret: string): boolean {
   try {
-    // Supabase secret format: v1,whsec_<base64>
     const whsecPart = secret.includes(',') ? secret.split(',')[1] : secret
     const keyBytes = Buffer.from(whsecPart.replace('whsec_', ''), 'base64')
-    const sig = createHmac('sha256', keyBytes).update(rawBody).digest('hex')
-    const expected = `v1,${sig}`
-    const given = authHeader.replace('Bearer ', '')
-    if (expected.length !== given.length) return false
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(given))
+    const signedContent = `${id}.${timestamp}.${rawBody}`
+    const expectedSig = createHmac('sha256', keyBytes).update(signedContent).digest('base64')
+    const candidates = signatureHeader.split(' ').map(s => s.trim()).filter(Boolean)
+    return candidates.some(candidate => {
+      const [, sig] = candidate.split(',')
+      if (!sig || sig.length !== expectedSig.length) return false
+      return timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))
+    })
   } catch { return false }
 }
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
-  const authHeader = req.headers.get('authorization') ?? ''
   const hookSecret = process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET ?? ''
 
-  // TEMP — identifying which header Supabase actually sends the signature in,
-  // before wiring up real verification. Remove once confirmed.
-  console.log('[auth-email][debug-headers]', JSON.stringify(Object.fromEntries(req.headers.entries())))
+  const webhookId        = req.headers.get('webhook-id') ?? ''
+  const webhookTimestamp = req.headers.get('webhook-timestamp') ?? ''
+  const webhookSignature = req.headers.get('webhook-signature') ?? ''
 
-  // Supabase sends the hook secret as x-supabase-signature, not Authorization
-  const supabaseSig = req.headers.get('x-supabase-signature') ?? ''
-  if (hookSecret && supabaseSig && !verifyHookSignature(rawBody, supabaseSig, hookSecret)) {
-    console.error('[auth-email] signature mismatch')
+  if (!hookSecret || !webhookId || !webhookTimestamp || !webhookSignature ||
+      !verifyHookSignature(rawBody, webhookId, webhookTimestamp, webhookSignature, hookSecret)) {
+    console.error('[auth-email] signature mismatch or missing secret/headers')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
