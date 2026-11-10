@@ -63,6 +63,7 @@ export default function AdminPage() {
   const [pushingId, setPushingId]                 = useState<string | null>(null)
   const [bulkPushVersionInput, setBulkPushVersionInput] = useState("")
   const [bulkPushing, setBulkPushing]             = useState(false)
+  const [kickingDeviceId, setKickingDeviceId]     = useState<string | null>(null)
 
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
@@ -321,6 +322,20 @@ export default function AdminPage() {
     const activeIDs = new Set(activeUsers.map(u => u.id))
     setUsers(u => u.map(x => activeIDs.has(x.id) ? { ...x, atlas_forced_update_version: version } : x))
     showToast(version === null ? `Cleared for ${data.affected ?? activeUsers.length} subscriber(s)` : `Pushed v${version} to ${data.affected ?? activeUsers.length} subscriber(s)`)
+  }
+
+  async function kickDevice(deviceID: string, deviceName: string) {
+    if (!confirm(`Remove "${deviceName || "this device"}" from the account? The client will be signed out automatically within a few seconds, with no app update needed.`)) return
+    setKickingDeviceId(deviceID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/devices", {
+      method: "DELETE", headers,
+      body: JSON.stringify({ device_id: deviceID }),
+    })
+    setKickingDeviceId(null)
+    if (!res.ok) { showToast("Failed to remove device"); return }
+    setDevices(d => d.filter(x => x.id !== deviceID))
+    showToast("Device removed — client will be signed out within a few seconds")
   }
 
   async function saveFailureFix() {
@@ -841,6 +856,13 @@ export default function AdminPage() {
                                         <p style={{ fontSize:"10px", color:"var(--atlas-text-faint)", margin:0 }}>Added: {fmtShort(d.created_at)}</p>
                                       </div>
                                     </div>
+                                    <button
+                                      onClick={() => kickDevice(d.id, d.device_name)}
+                                      disabled={kickingDeviceId === d.id}
+                                      style={{ fontSize:"10px", fontWeight:600, color:"#E05555", background:"rgba(224,85,85,0.08)", border:"1px solid rgba(224,85,85,0.3)", borderRadius:"6px", padding:"5px 10px", cursor:"pointer", flexShrink:0 }}
+                                    >
+                                      {kickingDeviceId === d.id ? "Removing…" : "Remove / Kick"}
+                                    </button>
                                   </div>
                                 </div>
                               ))
@@ -901,9 +923,16 @@ export default function AdminPage() {
                     <p style={{fontSize:"9px",color:"#3ECFB2",fontFamily:"monospace",margin:"3px 0"}}>UUID: {d.hardware_uuid}</p>
                     <p style={{fontSize:"11px",color:"var(--text-muted)",margin:0}}>{emailOf(d.user_id)}</p>
                   </div>
-                  <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <div style={{ textAlign:"right", flexShrink:0, display:"flex", flexDirection:"column", alignItems:"flex-end", gap:"6px" }}>
                     <p style={{fontSize:"10px",color:"#A0A8C8",margin:0}}>Last: {fmtDateTime(d.last_seen)}</p>
-                    <p style={{fontSize:"10px",color:"var(--atlas-text-label)",margin:"3px 0 0"}}>Added: {fmtShort(d.created_at)}</p>
+                    <p style={{fontSize:"10px",color:"var(--atlas-text-label)",margin:0}}>Added: {fmtShort(d.created_at)}</p>
+                    <button
+                      onClick={() => kickDevice(d.id, d.device_name)}
+                      disabled={kickingDeviceId === d.id}
+                      style={{ fontSize:"10px", fontWeight:600, color:"#E05555", background:"rgba(224,85,85,0.08)", border:"1px solid rgba(224,85,85,0.3)", borderRadius:"6px", padding:"5px 10px", cursor:"pointer" }}
+                    >
+                      {kickingDeviceId === d.id ? "Removing…" : "Remove / Kick"}
+                    </button>
                   </div>
                 </div>
               ))
