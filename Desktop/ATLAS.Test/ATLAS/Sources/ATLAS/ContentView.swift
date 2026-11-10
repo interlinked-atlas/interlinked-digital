@@ -6,7 +6,6 @@ struct ContentView: View {
     @StateObject private var logger = Logger()
     @StateObject private var historyStore = HistoryStore()
     @StateObject private var queue = InstallQueue.shared
-    @StateObject private var updateChecker = UpdateChecker.shared
     @State private var isTargeted = false
     @State private var needsAgreements      = !UserDefaults.standard.bool(forKey: CombinedAgreementView.tosKey)
                                            || !UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey)
@@ -401,10 +400,6 @@ struct ContentView: View {
                     showTour = true
                 }
             }
-            // Check for app update in background — non-blocking
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                updateChecker.check()
-            }
         }
         .onDisappear {
             stopPermissionPolling()
@@ -458,54 +453,6 @@ struct ContentView: View {
             Color.atlasBorderSubtle.opacity(0.65)
                 .frame(height: 0.5)
                 .padding(.horizontal, 20)
-
-            // ── Update available banner ───────────────────────────────────
-            if updateChecker.showBanner, let info = updateChecker.updateInfo {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.atlasFont(size: 13))
-                        .foregroundStyle(Color.atlasAccent)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("ATLAS \(info.version) is available")
-                            .font(.atlasCaptionBold)
-                            .foregroundStyle(Color.atlasAccent)
-                        if !info.releaseNotes.isEmpty {
-                            Text(info.releaseNotes)
-                                .font(.atlasMicro)
-                                .foregroundStyle(Color.atlasAccent.opacity(0.70))
-                        }
-                    }
-                    Spacer()
-                    Button {
-                        updateChecker.openDownload()
-                    } label: {
-                        Text("Download")
-                            .font(.atlasMicroMedium)
-                            .foregroundStyle(Color(hex: "#081410"))
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(ATLASGradient.accentFill)
-                            .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.xs, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    Button { updateChecker.dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.atlasFont(size: 9, weight: .bold))
-                            .foregroundStyle(Color.atlasAccent.opacity(0.55))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 14).padding(.vertical, 9)
-                .background(Color.atlasAccentMuted)
-                .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
-                        .strokeBorder(Color.atlasAccent.opacity(0.20), lineWidth: 0.75)
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 4)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
 
             // ── Plan change notice ────────────────────────────────────────
             if let notice = auth.planChangeNotice {

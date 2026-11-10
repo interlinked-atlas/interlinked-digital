@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.2',
+    date: 'November 9, 2026',
+    notes: [
+      'ATLAS now updates itself fully in the background — no more "Update Available" banner to click through; updates simply apply the next time you quit and reopen',
+    ],
+  },
+  {
     version: '1.6.1',
     date: 'November 9, 2026',
     notes: [
