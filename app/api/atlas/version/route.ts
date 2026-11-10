@@ -20,7 +20,7 @@ const DOWNLOAD_URLS: Record<string, string> = {
 // an explicit, successfully-received update_required: true from this
 // endpoint — never on a network failure or unreachable server.
 const MINIMUM_SUPPORTED: Record<string, string> = {
-  mac:     '0.0.0',
+  mac:     '1.6.6',
   windows: '0.0.0',
 }
 
