@@ -99,6 +99,7 @@ struct LibraryDashboardView: View {
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 12)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .background(Color.atlasDeepBG)
@@ -139,6 +140,7 @@ struct LibraryDashboardView: View {
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 12)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .background(Color.atlasDeepBG)

@@ -75,6 +75,10 @@ final class TitanMission: ObservableObject {
     @Published var isRunning = false
     @Published var isComplete = false
     @Published var currentNote = ""
+    /// Guards against saving the history record twice — once as soon as the
+    /// mission finishes (so the Library shows it immediately) and again if
+    /// the user also taps "Done" before that save completes.
+    var historyRecordSaved = false
     /// True when the mission could not start because the monthly install-limit
     /// reservation was denied (device already at 25 confirmed+active this period).
     @Published var limitReached = false

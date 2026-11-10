@@ -819,6 +819,19 @@ struct InstallEngine {
             return (zipResult, zipFiles2, zipReceipts, true)
         }
 
+        // Some installers ship as an outer disk image that contains nothing but
+        // another DMG/ISO with the real installer inside (e.g. Blue Cat Audio's
+        // ISO-wrapping-a-DMG pattern). Recurse one level into it before giving up.
+        let nestedImages = findAllFiles(extension: "dmg", in: mountPoint) +
+                           findAllFiles(extension: "iso", in: mountPoint)
+        if let nestedURL = nestedImages.first {
+            await logger.log("Nested disk image detected: \(nestedURL.lastPathComponent) — mounting...")
+            let (nestedResult, nestedFiles, nestedReceipts, nestedIsPlugin) = await installDMG(
+                url: nestedURL, logger: logger, journalJobID: journalJobID, progress: progress)
+            if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
+            return (nestedResult, nestedFiles, nestedReceipts, nestedIsPlugin)
+        }
+
         if shouldDetach { await detachDMG(mountPoint: mountPoint, logger: logger) }
         return (.failure(reason: "No installable content found."), [], [], false)
     }

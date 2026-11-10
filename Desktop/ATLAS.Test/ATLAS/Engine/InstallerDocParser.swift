@@ -293,7 +293,19 @@ struct InstallerDocParser {
     /// under separate headings (e.g. Russian h3 → Russian content, then English h3 →
     /// English content). Each chunk is classified independently so the caller can
     /// filter to the preferred language before extracting steps.
-    private static func splitHTMLIntoLanguageSections(_ html: String) -> [DocumentSection] {
+    private static func splitHTMLIntoLanguageSections(_ rawHTML: String) -> [DocumentSection] {
+        // Strip <script>/<style> blocks on the FULL document first, before chunking by
+        // heading. Chunking on raw HTML can split a script/style block across two chunks
+        // (if a heading tag falls inside it, e.g. as part of a JS template string), which
+        // leaves each half unable to match its own open/close tag pair — leaking raw JS/CSS
+        // as "text" that the license-key regexes below can then false-positive on.
+        var html = rawHTML
+        for tag in ["script", "style"] {
+            html = html.replacingOccurrences(
+                of: "(?i)<\(tag)[^>]*>[\\s\\S]*?</\(tag)>",
+                with: " ", options: .regularExpression)
+        }
+
         guard let headingRegex = try? NSRegularExpression(pattern: #"(?i)<h[2-4][^>]*>"#)
         else { return [DocumentSection(text: stripHTML(html), isPreferred: true)] }
 
@@ -509,11 +521,20 @@ struct InstallerDocParser {
         guard !isVersionNumber(s) else { return false }
         guard !isFilePath(s) else { return false }
 
-        // Bare codes (no hyphens, 14+ chars): must contain both a letter and a digit
         let stripped = s.filter { $0 != "-" && $0 != "–" }
+
+        // Bare codes (no hyphens, 14+ chars): must contain both a letter and a digit
         if stripped.count >= 14 && !s.contains("-") && !s.contains("–") {
             return stripped.contains(where: \.isLetter) && stripped.contains(where: \.isNumber)
         }
+
+        // Hyphenated candidates made up entirely of letters (no digit anywhere) read as an
+        // ordinary dictionary phrase (e.g. "prefers-color-scheme"), not a license key — real
+        // keys/serials virtually always mix in at least one digit.
+        if (s.contains("-") || s.contains("–")) && !stripped.contains(where: \.isNumber) {
+            return false
+        }
+
         return true
     }
 

@@ -35,6 +35,20 @@ class AppState: ObservableObject {
     @Published var scanFileDetail: String = "" // current file being inspected
     @Published var scanProgress: Double = -1   // -1 = indeterminate, 0–1 = real %
     @Published var pendingOpenURLs: [URL] = []  // URLs queued from application(_:open:)
+    // Settings is its own NSWindow (SettingsWindowController), not a SwiftUI
+    // sheet — a sheet attached to mainWindow was found to silently swallow
+    // the Quit Apple Event entirely while open (confirmed via Console: zero
+    // applicationShouldTerminate log lines fired while Settings was up,
+    // vs. firing instantly the moment it was closed), and the same
+    // attachment blocked Sparkle's own "Install & Relaunch" window from
+    // taking clicks. A separate window has no such attachment, so neither
+    // is blocked. SettingsWindowController sets this for anything that
+    // still wants to know whether Settings happens to be open.
+    @Published var settingsIsOpen = false
+    // SettingsWindowController's "Replay Tour" action lives outside
+    // ContentView now, so it signals the request here instead of calling
+    // into ContentView's own @State directly.
+    @Published var tourStartRequested = false
     @Published var lastInstallSteps: [InstallStep] = []
     @Published var lastInstallHostsEntries: [String] = []
     @Published var lastInstallLog: String = ""

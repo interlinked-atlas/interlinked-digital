@@ -72,20 +72,22 @@ struct QueueView: View {
             // Footer actions — secondary actions only
             if !queue.isProcessing && queue.failedCount > 0 {
                 HStack(spacing: 8) {
-                    Button {
-                        queue.clear()
-                    } label: {
-                        Text(L(.queueClearWaiting))
-                            .font(.atlasFont(size: 12, weight: .medium))
-                            .foregroundColor(Color(hex: "#696E7C"))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(Color(hex: "#08091A"))
-                            .cornerRadius(7)
-                            .overlay(RoundedRectangle(cornerRadius: 7)
-                                .stroke(Color(hex: "#1E2132"), lineWidth: 1))
+                    if queue.waitingCount > 0 {
+                        Button {
+                            queue.clear()
+                        } label: {
+                            Text(L(.queueClearWaiting))
+                                .font(.atlasFont(size: 12, weight: .medium))
+                                .foregroundColor(Color(hex: "#696E7C"))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Color(hex: "#08091A"))
+                                .cornerRadius(7)
+                                .overlay(RoundedRectangle(cornerRadius: 7)
+                                    .stroke(Color(hex: "#1E2132"), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     Spacer()
 
@@ -111,7 +113,7 @@ struct QueueView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 12)
-            } else if !queue.isProcessing {
+            } else if !queue.isProcessing && queue.waitingCount > 0 {
                 HStack {
                     Button {
                         queue.clear()
@@ -356,6 +358,7 @@ struct QueueRowView: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .background(Color(hex: "#080A18"))

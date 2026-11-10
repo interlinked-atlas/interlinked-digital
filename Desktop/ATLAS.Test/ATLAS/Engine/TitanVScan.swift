@@ -305,7 +305,7 @@ private func titanVScanBinaryStrings(_ url: URL) -> (threats: [ThreatDetail], su
         var anyTargetSucceeded = false
 
         for target in targets.prefix(3) {
-            let strResult = titanVScanProcess("/usr/bin/strings", args: ["-a", target.path], timeout: 15)
+            let strResult = titanVScanProcess("/usr/bin/strings", args: ["-a", target.path], timeout: titanVScanTimeout(for: target))
             guard strResult.ok else { continue }
             anyTargetSucceeded = true
             let strings = strResult.output
@@ -488,6 +488,15 @@ private func titanVScanBinaryStrings(_ url: URL) -> (threats: [ThreatDetail], su
         // "nothing was checked," not "checked and clean."
         return (threats, succeeded: !targets.isEmpty && anyTargetSucceeded)
     }
+
+// Measured throughput: strings -a on a 616 MB DMG took 24.4s (~0.04 s/MB).
+// 0.12 s/MB gives ~3x headroom for slower disks/cold cache; 20s floor covers
+// small files' fixed process-spawn overhead; 150s ceiling bounds worst case
+// so a multi-GB installer can't hang the scan indefinitely.
+private func titanVScanTimeout(for url: URL) -> TimeInterval {
+    let sizeMB = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0).map { Double($0) / 1_048_576 } ?? 0
+    return min(150, max(20, sizeMB * 0.12))
+}
 
 private func titanVScanSHA256(_ url: URL) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }

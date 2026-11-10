@@ -283,8 +283,14 @@ struct TitanVScanView: View {
                 } else {
                     infoNote(
                         icon: "exclamationmark.triangle",
-                        text: "Threats are embedded in the core software and cannot be removed safely.",
+                        text: "Threats are embedded in the core software and cannot be removed safely. You may proceed at your own discretion.",
                         color: Color(hex: "#F0A030")
+                    )
+                    primaryButton(
+                        label: L(.proceedAnyway),
+                        icon: "arrow.right.circle.fill",
+                        color: Color(hex: "#F0A030"),
+                        action: onProceed
                     )
                 }
                 quarantineButton
@@ -295,8 +301,14 @@ struct TitanVScanView: View {
             case .scanFailed:
                 infoNote(
                     icon: "exclamationmark.triangle",
-                    text: "TITAN VSCAN™ could not complete this scan. The file has NOT been verified as clean. Try scanning again before proceeding.",
+                    text: "TITAN VSCAN™ could not complete this scan. The file has NOT been verified as clean. You may proceed at your own discretion, or try scanning again.",
                     color: Color(hex: "#EF5B5B")
+                )
+                primaryButton(
+                    label: L(.proceedAnyway),
+                    icon: "arrow.right.circle.fill",
+                    color: Color(hex: "#EF5B5B"),
+                    action: onProceed
                 )
                 secondaryButton(label: L(.cancel), action: onCancel)
 
@@ -304,8 +316,14 @@ struct TitanVScanView: View {
             case .malware:
                 infoNote(
                     icon: "xmark.shield.fill",
-                    text: "TITAN VSCAN™ has blocked this installation. The file contains malware and cannot be safely installed. Move it to quarantine or delete it permanently.",
+                    text: "TITAN VSCAN™ detected a severe threat in this file. Installing is strongly discouraged — only proceed if you're certain this is a false positive. Otherwise, move it to quarantine or delete it permanently.",
                     color: Color(hex: "#EF5B5B")
+                )
+                primaryButton(
+                    label: L(.proceedAnyway),
+                    icon: "arrow.right.circle.fill",
+                    color: Color(hex: "#EF5B5B"),
+                    action: onProceed
                 )
                 quarantineButton
                 deleteButton

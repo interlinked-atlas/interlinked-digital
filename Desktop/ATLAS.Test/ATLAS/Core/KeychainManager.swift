@@ -100,13 +100,20 @@ struct KeychainManager {
     static func loadPassword() -> String? {
         if let cached = _cachedPassword { return cached }
 
+        // kSecUseAuthenticationUISkip previously here made a denied read fail
+        // silently (nil, no prompt, no error) instead of asking the user —
+        // on an ad-hoc signed build, a changed signature after a rebuild can
+        // make macOS deny access to an item saved under the old signature,
+        // which showed up as "logged out instantly after quitting and
+        // relaunching" with no error message. Without the skip flag, that
+        // same case now shows the normal system Keychain prompt instead of
+        // failing silently, and the read succeeds once the user allows it.
         let query: [String: Any] = [
-            kSecClass as String:                kSecClassGenericPassword,
-            kSecAttrService as String:          service,
-            kSecAttrAccount as String:          account,
-            kSecReturnData as String:           true,
-            kSecMatchLimit as String:           kSecMatchLimitOne,
-            kSecUseAuthenticationUI as String:  kSecUseAuthenticationUISkip
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -160,12 +167,15 @@ struct KeychainManager {
 
     static func loadSession() -> ATLASSession? {
         if let cached = _cachedSession { return cached }
+        // See loadPassword() above — no kSecUseAuthenticationUISkip, so a
+        // denied read (e.g. after a rebuild changed the ad-hoc signature)
+        // prompts the user instead of silently returning nil and logging
+        // them out with no explanation.
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: sessionAccount,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne,
-                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
+                                 kSecMatchLimit as String: kSecMatchLimitOne]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
@@ -266,12 +276,12 @@ struct KeychainManager {
     }
 
     private static func keychainGet(account: String) -> Data? {
+        // See loadPassword() above — no kSecUseAuthenticationUISkip.
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: account,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne,
-                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
+                                 kSecMatchLimit as String: kSecMatchLimitOne]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data
