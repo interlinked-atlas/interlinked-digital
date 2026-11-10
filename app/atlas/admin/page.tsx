@@ -7,7 +7,7 @@ import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
-type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits"
+type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended"
 
 const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "var(--text-muted)"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "var(--text-muted)"
@@ -160,7 +160,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -352,7 +352,7 @@ export default function AdminPage() {
     })
     setSuspendingId(null)
     if (!res.ok) { showToast(suspended ? "Failed to suspend account" : "Failed to lift suspension"); return }
-    setUsers(u => u.map(x => x.id === userID ? { ...x, atlas_suspended: suspended } : x))
+    setUsers(u => u.map(x => x.id === userID ? { ...x, atlas_suspended: suspended, atlas_suspended_reason: suspended ? 'admin' : null } : x))
     showToast(suspended ? "Account suspended — signed out everywhere within seconds" : "Suspension lifted")
   }
 
@@ -576,7 +576,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
-          {(["subscribers","devices","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
+          {(["subscribers","devices","suspended","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "var(--atlas-border-color)" : "transparent", color: tab === t ? "var(--atlas-fg)" : "var(--atlas-text-label)", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
@@ -985,6 +985,44 @@ export default function AdminPage() {
             }
           </div>
         )}
+
+        {/* ── SUSPENDED ACCOUNTS ── */}
+        {tab === "suspended" && (() => {
+          const suspendedUsers = users.filter(u => u.atlas_suspended)
+          return (
+            <div style={card}>
+              <div style={{ padding:"14px 18px", borderBottom:"1px solid var(--atlas-divider)" }}>
+                <p style={{...labelStyle}}>Suspended Accounts — {suspendedUsers.length} total</p>
+                <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                  Indefinite lockouts — either an admin ban or an auto-suspension after a cancelled subscriber's 10-day free-reactivation window expired. Logs, devices, history, and recovery kits remain fully intact and viewable below; only login/install access is blocked. Lifting a suspension here works regardless of the reason.
+                </p>
+              </div>
+              {suspendedUsers.length === 0
+                ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No suspended accounts.</div>
+                : suspendedUsers.map(u => (
+                  <div key={u.id} style={{ padding:"14px 18px", borderBottom:"1px solid var(--atlas-divider-subtle)", display:"flex", alignItems:"center", gap:"14px" }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{fontSize:"13px",color:"var(--atlas-text-body)",fontWeight:500,margin:0}}>{u.email}</p>
+                      <div style={{ display:"flex", gap:"8px", alignItems:"center", marginTop:"3px" }}>
+                        <span style={{ fontSize:"9px", fontWeight:700, padding:"2px 7px", borderRadius:"4px", border:"1px solid rgba(224,85,85,0.4)", color:"#E05555", background:"rgba(224,85,85,0.1)" }}>
+                          {u.atlas_suspended_reason === 'grace_expired' ? 'GRACE PERIOD EXPIRED' : 'ADMIN SUSPENDED'}
+                        </span>
+                        <span style={{ fontSize:"10px", color:"var(--atlas-text-label)" }}>Joined {fmt(u.created_at)}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSuspended(u.id, false)}
+                      disabled={suspendingId === u.id}
+                      style={{ fontSize:"11px", fontWeight:600, color:"#3ECFB2", background:"rgba(62,207,178,0.08)", border:"1px solid rgba(62,207,178,0.3)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer", flexShrink:0 }}
+                    >
+                      {suspendingId === u.id ? "Lifting…" : "Lift Suspension"}
+                    </button>
+                  </div>
+                ))
+              }
+            </div>
+          )
+        })()}
 
         {/* ── LOGS ── */}
         {tab === "logs" && (

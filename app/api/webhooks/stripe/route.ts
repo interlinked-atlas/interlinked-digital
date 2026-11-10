@@ -170,8 +170,13 @@ async function handleCancellation(stripeClient: Stripe, customerId: string, stri
   })
   if (rpcErr) throw new Error(`atlas_set_entitlement_status failed: ${rpcErr.message}`)
 
-  // User email
-  await sendEmail({ to: email, template: 'subscription-cancelled' })
+  // No user email here deliberately — the grace-period cancellation email
+  // is sent synchronously by /api/atlas/cancel at the moment the user
+  // actually clicks Cancel. This handler fires on Stripe's own eventual
+  // subscription.deleted, which can be weeks later (at period end) and, by
+  // then, the 10-day grace-period sweep has already either restored access
+  // (reactivated) or sent the "permanently closed" email — a second
+  // "cancelled" email this late would be confusing, not informative.
 
   // Admin notification
   await notifyAdmin(

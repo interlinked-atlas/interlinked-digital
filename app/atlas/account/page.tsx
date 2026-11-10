@@ -23,14 +23,14 @@ export default async function AccountPage() {
   const [subResult, profileResult, devicesResult, logsResult] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("id, plan, status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
+      .select("id, plan, status, current_period_end, cancel_at_period_end, cancelled_at, stripe_customer_id, stripe_subscription_id")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan, subscription_status, billing_interval, billing_anchor_day, monthly_install_limit")
+      .select("plan, subscription_status, billing_interval, billing_anchor_day, monthly_install_limit, atlas_suspended, atlas_suspended_reason")
       .eq("id", user.id)
       .maybeSingle(),
     supabase

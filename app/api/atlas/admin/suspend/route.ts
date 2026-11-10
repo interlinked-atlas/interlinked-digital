@@ -42,7 +42,15 @@ export async function PATCH(req: NextRequest) {
   if (!userID) return NextResponse.json({ error: 'missing_user_id' }, { status: 400 })
   if (typeof body.suspended !== 'boolean') return NextResponse.json({ error: 'missing_suspended_boolean' }, { status: 400 })
 
-  const { error } = await supabase.from('profiles').update({ atlas_suspended: body.suspended }).eq('id', userID)
+  // Admin lifting a suspension (of either reason — a manual ban or an
+  // expired grace period, per explicit instruction admin can override
+  // both) always clears the reason too. Admin suspending always stamps
+  // reason 'admin', distinguishing it from the automated 'grace_expired'
+  // the cron sweep sets.
+  const { error } = await supabase.from('profiles').update({
+    atlas_suspended: body.suspended,
+    atlas_suspended_reason: body.suspended ? 'admin' : null,
+  }).eq('id', userID)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ ok: true, user_id: userID, suspended: body.suspended })

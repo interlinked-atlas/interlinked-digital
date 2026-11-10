@@ -12,10 +12,14 @@ interface Subscription {
   id: string; plan: string; status: string
   current_period_end: string | null
   cancel_at_period_end: boolean
+  cancelled_at?: string | null
   stripe_subscription_id: string | null
   stripe_customer_id?: string | null
 }
-interface Profile { plan: string; subscription_status: string; billing_interval?: string | null }
+interface Profile {
+  plan: string; subscription_status: string; billing_interval?: string | null
+  atlas_suspended?: boolean; atlas_suspended_reason?: string | null
+}
 interface Device {
   id: string; device_name: string; hardware_uuid: string
   last_seen: string; created_at: string
@@ -227,6 +231,21 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   // active server-side (no grace period was skipped — it genuinely hasn't
   // ended yet) but will stop renewing at period end.
   const isScheduledToCancel = !isCancelled && (Boolean(scheduledCancelUntil) || subscription?.cancel_at_period_end === true)
+  const isSuspended = profile?.atlas_suspended === true
+  const suspendedReason = profile?.atlas_suspended_reason
+  // 10-day free-reactivation window: eligible while cancelled (access already
+  // revoked), not yet suspended, and still within cancelled_at + 10 days.
+  // cancel_at_period_end also still true the whole window (reactivate flips
+  // it back; the cron sweep that ends the window only sets atlas_suspended,
+  // never touches cancel_at_period_end itself — see /api/cron/grace-period-sweep).
+  const graceDeadlineMs = subscription?.cancelled_at
+    ? new Date(subscription.cancelled_at).getTime() + 10 * 24 * 60 * 60 * 1000
+    : null
+  const withinGracePeriod = isCancelled && !isSuspended && subscription?.cancel_at_period_end === true
+    && graceDeadlineMs !== null && Date.now() < graceDeadlineMs
+  const graceDeadlineLabel = graceDeadlineMs
+    ? new Date(graceDeadlineMs).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : null
   const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isScheduledToCancel ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
   const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isScheduledToCancel ? "Cancels at period end" : isActive ? "Active" : "Inactive"
 
@@ -315,6 +334,22 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     }
     setLoading(null)
     setShowCancelConfirm(false)
+  }
+
+  async function handleReactivate() {
+    setLoading("reactivate"); setCancelError("")
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setLoading(null); return }
+    try {
+      const res = await fetch("/api/atlas/reactivate", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || json.error || "Failed to reactivate")
+      setScheduledCancelUntil(null)
+      router.refresh()
+    } catch (err: unknown) {
+      setCancelError(err instanceof Error ? err.message : "Unknown error")
+    }
+    setLoading(null)
   }
 
   async function handleBillingPortal() {
@@ -486,6 +521,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
                 </div>
                 <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                   $30/month{periodEnd && !isCancelled && <> · {subscription?.cancel_at_period_end ? "Cancels" : "Renews"} {periodEnd}</>}{isCancelled && " · Access ended"}
+                  {withinGracePeriod && graceDeadlineLabel && <> · Free reactivation until <strong style={{ color: "var(--text-secondary)" }}>{graceDeadlineLabel}</strong></>}
                 </p>
               </div>
               <div style={{
@@ -497,13 +533,34 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             </div>
           </div>
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-            {isCancelled && (
+            {withinGracePeriod && (
+              <button onClick={handleReactivate} disabled={loading === "reactivate"} style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "8px 16px", borderRadius: "8px", border: "none", cursor: "pointer",
+                background: "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
+                color: "#07080F", fontSize: "11px", fontWeight: 700,
+              }}>{loading === "reactivate" ? "Reactivating…" : "↺ Reactivate — Free, No New Charge"}</button>
+            )}
+            {isCancelled && !withinGracePeriod && !isSuspended && (
               <Link href="/atlas/checkout?plan=atlas" style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "8px",
                 background: "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
                 color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
               }}>↺ Re-subscribe</Link>
+            )}
+            {isSuspended && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <p style={{ fontSize: "11px", color: "#E05555", margin: 0, fontWeight: 600 }}>
+                  This account has been permanently closed{suspendedReason === "grace_expired" ? " — the 10-day reactivation window expired." : "."}
+                </p>
+                <Link href="/atlas/plans" style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px", width: "fit-content",
+                  padding: "8px 16px", borderRadius: "8px",
+                  background: "linear-gradient(135deg, #3ECFB2, #2ABEAA)",
+                  color: "#07080F", fontSize: "11px", fontWeight: 700, textDecoration: "none",
+                }}>Sign Up Again</Link>
+              </div>
             )}
             {isActive && !isCancelled && !isScheduledToCancel && (
               <button onClick={() => setShowCancelConfirm(true)} style={{

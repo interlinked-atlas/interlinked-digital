@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
@@ -76,9 +77,29 @@ export async function POST(req: NextRequest) {
   // customer.subscription.deleted at period end.
   const updatedSub = await stripe.subscriptions.update(stripeSubId, { cancel_at_period_end: true })
 
+  // 10-day free-reactivation grace period starts now, at the moment of
+  // cancellation — not at Stripe's eventual period-end deletion (which can
+  // be weeks away). Stripe itself is untouched beyond cancel_at_period_end
+  // above: the subscription stays fully enrolled, so reactivating within
+  // the window is just flipping cancel_at_period_end back to false later
+  // (see /api/atlas/reactivate) — same card, same renewal date, no new charge.
+  const cancelledAt = new Date()
+  const deadline = new Date(cancelledAt.getTime() + 10 * 24 * 60 * 60 * 1000)
+  await supabase.from('subscriptions').update({ cancelled_at: cancelledAt.toISOString() }).eq('user_id', user.id)
+
+  const { data: profile } = await supabase.from('profiles').select('email').eq('id', user.id).maybeSingle()
+  if (profile?.email) {
+    await sendEmail({
+      to: profile.email,
+      template: 'subscription-cancelled',
+      data: { deadlineDate: deadline.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+    })
+  }
+
   return NextResponse.json({
     ok: true,
     cancel_at_period_end: true,
+    grace_deadline: deadline.toISOString(),
     access_until: updatedSub.current_period_end
       ? new Date(updatedSub.current_period_end * 1000).toISOString()
       : null,
