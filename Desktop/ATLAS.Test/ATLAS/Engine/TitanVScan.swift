@@ -236,24 +236,32 @@ private func titanVScanPKGScripts(_ url: URL) -> [ThreatDetail] {
             let lower = content.lowercased()
             let fileName = "PKG Scripts/\(script)"
 
-            // curl/wget pipe to shell — classic dropper pattern
-            if lower.contains("curl") && (lower.contains("| bash") || lower.contains("| sh") || lower.contains("|bash") || lower.contains("|sh")) {
-                threats.append(ThreatDetail(
-                    type: .downloader,
-                    name: "Script downloader",
-                    affectedFile: fileName,
-                    detail: "Postinstall script downloads and executes code from the internet (curl | bash). This is the most common delivery mechanism for macOS malware.",
-                    canStrip: true
-                ))
-            }
-            if lower.contains("wget") && (lower.contains("| bash") || lower.contains("| sh")) {
-                threats.append(ThreatDetail(
-                    type: .downloader,
-                    name: "Script downloader",
-                    affectedFile: fileName,
-                    detail: "Postinstall script uses wget to download and execute remote code.",
-                    canStrip: true
-                ))
+            // curl/wget pipe to shell — on its own, this is also how plenty of
+            // legitimate audio-plugin installers fetch a license-activation
+            // component or an additional resource at install time, so it is
+            // treated the same way as the miner detector above: an anchor by
+            // itself is not evidence, it needs a corroborating signal that is
+            // actually malicious-specific before it's flagged at all.
+            let hasPipeToShell = lower.contains("curl") || lower.contains("wget")
+            let pipesToShell = lower.contains("| bash") || lower.contains("| sh") ||
+                                lower.contains("|bash")  || lower.contains("|sh")
+            if hasPipeToShell && pipesToShell {
+                let obfuscated = lower.contains("base64 -d") || lower.contains("base64 --decode") ||
+                                  lower.contains("openssl enc -d")
+                let disablesProtections = lower.contains("spctl --master-disable") ||
+                                           lower.contains("csrutil disable") ||
+                                           lower.contains("xattr -d com.apple.quarantine")
+                let rawIPURL = content.range(of: #"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"#, options: .regularExpression) != nil
+
+                if obfuscated || disablesProtections || rawIPURL {
+                    threats.append(ThreatDetail(
+                        type: .downloader,
+                        name: "Script downloader",
+                        affectedFile: fileName,
+                        detail: "Postinstall script downloads and executes remote code, combined with \(obfuscated ? "an obfuscated payload" : disablesProtections ? "disabling macOS security protections" : "a raw IP address instead of a domain") — a strong indicator of malware delivery rather than a normal installer step.",
+                        canStrip: true
+                    ))
+                }
             }
 
             // Hidden binary drop — chmod +x combined with a specifically hidden/suspicious temp path
