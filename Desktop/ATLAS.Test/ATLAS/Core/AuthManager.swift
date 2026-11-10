@@ -233,6 +233,18 @@ final class AuthManager: ObservableObject {
                     accessToken: s.accessToken, userID: s.userID) {
                     let planChanged   = p.plan != self.profile?.plan
                     let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
+                    // Password was changed (reset or in-app) after this session was
+                    // issued — the access token is still cryptographically valid
+                    // until its own expiry (a changed password doesn't revoke an
+                    // already-issued JWT), so this timestamp comparison is what
+                    // actually kicks an already-running session within one tick,
+                    // same as the suspension/device-removal checks below.
+                    if let changedAt = p.passwordChangedAt, changedAt > s.issuedAt {
+                        await MainActor.run {
+                            self.signOut(reason: "Your password was changed. Sign in again with your new password.")
+                        }
+                        return
+                    }
                     // Admin-set indefinite account suspension — checked ahead of the
                     // billing-status check below since it's independent of billing.
                     if p.isSuspended == true {
@@ -536,7 +548,8 @@ final class AuthManager: ObservableObject {
                 subscriptionStatus: "active",
                 billingAnchorDay: nil,
                 billingInterval: nil,
-                isSuspended: false
+                isSuspended: false,
+                passwordChangedAtRaw: nil
             )
             await MainActor.run {
                 session = saved

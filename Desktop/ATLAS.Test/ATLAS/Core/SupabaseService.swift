@@ -9,6 +9,14 @@ struct ATLASSession: Codable {
     let expiresAt: Date
     let userID: String
     let email: String
+    // When this session was issued (sign-in or refresh), client-side clock.
+    // Used to detect a password change that happened AFTER this session was
+    // issued, so an already-running app can be kicked without waiting for
+    // this access token's own natural expiry/refresh cycle. Optional so
+    // existing Keychain-cached sessions from before this field existed still
+    // decode (defaults to .distantPast, which never blocks sign-in — it just
+    // means the password-change check can't fire until the next refresh).
+    let issuedAt: Date
 
     var isExpired: Bool { Date() >= expiresAt }
 
@@ -18,6 +26,26 @@ struct ATLASSession: Codable {
         case expiresAt = "expires_at"
         case userID = "user_id"
         case email
+        case issuedAt = "issued_at"
+    }
+
+    init(accessToken: String, refreshToken: String, expiresAt: Date, userID: String, email: String, issuedAt: Date = Date()) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+        self.userID = userID
+        self.email = email
+        self.issuedAt = issuedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        accessToken = try c.decode(String.self, forKey: .accessToken)
+        refreshToken = try c.decode(String.self, forKey: .refreshToken)
+        expiresAt = try c.decode(Date.self, forKey: .expiresAt)
+        userID = try c.decode(String.self, forKey: .userID)
+        email = try c.decode(String.self, forKey: .email)
+        issuedAt = try c.decodeIfPresent(Date.self, forKey: .issuedAt) ?? .distantPast
     }
 }
 
@@ -29,6 +57,19 @@ struct ATLASProfile: Codable {
     let billingAnchorDay: Int?      // day of month billing renews (1-31)
     let billingInterval: String?    // "monthly" or "annual"
     let isSuspended: Bool?          // admin-set indefinite account lockout — distinct from device removal
+    // Raw ISO8601 string, not Date — the shared decoder has no dateDecodingStrategy
+    // set (same reason ATLASDevice.lastSeen is a String), so a Date field here
+    // would throw and silently fail the whole getProfile() decode every tick.
+    let passwordChangedAtRaw: String?
+
+    var passwordChangedAt: Date? {
+        guard let raw = passwordChangedAtRaw else { return nil }
+        let f1 = ISO8601DateFormatter()
+        f1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f1.date(from: raw) { return d }
+        let f2 = ISO8601DateFormatter()
+        return f2.date(from: raw)
+    }
 
     // P0-1: profiles.plan is NEVER an entitlement signal — it is display
     // metadata only. The sole entitlement authority is a server-verified
@@ -47,6 +88,7 @@ struct ATLASProfile: Codable {
         case billingAnchorDay   = "billing_anchor_day"
         case billingInterval    = "billing_interval"
         case isSuspended        = "atlas_suspended"
+        case passwordChangedAtRaw = "password_changed_at"
     }
 }
 
@@ -168,7 +210,7 @@ actor SupabaseService {
     // MARK: - Profile
 
     func getProfile(accessToken: String, userID: String) async throws -> ATLASProfile {
-        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status,billing_anchor_day,billing_interval,atlas_suspended"
+        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status,billing_anchor_day,billing_interval,atlas_suspended,password_changed_at"
         let data = try await get(path: path, token: accessToken)
         let profiles = try decode([ATLASProfile].self, from: data)
         guard let profile = profiles.first else {
