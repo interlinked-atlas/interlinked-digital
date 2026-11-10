@@ -8,6 +8,14 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.5',
+    date: 'November 9, 2026',
+    notes: [
+      'ATLAS now actually notices when you’re offline, with a clear banner on both the login screen and the main app',
+      'Added "Remember Me" at login — remembers your email (never your password) after an explicit sign-out',
+    ],
+  },
+  {
     version: '1.6.4',
     date: 'November 9, 2026',
     notes: [

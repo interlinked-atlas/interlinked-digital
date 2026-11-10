@@ -54,6 +54,7 @@ struct ContentView: View {
     @ObservedObject private var appearance   = AppearanceManager.shared
     @ObservedObject private var titanCore    = TitanCore.shared
     @ObservedObject private var auth         = AuthManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var monthlyLimit  = MonthlyLimitManager.shared
     @ObservedObject private var reviewStore   = PendingReviewStore.shared
     @ObservedObject private var titanVScan      = TitanVScan.shared
@@ -511,6 +512,14 @@ struct ContentView: View {
                 }
             }
 
+            // ── Offline banner ─────────────────────────────────────────────
+            if !networkMonitor.isOnline {
+                offlineBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             // ── Payment failed banner ─────────────────────────────────────
             if auth.profile?.subscriptionStatus == "payment_failed" {
                 paymentFailedBanner
@@ -719,6 +728,27 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             Color.atlasBorderSubtle.opacity(0.8).frame(height: 0.5)
         }
+    }
+
+    // MARK: - Offline banner
+
+    var offlineBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "wifi.slash")
+                .font(.atlasFont(size: 13))
+                .foregroundStyle(Color(hex: "#F0A030"))
+            Text("No internet connection — installs and account checks are paused until you're back online.")
+                .font(.atlasSubhead)
+                .foregroundStyle(Color(hex: "#F0A030"))
+            Spacer()
+        }
+        .padding(10)
+        .background(Color(hex: "#F0A030").opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ATLASRadius.md, style: .continuous)
+                .strokeBorder(Color(hex: "#F0A030").opacity(0.22), lineWidth: 0.75)
+        )
     }
 
     // MARK: - Permissions banner

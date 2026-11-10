@@ -2,9 +2,11 @@ import SwiftUI
 
 struct AuthView: View {
     @ObservedObject private var auth = AuthManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @State private var mode: Mode = .signIn
-    @State private var email = ""
+    @State private var email = UserDefaults.standard.string(forKey: "atlas_remembered_email") ?? ""
     @State private var password = ""
+    @State private var rememberMe = UserDefaults.standard.string(forKey: "atlas_remembered_email") != nil
     @State private var fieldFocused: Field? = nil
     @State private var showForgotPassword = false
     @State private var forgotEmail = ""
@@ -93,6 +95,21 @@ struct AuthView: View {
             Divider().background(p.borderIdle)
 
             VStack(spacing: 14) {
+                // Offline notice — shown ahead of any sign-in attempt rather
+                // than letting the request silently sit until its timeout.
+                if !networkMonitor.isOnline {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .font(.atlasFont(size: 12))
+                        Text("No internet connection. Sign-in requires being online.")
+                            .font(.atlasFont(size: 11))
+                    }
+                    .foregroundColor(Color(hex: "#F0A030"))
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(hex: "#F0A030").opacity(0.08))
+                    .cornerRadius(8)
+                }
                 // Error banner
                 if auth.authErrorIsDeviceLimit {
                     deviceLimitBanner
@@ -110,8 +127,22 @@ struct AuthView: View {
                           text: $password, focused: $fieldFocused, field: .password, secure: true,
                           onSubmit: { guard !auth.isLoading && !email.isEmpty && !password.isEmpty else { return }; auth.authError = nil; Task { await auth.signIn(email: email, password: password) } })
 
-                // Forgot Password link
+                // Remember Me + Forgot Password row
                 HStack {
+                    Button {
+                        rememberMe.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: rememberMe ? "checkmark.square.fill" : "square")
+                                .font(.atlasFont(size: 12))
+                                .foregroundColor(rememberMe ? Color(hex: "#3ECFB2") : p.textSecondary.opacity(0.6))
+                            Text("Remember Me")
+                                .font(.atlasFont(size: 11))
+                                .foregroundColor(p.textSecondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     Spacer()
                     Button {
                         forgotEmail = email
@@ -130,6 +161,16 @@ struct AuthView: View {
                 primaryButton("Sign In",
                               disabled: auth.isLoading || email.isEmpty || password.isEmpty) {
                     auth.authError = nil
+                    // Remember Me only ever stores the email (never the password) —
+                    // just enough to pre-fill the field after an explicit sign-out,
+                    // not a credential store. Session persistence itself (staying
+                    // logged in across quit/relaunch) is unconditional already and
+                    // unaffected by this toggle either way.
+                    if rememberMe {
+                        UserDefaults.standard.set(email, forKey: "atlas_remembered_email")
+                    } else {
+                        UserDefaults.standard.removeObject(forKey: "atlas_remembered_email")
+                    }
                     Task { await auth.signIn(email: email, password: password) }
                 }
             }

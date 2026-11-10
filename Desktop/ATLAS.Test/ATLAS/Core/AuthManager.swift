@@ -535,7 +535,8 @@ final class AuthManager: ObservableObject {
                 plan: claims.p,
                 subscriptionStatus: "active",
                 billingAnchorDay: nil,
-                billingInterval: nil
+                billingInterval: nil,
+                isSuspended: false
             )
             await MainActor.run {
                 session = saved

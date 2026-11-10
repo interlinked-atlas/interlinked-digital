@@ -403,6 +403,15 @@ actor SupabaseService {
     }
 
     private func perform(_ req: URLRequest) async throws -> Data {
+        // Previously most callers (sign-in, session restore, profile/device
+        // fetches) relied on URLSession's default 60s request timeout — on a
+        // genuinely offline machine, that meant up to a full minute of
+        // apparent silence before any failure surfaced, which read as "the
+        // app didn't notice it was offline" even though it eventually would
+        // have. Capped here at 10s unless the caller explicitly set a
+        // shorter one already (never raises an already-set shorter timeout).
+        var req = req
+        if req.timeoutInterval > 10 { req.timeoutInterval = 10 }
         let (data, response) = try await URLSession.shared.data(for: req)
         if let http = response as? HTTPURLResponse,
            !(200...299).contains(http.statusCode) {
