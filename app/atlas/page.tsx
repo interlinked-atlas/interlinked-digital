@@ -208,7 +208,7 @@ export default function ATLASLaunchPage() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <img className="launch-anim-logo-icon launch-hero-logo-icon" src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
             <div className="launch-anim-logo-text launch-hero-logo-text" style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 60, fontWeight: 'normal', letterSpacing: 34, color: palette.text, textTransform: 'uppercase', paddingLeft: 34, lineHeight: 1, transition: 'color 0.3s ease' }}>ATLAS</div>
-            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -6, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
+            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -14, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
               <span style={{ fontStyle: 'italic', fontSize: 14, color: palette.textMuted }}>by</span>
               <img src={logoUrl} alt="InterLinked" draggable={false} style={{ width: 130, height: 'auto', display: 'block', opacity: 0.85, pointerEvents: 'none' }} />
             </div>
@@ -225,7 +225,7 @@ export default function ATLASLaunchPage() {
                 Get ATLAS V1
               </a>
               <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>macOS Monterey or Above.</div>
-              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6, opacity: 0.7 }}>Windows Version Coming Soon.</div>
+              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: isDark ? '#7A7FA3' : '#4A4F75', letterSpacing: 1.6, marginTop: -4 }}>Windows Version Coming Soon.</div>
             </div>
             <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999 }}>
               View Demo
