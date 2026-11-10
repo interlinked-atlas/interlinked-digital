@@ -53,11 +53,11 @@ export function TermsBody() {
       <Section title="4. Cancellation">
         You may cancel your subscription at any time through your account settings at{' '}
         <a href="/atlas/account" style={{ color: '#7A9BC0' }}>interlinked.digital/atlas/account</a>{' '}
-        or by contacting us. Cancelling stops future renewal — it does not refund a payment
-        you've already made. Your access to ATLAS continues until the end of the billing
-        period you've already paid for, then ends; you will not be charged again. If your
-        payment fails, see Section 5 below — access is suspended immediately in that case,
-        without waiting for the period to end.
+        or by contacting us. Cancelling stops future renewal and{' '}
+        <strong style={{ color: '#C8D8E8' }}>ends your access to ATLAS immediately</strong> —
+        not at the end of the billing period you've already paid for. Per Section 3, we do
+        not issue refunds or credits for the unused remainder of that period. You will not
+        be charged again after cancelling. If your payment fails instead, see Section 5 below.
       </Section>
 
       <Section title="5. Payment Failure">

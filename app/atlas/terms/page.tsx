@@ -30,7 +30,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p style={{ color: '#6B7399', fontSize: 15, margin: 0 }}>
-            Effective Date: August 15, 2026 &nbsp;·&nbsp; Last Updated: August 15, 2026
+            Effective Date: August 15, 2026 &nbsp;·&nbsp; Last Updated: November 5, 2026
           </p>
         </div>
 
