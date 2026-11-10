@@ -8,15 +8,18 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '162'
-const SHORT_VERSION    = '1.6.2'
-const RELEASE_DATE     = 'Tue, 10 Nov 2026 00:05:00 +0000'
+const CURRENT_VERSION  = '163'
+const SHORT_VERSION    = '1.6.3'
+const RELEASE_DATE     = 'Tue, 10 Nov 2026 01:30:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19664172'
-const ED_SIGNATURE     = 'Vp9eLjWWw1Vk8SMTHgNCQ2A+RguXUyZ5x/V4Z5NKYEHXfjKXhP0B0KTn+jZ4WomCOv4ml1cqreu2gNDZAgr8Dg=='
+const DMG_LENGTH       = '19643345'
+const ED_SIGNATURE     = 'IA/fVnswYxXYgElwYNvz+Da5Fm06Ex4hD16G/5cvQbhMHCiAmXqpGWaSnyFMREcfqasn8I8CkDGcrxNFN8vOAQ=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>Fixed: the local virus/PUA check could flag normal, legitimate installers as "Crack / keygen detected" over generic filename words like "patch," "loader," or "activator"</li>
+  <li>Fixed: a device removed by support could silently rejoin the account the next time the app launched, instead of actually staying removed</li>
+  <li>A device removed by support is now detected and signed out faster on an already-running, active session</li>
   <li>ATLAS now updates itself fully in the background, like most modern apps — no more "Update Available" banner to click through; updates simply apply the next time you quit and reopen</li>
   <li>Fixed: Settings could show a stale "25 remaining" figure in one place while correctly showing a support-adjusted limit elsewhere — both now always agree</li>
   <li>Updates now install automatically in the background — no more clicking through the update dialog, it just applies the next time you quit and reopen ATLAS</li>

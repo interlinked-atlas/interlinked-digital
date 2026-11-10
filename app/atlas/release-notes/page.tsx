@@ -8,6 +8,15 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.3',
+    date: 'November 9, 2026',
+    notes: [
+      'Fixed: the local virus/PUA check could flag normal, legitimate installers as "Crack / keygen detected" over generic filename words',
+      'Fixed: a device removed by support could silently rejoin the account on next launch instead of actually staying removed',
+      'A device removed by support is now detected and signed out faster on an already-running session',
+    ],
+  },
+  {
     version: '1.6.2',
     date: 'November 9, 2026',
     notes: [

@@ -19,6 +19,25 @@ final class AuthManager: ObservableObject {
     @Published var devices: [ATLASDevice] = []
     @Published var planChangeNotice: String? = nil
     private var planSyncTimer: Timer?
+    private var deviceSyncTask: Task<Void, Never>?
+
+    /// Independent, Task-based device-registration poll — redundant with the
+    /// Timer-based check inside startPlanSyncTimer(), added after an
+    /// admin-forced device kick was observed to not take effect on a live,
+    /// actively-foregrounded session within a reasonable window. A Task
+    /// sleep loop is the same mechanism already proven reliable for
+    /// MonthlyLimitManager's live sync, so this gives device removal a
+    /// second, independent path to be caught quickly even if the
+    /// Timer-based one is ever delayed or stalls for any reason.
+    private func startDeviceSyncLoop() {
+        guard deviceSyncTask == nil else { return }
+        deviceSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.checkDeviceStillRegistered()
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+            }
+        }
+    }
 
     // P0-2: the ONLY source of truth for "may use paid ATLAS functionality."
     // Populated exclusively by a server round-trip to GET /api/atlas/entitlement
@@ -170,6 +189,8 @@ final class AuthManager: ObservableObject {
     private func clearLocalSession() {
         planSyncTimer?.invalidate()
         planSyncTimer = nil
+        deviceSyncTask?.cancel()
+        deviceSyncTask = nil
         // Clear this account's cached Recovery Kit encryption key before dropping
         // the session — same "different account signing in next must never
         // inherit this account's cached state" reasoning as the install-limit
@@ -251,6 +272,26 @@ final class AuthManager: ObservableObject {
                 accessToken: s.accessToken, userID: s.userID)
             await MainActor.run { devices = list }
         } catch { }
+    }
+
+    /// Immediate, out-of-band device-registration check — same logic as the
+    /// 5s planSyncTimer tick, but callable on demand (e.g. when the app
+    /// becomes active/foregrounded) so an admin-forced device removal is
+    /// caught right away instead of waiting on a background timer that
+    /// macOS App Nap can throttle heavily while ATLAS sits backgrounded.
+    func checkDeviceStillRegistered() async {
+        guard let s = session, !s.isExpired else { return }
+        guard let list = try? await SupabaseService.shared.getDevices(
+            accessToken: s.accessToken, userID: s.userID) else { return }
+        let myUUID = atlasHardwareUUID()
+        let stillRegistered = list.contains { $0.hardwareUUID == myUUID }
+        if !stillRegistered {
+            await MainActor.run {
+                self.signOut(reason: "This device is no longer registered on your account. Sign in again to continue.")
+            }
+            return
+        }
+        await MainActor.run { self.devices = list }
     }
 
     func removeDevice(_ device: ATLASDevice) async {
@@ -342,7 +383,7 @@ final class AuthManager: ObservableObject {
         if UserDefaults.standard.bool(forKey: CombinedAgreementView.privacyKey) {
             try? await SupabaseService.shared.givePrivacyConsent(accessToken: s.accessToken)
         }
-        await MainActor.run { startPlanSyncTimer() }
+        await MainActor.run { startPlanSyncTimer(); startDeviceSyncLoop() }
     }
 
     // MARK: - Offline token refresh
@@ -390,6 +431,19 @@ final class AuthManager: ObservableObject {
             // anti-abuse measure (see device_slot_cooldown migration).
             await MainActor.run {
                 authError = "A device was recently removed from this account. Please wait up to 24 hours before adding a new device."
+                session = nil
+                profile = nil
+            }
+            KeychainManager.clearSession()
+        } catch SupabaseError.deviceBlocked {
+            // Admin explicitly kicked this exact device — unlike the cooldown
+            // above, this is permanent until an admin clears it, and applies
+            // even on a device that was previously registered to this
+            // account (the self-service "same device may rejoin instantly"
+            // allowance is checked first on the server, but a block always
+            // wins).
+            await MainActor.run {
+                authError = "This device was removed from your account by support and can't be re-added. Contact support if this wasn't expected."
                 session = nil
                 profile = nil
             }
@@ -508,6 +562,6 @@ final class AuthManager: ObservableObject {
         await registerDevice(s)
         await fetchDevices()
         await refreshOfflineToken(s)
-        await MainActor.run { startPlanSyncTimer() }
+        await MainActor.run { startPlanSyncTimer(); startDeviceSyncLoop() }
     }
 }

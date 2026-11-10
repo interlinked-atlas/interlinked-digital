@@ -63,9 +63,14 @@ final class VirusScanEngine: ObservableObject {
     @Published var lastResult:  VirusScanResult? = nil
     @Published var error:       String? = nil
 
-    // Filename patterns commonly seen on crack/keygen/patcher tools —
-    // flagged as PUA (potentially unwanted), never hard-blocked on name alone.
-    private let puaNamePatterns = ["keygen", "crack", "patch", "patched", "loader", "activator"]
+    // Filename patterns commonly seen on crack/keygen tools — flagged as PUA
+    // (potentially unwanted), never hard-blocked on name alone. Deliberately
+    // narrow: "patch", "patched", "loader", and "activator" were removed —
+    // they're everyday terminology in legitimate audio-plugin installers
+    // (license activators, patch updates, plugin loaders), so they were
+    // flagging normal, legitimate installs as "Crack / keygen detected."
+    // Only keep words that are themselves strong signals on their own.
+    private let puaNamePatterns = ["keygen", "crack", "cracked", "warez"]
 
     private lazy var knownMalwareHashes: Set<String> = {
         guard let url = Bundle.module.url(forResource: "KnownMalwareHashes", withExtension: "json"),

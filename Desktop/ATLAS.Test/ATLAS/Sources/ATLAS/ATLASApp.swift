@@ -105,6 +105,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // can return nil or a wrong auxiliary window (sheet/dialog) after orderOut.
     static var mainWindow: NSWindow?
 
+    // ATLAS stays running in the background after the window is closed
+    // (windowShouldClose just hides it), so its background sync timers
+    // (device-removal check, plan/limit polling) are subject to macOS App
+    // Nap, which can throttle a plain Timer from ~5s to tens of seconds or
+    // more once the app isn't frontmost. Held for the app's whole lifetime
+    // to keep those timers firing reliably — e.g. so an admin-forced device
+    // kick actually takes effect within seconds, not whenever App Nap next
+    // lets the timer run.
+    private var appNapActivity: NSObjectProtocol?
+
     // Sparkle. startingUpdater:true begins its own standard schedule
     // immediately (honors SUEnableAutomaticChecks / SUScheduledCheckInterval
     // from Info.plist — currently a daily background check). Shared so both
@@ -148,6 +158,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         ) { _, _ in }
 
         NSApp.activate(ignoringOtherApps: true)
+        appNapActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep],
+            reason: "Keep background account/device sync timers responsive")
         MonthlyLimitManager.shared.startLiveSync()
         InstallEngine.cleanupStaleMounts()
         InstallEngine.killLeakedAuthWatchers()
@@ -253,6 +266,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // wait for the next poll tick.
     func applicationDidBecomeActive(_ notification: Notification) {
         Task { await MonthlyLimitManager.shared.refreshUsage() }
+        Task { await AuthManager.shared.checkDeviceStillRegistered() }
     }
 
     // Called every time the user clicks the Dock icon.
