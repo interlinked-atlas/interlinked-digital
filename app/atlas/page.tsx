@@ -1,1451 +1,376 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from 'next-themes'
-import { ThemeToggle } from '@/components/theme-toggle'
 
-export default function ATLASWaitlistPage() {
-  const { theme }                   = useTheme()
-  const [email, setEmail]           = useState('')
-  const [status, setStatus]         = useState<'idle' | 'loading' | 'verifying' | 'confirming' | 'success' | 'error'>('idle')
-  const [errorMsg, setErrorMsg]     = useState('')
-  const [codeInput, setCodeInput]   = useState('')
-  const [verifyToken, setVerifyToken] = useState('')
-  const [verifyTs, setVerifyTs]     = useState(0)
-  const [shareEmail, setShareEmail] = useState('')
-  const [shareStatus, setShareStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [shareError, setShareError] = useState('')
-  const [mounted, setMounted]       = useState(false)
-  const [count, setCount]           = useState<number | null>(null)
-  const [coinAnim, setCoinAnim]     = useState(false)
-  const [demoUnlocked, setDemo]     = useState(true)
-  const [unlocking, setUnlocking]   = useState(false)
-  const prevCount                   = useRef<number | null>(null)
-  const demoRef                     = useRef<HTMLDivElement>(null)
-  const heroSplashRef               = useRef<HTMLVideoElement>(null)
-  const [heroPhase, setHeroPhase]   = useState<'video' | 'image'>('video')
-  // Theme-specific hero assets — identical sizing/positioning/sequencing to
-  // Light Mode; only the underlying video/image source swaps. Gated on
-  // `mounted` (matches the hydration-safety pattern already used by
-  // ThemeToggle) so the server-rendered markup always matches Light Mode.
-  const heroIsDark                  = mounted && theme === 'dark'
-  const heroSplashSrc               = heroIsDark ? '/atlas-splash-dark.mp4' : '/atlas-splash.mp4'
-  const heroAppImgSrc               = heroIsDark ? '/atlas-app-dark.png' : '/atlas-app.png'
-  const faqRef                      = useRef<HTMLDivElement>(null)
-  const [faqVisible, setFaqVisible] = useState(false)
+const FEATURES: Record<string, { title: string; body: string }> = {
+  install: {
+    title: 'Installation',
+    body: "Drop in a plugin or software installer and ATLAS handles the install automatically — no manual drag-and-drop into system folders, no guessing where a format needs to go. One click, and it's installed correctly.",
+  },
+  uninstall: {
+    title: 'Uninstallation',
+    body: 'ATLAS removes exactly what it installed, nothing more — including the install receipts and leftover files most uninstallers skip, so your system folders stay clean and organized instead of accumulating orphaned files over time.',
+  },
+  recovery: {
+    title: 'Recovery / Rollback',
+    body: 'If an install needs to be undone, ATLAS can roll it back — restoring your system to the way it was before that install, when that’s possible for the install in question.',
+  },
+  'recovery-kit': {
+    title: 'ATLAS Recovery Kit™',
+    body: 'A cloud backup of your ATLAS install history. If you move to a new Mac or need to restore your setup, ATLAS Recovery Kit™ keeps that history backed up and available, so you’re not starting over from scratch.',
+  },
+  cleaner: {
+    title: 'ATLAS Cleaner™',
+    body: 'Finds leftover files from software that was removed outside of ATLAS, so your Mac doesn’t quietly accumulate clutter from installers and plugins you no longer use.',
+  },
+  formats: {
+    title: 'Product Format Management',
+    body: 'Plugins can come in several formats — AU, VST, VST3, AAX, and more. ATLAS keeps track of which formats of a product are installed and where, so you always know the status of each format instead of hunting through system folders yourself.',
+  },
+}
 
-  // FAQ fade-in as it scrolls into view — same opacity/translateY/transition
-  // recipe already used for the initial `mounted` fade elsewhere on this page,
-  // just triggered by scroll position instead of mount time.
+const FEATURE_TABS: { key: string; label: string }[] = [
+  { key: 'install', label: 'Installation' },
+  { key: 'uninstall', label: 'Uninstallation' },
+  { key: 'recovery', label: 'Recovery / Rollback' },
+  { key: 'recovery-kit', label: 'ATLAS Recovery Kit™' },
+  { key: 'cleaner', label: 'ATLAS Cleaner™' },
+  { key: 'formats', label: 'Product Format Management' },
+]
+
+const PLAN_BULLETS = [
+  'Up to 3 devices',
+  '25 installs / month, per device',
+  'TITAN CORE™',
+  'Smart Storage',
+  'Full install history',
+  'Bulk installation',
+  'Uninstall & Rollback',
+  'Trash install file',
+  'ATLAS CLEANER™',
+  'ATLAS RECOVERY KIT™',
+  'Cloud Backup',
+  'Built-In Virus Scanner',
+]
+
+const FAQS: { q: string; a: string }[] = [
+  { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
+  { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
+  { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices, each with its own 25-install-per-month allowance.' },
+  { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
+  { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
+]
+
+export default function ATLASLaunchPage() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const isDark = !mounted || theme !== 'light'
+
+  const [scrollY, setScrollY] = useState(0)
+  const [selectedFeature, setSelectedFeature] = useState('install')
+  const [faqOpen, setFaqOpen] = useState<Record<number, boolean>>({})
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [logoDrag, setLogoDrag] = useState({ x: 0, y: 0 })
+  const dragState = useRef<{ dragging: boolean; originX: number; originY: number }>({ dragging: false, originX: 0, originY: 0 })
+
   useEffect(() => {
-    const el = faqRef.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setFaqVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.15 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
+    const onScroll = () => setScrollY(window.scrollY || 0)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Left-side hero sequence: splash video plays once → 0.6s crossfade to the
-  // static app image → hold 2.5s → 0.6s crossfade back to the video, restarted
-  // from the beginning → repeat. The video has no `loop` attribute — its
-  // native `onEnded` event drives the crossfade to the image instead.
+  const onLogoDragMove = useCallback((e: MouseEvent) => {
+    if (!dragState.current.dragging) return
+    setLogoDrag({ x: e.clientX - dragState.current.originX, y: e.clientY - dragState.current.originY })
+  }, [])
+  const stopLogoDrag = useCallback(() => { dragState.current.dragging = false }, [])
   useEffect(() => {
-    const video = heroSplashRef.current
-    if (!video) return
-    let holdTimer: ReturnType<typeof setTimeout>
-    const onEnded = () => {
-      setHeroPhase('image')
-      holdTimer = setTimeout(() => {
-        setHeroPhase('video')
-        video.currentTime = 0
-        video.play().catch(() => {})
-      }, 2500)
-    }
-    video.addEventListener('ended', onEnded)
+    window.addEventListener('mousemove', onLogoDragMove)
+    window.addEventListener('mouseup', stopLogoDrag)
     return () => {
-      video.removeEventListener('ended', onEnded)
-      clearTimeout(holdTimer)
+      window.removeEventListener('mousemove', onLogoDragMove)
+      window.removeEventListener('mouseup', stopLogoDrag)
     }
-  }, [])
-
-  useEffect(() => {
-    setMounted(true)
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    if (token) {
-      fetch(`/api/atlas/demo-token?token=${encodeURIComponent(token)}`)
-        .then(r => r.json())
-        .then(d => { if (d.valid) setDemo(true) })
-        .catch(() => {})
-    }
-  }, [])
-
-  useEffect(() => {
-    async function fetchCount() {
-      try {
-        const res = await fetch('/api/atlas/subscriber-count')
-        const data = await res.json()
-        if (prevCount.current !== null && data.count > prevCount.current) {
-          setCoinAnim(true)
-          setTimeout(() => setCoinAnim(false), 900)
-        }
-        prevCount.current = data.count
-        setCount(data.count)
-      } catch {}
-    }
-    fetchCount()
-    const interval = setInterval(fetchCount, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  async function handleSubmit(e: React.FormEvent) {
+  }, [onLogoDragMove, stopLogoDrag])
+  const startLogoDrag = (e: React.MouseEvent) => {
     e.preventDefault()
-    if (!email || status === 'loading') return
-    setStatus('loading'); setErrorMsg('')
-
-    try {
-      const res = await fetch('/api/atlas/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setVerifyToken(data.token)
-        setVerifyTs(data.ts)
-        setStatus('verifying')
-      } else {
-        setErrorMsg(data.error ?? 'Something went wrong.')
-        setStatus('error')
-      }
-    } catch {
-      setErrorMsg('Connection failed. Try again.')
-      setStatus('error')
-    }
+    dragState.current = { dragging: true, originX: e.clientX - logoDrag.x, originY: e.clientY - logoDrag.y }
   }
 
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault()
-    if (!codeInput || status === 'confirming') return
-    setStatus('confirming'); setErrorMsg('')
+  const scrollBlur = Math.max(0, Math.min(16, scrollY / 18))
+  const scrollFade = Math.max(0.15, 1 - scrollY / 400)
 
-    try {
-      const res = await fetch('/api/atlas/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: codeInput, token: verifyToken, ts: verifyTs }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setStatus('success')
-        setCount(c => c !== null ? c + 1 : c)
-        setCoinAnim(true)
-        setTimeout(() => setCoinAnim(false), 900)
-        setUnlocking(true)
-        setTimeout(() => {
-          setUnlocking(false)
-          setDemo(true)
-          setTimeout(() => {
-            demoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }, 100)
-        }, 1400)
-      } else {
-        setErrorMsg(data.error ?? 'Invalid code.')
-        setStatus('verifying')
-      }
-    } catch {
-      setErrorMsg('Connection failed. Try again.')
-      setStatus('verifying')
+  const palette = isDark
+    ? { bg: '#07080F', bgCard: '#111115', bgFooter: '#0B0B0D', text: '#E8ECFF', textMuted: '#525260', textSubtle: '#B8BEDC', border: 'rgba(232,236,255,0.08)' }
+    : { bg: '#F2F4FF', bgCard: '#FFFFFF', bgFooter: '#E7EAFB', text: '#0D1035', textMuted: '#6B7299', textSubtle: '#3A3F66', border: 'rgba(13,16,53,0.08)' }
+
+  const toggleBorder = isDark ? '#1E2240' : '#DDE2F5'
+  const toggleIconColor = isDark ? 'rgba(255,255,255,0.38)' : '#4A5280'
+  const shimmerGradient = isDark
+    ? 'linear-gradient(100deg, #E8ECFF 40%, #3ECFB2 50%, #E8ECFF 60%)'
+    : 'linear-gradient(100deg, #0D1035 40%, #3ECFB2 50%, #0D1035 60%)'
+
+  const logoUrl = isDark ? '/launch/interlinked-logo-dark.png' : '/launch/interlinked-logo-light.png'
+  const shotHeaderUrl = isDark ? '/launch/shot-header-dark.png' : '/launch/shot-header-light.png'
+  const shotAppUrl = isDark ? '/launch/shot-app-dark.png' : '/launch/shot-app-light.png'
+
+  const activeFeature = FEATURES[selectedFeature] ?? FEATURES.install
+
+  const toggleFaq = (i: number) => setFaqOpen(prev => ({ ...prev, [i]: !prev[i] }))
+
+  const tabStyle = (key: string): React.CSSProperties => {
+    const active = selectedFeature === key
+    return {
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: 14, fontWeight: 600, borderRadius: 20, padding: '9px 16px', cursor: 'pointer',
+      transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
+      color: active ? '#3ECFB2' : palette.textSubtle,
+      border: active ? '1px solid rgba(62,207,178,0.5)' : `1px solid ${palette.border}`,
+      background: active ? 'rgba(62,207,178,0.1)' : 'transparent',
     }
   }
-
-  async function handleShare(e: React.FormEvent) {
-    e.preventDefault()
-    if (!shareEmail || shareStatus === 'sending') return
-    setShareStatus('sending'); setShareError('')
-    try {
-      const res = await fetch('/api/atlas/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ friendEmail: shareEmail }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setShareStatus('sent')
-        setShareEmail('')
-      } else {
-        setShareError(data.error ?? 'Could not send invite.')
-        setShareStatus('error')
-      }
-    } catch {
-      setShareError('Connection failed. Try again.')
-      setShareStatus('error')
-    }
-  }
-
-  // Interactive feature explainer — factual content sourced from /atlas/plans.
-  // Each entry describes a capability already documented there; no new
-  // claims or capabilities are introduced here.
-  const ATLAS_FEATURES = [
-    {
-      key: 'install',
-      label: 'Installation',
-      body: 'Drop in a plugin or software installer and ATLAS handles the install automatically — no manual drag-and-drop into system folders, no guessing where a format needs to go. One click, and it’s installed correctly.',
-    },
-    {
-      key: 'uninstall',
-      label: 'Uninstallation',
-      body: 'ATLAS removes exactly what it installed, nothing more — including the install receipts and leftover files most uninstallers skip, so your system folders stay clean and organized instead of accumulating orphaned files over time.',
-    },
-    {
-      key: 'recovery',
-      label: 'Recovery / Rollback',
-      body: 'If an install needs to be undone, ATLAS can roll it back — restoring your system to the way it was before that install, when that’s possible for the install in question.',
-    },
-    {
-      key: 'recovery-kit',
-      label: 'ATLAS Recovery Kit™',
-      body: 'A cloud backup of your ATLAS install history. If you move to a new Mac or need to restore your setup, ATLAS Recovery Kit™ keeps that history backed up and available, so you’re not starting over from scratch.',
-    },
-    {
-      key: 'cleaner',
-      label: 'ATLAS Cleaner™',
-      body: 'Finds leftover files from software that was removed outside of ATLAS, so your Mac doesn’t quietly accumulate clutter from installers and plugins you no longer use.',
-    },
-    {
-      key: 'formats',
-      label: 'Product Format Management',
-      body: 'Plugins can come in several formats — AU, VST, VST3, AAX, and more. ATLAS keeps track of which formats of a product are installed and where, so you always know the status of each format instead of hunting through system folders yourself.',
-    },
-  ] as const
-  const [selectedFeature, setSelectedFeature] = useState<string>(ATLAS_FEATURES[0].key)
-  const activeFeature = ATLAS_FEATURES.find(f => f.key === selectedFeature) ?? ATLAS_FEATURES[0]
-
-  // Full $30/mo plan feature list — copied verbatim from app/atlas/plans/page.tsx.
-  const PLAN_FEATURES = [
-    'Up to 3 devices',
-    '25 installs / month, per device',
-    'TITAN CORE™',
-    'Smart Storage',
-    'Full install history',
-    'Bulk installation',
-    'Uninstall & Rollback',
-    'Trash install file',
-    'ATLAS CLEANER™',
-    'ATLAS RECOVERY KIT™',
-    'Cloud Backup',
-    'Built-In Virus Scanner',
-    'File Sharing (Coming Soon)',
-  ]
 
   return (
-    <>
-      <style>{`
-        @font-face {
-          font-family: 'SF-Intellivised';
-          src: url('/fonts/SF-Intellivised.ttf') format('truetype');
-          font-weight: normal;
-          font-style: normal;
-        }
+    <main style={{ margin: 0, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: palette.bg }}>
+      <style jsx global>{`
+        @font-face { font-family: 'SF-Intellivised'; src: url('/fonts/SF-Intellivised.ttf') format('truetype'); }
+        html { scroll-behavior: smooth; }
+        .launch-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
+        .launch-login-btn { display: inline-block; padding: 5px 12px; border-radius: 7px; background: none; font-size: 12px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; letter-spacing: -0.01em; line-height: 20px; text-decoration: none; transition: border-color 0.2s ease, color 0.2s ease; }
+        .launch-login-btn:hover { border-color: rgba(62,207,178,0.4) !important; color: #3ECFB2 !important; }
+        .launch-theme-toggle { width: 30px; height: 30px; border-radius: 7px; background: none; padding: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease; }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { background: var(--atlas-bg); }
+        @keyframes launchHeroUnblur { from { filter: blur(10px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
+        @keyframes launchHeroFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes launchHeroSlideLeft { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes launchHeroSlideRight { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: translateX(0); } }
+        .launch-anim-logo-icon { animation: launchHeroUnblur 0.9s ease-out both; }
+        .launch-anim-logo-text { animation: launchHeroFadeIn 1.3s ease-out both; animation-delay: 0.25s; }
+        .launch-anim-logo-sub { animation: launchHeroFadeIn 1.1s ease-out both; animation-delay: 0.55s; }
+        .launch-anim-shot-left { animation: launchHeroSlideLeft 0.8s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.7s; }
+        .launch-anim-shot-right { animation: launchHeroSlideRight 0.8s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.85s; }
 
-        .page {
-          min-height: 100vh;
-          background: var(--atlas-bg);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-          padding: 16px 20px;
-          position: relative;
-          overflow: hidden;
-        }
+        @keyframes launchScrollCueBounce { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(6px); opacity: 1; } }
+        .launch-scroll-cue { animation: launchScrollCueBounce 2.2s ease-in-out infinite; animation-delay: 1.6s; }
 
-        .glow {
-          position: fixed;
-          top: -200px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 900px;
-          height: 560px;
-          background: radial-gradient(ellipse at center, rgba(62,207,178,0.07) 0%, transparent 70%);
-          pointer-events: none;
-          z-index: 0;
-        }
+        @keyframes launchSubscribeShimmer { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+        .launch-shimmer-text { background-size: 250% 100%; background-position: -150% 0; -webkit-background-clip: text; background-clip: text; color: transparent; animation: launchSubscribeShimmer 8s linear infinite; animation-delay: 1s; }
 
-        .content {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 460px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          opacity: ${mounted ? 1 : 0};
-          transform: translateY(${mounted ? '0' : '14px'});
-          transition: opacity 0.7s ease, transform 0.7s ease;
-        }
+        .launch-btn-primary { box-shadow: 0 8px 28px rgba(62,207,178,0.35), inset 0 1px 0 rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.22); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .launch-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(62,207,178,0.5), inset 0 1px 0 rgba(255,255,255,0.35); }
+        .launch-btn-secondary { background: rgba(232,236,255,0.05); border: 1px solid rgba(232,236,255,0.16); backdrop-filter: blur(6px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
+        .launch-btn-secondary:hover { transform: translateY(-2px); background: rgba(232,236,255,0.09); border-color: rgba(232,236,255,0.28); }
+        .launch-os-req { font-family: 'Space Grotesk', -apple-system, sans-serif; }
+        .launch-faq-item { border-bottom: 1px solid var(--launch-faq-border, rgba(232,236,255,0.08)); }
+        .launch-faq-q { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; cursor: pointer; list-style: none; user-select: none; background: none; border: none; width: 100%; text-align: left; }
+        .launch-faq-q:focus-visible { outline: 2px solid #3ECFB2; outline-offset: 2px; border-radius: 4px; }
+        .launch-faq-chevron { flex-shrink: 0; transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+        .launch-faq-a { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; padding: 0 2px 12px; margin: 0; }
 
-        /* ── Hero branding (full-width, centered above the video/waitlist row) ── */
-        .hero-branding {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 1120px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          margin-bottom: 10px;
-          opacity: ${mounted ? 1 : 0};
-          transform: translateY(${mounted ? '0' : '14px'});
-          transition: opacity 0.7s ease, transform 0.7s ease;
-        }
-
-        /* ── Hero (video+statement). Previously a 2-column grid sharing this
-             row with the waitlist; the waitlist has moved further down the
-             page (below pricing), so this is now a single centered column
-             sized to match the video's original rendered width. ── */
-        .hero {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 760px;
-          display: grid;
-          grid-template-columns: 1fr;
-          grid-template-areas: "video";
-          align-items: start;
-          margin-bottom: 16px;
-          opacity: ${mounted ? 1 : 0};
-          transform: translateY(${mounted ? '0' : '14px'});
-          transition: opacity 0.7s ease, transform 0.7s ease;
-        }
-        .hero-video-region {
-          grid-area: video;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-        /* Waitlist region — unchanged styling, now positioned below pricing
-           instead of beside the hero video. */
-        .hero-right-region {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          width: 100%;
-          max-width: 460px;
-        }
-        .hero-video-wrap {
-          width: 100%;
-          aspect-ratio: 16 / 9;
-          border-radius: 16px;
-          overflow: hidden;
-          border: 1px solid rgba(62,207,178,0.2);
-          box-shadow: 0 0 60px rgba(62,207,178,0.12), 0 30px 80px rgba(0,0,0,0.7);
-          background: #000;
-          position: relative;
-        }
-        .hero-video-layer {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          display: block;
-          pointer-events: none;
-          transition: opacity 0.6s ease;
-        }
-        .hero-statement {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 22px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          line-height: 1.35;
-          color: var(--atlas-fg);
-          text-align: left;
-        }
-        .hero-statement-lead {
-          font-size: 32px;
-        }
-        .hero-right-region .card { width: 100%; }
-        .hero-right-region .counter-banner { align-self: flex-start; margin-left: 4px; }
-
-        @media (max-width: 1023px) {
-          .hero-branding { max-width: 460px; margin-bottom: 32px; }
-          .hero {
-            grid-template-columns: 1fr;
-            grid-template-areas: "right" "video";
-            max-width: 460px;
-            gap: 32px;
-            margin-bottom: 40px;
-          }
-          .hero-right-region { align-items: center; }
-          .hero-statement { text-align: center; }
-          .hero-right-region .card { width: 100%; }
-          .hero-right-region .counter-banner { align-self: center; margin-left: 0; }
-        }
-
-        /* ── Video logo lockup (enlarged for hero center) ── */
-        .logo-lockup {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 10px;
-        }
-
-        .logo-video-wrap {
-          width: 96px;
-          height: 96px;
-        }
-        /* ATLAS icon: a natively transparent PNG (public/atlas-icon.png) —
-           no crop/mask/blend processing needed. */
-        .logo-video {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          display: block;
-        }
-
-        .logo-text {
-          font-family: 'SF-Intellivised', -apple-system, sans-serif;
-          font-size: 60px;
-          font-weight: normal;
-          letter-spacing: 34px;
-          color: var(--atlas-fg);
-          text-transform: uppercase;
-          padding-left: 34px;
-          line-height: 1;
-        }
-        /* InterLinked sub-brand mark, replacing the old "by InterLinked®" text.
-           Two real logo files (not a CSS filter) are swapped per theme — the
-           supplied white variant for dark mode, the black variant for light
-           mode — using the same html.light convention as app/globals.css. */
-        .logo-interlinked {
-          width: 130px;
-          height: auto;
-          display: block;
-          margin-top: 2px;
-          opacity: 0.85;
-        }
-        html.light .logo-interlinked { opacity: 0.8; }
-        .logo-interlinked.for-dark  { display: block; }
-        .logo-interlinked.for-light { display: none; }
-        html.light .logo-interlinked.for-dark  { display: none; }
-        html.light .logo-interlinked.for-light { display: block; }
-        .logo-tagline {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          color: var(--atlas-text-subtle);
-          letter-spacing: 0.01em;
-          text-align: center;
-          max-width: 320px;
-          margin-top: 4px;
-        }
-
-        /* ── Card ── */
-        .card {
-          width: 100%;
-        }
-
-        .card-body { padding: 0; }
-
-        /* ── Platform badges ── */
-        .platforms {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-        .platform-badge {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          background: var(--atlas-input-bg);
-          border: 1px solid var(--atlas-input-border);
-          border-radius: 10px;
-          padding: 7px 14px;
-          transition: border-color 0.2s;
-        }
-        .platform-badge:hover { border-color: rgba(255,255,255,0.14); }
-
-        .platform-label {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--text-muted);
-          letter-spacing: -0.01em;
-        }
-
-        /* ── Text ── */
-        .eyebrow {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: var(--atlas-text-subtle);
-          margin-bottom: 10px;
-        }
-        .heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 22px;
-          font-weight: 700;
-          letter-spacing: -0.035em;
-          line-height: 1.2;
-          color: var(--atlas-fg);
-          margin-bottom: 10px;
-        }
-        .subtext {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-text-subtle);
-          line-height: 1.6;
-          letter-spacing: -0.005em;
-          margin-bottom: 18px;
-        }
-        .divider {
-          height: 1px;
-          background: var(--atlas-border-faint);
-          margin: 18px 0;
-        }
-
-        /* ── Form ── */
-        .form { display: flex; flex-direction: column; gap: 10px; }
-        .input-row { display: flex; gap: 8px; }
-
-        .email-input {
-          flex: 1;
-          background: var(--atlas-input-bg);
-          border: 1px solid var(--atlas-input-border);
-          border-radius: 10px;
-          padding: 12px 16px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-fg);
-          outline: none;
-          transition: border-color 0.2s;
-          min-width: 0;
-        }
-        .email-input::placeholder { color: var(--atlas-text-label); }
-        .email-input:focus { border-color: rgba(62,207,178,0.4); }
-
-        .submit-btn {
-          background: #3ECFB2;
-          border: none;
-          border-radius: 10px;
-          padding: 12px 20px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          letter-spacing: -0.01em;
-          color: #080809;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: opacity 0.2s, transform 0.15s;
-          flex-shrink: 0;
-        }
-        .submit-btn:hover:not(:disabled) { opacity: 0.88; }
-        .submit-btn:active:not(:disabled) { transform: scale(0.97); }
-        .submit-btn:disabled { opacity: 0.5; cursor: default; }
-
-        .login-btn {
-          width: 100%;
-          background: transparent;
-          border: 1px solid var(--atlas-input-border);
-          border-radius: 10px;
-          padding: 11px 20px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--text-muted);
-          cursor: pointer;
-          text-align: center;
-          text-decoration: none;
-          display: block;
-          transition: border-color 0.2s, color 0.2s;
-          letter-spacing: -0.01em;
-        }
-        .login-btn:hover { border-color: rgba(255,255,255,0.16); color: var(--atlas-nav-hover); }
-
-        .error-msg {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          color: #EF5B5B;
-          padding-left: 2px;
-        }
-
-        /* ── Success ── */
-        .success-state {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 6px;
-        }
-        .success-check {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: rgba(62,207,178,0.12);
-          border: 1px solid rgba(62,207,178,0.25);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 15px;
-          margin-bottom: 8px;
-        }
-        .success-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 15px;
-          font-weight: 700;
-          color: var(--atlas-fg);
-          letter-spacing: -0.02em;
-        }
-        .success-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-text-subtle);
-          line-height: 1.6;
-        }
-
-        /* ── Subscriber counter banner ── */
-        .counter-banner {
-          width: 100%;
-          margin-top: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-        }
-        .counter-label {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 20px;
-          color: var(--atlas-text-subtle);
-          letter-spacing: -0.01em;
-        }
-        .counter-num {
-          font-weight: 700;
-          color: #3ECFB2;
-          font-variant-numeric: tabular-nums;
-          font-size: 22px;
-        }
-
-        /* ── Locked demo teaser ── */
-        .demo-locked {
-          width: 100%;
-          margin-top: 20px;
-          position: relative;
-          border-radius: 14px;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.07);
-          cursor: default;
-        }
-        .demo-locked-thumb {
-          width: 100%;
-          aspect-ratio: 16/9;
-          background: url('https://img.youtube.com/vi/OHbz5y4kHeg/maxresdefault.jpg') center/cover no-repeat;
-          filter: blur(6px) brightness(0.35);
-          transform: scale(1.05);
-        }
-        .demo-locked-overlay {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-        .demo-lock-icon {
-          font-size: 28px;
-          opacity: 0.7;
-        }
-        .demo-lock-text {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 600;
-          color: rgba(255,255,255,0.5);
-          letter-spacing: -0.01em;
-          text-align: center;
-        }
-        /* ── Unlocking flash ── */
-        .demo-unlocking {
-          animation: unlockFlash 1.4s ease forwards;
-        }
-        @keyframes unlockFlash {
-          0%   { opacity: 1; }
-          40%  { opacity: 0.3; box-shadow: 0 0 60px rgba(62,207,178,0.6); }
-          100% { opacity: 1; }
-        }
-        /* ── Demo section ── */
-        .demo-section {
-          width: 100%;
-          max-width: 960px;
-          margin-top: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-          animation: fadeUp 0.6s ease forwards;
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .demo-eyebrow {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: #3ECFB2;
-          text-align: center;
-        }
-        .demo-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 26px;
-          font-weight: 700;
-          letter-spacing: -0.035em;
-          color: var(--atlas-fg);
-          text-align: center;
-          line-height: 1.2;
-          margin-top: 4px;
-        }
-        .demo-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-text-subtle);
-          text-align: center;
-          line-height: 1.6;
-          max-width: 380px;
-        }
-        .demo-video-wrap {
-          width: 100%;
-          border-radius: 16px;
-          overflow: hidden;
-          border: 1px solid rgba(62,207,178,0.2);
-          box-shadow: 0 0 60px rgba(62,207,178,0.12), 0 30px 80px rgba(0,0,0,0.7);
-          background: #000;
-        }
-        .demo-iframe {
-          width: 100%;
-          aspect-ratio: 16/9;
-          border: none;
-          display: block;
-        }
-        .demo-divider {
-          width: 100%;
-          height: 1px;
-          background: var(--atlas-border-faint);
-        }
-        .demo-back-btn {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--atlas-text-subtle);
-          background: transparent;
-          border: 1px solid var(--atlas-input-border);
-          border-radius: 8px;
-          padding: 8px 16px;
-          cursor: pointer;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          transition: color 0.2s, border-color 0.2s;
-          align-self: flex-start;
-        }
-        .demo-back-btn:hover { color: var(--atlas-nav-hover); border-color: rgba(255,255,255,0.2); }
-
-        /* ── Code verification ── */
-        .verify-state {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 6px;
-        }
-        .verify-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: rgba(62,207,178,0.1);
-          border: 1px solid rgba(62,207,178,0.2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16px;
-          margin-bottom: 8px;
-        }
-        .verify-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 15px;
-          font-weight: 700;
-          color: var(--atlas-fg);
-          letter-spacing: -0.02em;
-        }
-        .verify-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-text-subtle);
-          line-height: 1.6;
-          margin-bottom: 16px;
-        }
-        .code-row {
-          display: flex;
-          gap: 8px;
-          width: 100%;
-        }
-        .code-input {
-          flex: 1;
-          background: var(--atlas-input-bg);
-          border: 1px solid rgba(62,207,178,0.3);
-          border-radius: 10px;
-          padding: 12px 16px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          letter-spacing: 0.18em;
-          color: var(--atlas-fg);
-          outline: none;
-          transition: border-color 0.2s;
-          min-width: 0;
-          text-align: center;
-        }
-        .code-input::placeholder { color: var(--atlas-text-label); letter-spacing: 0.1em; font-weight: 400; font-size: 14px; }
-        .code-input:focus { border-color: rgba(62,207,178,0.6); }
-        .resend-btn {
-          background: transparent;
-          border: none;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          color: var(--atlas-text-subtle);
-          cursor: pointer;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-          margin-top: 8px;
-        }
-        .resend-btn:hover { color: var(--text-muted); }
-
-        /* ── Share section ── */
-        .share-section {
-          width: 100%;
-          background: var(--atlas-card-alt);
-          border: 1px solid var(--atlas-border-subtle);
-          border-radius: 16px;
-          padding: 22px 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .share-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--atlas-fg);
-          letter-spacing: -0.02em;
-        }
-        .share-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          color: var(--atlas-text-subtle);
-          line-height: 1.5;
-          margin-top: -4px;
-        }
-        .share-row {
-          display: flex;
-          gap: 8px;
-        }
-        .share-input {
-          flex: 1;
-          background: var(--atlas-input-bg);
-          border: 1px solid var(--atlas-input-border);
-          border-radius: 10px;
-          padding: 11px 14px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          color: var(--atlas-fg);
-          outline: none;
-          transition: border-color 0.2s;
-          min-width: 0;
-        }
-        .share-input::placeholder { color: var(--atlas-text-label); }
-        .share-input:focus { border-color: rgba(62,207,178,0.4); }
-        .share-btn {
-          background: transparent;
-          border: 1px solid rgba(62,207,178,0.35);
-          border-radius: 10px;
-          padding: 11px 18px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          color: #3ECFB2;
-          cursor: pointer;
-          white-space: nowrap;
-          flex-shrink: 0;
-          transition: background 0.2s, border-color 0.2s;
-        }
-        .share-btn:hover:not(:disabled) { background: rgba(62,207,178,0.08); border-color: rgba(62,207,178,0.6); }
-        .share-btn:disabled { opacity: 0.45; cursor: default; }
-        .share-sent {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-          color: #3ECFB2;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        /* ── Footer ── */
-        .footer {
-          margin-top: 16px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-        .footer-brand {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 10px;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          color: var(--atlas-text-ghost);
-        }
-        .footer-link {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 11px;
-          color: var(--atlas-text-faint);
-          text-decoration: none;
-        }
-        .footer-link:hover { color: var(--atlas-text-subtle); }
-
-        /* ── FAQ ── */
-        .faq {
-          margin-top: 24px;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-        }
-        .faq-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 32px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          text-transform: none;
-          color: #3ECFB2;
-          text-align: center;
-          margin-bottom: 16px;
-        }
-        .faq-item {
-          border-bottom: 1px solid var(--atlas-border-faint);
-        }
-        .faq-q {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 22px;
-          font-weight: 600;
-          color: var(--atlas-fg);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 14px 2px;
-          cursor: pointer;
-          list-style: none;
-        }
-        .faq-q::-webkit-details-marker { display: none; }
-        .faq-q:focus-visible { outline: 2px solid #3ECFB2; outline-offset: 2px; border-radius: 4px; }
-        .faq-chevron {
-          flex-shrink: 0;
-          color: var(--atlas-text-subtle);
-          transition: transform 0.2s ease;
-        }
-        .faq-item[open] .faq-chevron { transform: rotate(180deg); color: #3ECFB2; }
-        .faq-a {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 22px;
-          line-height: 1.6;
-          color: var(--atlas-text-subtle);
-          padding: 0 2px 16px;
-          margin: 0;
-        }
-
-        /* ── Minimal FAQ (moved, bottom of page) — visually subordinate to .fp-heading ── */
-        .faq-minimal .faq-heading { font-size: 17px; margin-bottom: 6px; }
-        .faq-minimal .faq-q { font-size: 14px; padding: 10px 2px; }
-        .faq-minimal .faq-a { font-size: 13px; padding: 0 2px 12px; }
-
-        /* ── Features / Plan / Pricing (replaces the old FAQ slot) ── */
-        .fp-section {
-          margin-top: 24px;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-        }
-        .fp-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 34px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          color: #3ECFB2;
-          text-align: center;
-          margin-bottom: 0;
-        }
-        .fp-sub {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 15px;
-          color: var(--atlas-text-subtle);
-          text-align: center;
-          margin-top: -12px;
-        }
-        .fp-tabs {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          justify-content: center;
-          width: 100%;
-        }
-        .fp-tab {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--atlas-text-subtle);
-          background: transparent;
-          border: 1px solid var(--atlas-border-faint);
-          border-radius: 20px;
-          padding: 9px 16px;
-          cursor: pointer;
-          transition: color 0.2s, border-color 0.2s, background 0.2s;
-        }
-        .fp-tab:hover { color: #3ECFB2; border-color: rgba(62,207,178,0.35); }
-        .fp-tab.active { color: #3ECFB2; border-color: rgba(62,207,178,0.5); background: rgba(62,207,178,0.1); }
-        .fp-desc {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 16px;
-          line-height: 1.6;
-          color: var(--atlas-fg);
-          background: rgba(62,207,178,0.06);
-          border: 1px solid rgba(62,207,178,0.18);
-          border-radius: 14px;
-          padding: 16px;
-          width: 100%;
-          text-align: left;
-        }
-        .fp-desc-title {
-          display: block;
-          font-weight: 700;
-          color: #3ECFB2;
-          margin-bottom: 6px;
-          font-size: 16px;
-        }
-        .fp-plan-heading {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--atlas-fg);
-          text-align: center;
-          margin-top: 4px;
-        }
-        .fp-plan-list {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 18px 10px;
-          width: 100%;
-          justify-content: center;
-        }
-        .fp-plan-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-          text-align: center;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
-          line-height: 1.35;
-          color: var(--atlas-text-subtle);
-        }
-        .fp-plan-item:last-child {
-          grid-column: 1 / -1;
-          justify-self: center;
-        }
-        .fp-check { color: #3ECFB2; flex-shrink: 0; }
-        @media (max-width: 420px) {
-          .fp-plan-list { grid-template-columns: repeat(2, 1fr); gap: 16px 8px; }
-        }
-        .fp-pricing {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-          width: 100%;
-          padding-top: 16px;
-          border-top: 1px solid var(--atlas-border-faint);
-        }
-        .fp-price-row {
-          display: flex;
-          align-items: baseline;
-          gap: 6px;
-        }
-        .fp-price {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 52px;
-          font-weight: 800;
-          color: #3ECFB2;
-          letter-spacing: -0.02em;
-        }
-        .fp-price-period {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 18px;
-          font-weight: 600;
-          color: var(--atlas-text-subtle);
-        }
-        .fp-price-note {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 14px;
-          color: var(--atlas-text-faint);
-        }
-
-        @media (max-width: 1023px) {
-          .logo-text { font-size: 44px; letter-spacing: 18px; padding-left: 18px; }
-          .logo-video-wrap { width: 76px; height: 76px; }
-          .logo-interlinked { width: 100px; }
-        }
-
-        @media (max-width: 480px) {
-          .logo-text { font-size: 30px; letter-spacing: 11px; padding-left: 11px; }
-          .logo-video-wrap { width: 60px; height: 60px; }
-          .logo-interlinked { width: 72px; }
-          .input-row { flex-direction: column; }
-          .submit-btn { width: 100%; }
+        @media (max-width: 680px) {
+          .launch-hero-section { padding: 20px !important; }
+          .launch-hero-logo-icon { width: 64px !important; height: 64px !important; }
+          .launch-hero-logo-text { font-size: 34px !important; letter-spacing: 14px !important; padding-left: 14px !important; }
+          .launch-hero-line1 { font-size: 18px !important; }
+          .launch-hero-subscribe { font-size: 30px !important; }
+          .launch-hero-cta-row { flex-direction: column !important; width: 100%; max-width: 260px; }
+          .launch-hero-cta-row .launch-btn { width: 100%; }
+          .launch-hero-shots, .launch-hero-visual { display: none !important; }
+          .launch-section-pad { padding-left: 20px !important; padding-right: 20px !important; }
+          .launch-plan-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
-      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <a
-          href="/auth/login"
-          style={{
-            display: 'inline-block',
-            padding: '5px 12px',
-            borderRadius: 7,
-            background: 'none',
-            border: '1px solid var(--atlas-border-color)',
-            color: 'var(--atlas-text-sub)',
-            fontSize: 12,
-            fontWeight: 500,
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-            cursor: 'pointer',
-            letterSpacing: '-0.01em',
-            lineHeight: '20px',
-            textDecoration: 'none',
-            transition: 'border-color 0.2s, color 0.2s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'rgba(62,207,178,0.4)'
-            e.currentTarget.style.color = '#3ECFB2'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--atlas-border-color)'
-            e.currentTarget.style.color = 'var(--atlas-text-sub)'
-          }}
+      {/* Top-right bar: Login + Dark/Light toggle */}
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 50, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <a href="https://www.interlinked.digital/auth/login" className="launch-login-btn" style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}>Login</a>
+        <button
+          className="launch-theme-toggle"
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}
         >
-          Login
-        </a>
-        <ThemeToggle />
+          {isDark ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          )}
+        </button>
       </div>
 
-      <div className="page">
-        <div className="glow" />
+      {/* ================= HERO ================= */}
+      <div className="launch-hero-section" style={{ width: '100%', height: '100vh', minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
 
-        {/* ATLAS branding — full-width, centered above the video/waitlist row */}
-        <div className="hero-branding">
-          <div className="logo-lockup">
-            <div className="logo-video-wrap">
-              <img src="/atlas-icon.png" className="logo-video" alt="ATLAS" />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-40px)' }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <img className="launch-anim-logo-icon launch-hero-logo-icon" src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
+            <div className="launch-anim-logo-text launch-hero-logo-text" style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 60, fontWeight: 'normal', letterSpacing: 34, color: palette.text, textTransform: 'uppercase', paddingLeft: 34, lineHeight: 1, transition: 'color 0.3s ease' }}>ATLAS</div>
+            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -6, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
+              <span style={{ fontStyle: 'italic', fontSize: 14, color: palette.textMuted }}>by</span>
+              <img src={logoUrl} alt="InterLinked" draggable={false} style={{ width: 130, height: 'auto', display: 'block', opacity: 0.85, pointerEvents: 'none' }} />
             </div>
-            <span className="logo-text">ATLAS</span>
-            <img src="/interlinked-logo-dark.png" className="logo-interlinked for-dark" alt="InterLinked" />
-            <img src="/interlinked-logo.png" className="logo-interlinked for-light" alt="InterLinked" />
-            <p className="logo-tagline">The World's First Autonomous Installation App.</p>
+          </div>
+
+          <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 'normal' }}>
+            <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease' }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
+            <div className="launch-shimmer-text launch-hero-subscribe" style={{ fontSize: 56, fontWeight: 800, marginTop: 4, letterSpacing: -0.5, display: 'inline-block', backgroundImage: shimmerGradient }}>Subscribe Now.</div>
+          </h1>
+
+          <div className="launch-hero-cta-row" style={{ display: 'flex', gap: 16, zIndex: 5, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <a href="/atlas/plans" className="launch-btn launch-btn-primary" style={{ background: '#3ECFB2', color: palette.text, fontWeight: 800, fontSize: 16, padding: '16px 32px', borderRadius: 999, gap: 8, transition: 'color 0.3s ease' }}>
+                Get ATLAS V1
+              </a>
+              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>macOS Monterey or Above.</div>
+              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6, opacity: 0.7 }}>Windows Version Coming Soon.</div>
+            </div>
+            <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999 }}>
+              View Demo
+            </a>
+          </div>
+
+        </div>
+
+        <div className="launch-hero-shots" style={{ position: 'absolute', left: 40, top: 282, width: 422, height: 378 }}>
+          <div className="launch-anim-shot-left" style={{ position: 'absolute', top: 0, left: 0, width: 360, height: 260, borderRadius: 10, boxShadow: '0 30px 60px rgba(0,0,0,0.35)', overflow: 'hidden', border: `1px solid ${palette.border}` }}>
+            <img src={shotHeaderUrl} alt="ATLAS splash screen" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </div>
+          <div className="launch-anim-shot-right" style={{ position: 'absolute', top: 140, left: 90, width: 330, height: 220, borderRadius: 10, boxShadow: '0 30px 60px rgba(0,0,0,0.45)', overflow: 'hidden', border: `1px solid ${palette.border}` }}>
+            <img src={shotAppUrl} alt="ATLAS drop-files window" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           </div>
         </div>
 
-        <div className="hero">
+        <div className="launch-hero-visual" style={{ position: 'absolute', right: -167, top: 53, width: 676, height: 500, filter: `blur(${scrollBlur}px)`, opacity: scrollFade, transition: 'filter 0.05s linear, opacity 0.05s linear', pointerEvents: 'none' }}>
+          <img src="/launch/hero-hand-sparkle.png" alt="A hand reaching up toward a glowing sparkle" style={{ width: '100%', height: '100%', objectFit: 'contain', WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 94%)', maskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 94%)' }} />
+        </div>
 
-          {/* non-interactive looping ATLAS demo + statement — unchanged visual assets */}
-          <div className="hero-video-region">
-            <div className="hero-video-wrap">
-              <video
-                ref={heroSplashRef}
-                className="hero-video-layer"
-                src={heroSplashSrc}
-                autoPlay
-                muted
-                playsInline
-                disablePictureInPicture
-                controlsList="nodownload nofullscreen noremoteplayback"
-                tabIndex={-1}
-                aria-hidden="true"
-                style={{ opacity: heroPhase === 'video' ? 1 : 0 }}
-              />
-              <img
-                src={heroAppImgSrc}
-                className="hero-video-layer"
-                alt="ATLAS app"
-                aria-hidden="true"
-                style={{ opacity: heroPhase === 'image' ? 1 : 0 }}
-              />
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, background: `linear-gradient(to bottom, transparent, ${palette.bg})`, transition: 'background 0.3s ease', pointerEvents: 'none', zIndex: 25 }} />
+
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 20, zIndex: 30, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <a href="#demo" className="launch-scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textDecoration: 'none', cursor: 'pointer', pointerEvents: 'auto' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: palette.textMuted }}>Scroll to explore</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={palette.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </a>
+        </div>
+      </div>
+
+      {/* ================= DEMO ================= */}
+      <div id="demo" className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '72px 48px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: '#3ECFB2' }}>DEMO</div>
+        <h2 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.035em', color: palette.text, textAlign: 'center', margin: 0 }}>See ATLAS in Action</h2>
+        <p style={{ fontSize: 14, color: palette.textMuted, textAlign: 'center', maxWidth: 480, margin: 0 }}>A closer look at ATLAS&apos;s Features Overview — see installation, uninstallation, rollback, and more in action.</p>
+        <div style={{ width: '100%', maxWidth: 680, height: 1, background: palette.border, margin: '8px auto' }} />
+        <div style={{ width: '100%', maxWidth: 760, aspectRatio: '16/9', background: palette.bgCard, borderRadius: 14, border: `1px solid ${palette.border}`, overflow: 'hidden' }}>
+          <iframe src="https://www.youtube.com/embed/q2W9QkBKz2c?rel=0&modestbranding=1&color=white&fs=0" title="ATLAS Demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+        </div>
+      </div>
+
+      {/* ================= FEATURES / PLAN ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '24px 48px 72px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <h2 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em', color: '#3ECFB2', textAlign: 'center', margin: 0 }}>Features</h2>
+        <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 15, color: palette.textSubtle, textAlign: 'center', margin: '-8px 0 0' }}>Select a feature to see what it does.</p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%', maxWidth: 760 }}>
+          {FEATURE_TABS.map(tab => (
+            <button key={tab.key} onClick={() => setSelectedFeature(tab.key)} style={tabStyle(tab.key)}>{tab.label}</button>
+          ))}
+        </div>
+
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 16, lineHeight: 1.6, color: palette.text, background: 'rgba(62,207,178,0.06)', border: '1px solid rgba(62,207,178,0.18)', borderRadius: 14, padding: 16, width: '100%', maxWidth: 760, textAlign: 'left', boxSizing: 'border-box' }}>
+          <span style={{ display: 'block', fontWeight: 700, color: '#3ECFB2', marginBottom: 6, fontSize: 16 }}>{activeFeature.title}</span>
+          {activeFeature.body}
+        </div>
+
+        <h3 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 18, fontWeight: 700, color: palette.text, textAlign: 'center', margin: '4px 0 0' }}>Everything in the ATLAS plan</h3>
+        <div className="launch-plan-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px 10px', width: '100%', maxWidth: 760, justifyContent: 'center' }}>
+          {PLAN_BULLETS.map(label => (
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 14, lineHeight: 1.35, color: palette.textSubtle }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECFB2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              <span>{label}</span>
             </div>
-            <p className="hero-statement">
-              <span className="hero-statement-lead">ATLAS</span> is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.
-            </p>
+          ))}
+          <div style={{ gridColumn: '1 / -1', justifySelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 14, lineHeight: 1.35, color: palette.textSubtle }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECFB2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            <span>File Sharing (Coming Soon)</span>
           </div>
         </div>
+      </div>
 
-        {/* Demo section — always visible — heading/divider/iframe container unchanged; video + subtitle updated to Demo 2: Features Overview, stale "Stay Tuned" pricing line removed */}
-        <div className="demo-section" ref={demoRef} style={{ marginTop: 48 }}>
-            <h2 className="demo-heading">See ATLAS in Action</h2>
-            <p className="demo-sub">A closer look at ATLAS&apos;s Features Overview — see installation, uninstallation, rollback, and more in action.</p>
-            <div className="demo-divider" />
-            <div className="demo-video-wrap">
-              <iframe
-                className="demo-iframe"
-                src="https://www.youtube.com/embed/q2W9QkBKz2c?rel=0&modestbranding=1&color=white&fs=0"
-                title="ATLAS Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-        </div>
+      {/* ================= FAQ ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '24px 48px 80px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', ['--launch-faq-border' as any]: palette.border }}>
+        <div style={{ width: '100%', maxWidth: 600 }}>
+          <h2 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 17, fontWeight: 700, color: '#3ECFB2', textAlign: 'center', margin: '0 0 6px' }}>FAQ</h2>
 
-        <div className="content">
-
-          {/* Features / Plan / Pricing */}
-          <div className="fp-section" ref={faqRef} style={{
-            opacity: faqVisible ? 1 : 0,
-            transform: `translateY(${faqVisible ? '0' : '14px'})`,
-            transition: 'opacity 0.7s ease, transform 0.7s ease',
-          }}>
-            <h2 className="fp-heading">Features</h2>
-            <p className="fp-sub">Select a feature to see what it does.</p>
-
-            <div className="fp-tabs">
-              {ATLAS_FEATURES.map(f => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`fp-tab${selectedFeature === f.key ? ' active' : ''}`}
-                  onClick={() => setSelectedFeature(f.key)}
-                  aria-pressed={selectedFeature === f.key}
-                >
-                  {f.label}
+          {FAQS.map((item, idx) => {
+            const i = idx + 1
+            const open = !!faqOpen[i]
+            return (
+              <div className="launch-faq-item" key={i}>
+                <button className="launch-faq-q" onClick={() => toggleFaq(i)} style={{ color: palette.text }}>
+                  <span>{item.q}</span>
+                  <svg className="launch-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: palette.textSubtle, transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}><polyline points="6 9 12 15 18 9" /></svg>
                 </button>
-              ))}
-            </div>
-
-            <div className="fp-desc">
-              <span className="fp-desc-title">{activeFeature.label}</span>
-              {activeFeature.body}
-            </div>
-
-            <h3 className="fp-plan-heading">Everything in the ATLAS plan</h3>
-            <div className="fp-plan-list">
-              {PLAN_FEATURES.map(item => (
-                <div className="fp-plan-item" key={item}>
-                  <svg className="fp-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Join Waitlist — moved here from the hero row; same markup, state, and handlers as before */}
-          <div className="hero-right-region" style={{ marginTop: 28 }}>
-
-          <div className="card">
-            <div className="card-body">
-
-              {/* Platform badges */}
-              <div className="platforms">
-                <div className="platform-badge">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#8A8A96" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                  </svg>
-                  <span className="platform-label">macOS</span>
-                </div>
-                <div className="platform-badge" style={{ opacity: 0.45 }}>
-                  <svg width="16" height="16" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
-                    <rect x="12" y="0" width="10" height="10" rx="1" fill="#8A8A96"/>
-                    <rect x="0" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
-                    <rect x="12" y="12" width="10" height="10" rx="1" fill="#8A8A96"/>
-                  </svg>
-                  <span className="platform-label">Windows</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--atlas-text-subtle)', background: 'var(--atlas-border-faint)', border: '1px solid var(--atlas-input-border)', borderRadius: 4, padding: '1px 5px', marginLeft: 4 }}>SOON</span>
+                <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.5s cubic-bezier(0.16,1,0.3,1)' }}>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p className="launch-faq-a" style={{ color: palette.textSubtle, opacity: open ? 1 : 0, transition: `opacity 0.35s ease ${open ? '0.15s' : '0s'}` }}>{item.a}</p>
+                  </div>
                 </div>
               </div>
+            )
+          })}
+        </div>
+      </div>
 
-              <p className="eyebrow">Coming November</p>
-              <h1 className="heading">ATLAS for macOS.</h1>
-              <p className="subtext">
-                ATLAS for macOS will be available November 12th. Join the waitlist — you'll be among the first to know when it launches.
-              </p>
-
-              <div className="divider" />
-
-              {status === 'success' ? (
-                <div className="success-state">
-                  <div className="success-check">✓</div>
-                  <p className="success-heading">You're on the list.</p>
-                  <p className="success-sub">
-                    We sent your welcome email to{' '}
-                    <strong style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{email}</strong>.
-                  </p>
-                  <p className="success-sub" style={{ marginTop: 8, fontSize: 12 }}>
-                    Don't see it? Check your <strong style={{ color: 'var(--atlas-text-subtle)' }}>spam or junk folder</strong>.
-                  </p>
-                </div>
-              ) : status === 'verifying' || status === 'confirming' ? (
-                <div className="verify-state">
-                  <div className="verify-icon">✉️</div>
-                  <p className="verify-heading">Check your inbox.</p>
-                  <p className="verify-sub">
-                    We sent a 5-digit code to <strong style={{ color: 'var(--text-muted)' }}>{email}</strong>. Enter it below to confirm your spot.
-                  </p>
-                  <form className="form" style={{ width: '100%' }} onSubmit={handleVerify}>
-                    <div className="code-row">
-                      <input
-                        className="code-input"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="_ _ _ _ _"
-                        maxLength={5}
-                        value={codeInput}
-                        onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                        autoFocus
-                        autoComplete="one-time-code"
-                        disabled={status === 'confirming'}
-                      />
-                      <button
-                        className="submit-btn"
-                        type="submit"
-                        disabled={status === 'confirming' || codeInput.length < 5}
-                      >
-                        {status === 'confirming' ? 'Verifying…' : 'Unlock →'}
-                      </button>
-                    </div>
-                    {errorMsg && <p className="error-msg">{errorMsg}</p>}
-                  </form>
-                  <button className="resend-btn" onClick={() => { setStatus('idle'); setCodeInput(''); setErrorMsg('') }}>
-                    ← Use a different email
-                  </button>
-                </div>
-              ) : (
-                <form className="form" onSubmit={handleSubmit}>
-                  <div className="input-row">
-                    <input
-                      className="email-input"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      disabled={status === 'loading'}
-                      autoComplete="email"
-                    />
-                    <button
-                      className="submit-btn"
-                      type="submit"
-                      disabled={status === 'loading' || !email}
-                    >
-                      {status === 'loading' ? 'Sending…' : 'Join Waitlist →'}
-                    </button>
-                  </div>
-                  {status === 'error' && (
-                    <p className="error-msg">{errorMsg}</p>
-                  )}
-                </form>
-              )}
-
-
-            </div>
-          </div>
-
-          {/* Live subscriber counter banner */}
-          {count !== null && (
-            <div className="counter-banner">
-              <span className="counter-label">
-                <span className="counter-num">{count.toLocaleString()}</span> people on the waitlist
-              </span>
-            </div>
-          )}
-
-          </div>
-
-          {/* Minimal FAQ — kept, moved here, visually subordinate to the Features/Pricing section above */}
-          <div className="faq faq-minimal" style={{ marginTop: 28 }}>
-            <h2 className="faq-heading">FAQ</h2>
-            {[
-              { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
-              { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
-              { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices, each with its own 25-install-per-month allowance.' },
-              { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
-              { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
-            ].map(item => (
-              <details className="faq-item" key={item.q}>
-                <summary className="faq-q">
-                  <span>{item.q}</span>
-                  <svg className="faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
-                </summary>
-                <p className="faq-a">{item.a}</p>
-              </details>
-            ))}
-          </div>
-
-          {/* Share with a friend */}
-          <div className="share-section" style={{ marginTop: 20 }}>
-            <p className="share-heading">Know someone who'd love this?</p>
-            <p className="share-sub">Enter their email and we'll send them a personal invite to try ATLAS.</p>
-            {shareStatus === 'sent' ? (
-              <p className="share-sent">✓ Invite sent — they'll hear from us shortly.</p>
-            ) : (
-              <form className="share-row" onSubmit={handleShare}>
-                <input
-                  className="share-input"
-                  type="email"
-                  placeholder="friend@email.com"
-                  value={shareEmail}
-                  onChange={e => setShareEmail(e.target.value)}
-                  required
-                  disabled={shareStatus === 'sending'}
-                  autoComplete="off"
-                />
-                <button
-                  className="share-btn"
-                  type="submit"
-                  disabled={shareStatus === 'sending' || !shareEmail}
-                >
-                  {shareStatus === 'sending' ? 'Sending…' : 'Send Invite →'}
-                </button>
-              </form>
-            )}
-            {shareStatus === 'error' && (
-              <p className="error-msg">{shareError}</p>
-            )}
-          </div>
-
+      {/* ================= FOOTER ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bgFooter, transition: 'background 0.3s ease', padding: '48px 48px 32px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <span style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 16, letterSpacing: 6, color: palette.text, textTransform: 'uppercase' }}>ATLAS</span>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <a href="mailto:interlinked.digital@gmail.com" aria-label="Email InterLinked" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+          </a>
+          <a href="https://www.instagram.com/interlinked.digital" aria-label="InterLinked on Instagram" target="_blank" rel="noopener" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>
+          </a>
+        </div>
+
+        <div style={{ display: 'flex', gap: 28, fontSize: 13, fontWeight: 500, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href="https://www.interlinked.digital" className="launch-btn" style={{ color: palette.textSubtle }}>InterLinked Digital</a>
+          <a href="https://www.interlinked.digital/atlas/terms" className="launch-btn" style={{ color: palette.textSubtle }}>Terms of Service</a>
+          <a href="https://www.interlinked.digital/atlas/privacy" className="launch-btn" style={{ color: palette.textSubtle }}>Privacy</a>
+          <button onClick={() => setSupportOpen(true)} className="launch-btn" style={{ color: palette.textSubtle, cursor: 'pointer', background: 'none', border: 'none', font: 'inherit' }}>Support</button>
+        </div>
+        <div style={{ fontSize: 11, color: palette.textMuted }}>© 2026 InterLinked Digital. All rights reserved.</div>
       </div>
-    </>
+
+      {/* Support modal */}
+      {supportOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setSupportOpen(false)}>
+          <div style={{ width: 420, background: '#141416', borderRadius: 16, padding: 28, boxSizing: 'border-box', border: '1px solid #26262A', boxShadow: '0 40px 80px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#F2F2F0' }}>Contact Support</div>
+              <span onClick={() => setSupportOpen(false)} style={{ cursor: 'pointer', color: '#8A8A96', fontSize: 20, lineHeight: 1 }}>×</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#8A8A96', marginBottom: 6, fontWeight: 600 }}>ISSUE TYPE</div>
+            <select style={{ width: '100%', background: '#0E0E10', border: '1px solid #2A2A2E', borderRadius: 8, padding: '10px 12px', color: '#D6D6DA', fontSize: 13, marginBottom: 14, boxSizing: 'border-box' }}>
+              <option>Installation Issue</option>
+              <option>Billing Question</option>
+              <option>Account Access</option>
+              <option>General</option>
+            </select>
+            <div style={{ fontSize: 12, color: '#8A8A96', marginBottom: 6, fontWeight: 600 }}>MESSAGE</div>
+            <textarea placeholder="How can we help?" style={{ width: '100%', height: 100, background: '#0E0E10', border: '1px solid #2A2A2E', borderRadius: 8, padding: '10px 12px', color: '#D6D6DA', fontSize: 13, boxSizing: 'border-box', resize: 'none', fontFamily: 'inherit' }} />
+            <button style={{ marginTop: 16, width: '100%', background: '#3ECFB2', color: '#06211D', fontWeight: 800, fontSize: 14, padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>Send Message</button>
+            <div style={{ marginTop: 12, fontSize: 11, color: '#5A5A62', textAlign: 'center' }}>Or email us directly at <span style={{ color: '#8A8A96' }}>interlinked.digital@gmail.com</span></div>
+          </div>
+        </div>
+      )}
+    </main>
   )
 }
