@@ -8,15 +8,17 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '163'
-const SHORT_VERSION    = '1.6.3'
-const RELEASE_DATE     = 'Tue, 10 Nov 2026 01:30:00 +0000'
+const CURRENT_VERSION  = '164'
+const SHORT_VERSION    = '1.6.4'
+const RELEASE_DATE     = 'Tue, 10 Nov 2026 02:10:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19643345'
-const ED_SIGNATURE     = 'IA/fVnswYxXYgElwYNvz+Da5Fm06Ex4hD16G/5cvQbhMHCiAmXqpGWaSnyFMREcfqasn8I8CkDGcrxNFN8vOAQ=='
+const DMG_LENGTH       = '19648808'
+const ED_SIGNATURE     = 'SCrIStAtHRvwDtZ7801YN/HvRkvoB5LS86z3kvL6gVFH0ZdU2IgboR1opNc/tZ2WiOh46cxivtkh3tZcTjvgCQ=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>Support can now fully suspend an account indefinitely across every device, separate from removing a single device — the client is signed out everywhere within seconds</li>
+  <li>While ATLAS is installing or uninstalling something, the Library panel can still be viewed, but Uninstall, Restore, and Recovery Mode are now blocked until the current operation finishes, so nothing can interfere with it</li>
   <li>Fixed: the local virus/PUA check could flag normal, legitimate installers as "Crack / keygen detected" over generic filename words like "patch," "loader," or "activator"</li>
   <li>Fixed: a device removed by support could silently rejoin the account the next time the app launched, instead of actually staying removed</li>
   <li>A device removed by support is now detected and signed out faster on an already-running, active session</li>

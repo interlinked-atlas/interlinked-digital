@@ -64,6 +64,7 @@ export default function AdminPage() {
   const [bulkPushVersionInput, setBulkPushVersionInput] = useState("")
   const [bulkPushing, setBulkPushing]             = useState(false)
   const [kickingDeviceId, setKickingDeviceId]     = useState<string | null>(null)
+  const [suspendingId, setSuspendingId]           = useState<string | null>(null)
 
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
@@ -159,7 +160,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -336,6 +337,23 @@ export default function AdminPage() {
     if (!res.ok) { showToast("Failed to remove device"); return }
     setDevices(d => d.filter(x => x.id !== deviceID))
     showToast("Device removed — client will be signed out within a few seconds")
+  }
+
+  async function setSuspended(userID: string, suspended: boolean) {
+    const label = suspended
+      ? "Suspend this account indefinitely? They'll be signed out on every device within seconds and can't sign back in on any device until you unsuspend them. This does not touch their billing/subscription."
+      : "Lift the suspension on this account? They'll be able to sign in again immediately."
+    if (!confirm(label)) return
+    setSuspendingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/suspend", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, suspended }),
+    })
+    setSuspendingId(null)
+    if (!res.ok) { showToast(suspended ? "Failed to suspend account" : "Failed to lift suspension"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, atlas_suspended: suspended } : x))
+    showToast(suspended ? "Account suspended — signed out everywhere within seconds" : "Suspension lifted")
   }
 
   async function saveFailureFix() {
@@ -789,6 +807,34 @@ export default function AdminPage() {
                                 </div>
                                 <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
                                   Blocks ATLAS with an update-required screen until they're on this version. Takes effect within ~18s via the app's live sync — no manual check needed on their end.
+                                </p>
+                              </div>
+                              <div style={{ gridColumn: "span 2" }}>
+                                <span style={labelStyle}>Account Suspension (Indefinite — All Devices)</span>
+                                <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                  {u.atlas_suspended ? (
+                                    <>
+                                      <span style={{ fontSize:"10px", fontWeight:700, color:"#E05555", padding:"3px 8px", borderRadius:"5px", border:"1px solid rgba(224,85,85,0.4)", background:"rgba(224,85,85,0.1)" }}>SUSPENDED</span>
+                                      <button
+                                        onClick={() => setSuspended(u.id, false)}
+                                        disabled={suspendingId === u.id}
+                                        style={{ fontSize:"11px", fontWeight:600, color:"#3ECFB2", background:"rgba(62,207,178,0.08)", border:"1px solid rgba(62,207,178,0.3)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                      >
+                                        {suspendingId === u.id ? "Lifting…" : "Lift Suspension"}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => setSuspended(u.id, true)}
+                                      disabled={suspendingId === u.id}
+                                      style={{ fontSize:"11px", fontWeight:600, color:"#fff", background:"#E05555", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                    >
+                                      {suspendingId === u.id ? "Suspending…" : "Suspend Account"}
+                                    </button>
+                                  )}
+                                </div>
+                                <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                  Unlike "Remove / Kick" (which only removes one device — they can still sign in from another under their device limit), suspension blocks this account on every device, indefinitely, until lifted. Signs out an active session within seconds. Does not touch billing or cancel their subscription.
                                 </p>
                               </div>
                               {userDeviceUsage(u.id).length > 0 && (

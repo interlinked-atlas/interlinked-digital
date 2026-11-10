@@ -233,6 +233,14 @@ final class AuthManager: ObservableObject {
                     accessToken: s.accessToken, userID: s.userID) {
                     let planChanged   = p.plan != self.profile?.plan
                     let statusChanged = p.subscriptionStatus != self.profile?.subscriptionStatus
+                    // Admin-set indefinite account suspension — checked ahead of the
+                    // billing-status check below since it's independent of billing.
+                    if p.isSuspended == true {
+                        await MainActor.run {
+                            self.signOut(reason: "Your account has been suspended. Contact support if you believe this is an error.")
+                        }
+                        return
+                    }
                     // Force sign-out immediately if subscription was cancelled or payment failed
                     if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
                         let msg = p.subscriptionStatus == "payment_failed"
@@ -352,6 +360,18 @@ final class AuthManager: ObservableObject {
         KeychainManager.saveSession(s)
         if let p = try? await SupabaseService.shared.getProfile(
             accessToken: s.accessToken, userID: s.userID) {
+            // Block a suspended account immediately at login — independent of
+            // billing status, and ahead of it since it's the stronger lock.
+            if p.isSuspended == true {
+                await MainActor.run {
+                    isLoadingProfile = false
+                    session = nil
+                    authError = "Your account has been suspended. Contact support if you believe this is an error."
+                }
+                KeychainManager.clearSession()
+                try? await SupabaseService.shared.signOut(accessToken: s.accessToken)
+                return
+            }
             // Block cancelled or payment-failed accounts immediately at login
             if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
                 let msg = p.subscriptionStatus == "payment_failed"
@@ -444,6 +464,16 @@ final class AuthManager: ObservableObject {
             // wins).
             await MainActor.run {
                 authError = "This device was removed from your account by support and can't be re-added. Contact support if this wasn't expected."
+                session = nil
+                profile = nil
+            }
+            KeychainManager.clearSession()
+        } catch SupabaseError.accountSuspended {
+            // Admin-set indefinite lockout, checked ahead of entitlement in
+            // register_device() — distinct from a single device kick, this
+            // blocks the account on every device, not just one.
+            await MainActor.run {
+                authError = "Your account has been suspended. Contact support if you believe this is an error."
                 session = nil
                 profile = nil
             }

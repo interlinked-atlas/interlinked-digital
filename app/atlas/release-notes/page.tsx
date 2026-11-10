@@ -8,6 +8,14 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.4',
+    date: 'November 9, 2026',
+    notes: [
+      'Support can now fully suspend an account indefinitely across every device, separate from removing a single device',
+      'The Library panel stays viewable during an install, but Uninstall, Restore, and Recovery Mode are now blocked until the current operation finishes',
+    ],
+  },
+  {
     version: '1.6.3',
     date: 'November 9, 2026',
     notes: [

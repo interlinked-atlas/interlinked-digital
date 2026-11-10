@@ -28,6 +28,7 @@ struct ATLASProfile: Codable {
     let subscriptionStatus: String
     let billingAnchorDay: Int?      // day of month billing renews (1-31)
     let billingInterval: String?    // "monthly" or "annual"
+    let isSuspended: Bool?          // admin-set indefinite account lockout — distinct from device removal
 
     // P0-1: profiles.plan is NEVER an entitlement signal — it is display
     // metadata only. The sole entitlement authority is a server-verified
@@ -45,6 +46,7 @@ struct ATLASProfile: Codable {
         case subscriptionStatus = "subscription_status"
         case billingAnchorDay   = "billing_anchor_day"
         case billingInterval    = "billing_interval"
+        case isSuspended        = "atlas_suspended"
     }
 }
 
@@ -76,6 +78,7 @@ enum SupabaseError: LocalizedError {
     case serverUnavailable
     case deviceSlotCooldown
     case deviceBlocked
+    case accountSuspended
 
     var errorDescription: String? {
         switch self {
@@ -90,6 +93,7 @@ enum SupabaseError: LocalizedError {
         case .serverUnavailable:    return "Couldn't verify with the server. Please try again."
         case .deviceSlotCooldown:   return "A device was recently removed from this account. Please wait up to 24 hours before adding a new device."
         case .deviceBlocked:        return "This device was removed from your account by support and can't be re-added. Contact support if this wasn't expected."
+        case .accountSuspended:     return "Your account has been suspended. Contact support if you believe this is an error."
         }
     }
 }
@@ -164,7 +168,7 @@ actor SupabaseService {
     // MARK: - Profile
 
     func getProfile(accessToken: String, userID: String) async throws -> ATLASProfile {
-        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status,billing_anchor_day,billing_interval"
+        let path = "/rest/v1/profiles?id=eq.\(userID)&select=id,email,plan,subscription_status,billing_anchor_day,billing_interval,atlas_suspended"
         let data = try await get(path: path, token: accessToken)
         let profiles = try decode([ATLASProfile].self, from: data)
         guard let profile = profiles.first else {
@@ -214,6 +218,7 @@ actor SupabaseService {
         case "server_error":   throw SupabaseError.serverUnavailable
         case "device_slot_cooldown": throw SupabaseError.deviceSlotCooldown
         case "device_blocked": throw SupabaseError.deviceBlocked
+        case "account_suspended": throw SupabaseError.accountSuspended
         default:
             throw SupabaseError.httpError(http.statusCode, reason ?? "Device registration failed")
         }

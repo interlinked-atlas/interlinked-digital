@@ -64,6 +64,7 @@ struct ContentView: View {
     @State private var showAbout     = false
     @State private var showUpgrade   = false
     @State private var upgradeFeature = ""
+    @State private var showBusyDuringInstallAlert = false
     @State private var showSupportFromLimit = false
     @State private var checkingLimitAgain = false
     @State private var showStorageSelection = false
@@ -97,6 +98,16 @@ struct ContentView: View {
     @State private var titanSourceURL: URL? = nil
     // Scan generation token — incremented to invalidate stale async scan tasks
     @State private var scanGeneration: Int = 0
+
+    // Mirrors bottomBar's `busy` — Library stays viewable while installing, but
+    // anything that could interfere with the running install (uninstall/
+    // rollback, restore, starting Recovery Mode) is blocked at this single
+    // choke point regardless of how deep the triggering button is nested.
+    private var libraryActionsLocked: Bool {
+        queue.isProcessing || rollbackInProgress
+            || appState.phase == .installing || appState.phase == .processing
+            || appState.phase == .verifying  || appState.phase == .cleanup
+    }
 
     var body: some View {
         Group {
@@ -235,6 +246,11 @@ struct ContentView: View {
                 }
             }
         }
+        .alert("Unavailable During Install", isPresented: $showBusyDuringInstallAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Uninstall, Restore, and Recovery Mode are unavailable while ATLAS is installing or uninstalling something else. You can still view your Library — just wait for the current operation to finish.")
+        }
         .alert("Cannot Install ATLAS", isPresented: $showAtlasSelfInstallAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -303,6 +319,7 @@ struct ContentView: View {
                         logger: logger,
                         onClose: { withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) { showHistory = false } },
                         onRollback: { record in
+                            guard !libraryActionsLocked else { showBusyDuringInstallAlert = true; return }
                             if !Features.rollback {
                                 upgradeFeature = "Uninstall & Rollback"
                                 showUpgrade = true
@@ -311,6 +328,7 @@ struct ContentView: View {
                             }
                         },
                         onRestore: { record in
+                            guard !libraryActionsLocked else { showBusyDuringInstallAlert = true; return }
                             if !Features.restore {
                                 upgradeFeature = "Restore"
                                 showUpgrade = true
@@ -319,6 +337,7 @@ struct ContentView: View {
                             }
                         },
                         onBatchRollback: { records in
+                            guard !libraryActionsLocked else { showBusyDuringInstallAlert = true; return }
                             if !Features.rollback {
                                 upgradeFeature = "Uninstall & Rollback"
                                 showUpgrade = true
@@ -327,6 +346,7 @@ struct ContentView: View {
                             }
                         },
                         onStartRecovery: { kit in
+                            guard !libraryActionsLocked else { showBusyDuringInstallAlert = true; return }
                             showHistory = false
                             recoveryEngine = RecoveryModeEngine(kit: kit, store: historyStore)
                             showRecoveryMode = true
