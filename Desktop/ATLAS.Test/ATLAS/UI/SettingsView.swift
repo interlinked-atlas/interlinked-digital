@@ -65,6 +65,34 @@ struct SettingsView: View {
 
     private static let notifKey = "ATLAS.notificationsEnabled"
 
+    // Panelized layout (replaces one long continuous scroll) — mirrors the
+    // website account dashboard's tab pattern. Each tab gets its own
+    // independently-scrolling panel instead of everything stacked in one
+    // ScrollView, so the window never feels like endless scroll.
+    private enum SettingsTab: String, CaseIterable, Identifiable {
+        case account, general, limits, support, about
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .account: return "Account"
+            case .general: return "General"
+            case .limits:  return "Limits"
+            case .support: return "Support"
+            case .about:   return "About"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .account: return "person.fill"
+            case .general: return "slider.horizontal.3"
+            case .limits:  return "chart.bar.fill"
+            case .support: return "questionmark.circle.fill"
+            case .about:   return "info.circle.fill"
+            }
+        }
+    }
+    @State private var activeSettingsTab: SettingsTab = .account
+
     var body: some View {
         VStack(spacing: 0) {
 
@@ -93,9 +121,37 @@ struct SettingsView: View {
             Divider()
                 .background(Color.atlasSeparator)
 
+            // ── Tab bar ──────────────────────────────────────────────
+            HStack(spacing: 4) {
+                ForEach(SettingsTab.allCases) { tab in
+                    Button {
+                        activeSettingsTab = tab
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: tab.icon)
+                                .font(.atlasFont(size: 13))
+                            Text(tab.label)
+                                .font(.atlasFont(size: 9, weight: .medium))
+                        }
+                        .foregroundColor(activeSettingsTab == tab ? Color(hex: "#3ECFB2") : Color.atlasSubtitle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(activeSettingsTab == tab ? Color(hex: "#3ECFB2").opacity(0.1) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+                .background(Color.atlasSeparator)
+
             ScrollView {
                 VStack(spacing: 0) {
 
+                    if activeSettingsTab == .general {
                     // ── TITAN CORE™ ───────────────────────────────────
                     sectionHeader("TITAN CORE™")
                     VStack(spacing: 0) {
@@ -108,7 +164,6 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
 
                     // ── Appearance ────────────────────────────────────
-                    Group {
                     // ── Language ──────────────────────────────────────
                     sectionHeader(L(.language))
                     VStack(spacing: 0) {
@@ -155,13 +210,17 @@ struct SettingsView: View {
                     .atlasCard()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
+                    } // end .general tab
 
+                    if activeSettingsTab == .account {
                     // ── Account ───────────────────────────────────────
                     sectionHeader(L(.account))
                     accountSection
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
+                    } // end .account tab
 
+                    if activeSettingsTab == .support {
                     // ── Support ───────────────────────────────────────
                     sectionHeader(L(.supportLabel))
                     VStack(spacing: 0) {
@@ -273,9 +332,9 @@ struct SettingsView: View {
                     .atlasCard()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
-                    } // end language/support Group
+                    } // end .support tab
 
-                    Group {
+                    if activeSettingsTab == .limits {
 
                     // ── Install Limits ────────────────────────────────
                     sectionHeader(L(.installLimits))
@@ -395,7 +454,9 @@ struct SettingsView: View {
                     .atlasCard()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
+                    } // end .limits tab
 
+                    if activeSettingsTab == .about {
                     // ── About ─────────────────────────────────────────
                     sectionHeader(L(.about))
                     VStack(spacing: 0) {
@@ -438,9 +499,8 @@ struct SettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 20)
 
-                    } // end Group
-
                     adminSection
+                    } // end .about tab
                 }
                 .padding(.top, 12)
             }

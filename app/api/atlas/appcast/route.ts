@@ -8,15 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '165'
-const SHORT_VERSION    = '1.6.5'
-const RELEASE_DATE     = 'Tue, 10 Nov 2026 05:10:00 +0000'
+const CURRENT_VERSION  = '166'
+const SHORT_VERSION    = '1.6.6'
+const RELEASE_DATE     = 'Tue, 10 Nov 2026 07:00:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19668970'
-const ED_SIGNATURE     = '4/rnDjL3dO3iUxX8Y0JahWpFrLEd7lhGtHOQjX9TTrAluBRPx2qRoiEuh4iisGcSi5frhss4kdWIlYZx9DwKAA=='
+const DMG_LENGTH       = '19715252'
+const ED_SIGNATURE     = 'DP1hqbmgrNiH+MwPpmZAr6mtHBeMGF0ktieh5EqkHVYeRZ6pgYG95d/Z77GcKdnZoXXVqSH6BeAPLJqcJJ87CA=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>Settings is now organized into panels (Account, General, Usage, Support, About) instead of one long scroll, matching the account dashboard on the website</li>
   <li>ATLAS now actually notices when you're offline — a clear banner appears on both the login screen and the main app, instead of requests silently sitting for up to a minute before failing</li>
   <li>Added "Remember Me" at login — remembers your email (never your password) so signing back in after an explicit sign-out doesn't start from a blank field</li>
   <li>Support can now fully suspend an account indefinitely across every device, separate from removing a single device — the client is signed out everywhere within seconds</li>

@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.6',
+    date: 'November 10, 2026',
+    notes: [
+      'Settings is now organized into panels (Account, General, Usage, Support, About) instead of one long scroll, matching the account dashboard on the website',
+    ],
+  },
+  {
     version: '1.6.5',
     date: 'November 9, 2026',
     notes: [
