@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6</string>
+	<string>1.6.1</string>
 	<key>CFBundleVersion</key>
-	<string>160</string>
+	<string>161</string>
 	<key>SUFeedURL</key>
 	<string>https://www.interlinked.digital/api/atlas/appcast</string>
 	<key>SUPublicEDKey</key>

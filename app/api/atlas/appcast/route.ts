@@ -8,15 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '160'
-const SHORT_VERSION    = '1.6'
-const RELEASE_DATE     = 'Mon, 09 Nov 2026 22:30:00 +0000'
+const CURRENT_VERSION  = '161'
+const SHORT_VERSION    = '1.6.1'
+const RELEASE_DATE     = 'Mon, 09 Nov 2026 23:20:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19664232'
-const ED_SIGNATURE     = 'IwNeIiNcCyGC+J3jU0d1ljtcwJje0Sp+nKY4CdJ3QVplMF5EqvZqhMtH5aQAP4UvKghmkXdta6jRPUuB08erBw=='
+const DMG_LENGTH       = '19664086'
+const ED_SIGNATURE     = 'wSU+KblNVR2WxciRU0oPaOtF3AnfwHr32oG0Wg9gDwT1hwiC5gXRCG4JLqJ0efnVUzb2JTq9pdDiGJHAYDF4Bg=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>Fixed: Settings could show a stale "25 remaining" figure in one place while correctly showing a support-adjusted limit elsewhere — both now always agree</li>
   <li>Updates now install automatically in the background — no more clicking through the update dialog, it just applies the next time you quit and reopen ATLAS</li>
   <li>Support can now push a required update to a specific client or everyone, which takes effect within seconds via the app's existing live sync</li>
   <li>A support-granted install-limit change now takes effect within seconds instead of requiring a later install attempt to notice — the app checks periodically, on launch, and whenever it's brought to the foreground or Settings is opened</li>

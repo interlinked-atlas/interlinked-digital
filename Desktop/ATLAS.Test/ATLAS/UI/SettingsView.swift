@@ -36,14 +36,18 @@ private func loadVolumes() -> [VolumeInfo] {
 
 struct SettingsView: View {
     var onStartTour: (() -> Void)? = nil
+    // Settings now lives in its own NSWindow (SettingsWindowController), not
+    // a SwiftUI sheet, so there's no @Environment(\.dismiss) to call into —
+    // the controller passes its own close() in here instead.
+    var onClose: () -> Void = {}
 
-    @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var appearance  = AppearanceManager.shared
     @ObservedObject private var textSize    = TextSizeManager.shared
     @ObservedObject private var langMgr     = LanguageManager.shared
     @ObservedObject private var titanCore   = TitanCore.shared
     @ObservedObject private var auth        = AuthManager.shared
+    @ObservedObject private var monthlyLimit = MonthlyLimitManager.shared
 
     @State private var volumes: [VolumeInfo] = []
     @State private var showSignOutConfirm = false
@@ -75,7 +79,7 @@ struct SettingsView: View {
                         .foregroundColor(Color.atlasLabel)
                 }
                 Spacer()
-                Button { dismiss() } label: {
+                Button { onClose() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.atlasFont(size: 16))
                         .foregroundColor(Color.atlasSubtitle.opacity(0.7))
@@ -176,7 +180,7 @@ struct SettingsView: View {
                             subtitle: L(.replayWalkthrough),
                             action: {
                                 tourDismissed = false
-                                dismiss()
+                                onClose()
                                 onStartTour?()
                             }
                         )
@@ -279,7 +283,7 @@ struct SettingsView: View {
                         let planColor    = Color(hex: "#3ECFB2")
                         let monthlyLimit = MonthlyLimitManager.shared
                         let monthlyUsed  = monthlyLimit.installsThisPeriod
-                        let monthlyMax   = MonthlyLimitManager.atlasMonthlyLimit
+                        let monthlyMax   = monthlyLimit.currentLimit
 
                         let monthlyRem = max(0, monthlyMax - monthlyUsed)
                         HStack(spacing: 12) {
@@ -404,11 +408,22 @@ struct SettingsView: View {
                         )
                         Divider().background(Color.atlasSeparator).padding(.leading, 44)
                         infoRow(
+                            icon: "arrow.down.circle",
+                            iconColor: Color(hex: "#3ECFB2"),
+                            title: "Monthly Installs",
+                            subtitle: "\(monthlyLimit.installsThisPeriod) of \(monthlyLimit.currentLimit) used this period",
+                            action: nil
+                        )
+                        Divider().background(Color.atlasSeparator).padding(.leading, 44)
+                        infoRow(
                             icon: "arrow.triangle.2.circlepath",
                             iconColor: Color(hex: "#3ECFB2"),
                             title: "Check for Updates",
                             subtitle: "Checks interlinked.digital for a newer version",
-                            action: { AppDelegate.updaterController.checkForUpdates(nil) }
+                            action: {
+                                onClose()
+                                AppDelegate.updaterController.checkForUpdates(nil)
+                            }
                         )
                         Divider().background(Color.atlasSeparator).padding(.leading, 44)
                         infoRow(
@@ -438,6 +453,7 @@ struct SettingsView: View {
                 await MainActor.run { volumes = vols }
             }
             Task { await auth.fetchDevices() }
+            Task { await monthlyLimit.refreshUsage() }
             checkNotificationState()
         }
         .confirmationDialog(L(.signOutTitle), isPresented: $showSignOutConfirm, titleVisibility: .visible) {
