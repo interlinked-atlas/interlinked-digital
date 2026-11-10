@@ -62,6 +62,22 @@ export default function ResetPasswordPage() {
       return
     }
 
+    // Kick every other session (e.g. an already-logged-in ATLAS Mac app) now
+    // that the password has changed — a password change alone doesn't do
+    // this automatically. Best-effort: never blocks the user from proceeding
+    // even if this call fails, since they've already successfully reset
+    // their own password and are correctly signed in on this device.
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        await fetch('/api/atlas/auth/password-changed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: session.access_token }),
+        })
+      }
+    } catch { /* non-fatal */ }
+
     router.push("/atlas/account")
   }
 
