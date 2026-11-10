@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? ''
   const hookSecret = process.env.SUPABASE_AUTH_EMAIL_HOOK_SECRET ?? ''
 
+  // TEMP — identifying which header Supabase actually sends the signature in,
+  // before wiring up real verification. Remove once confirmed.
+  console.log('[auth-email][debug-headers]', JSON.stringify(Object.fromEntries(req.headers.entries())))
+
   // Supabase sends the hook secret as x-supabase-signature, not Authorization
   const supabaseSig = req.headers.get('x-supabase-signature') ?? ''
   if (hookSecret && supabaseSig && !verifyHookSignature(rawBody, supabaseSig, hookSecret)) {
