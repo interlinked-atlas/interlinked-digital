@@ -189,7 +189,14 @@ export default function AccountDashboard({ user, subscription, profile, devices,
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => doRefresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` }, () => doRefresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` }, () => doRefresh())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` }, () => doRefresh())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "install_logs", filter: `user_id=eq.${user.id}` }, () => {
+        doRefresh()
+        // Auto-surface the Logs tab the instant ATLAS reports install
+        // activity, so someone watching their account page sees it live
+        // instead of needing to know to click into Logs themselves.
+        setActiveTab("logs")
+        setLogsExpanded(true)
+      })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [user.id, supabase, doRefresh])

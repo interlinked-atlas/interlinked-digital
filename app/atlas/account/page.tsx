@@ -30,7 +30,7 @@ export default async function AccountPage() {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan, subscription_status, billing_interval, billing_anchor_day")
+      .select("plan, subscription_status, billing_interval, billing_anchor_day, monthly_install_limit")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -54,10 +54,17 @@ export default async function AccountPage() {
   const devices = (devicesResult.data ?? []) as any[]
   const rawLogs = (logsResult.data ?? []) as any[]
 
+  // Admin can override the standard 25/month cap per account (see
+  // /api/atlas/admin/install-limit) — reserve_install_slot/confirm_install_
+  // reservation already read this via COALESCE(monthly_install_limit, 25),
+  // so this page must match that, not the hardcoded constant, or a
+  // support-granted override would show the wrong number here.
+  const effectiveMonthlyLimit = profile?.monthly_install_limit ?? ATLAS_MONTHLY_LIMIT
+
   // Monthly install usage — same billing-anchor-aware period calculation and
   // per-device enforcement (install_counts.hardware_uuid) as reserve_install_slot
   // and /api/atlas/entitlement use; shown per device, not blended into one
-  // account-wide number, since the 25-install cap is enforced per device.
+  // account-wide number, since the install cap is enforced per device.
   const { data: periodStart } = await supabaseAdmin.rpc('atlas_period_start', {
     p_billing_interval: profile?.billing_interval ?? null,
     p_billing_anchor_day: profile?.billing_anchor_day ?? null,
@@ -82,7 +89,7 @@ export default async function AccountPage() {
     return {
       ...d,
       monthly_installs_used: used,
-      monthly_installs_remaining: Math.max(0, ATLAS_MONTHLY_LIMIT - used),
+      monthly_installs_remaining: Math.max(0, effectiveMonthlyLimit - used),
     }
   })
 
@@ -105,7 +112,7 @@ export default async function AccountPage() {
       devices={devicesWithUsage}
       logs={logs}
       isAdmin={isAdmin}
-      monthlyLimit={ATLAS_MONTHLY_LIMIT}
+      monthlyLimit={effectiveMonthlyLimit}
       monthlyResetDate={monthlyResetDate}
     />
   )
