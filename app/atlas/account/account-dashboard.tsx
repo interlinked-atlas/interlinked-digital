@@ -849,6 +849,9 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             {downloadError && (
               <p style={{ fontSize: "11px", color: "#E05555", marginTop: "8px" }}>{downloadError}</p>
             )}
+            <a href="/atlas/release-notes" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "11px", color: "var(--atlas-text-label)", textDecoration: "underline" }}>
+              View release notes
+            </a>
             </>
           ) : (
             <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>
