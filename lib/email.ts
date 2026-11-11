@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'ATLAS by InterLinked <atlas@interlinked.digital>'
 
-export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-renewed' | 'subscription-cancelled' | 'grace-period-reminder' | 'account-suspended' | 'payment-failed' | 'password-reset' | 'new-device-signin' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch' | 'release'
+export type EmailTemplate = 'welcome' | 'subscription-confirmed' | 'subscription-renewed' | 'subscription-cancelled' | 'subscription-cancelled-no-grace' | 'grace-period-reminder' | 'account-suspended' | 'payment-failed' | 'password-reset' | 'new-device-signin' | 'admin-notification' | 'support-received' | 'launch' | 'anticipation' | 'october-announcement' | 'features-pricing-launch' | 'demo-features-announcement' | 'oct31-launch' | 'nov12-launch' | 'release'
 
 interface SendOptions {
   to: string
@@ -28,6 +28,10 @@ export async function sendEmail({ to, template, data = {} }: SendOptions) {
     'subscription-cancelled': {
       subject: 'ATLAS — Subscription Cancelled (10 Days to Reactivate Free)',
       html: subscriptionCancelledEmail(data.deadlineDate ?? ''),
+    },
+    'subscription-cancelled-no-grace': {
+      subject: 'Your ATLAS subscription has been cancelled',
+      html: subscriptionCancelledNoGraceEmail(),
     },
     'grace-period-reminder': {
       subject: 'ATLAS — 2 Days Left to Reactivate Free',
@@ -389,6 +393,34 @@ function accountSuspendedEmail() {
       </table>
 
       ${tealBtn('Sign Up Again', 'https://www.interlinked.digital/atlas/plans')}
+
+      ${divider()}
+      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
+        Questions? <a href="mailto:interlinked.digital@gmail.com" style="color:${SUBTLE};text-decoration:none;">interlinked.digital@gmail.com</a>
+      </p>
+    </div>
+  `)
+}
+
+function subscriptionCancelledNoGraceEmail() {
+  return base('ATLAS — Subscription Cancelled', `
+    <!-- Top amber bar -->
+    <div style="height:2px;background:#F0A030;"></div>
+
+    <div style="padding:36px 36px 40px;">
+      ${eyebrow('Subscription Ended')}
+      ${heading('Your subscription has been cancelled.')}
+      ${body(`Your ATLAS subscription has been cancelled and access has ended immediately. You've already used your one-time free-reactivation window on a previous cancellation, so this cancellation is final — but you're welcome to subscribe again at any time.`)}
+
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0C0C0E;border-radius:10px;border:1px solid ${BORDER};margin:0 0 28px;">
+        <tr><td style="padding:18px 20px;">
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${SUBTLE};line-height:1.7;">
+            Re-subscribe from your account dashboard whenever you're ready. Your install history and device registrations are preserved.
+          </p>
+        </td></tr>
+      </table>
+
+      ${ghostBtn('Re-subscribe to ATLAS', 'https://www.interlinked.digital/atlas/checkout?plan=atlas', TEAL)}
 
       ${divider()}
       <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};">
