@@ -67,6 +67,7 @@ export default function AdminPage() {
   const [kickingDeviceId, setKickingDeviceId]     = useState<string | null>(null)
   const [suspendingId, setSuspendingId]           = useState<string | null>(null)
   const [grantingId, setGrantingId]               = useState<string | null>(null)
+  const [resettingGraceId, setResettingGraceId]   = useState<string | null>(null)
 
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
@@ -162,7 +163,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, feedbackRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -376,6 +377,20 @@ export default function AdminPage() {
     setUsers(u => u.map(x => x.id === userID ? { ...x, subscription_status: granted ? 'active' : 'cancelled' } : x))
     setSubscriptions(s => s.map(x => x.user_id === userID ? { ...x, status: granted ? 'active' : 'canceled', admin_granted_access: granted } : x))
     showToast(granted ? "Access granted — they can sign in now" : "Access revoked")
+  }
+
+  async function resetGracePeriod(userID: string) {
+    if (!confirm("Let this account use the 10-day free-reactivation grace period again, as a one-time exception? This doesn't reactivate or charge anything now — it just means the NEXT time they cancel, they get the full grace flow again instead of an immediate final cancellation.")) return
+    setResettingGraceId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/reset-grace-period", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID }),
+    })
+    setResettingGraceId(null)
+    if (!res.ok) { showToast("Failed to reset grace period"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, grace_period_used_at: null } : x))
+    showToast("Grace period reset — they'll get the full 10-day flow next time they cancel")
   }
 
   async function saveFailureFix() {
@@ -886,6 +901,26 @@ export default function AdminPage() {
                                   </div>
                                   <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
                                     Lets this account sign in and use ATLAS normally despite having no active subscription — a pure local override, never touches Stripe or charges them, and doesn't affect their once-per-lifetime cancellation grace period.
+                                  </p>
+                                </div>
+                              )}
+                              {u.grace_period_used_at && (
+                                <div style={{ gridColumn: "span 2" }}>
+                                  <span style={labelStyle}>10-Day Cancellation Grace Period</span>
+                                  <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                    <span style={{ fontSize:"10px", fontWeight:700, color:"var(--atlas-text-label)", padding:"3px 8px", borderRadius:"5px", border:"1px solid var(--atlas-border-color)" }}>
+                                      Already used {fmt(u.grace_period_used_at)}
+                                    </span>
+                                    <button
+                                      onClick={() => resetGracePeriod(u.id)}
+                                      disabled={resettingGraceId === u.id}
+                                      style={{ fontSize:"11px", fontWeight:600, color:"#07080F", background:"linear-gradient(135deg, #3ECFB2, #2ABEAA)", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                    >
+                                      {resettingGraceId === u.id ? "Resetting…" : "Allow Another Grace Period"}
+                                    </button>
+                                  </div>
+                                  <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                    This account has already used its one-time 10-day free-reactivation window and will get an immediate, final cancellation if they cancel again. This grants a one-off exception — their next cancellation gets the full grace flow again. Doesn't reactivate or charge anything now.
                                   </p>
                                 </div>
                               )}
