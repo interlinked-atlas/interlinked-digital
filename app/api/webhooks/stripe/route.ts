@@ -469,9 +469,30 @@ export async function POST(req: NextRequest) {
 
         const { data: failedProf } = await supabase
           .from('profiles')
-          .select('plan')
+          .select('plan, subscription_status, atlas_suspended')
           .eq('id', userId)
           .single()
+
+        // Stripe's own Smart Retries can keep retrying a failed invoice for
+        // days — if the account cancels (or is already suspended) in the
+        // meantime, a later retry on that SAME already-stale invoice must
+        // not undo the cancellation or send a "Payment Failed" alert that
+        // makes no sense to someone who's already deliberately left. Any
+        // account on its way out (grace_period, cancelled/canceled, or
+        // suspended) skips this entirely — no status overwrite, no email,
+        // just an audit trail of the ignored retry.
+        const accountLeaving = isAlreadyCancelledStatus(failedProf?.subscription_status)
+          || failedProf?.subscription_status === 'grace_period'
+          || failedProf?.atlas_suspended === true
+        if (accountLeaving) {
+          await auditLog('payment.failed_ignored_cancelled_account', {
+            userId, email,
+            stripeEvent: event.type,
+            metadata: { invoice_id: invoice.id, amount_due: invoice.amount_due, stripe_customer_id: invoice.customer, subscription_status: failedProf?.subscription_status },
+            notes: 'Payment failed on a late Smart Retry for an account that has already cancelled/is leaving — ignored, no status change, no email sent.',
+          })
+          break
+        }
 
         const { error: failedRpcErr } = await supabase.rpc('atlas_set_entitlement_status', {
           p_user_id: userId,
