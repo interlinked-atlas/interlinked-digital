@@ -6,39 +6,39 @@
 	<string>.</string>
 	<key>CFBundleExecutable</key>
 	<string>ATLAS</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.atlas.ATLAS</string>
+	<key>CFBundleGetInfoString</key>
+	<string>© 2026 InterLinked™ — All Rights Reserved</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.atlas.ATLAS</string>
 	<key>CFBundleName</key>
 	<string>ATLAS</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6.7</string>
+	<string>1.6.8</string>
 	<key>CFBundleVersion</key>
-	<string>167</string>
-	<key>SUFeedURL</key>
-	<string>https://www.interlinked.digital/api/atlas/appcast</string>
-	<key>SUPublicEDKey</key>
-	<string>5YnyT62CnS6sfYf2LC76QXVHWwIBRchJTG46610hdC8=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUAutomaticallyUpdate</key>
-	<true/>
+	<string>168</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>ATLAS needs Accessibility access to auto-fill password dialogs during software installation.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>ATLAS needs to control System Events to automate software installations.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 InterLinked™ — All Rights Reserved</string>
-	<key>CFBundleGetInfoString</key>
-	<string>© 2026 InterLinked™ — All Rights Reserved</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://www.interlinked.digital/api/atlas/appcast</string>
+	<key>SUPublicEDKey</key>
+	<string>5YnyT62CnS6sfYf2LC76QXVHWwIBRchJTG46610hdC8=</string>
 </dict>
 </plist>

@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.8',
+    date: 'November 11, 2026',
+    notes: [
+      "Fixed: when an install couldn't be authorized (subscription ended, monthly limit reached, device not registered, or a verification error), ATLAS silently did nothing instead of explaining why — it now tells you exactly what happened and what to do next",
+    ],
+  },
+  {
     version: '1.6.7',
     date: 'November 10, 2026',
     notes: [

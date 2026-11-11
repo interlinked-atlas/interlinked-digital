@@ -84,6 +84,8 @@ struct ContentView: View {
     @State private var uninstallNotTrackedName = ""
     @State private var showUnsupportedDAWAlert = false
     @State private var unsupportedDAWName = ""
+    @State private var showInstallDeniedAlert = false
+    @State private var installDeniedMessage = ""
     // Recovery Mode state
     @State private var showRecoveryMode = false
     @State private var recoveryEngine: RecoveryModeEngine? = nil
@@ -267,6 +269,7 @@ struct ContentView: View {
         } message: {
             Text("ATLAS cannot install \(unsupportedDAWName) in this version.\n\nPlease wait for a future ATLAS update for full DAW installation support. Coming soon!\n\nATLAS can still install compatible plugins, presets, and libraries for this DAW.")
         }
+        .installDeniedAlert(isPresented: $showInstallDeniedAlert, message: installDeniedMessage)
         .alert("Files Permanently Deleted", isPresented: $showTrashEmptiedAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -2243,13 +2246,40 @@ struct ContentView: View {
         }
     }
 
+    // Maps check-install's server-authoritative `reason` codes (see
+    // app/api/atlas/check-install/route.ts) to a message a user can actually
+    // act on. Previously every denial here was silent (`guard allowed else {
+    // return }`) or, on the bulk-queue path, always labeled "Monthly install
+    // limit reached" regardless of the real reason — misleading for a
+    // cancelled/suspended account, which isn't a limit issue at all.
+    private func installDenialMessage(for reason: String?) -> String {
+        switch reason {
+        case "not_entitled":
+            return "Your ATLAS subscription isn't active. Resubscribe or reactivate from your account dashboard to continue installing."
+        case "monthly_limit":
+            return "You've reached your monthly install limit. It resets at the start of your next billing period."
+        case "device_not_registered":
+            return "This device isn't registered on your account. Sign in again to re-register it."
+        case "server_error":
+            return "Couldn't verify your subscription right now — please check your connection and try again."
+        default:
+            return "ATLAS couldn't authorize this install right now. Please try again."
+        }
+    }
+
     private func beginInstall(url: URL) {
         withAnimation { showDropZone = false }
         pluginScanResults = []
         showPluginScan = false
         Task {
-            let (allowed, reservationID, _) = await monthlyLimit.reserveSlot()
-            guard allowed else { return }
+            let (allowed, reservationID, reason) = await monthlyLimit.reserveSlot()
+            guard allowed else {
+                await MainActor.run {
+                    installDeniedMessage = installDenialMessage(for: reason)
+                    showInstallDeniedAlert = true
+                }
+                return
+            }
             MenuBarStatusManager.shared.menuStatus = .installing
             InstallationManager.shared.install(
             url: url, appState: appState,
@@ -2467,9 +2497,12 @@ struct ContentView: View {
         // Server-authoritative install-limit gate — atomic reserve, does not
         // increment usage. The reservation is confirmed on success or released on
         // failure/unsupported below.
-        let (limitAllowed, reservationID, _) = await monthlyLimit.reserveSlot()
+        let (limitAllowed, reservationID, reason) = await monthlyLimit.reserveSlot()
         guard limitAllowed else {
-            queue.updateStatus(id: id, status: .failure("Monthly install limit reached"))
+            // Previously always labeled "Monthly install limit reached"
+            // regardless of the real reason — misleading for a
+            // cancelled/suspended account, which isn't a limit issue at all.
+            queue.updateStatus(id: id, status: .failure(installDenialMessage(for: reason)))
             return
         }
         queue.updateStatus(id: id, status: .installing)
@@ -3176,6 +3209,26 @@ struct ContentView: View {
         case .kontaktLibrary:       return "Kontakt Library"
         case .exe:                  return "EXE (Wine)"
         case .unsupported(let e):   return e.uppercased()
+        }
+    }
+}
+
+// Extracted into a concretely-typed extension (rather than an inline
+// `.alert(...)` chained directly onto ContentView.body) because ContentView's
+// body is a single enormous modifier-chain expression already near Swift's
+// type-checker complexity ceiling — adding one more inline `.alert(...)` with
+// its generic actions/message closures tipped it over into "unable to
+// type-check this expression in reasonable time" under Release (-O) builds.
+// An extension method has an explicit, already-resolved signature, so the
+// compiler only needs to match one concrete overload at the call site inside
+// body instead of folding another full generic inference into the same
+// giant expression.
+private extension View {
+    func installDeniedAlert(isPresented: Binding<Bool>, message: String) -> some View {
+        self.alert("Can't Install Right Now", isPresented: isPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(message)
         }
     }
 }
