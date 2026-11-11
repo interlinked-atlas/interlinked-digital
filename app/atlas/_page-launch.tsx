@@ -54,6 +54,17 @@ const PLAN_BULLETS = [
   'Built-In Virus Scanner',
 ]
 
+const REVIEWS: { quote: string; author: string }[] = [
+  { quote: 'ATLAS changed the way my production is set up.', author: 'Marcus T., Producer' },
+  { quote: 'This changed the game for me — I was able to recover my audio plugins!', author: 'Jordan K., Sound Engineer' },
+  { quote: "Finally, an installer that doesn't leave a mess behind.", author: 'Dana R., Composer' },
+  { quote: 'Recovery Kit saved my entire setup after a Mac migration.', author: 'Alicia M., Mix Engineer' },
+  { quote: 'Takes the guesswork out of installing plugins across formats.', author: 'Theo B., Sound Designer' },
+  { quote: 'My entire sample library migrated over without a single missing file.', author: 'Priya S., Audio Editor' },
+  { quote: "Uninstalls are actually clean now — no more leftover junk in my plugin folders.", author: 'Chris L., Mastering Engineer' },
+  { quote: 'Wish I had this years ago — it just works, every time.', author: 'Nina F., Beatmaker' },
+]
+
 const FAQS: { q: string; a: string }[] = [
   { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
   { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
@@ -65,7 +76,14 @@ const FAQS: { q: string; a: string }[] = [
 export default function ATLASLaunchPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    setMounted(true)
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
+      setTheme(prefersLight ? 'light' : 'dark')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const isDark = !mounted || theme !== 'light'
 
   const [scrollY, setScrollY] = useState(0)
@@ -141,6 +159,16 @@ export default function ATLASLaunchPage() {
         .launch-login-btn { display: inline-block; padding: 5px 12px; border-radius: 7px; background: none; font-size: 12px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; letter-spacing: -0.01em; line-height: 20px; text-decoration: none; transition: border-color 0.2s ease, color 0.2s ease; }
         .launch-login-btn:hover { border-color: rgba(62,207,178,0.4) !important; color: #3ECFB2 !important; }
         .launch-theme-toggle { width: 30px; height: 30px; border-radius: 7px; background: none; padding: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease; }
+        @keyframes launchThemeToggleJiggle {
+          0%, 100% { transform: rotate(0deg); }
+          15% { transform: rotate(-16deg); }
+          30% { transform: rotate(13deg); }
+          45% { transform: rotate(-10deg); }
+          60% { transform: rotate(7deg); }
+          75% { transform: rotate(-4deg); }
+          90% { transform: rotate(2deg); }
+        }
+        .launch-theme-toggle-jiggle { animation: launchThemeToggleJiggle 0.7s ease-in-out 1.4s 1 both; }
 
         @keyframes launchHeroUnblur { from { filter: blur(10px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
         @keyframes launchHeroFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -163,6 +191,40 @@ export default function ATLASLaunchPage() {
         .launch-btn-secondary { background: rgba(232,236,255,0.05); border: 1px solid rgba(232,236,255,0.16); backdrop-filter: blur(6px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
         .launch-btn-secondary:hover { transform: translateY(-2px); background: rgba(232,236,255,0.09); border-color: rgba(232,236,255,0.28); }
         .launch-os-req { font-family: 'Space Grotesk', -apple-system, sans-serif; }
+
+        .launch-review-banner { width: 100%; }
+        .launch-review-slide {
+          position: absolute; top: 0; left: 0; right: 0;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          opacity: 0; animation: launchReviewCycle 36s ease-in-out infinite;
+        }
+        .launch-review-stars { color: #FFD469; font-size: 15px; letter-spacing: 2px; line-height: 1; }
+        .launch-review-quote { color: var(--launch-review-text); font-style: italic; font-weight: 500; font-size: 18px; text-align: center; max-width: 560px; line-height: 1.35; transition: color 0.3s ease; }
+        .launch-review-author { color: var(--launch-review-author); font-size: 12px; font-weight: 600; letter-spacing: 0.4px; margin-top: 1px; transition: color 0.3s ease; }
+        @keyframes launchReviewCycle {
+          0% { opacity: 0; transform: translateY(6px); }
+          2% { opacity: 1; transform: translateY(0); }
+          7% { opacity: 1; transform: translateY(0); }
+          9% { opacity: 0; transform: translateY(-6px); }
+          100% { opacity: 0; }
+        }
+
+        @keyframes launchFlowFileUp {
+          0% { offset-distance: 0%; opacity: 0; }
+          6% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { offset-distance: 100%; opacity: 0; }
+        }
+        .launch-flow-file {
+          position: absolute; width: 18px; height: 18px; border-radius: 5px;
+          display: flex; align-items: center; justify-content: center;
+          offset-path: path('M 160,280 C 112,230 222,190 160,145 C 108,105 224,62 160,25');
+          animation: launchFlowFileUp 5.2s cubic-bezier(0.37,0,0.63,1) infinite;
+        }
+        @keyframes launchScreenArrivalGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes launchScreenArrivalFlash { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .launch-screen-glow { animation: launchScreenArrivalGlow 0.87s ease-in-out infinite; }
+        .launch-screen-glow-fill { animation: launchScreenArrivalFlash 0.87s ease-in-out infinite; }
         .launch-faq-item { border-bottom: 1px solid var(--launch-faq-border, rgba(232,236,255,0.08)); }
         .launch-faq-q { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; cursor: pointer; list-style: none; user-select: none; background: none; border: none; width: 100%; text-align: left; }
         .launch-faq-q:focus-visible { outline: 2px solid #3ECFB2; outline-offset: 2px; border-radius: 4px; }
@@ -187,7 +249,7 @@ export default function ATLASLaunchPage() {
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 50, display: 'flex', alignItems: 'center', gap: 8 }}>
         <a href="https://www.interlinked.digital/auth/login" className="launch-login-btn" style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}>Login</a>
         <button
-          className="launch-theme-toggle"
+          className="launch-theme-toggle launch-theme-toggle-jiggle"
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}
@@ -203,16 +265,18 @@ export default function ATLASLaunchPage() {
       {/* ================= HERO ================= */}
       <div className="launch-hero-section" style={{ width: '100%', height: '100vh', minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-40px)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-110px)' }}>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <img className="launch-anim-logo-icon launch-hero-logo-icon" src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
             <div className="launch-anim-logo-text launch-hero-logo-text" style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 60, fontWeight: 'normal', letterSpacing: 34, color: palette.text, textTransform: 'uppercase', paddingLeft: 34, lineHeight: 1, transition: 'color 0.3s ease' }}>ATLAS</div>
-            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -24, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
+            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -26, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
               <span style={{ fontStyle: 'italic', fontSize: 14, color: palette.textMuted }}>by</span>
               <img src={logoUrl} alt="InterLinked" draggable={false} style={{ width: 130, height: 'auto', display: 'block', opacity: 0.85, pointerEvents: 'none' }} />
             </div>
           </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(145px)' }}>
 
           <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 'normal' }}>
             <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease' }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
@@ -222,19 +286,39 @@ export default function ATLASLaunchPage() {
           <div className="launch-hero-cta-row" style={{ display: 'flex', gap: 16, zIndex: 5, alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <a href="/atlas/plans" className="launch-btn launch-btn-primary" style={{ background: '#3ECFB2', color: palette.text, fontWeight: 800, fontSize: 16, padding: '16px 32px', borderRadius: 999, gap: 8, transition: 'color 0.3s ease' }}>
+                <img src="/launch/apple-logo.png" alt="" style={{ width: 22, height: 22, objectFit: 'contain', display: 'block' }} />
                 Get ATLAS V1
               </a>
-              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>macOS Monterey or Above.</div>
-              <div className="launch-os-req" style={{ fontSize: 10, fontWeight: 500, color: isDark ? '#7A7FA3' : '#4A4F75', letterSpacing: 1.6, marginTop: -4 }}>Windows Version Coming Soon.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div className="launch-os-req" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>
+                  <img src="/launch/apple-logo.png" alt="" style={{ width: 15, height: 15, objectFit: 'contain', opacity: 0.8 }} />
+                  macOS Monterey or Above.
+                </div>
+                <div className="launch-os-req" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6, opacity: 0.7 }}>
+                  <img src="/launch/windows-logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.85 }} />
+                  Windows Version Coming Soon.
+                </div>
+              </div>
             </div>
             <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999 }}>
               View Demo
             </a>
           </div>
 
+          <div className="launch-review-banner" style={{ position: 'relative', height: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22, ['--launch-review-text' as any]: palette.text, ['--launch-review-author' as any]: palette.textMuted }}>
+            {REVIEWS.map((r, i) => (
+              <div className="launch-review-slide" key={r.author} style={{ animationDelay: `${i * 4.5}s` }}>
+                <div className="launch-review-stars">★★★★★</div>
+                <div className="launch-review-quote">“{r.quote}”</div>
+                <div className="launch-review-author">— {r.author}</div>
+              </div>
+            ))}
+          </div>
+
+        </div>
         </div>
 
-        <div className="launch-hero-shots" style={{ position: 'absolute', left: 40, top: 282, width: 422, height: 378 }}>
+        <div className="launch-hero-shots" style={{ position: 'absolute', left: 40, top: 267, width: 422, height: 378 }}>
           <div className="launch-anim-shot-left" style={{ position: 'absolute', top: 0, left: 0, width: 360, height: 260, borderRadius: 10, boxShadow: '0 30px 60px rgba(0,0,0,0.35)', overflow: 'hidden', border: `1px solid ${palette.border}` }}>
             <img src={shotHeaderUrl} alt="ATLAS splash screen" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           </div>
@@ -243,8 +327,51 @@ export default function ATLASLaunchPage() {
           </div>
         </div>
 
-        <div className="launch-hero-visual" style={{ position: 'absolute', right: -167, top: 53, width: 676, height: 500, filter: `blur(${scrollBlur}px)`, opacity: scrollFade, transition: 'filter 0.05s linear, opacity 0.05s linear', pointerEvents: 'none' }}>
-          <img src="/launch/hero-hand-sparkle.png" alt="A hand reaching up toward a glowing sparkle" style={{ width: '100%', height: '100%', objectFit: 'contain', WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 94%)', maskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 94%)' }} />
+        <div className="launch-hero-visual" style={{ position: 'absolute', right: 50, top: 310, width: 320, height: 350, filter: `blur(${scrollBlur * 0.35}px)`, opacity: scrollFade, transition: 'filter 0.05s linear, opacity 0.05s linear', transform: 'scale(1.45)', transformOrigin: 'center', pointerEvents: 'none' }}>
+
+          {/* Mac screen (top) — glows on each file arrival */}
+          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 150, height: 108 }}>
+            <div className="launch-screen-glow" style={{ position: 'absolute', inset: -40, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,207,178,0.75) 0%, rgba(62,207,178,0.25) 45%, transparent 72%)', filter: 'blur(18px)' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 150, height: 96, borderRadius: 10, border: `2px solid ${palette.textMuted}`, background: '#0C0C12' }}>
+              <div className="launch-screen-glow-fill" style={{ position: 'absolute', inset: 3, borderRadius: 4, background: 'radial-gradient(circle at 50% 60%, rgba(62,207,178,0.5), rgba(62,207,178,0.05) 70%)' }} />
+            </div>
+            <div style={{ position: 'absolute', top: 96, left: '50%', transform: 'translateX(-50%)', width: 44, height: 9, background: palette.textMuted, borderRadius: '0 0 3px 3px' }} />
+            <div style={{ position: 'absolute', top: 105, left: '50%', transform: 'translateX(-50%)', width: 68, height: 4, background: palette.textMuted, borderRadius: 2, opacity: 0.8 }} />
+          </div>
+
+          {/* ATLAS app window (bottom) — files leave from here */}
+          <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 132, height: 88, borderRadius: 9, border: `1px solid ${palette.border}`, background: palette.bgCard, boxShadow: '0 16px 36px rgba(0,0,0,0.25)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 20, borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'center', gap: 4, padding: '0 8px', boxSizing: 'border-box' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E05555' }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E0B155' }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#55C27A' }} />
+            </div>
+            <img src="/launch/atlas-logo-icon.png" alt="" style={{ position: 'absolute', top: 38, left: '50%', transform: 'translateX(-50%)', width: 30, height: 30, objectFit: 'contain', opacity: 0.9 }} />
+          </div>
+
+          {/* Ambient vertical light column connecting app to screen */}
+          <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', width: 2, height: 154, background: 'linear-gradient(to top, rgba(62,207,178,0.3), rgba(94,106,210,0.12) 50%, transparent)', filter: 'blur(3px)' }} />
+
+          {/* Files leaving the app — varied audio-software/file icon chips, each
+              traveling the same smooth curved path up to the screen. */}
+          <div className="launch-flow-file" style={{ animationDelay: '0s', background: '#3ECFB2' }}>
+            <svg viewBox="0 0 20 20"><path d="M4 13V9 M8 15V5 M12 16V4 M16 12V10" stroke="#06211D" strokeWidth={2} strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-0.87s', background: '#5E6AD2' }}>
+            <svg viewBox="0 0 20 20"><circle cx="7" cy="14" r="2.4" fill="#fff" /><circle cx="15" cy="11" r="2.4" fill="#fff" /><path d="M9.4 14V5.5L17.4 4V11" stroke="#fff" strokeWidth={1.6} fill="none" strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-1.73s', background: '#F0A030' }}>
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="#3A2600" strokeWidth={1.8} /><line x1="10" y1="10" x2="10" y2="5" stroke="#3A2600" strokeWidth={1.8} strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-2.6s', background: '#E8ECFF' }}>
+            <svg viewBox="0 0 20 20"><path d="M5 2.5h7l3 3V17.5H5z" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /><path d="M12 2.5v3h3" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-3.47s', background: '#E05555' }}>
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="5.5" r="2.4" fill="#fff" /><path d="M10 8v5 M6.5 17l2-4h3l2 4" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" fill="none" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-4.33s', background: '#3ECFB2' }}>
+            <svg viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" rx="1.5" fill="none" stroke="#06211D" strokeWidth={1.6} /><path d="M3 8h14" stroke="#06211D" strokeWidth={1.6} /></svg>
+          </div>
         </div>
 
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, background: `linear-gradient(to bottom, transparent, ${palette.bg})`, transition: 'background 0.3s ease', pointerEvents: 'none', zIndex: 25 }} />
@@ -335,7 +462,7 @@ export default function ATLASLaunchPage() {
           <a href="mailto:interlinked.digital@gmail.com" aria-label="Email InterLinked" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
           </a>
-          <a href="https://www.instagram.com/interlinked.digital" aria-label="InterLinked on Instagram" target="_blank" rel="noopener" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
+          <a href="https://www.instagram.com/interlinked.___" aria-label="InterLinked on Instagram" target="_blank" rel="noopener" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>
           </a>
         </div>
