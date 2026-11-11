@@ -74,6 +74,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const searchParams = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [cancelReason, setCancelReason] = useState<string | null>(null)
+  const [cancelFeedback, setCancelFeedback] = useState("")
   const [deviceToRemove, setDeviceToRemove] = useState<Device | null>(null)
   const [removeDeviceError, setRemoveDeviceError] = useState("")
   const [portalLoading, setPortalLoading] = useState(false)
@@ -319,7 +321,15 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setLoading(null); return }
     try {
-      const res = await fetch("/api/atlas/cancel", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } })
+      const res = await fetch("/api/atlas/cancel", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        // Survey is entirely optional/skippable — reason may be null and
+        // feedback may be empty; the cancel route logs whatever is sent
+        // (or nothing) as a best-effort audit row, never blocking the
+        // actual cancellation on it.
+        body: JSON.stringify({ reason: cancelReason, feedback: cancelFeedback.trim() || null }),
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to cancel")
       // ATLAS access is revoked immediately (see app/api/webhooks/stripe/route.ts) —
@@ -334,6 +344,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     }
     setLoading(null)
     setShowCancelConfirm(false)
+    setCancelReason(null)
+    setCancelFeedback("")
   }
 
   async function handleReactivate() {
@@ -1065,13 +1077,59 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               </svg>
             </div>
             <h2 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "6px", color: "var(--atlas-fg)" }}>Cancel subscription?</h2>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px", lineHeight: 1.6 }}>
-              Your subscription will stop renewing. You'll keep access to ATLAS
-              {periodEnd ? <> until <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : " until the end of your current billing period"}
-              , then it will end — no refund is issued for the remaining period. You can re-subscribe at any time.
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+              ATLAS access ends immediately. Your Stripe subscription itself stays scheduled to cancel
+              {periodEnd ? <> at <strong style={{ color: "var(--text-secondary)" }}>{periodEnd}</strong></> : " at the end of your current billing period"}
+              , and you have 10 days to reactivate for free with no new charge. You can re-subscribe at any time after that too.
             </p>
+
+            {/* Optional, skippable cancellation-reason survey — never blocks
+                Cancel; selecting nothing and clicking "Yes, Cancel" sends
+                reason: null, feedback: null. See POST /api/atlas/cancel. */}
+            <div style={{ marginBottom: "16px", paddingTop: "14px", borderTop: "1px solid var(--atlas-border-color)" }}>
+              <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "10px" }}>
+                Mind sharing why? <span style={{ fontWeight: 400 }}>(optional)</span>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+                {[
+                  "Too expensive",
+                  "Missing a feature I need",
+                  "Switching to another tool",
+                  "Technical issues / bugs",
+                  "Not using it enough",
+                  "Other",
+                ].map(option => (
+                  <label key={option} style={{
+                    display: "flex", alignItems: "center", gap: "8px", cursor: "pointer",
+                    fontSize: "12px", color: cancelReason === option ? "var(--atlas-fg)" : "var(--text-muted)",
+                  }}>
+                    <input
+                      type="radio"
+                      name="cancel-reason"
+                      checked={cancelReason === option}
+                      onChange={() => setCancelReason(option)}
+                      style={{ accentColor: "#E05555" }}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+              <textarea
+                value={cancelFeedback}
+                onChange={(e) => setCancelFeedback(e.target.value)}
+                placeholder="Anything else you'd like us to know? (optional)"
+                rows={2}
+                style={{
+                  width: "100%", boxSizing: "border-box", resize: "vertical",
+                  padding: "8px 10px", borderRadius: "8px",
+                  border: "1px solid var(--atlas-border-color)", background: "var(--atlas-card)",
+                  color: "var(--atlas-fg)", fontSize: "12px", fontFamily: "inherit",
+                }}
+              />
+            </div>
+
             <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={() => setShowCancelConfirm(false)} style={{
+              <button onClick={() => { setShowCancelConfirm(false); setCancelReason(null); setCancelFeedback("") }} style={{
                 flex: 1, padding: "10px", borderRadius: "10px",
                 border: "1px solid var(--atlas-border-color)", color: "var(--text-secondary)",
                 fontSize: "12px", background: "none", cursor: "pointer",

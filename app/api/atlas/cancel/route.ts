@@ -18,6 +18,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing authorization' }, { status: 401 })
   }
 
+  // Optional, skippable cancellation-reason survey from the confirm modal —
+  // never required, never parsed strictly: a missing/invalid body just means
+  // no reason was given, and is never a reason to fail the cancellation
+  // itself (survey logging happens after the real cancellation below, and
+  // is itself wrapped so a logging failure can't block it either).
+  let reason: string | null = null
+  let feedback: string | null = null
+  try {
+    const body = await req.json()
+    reason = typeof body?.reason === 'string' ? body.reason.slice(0, 200) : null
+    feedback = typeof body?.feedback === 'string' ? body.feedback.slice(0, 2000) : null
+  } catch { /* no/invalid body — treated as skipped survey */ }
+
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
@@ -94,6 +107,23 @@ export async function POST(req: NextRequest) {
       template: 'subscription-cancelled',
       data: { deadlineDate: deadline.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
     })
+  }
+
+  // Best-effort only — a logging failure here must never surface as a
+  // cancellation failure to the user; the cancellation above has already
+  // succeeded on both Stripe and our own side by this point.
+  if (reason || feedback) {
+    try {
+      await supabase.from('billing_audit_log').insert({
+        event: 'subscription.cancellation_feedback',
+        user_id: user.id,
+        email: profile?.email ?? null,
+        plan: 'atlas',
+        stripe_event: null,
+        metadata: { reason, feedback, stripe_customer_id: customerId, stripe_subscription_id: stripeSubId },
+        notes: 'Optional, skippable reason/feedback collected at the cancel-confirmation modal.',
+      })
+    } catch { /* non-blocking */ }
   }
 
   return NextResponse.json({
