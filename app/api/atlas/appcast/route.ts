@@ -8,15 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '166'
-const SHORT_VERSION    = '1.6.6'
-const RELEASE_DATE     = 'Tue, 10 Nov 2026 07:00:00 +0000'
+const CURRENT_VERSION  = '167'
+const SHORT_VERSION    = '1.6.7'
+const RELEASE_DATE     = 'Tue, 10 Nov 2026 20:39:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19715252'
-const ED_SIGNATURE     = 'DP1hqbmgrNiH+MwPpmZAr6mtHBeMGF0ktieh5EqkHVYeRZ6pgYG95d/Z77GcKdnZoXXVqSH6BeAPLJqcJJ87CA=='
+const DMG_LENGTH       = '19715380'
+const ED_SIGNATURE     = 'Wb0GLM9vb2zWisy8bPXf00euGbcGn52Q8CK7hrbzO72/xZ9/9DamkAyZJUfe10uql0MQk12OW5NoQyOFGTZDCQ=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>The install/uninstall/recovery progress animation has been redesigned — files now flow between the ATLAS app and a Mac screen along a smooth path, with the screen glowing softly each time a file arrives</li>
   <li>Settings is now organized into panels (Account, General, Usage, Support, About) instead of one long scroll, matching the account dashboard on the website</li>
   <li>ATLAS now actually notices when you're offline — a clear banner appears on both the login screen and the main app, instead of requests silently sitting for up to a minute before failing</li>
   <li>Added "Remember Me" at login — remembers your email (never your password) so signing back in after an explicit sign-out doesn't start from a blank field</li>

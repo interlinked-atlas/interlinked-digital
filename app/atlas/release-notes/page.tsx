@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.7',
+    date: 'November 10, 2026',
+    notes: [
+      'The install/uninstall/recovery progress animation has been redesigned — files now flow between the ATLAS app and a Mac screen along a smooth path, with the screen glowing softly each time a file arrives',
+    ],
+  },
+  {
     version: '1.6.6',
     date: 'November 10, 2026',
     notes: [

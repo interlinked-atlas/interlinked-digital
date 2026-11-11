@@ -903,7 +903,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               </div>
               <div>
                 <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--atlas-text-body)" }}>ATLAS for macOS</p>
-                <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "2px" }}>Version V1.6.6 · Universal · Intel &amp; Apple Silicon</p>
+                <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "2px" }}>Version V1.6.7 · Universal · Intel &amp; Apple Silicon</p>
                 <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", marginTop: "2px" }}>macOS Monterey or Above Required.</p>
               </div>
               <div style={{ marginLeft: "auto", fontSize: "10px", color: "var(--atlas-text-faint)", fontWeight: 600, letterSpacing: "1px" }}>
