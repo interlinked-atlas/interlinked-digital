@@ -1,6 +1,10 @@
-// Admin-only: view the optional, skippable cancellation-reason survey
-// collected at /atlas/account's cancel-confirmation modal (see
-// app/api/atlas/cancel/route.ts), stored as billing_audit_log rows.
+// Admin-only: the full billing_audit_log — every billing-relevant event
+// across every account (subscription created, cancelled, grace period
+// started/reversed, suspended, cancellation feedback, disputes, etc — see
+// app/api/webhooks/stripe/route.ts's auditLog() and every other call site
+// that writes this table). Generalizes the previous cancellation-feedback-only
+// route so admin has full visibility into an account's history, not just one
+// event type.
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -26,18 +30,11 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('billing_audit_log')
-    .select('id, email, metadata, created_at')
-    .eq('event', 'subscription.cancellation_feedback')
+    .select('id, event, user_id, email, plan, stripe_event, metadata, notes, created_at')
     .order('created_at', { ascending: false })
-    .limit(500)
+    .limit(2000)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json((data ?? []).map(row => ({
-    id: row.id,
-    email: row.email,
-    reason: (row.metadata as Record<string, unknown> | null)?.reason ?? null,
-    feedback: (row.metadata as Record<string, unknown> | null)?.feedback ?? null,
-    created_at: row.created_at,
-  })))
+  return NextResponse.json(data ?? [])
 }

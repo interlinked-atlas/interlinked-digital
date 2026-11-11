@@ -40,7 +40,8 @@ export default function AdminPage() {
   const [tickets, setTickets]     = useState<any[]>([])
   const [failures, setFailures]   = useState<any[]>([])
   const [patterns, setPatterns]   = useState<any[]>([])
-  const [cancellationFeedback, setCancellationFeedback] = useState<any[]>([])
+  const [auditLog, setAuditLog] = useState<any[]>([])
+  const cancellationFeedback = auditLog.filter(a => a.event === 'subscription.cancellation_feedback')
   const [monthlyUsage, setMonthlyUsage] = useState<any[]>([])
   const [gateUsage, setGateUsage]       = useState<any[]>([])
   const [expandedTicket, setExpandedTicket]   = useState<string | null>(null)
@@ -162,7 +163,7 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, feedbackRes] = await Promise.all([
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
@@ -175,7 +176,7 @@ export default function AdminPage() {
       fetch("/api/atlas/admin/install-counts", { headers }).then(r => r.json()).catch(() => ({ counts: [] })),
       fetch("/api/atlas/admin/failures", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
-      fetch("/api/atlas/admin/cancellation-feedback", { headers }).then(r => r.json()).catch(() => []),
+      fetch("/api/atlas/admin/audit-log", { headers }).then(r => r.json()).catch(() => []),
     ])
     setUsers(profRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -186,7 +187,7 @@ export default function AdminPage() {
     setGateUsage(Array.isArray(gateRes?.counts) ? gateRes.counts : [])
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
-    setCancellationFeedback(Array.isArray(feedbackRes) ? feedbackRes : [])
+    setAuditLog(Array.isArray(auditRes) ? auditRes : [])
 
     // Load titan_memory directly (admin only)
     const { data: tmData } = await supabase
@@ -526,6 +527,7 @@ export default function AdminPage() {
   })
 
   function emailOf(uid: string) { return users.find(u => u.id === uid)?.email ?? uid.slice(0,8) + "…" }
+  function userAuditLog(uid: string) { return auditLog.filter((a: any) => a.user_id === uid) }
   function userDevices(uid: string) { return devices.filter(d => d.user_id === uid) }
   function userLogs(uid: string) { return logs.filter(l => l.user_id === uid) }
   function userTickets(uid: string) { return tickets.filter((t: any) => t.user_id === uid) }
@@ -922,6 +924,27 @@ export default function AdminPage() {
                                   <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
                                     This account has already used its one-time 10-day free-reactivation window and will get an immediate, final cancellation if they cancel again. This grants a one-off exception — their next cancellation gets the full grace flow again. Doesn't reactivate or charge anything now.
                                   </p>
+                                </div>
+                              )}
+                              {userAuditLog(u.id).length > 0 && (
+                                <div style={{ gridColumn: "span 2" }}>
+                                  <span style={labelStyle}>Account History — {userAuditLog(u.id).length} event{userAuditLog(u.id).length === 1 ? "" : "s"}</span>
+                                  <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"4px" }}>
+                                    {userAuditLog(u.id).map((a: any) => (
+                                      <div key={a.id} style={{ padding:"8px 10px", borderRadius:"7px", border:"1px solid var(--atlas-border-color)", background:"var(--atlas-icon-bg)" }}>
+                                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                                          <span style={{ fontSize:"11px", fontWeight:700, color:"var(--atlas-text-body)" }}>{a.event}</span>
+                                          <span style={{ fontSize:"10px", color:"var(--atlas-text-label)" }}>{fmt(a.created_at)}</span>
+                                        </div>
+                                        {a.notes && <p style={{ fontSize:"11px", color:"var(--atlas-text-mid)", margin:"4px 0 0", lineHeight:1.4 }}>{a.notes}</p>}
+                                        {a.metadata && Object.keys(a.metadata).length > 0 && (
+                                          <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", margin:"4px 0 0", fontFamily:"monospace", wordBreak:"break-word" }}>
+                                            {Object.entries(a.metadata).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => `${k}: ${v}`).join("  ·  ")}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                               {userDeviceUsage(u.id).length > 0 && (
