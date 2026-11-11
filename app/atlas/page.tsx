@@ -263,7 +263,7 @@ export default function ATLASLaunchPage() {
       </div>
 
       {/* ================= HERO ================= */}
-      <div className="launch-hero-section" style={{ width: '100%', height: '100vh', minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+      <div className="launch-hero-section" style={{ width: '100%', height: 886, minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', left: 0, top: -26 }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-110px)' }}>
 
