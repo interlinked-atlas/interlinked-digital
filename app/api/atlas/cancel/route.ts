@@ -40,9 +40,34 @@ export async function POST(req: NextRequest) {
   // Fall back to email lookup for legacy accounts
   const { data: subRow } = await supabase
     .from('subscriptions')
-    .select('stripe_customer_id, stripe_subscription_id')
+    .select('stripe_customer_id, stripe_subscription_id, admin_granted_access')
     .eq('user_id', user.id)
     .maybeSingle()
+
+  // Admin-granted access (see app/api/atlas/admin/grant-access/route.ts) has
+  // no real Stripe subscription behind it — stripe_subscription_id here, if
+  // present at all, is a stale leftover from whatever real subscription was
+  // cancelled before the grant (calling Stripe on it throws, since Stripe
+  // refuses to update/cancel an already-cancelled subscription — this is
+  // exactly the crash a real test hit: an uncaught Stripe error produced an
+  // empty/non-JSON 500 body, which the client's res.json() then failed to
+  // parse, and because the crash happened before any write, the account was
+  // left unchanged ("still logged in with active account"). "Cancelling"
+  // here is purely a local revoke of the grant — no grace period either,
+  // since there's no real subscription/billing for one to apply to.
+  if (subRow?.admin_granted_access) {
+    const { error: profileErr } = await supabase
+      .from('profiles').update({ subscription_status: 'cancelled' }).eq('id', user.id)
+    if (profileErr) return NextResponse.json({ error: profileErr.message }, { status: 500 })
+
+    const { error: subErr } = await supabase
+      .from('subscriptions')
+      .update({ status: 'canceled', admin_granted_access: false, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+    if (subErr) return NextResponse.json({ error: subErr.message }, { status: 500 })
+
+    return NextResponse.json({ ok: true, cancel_at_period_end: false, grace_deadline: null, admin_grant_revoked: true })
+  }
 
   let customerId: string | null = subRow?.stripe_customer_id ?? null
   let stripeSubId: string | null = subRow?.stripe_subscription_id ?? null
@@ -101,7 +126,11 @@ export async function POST(req: NextRequest) {
     // access immediately (see app/api/webhooks/stripe/route.ts's
     // upsertSubscription()), rather than waiting for the eventual
     // customer.subscription.deleted at period end.
-    await stripe.subscriptions.update(stripeSubId, { cancel_at_period_end: true })
+    try {
+      await stripe.subscriptions.update(stripeSubId, { cancel_at_period_end: true })
+    } catch (e) {
+      return NextResponse.json({ error: 'stripe_error', message: e instanceof Error ? e.message : 'Stripe update failed' }, { status: 502 })
+    }
 
     // 10-day free-reactivation grace period starts now, at the moment of
     // cancellation — not at Stripe's eventual period-end deletion (which can
@@ -133,7 +162,11 @@ export async function POST(req: NextRequest) {
     // already writes the terminal 'cancelled' state atomically and
     // deliberately sends no email of its own — this route sends the one
     // user-facing email synchronously instead, same pattern as the grace path.
-    await stripe.subscriptions.cancel(stripeSubId)
+    try {
+      await stripe.subscriptions.cancel(stripeSubId)
+    } catch (e) {
+      return NextResponse.json({ error: 'stripe_error', message: e instanceof Error ? e.message : 'Stripe cancel failed' }, { status: 502 })
+    }
     if (profile?.email) {
       await sendEmail({ to: profile.email, template: 'subscription-cancelled-no-grace' })
     }

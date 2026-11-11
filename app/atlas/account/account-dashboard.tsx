@@ -333,8 +333,11 @@ export default function AccountDashboard({ user, subscription, profile, devices,
         // actual cancellation on it.
         body: JSON.stringify({ reason: cancelReason, feedback: cancelFeedback.trim() || null }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Failed to cancel")
+      // A server-side crash (e.g. an uncaught Stripe error) can return an
+      // empty or non-JSON body — res.json() throwing on that must never
+      // surface as an opaque "Unexpected end of JSON input" to the user.
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message || json.error || `Failed to cancel (${res.status})`)
       // ATLAS access is revoked immediately (see app/api/webhooks/stripe/route.ts) —
       // the webhook this cancellation triggers updates profiles/subscriptions
       // right away, and the Realtime subscription above re-fetches and flips
@@ -357,8 +360,8 @@ export default function AccountDashboard({ user, subscription, profile, devices,
     if (!session) { setLoading(null); return }
     try {
       const res = await fetch("/api/atlas/reactivate", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || json.error || "Failed to reactivate")
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message || json.error || `Failed to reactivate (${res.status})`)
       setScheduledCancelUntil(null)
       router.refresh()
     } catch (err: unknown) {

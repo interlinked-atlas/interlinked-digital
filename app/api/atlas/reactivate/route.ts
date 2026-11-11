@@ -50,7 +50,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false })
+  try {
+    await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false })
+  } catch (e) {
+    return NextResponse.json({ error: 'stripe_error', message: e instanceof Error ? e.message : 'Stripe update failed' }, { status: 502 })
+  }
   await supabase.from('subscriptions').update({ cancelled_at: null }).eq('user_id', user.id)
 
   return NextResponse.json({ ok: true })
