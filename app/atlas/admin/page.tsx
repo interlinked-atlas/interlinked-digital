@@ -66,6 +66,7 @@ export default function AdminPage() {
   const [bulkPushing, setBulkPushing]             = useState(false)
   const [kickingDeviceId, setKickingDeviceId]     = useState<string | null>(null)
   const [suspendingId, setSuspendingId]           = useState<string | null>(null)
+  const [grantingId, setGrantingId]               = useState<string | null>(null)
 
   const [fixingId, setFixingId]   = useState<string | null>(null)
   const [fixNote, setFixNote]     = useState("")
@@ -162,7 +163,7 @@ export default function AdminPage() {
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, feedbackRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason").order("created_at", { ascending: false }),
-      supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
       supabase.from("support_tickets").select("id,user_id,email,issue_type,message,status,created_at,attached_log_content,product_name,product_status").order("created_at", { ascending: false }),
@@ -357,6 +358,24 @@ export default function AdminPage() {
     if (!res.ok) { showToast(suspended ? "Failed to suspend account" : "Failed to lift suspension"); return }
     setUsers(u => u.map(x => x.id === userID ? { ...x, atlas_suspended: suspended, atlas_suspended_reason: suspended ? 'admin' : null } : x))
     showToast(suspended ? "Account suspended — signed out everywhere within seconds" : "Suspension lifted")
+  }
+
+  async function setGrantedAccess(userID: string, granted: boolean) {
+    const label = granted
+      ? "Grant this account free ATLAS access despite no active subscription? This is a pure local override — it never touches Stripe, never charges them, and doesn't affect their once-per-lifetime cancellation grace period. They'll be able to sign in and use ATLAS normally within seconds."
+      : "Revoke this admin-granted access? They'll go back to a plain cancelled state (not suspended) and can resubscribe normally."
+    if (!confirm(label)) return
+    setGrantingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/grant-access", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, granted }),
+    })
+    setGrantingId(null)
+    if (!res.ok) { showToast(granted ? "Failed to grant access" : "Failed to revoke access"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, subscription_status: granted ? 'active' : 'cancelled' } : x))
+    setSubscriptions(s => s.map(x => x.user_id === userID ? { ...x, status: granted ? 'active' : 'canceled', admin_granted_access: granted } : x))
+    showToast(granted ? "Access granted — they can sign in now" : "Access revoked")
   }
 
   async function saveFailureFix() {
@@ -840,6 +859,36 @@ export default function AdminPage() {
                                   Unlike "Remove / Kick" (which only removes one device — they can still sign in from another under their device limit), suspension blocks this account on every device, indefinitely, until lifted. Signs out an active session within seconds. Does not touch billing or cancel their subscription.
                                 </p>
                               </div>
+                              {u.subscription_status !== "active" && (
+                                <div style={{ gridColumn: "span 2" }}>
+                                  <span style={labelStyle}>Admin-Granted Access (No Subscription Required)</span>
+                                  <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                    {sub?.admin_granted_access ? (
+                                      <>
+                                        <span style={{ fontSize:"10px", fontWeight:700, color:"#3ECFB2", padding:"3px 8px", borderRadius:"5px", border:"1px solid rgba(62,207,178,0.4)", background:"rgba(62,207,178,0.1)" }}>ADMIN GRANTED</span>
+                                        <button
+                                          onClick={() => setGrantedAccess(u.id, false)}
+                                          disabled={grantingId === u.id}
+                                          style={{ fontSize:"11px", fontWeight:600, color:"#E05555", background:"rgba(224,85,85,0.08)", border:"1px solid rgba(224,85,85,0.3)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                        >
+                                          {grantingId === u.id ? "Revoking…" : "Revoke Access"}
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={() => setGrantedAccess(u.id, true)}
+                                        disabled={grantingId === u.id}
+                                        style={{ fontSize:"11px", fontWeight:600, color:"#07080F", background:"linear-gradient(135deg, #3ECFB2, #2ABEAA)", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                      >
+                                        {grantingId === u.id ? "Granting…" : "Grant Free Access"}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                    Lets this account sign in and use ATLAS normally despite having no active subscription — a pure local override, never touches Stripe or charges them, and doesn't affect their once-per-lifetime cancellation grace period.
+                                  </p>
+                                </div>
+                              )}
                               {userDeviceUsage(u.id).length > 0 && (
                                 <div style={{ gridColumn: "span 2" }}>
                                   <span style={labelStyle}>Installs This Period, Per Device</span>
