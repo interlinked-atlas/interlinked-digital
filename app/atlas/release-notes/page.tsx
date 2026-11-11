@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.6.9',
+    date: 'November 11, 2026',
+    notes: [
+      'Fixed: cancelling your subscription, or any other action that forces the Mac app to sign out on its own, was also unexpectedly signing you out of the website if you had it open there too — these are now kept separate',
+    ],
+  },
+  {
     version: '1.6.8',
     date: 'November 11, 2026',
     notes: [

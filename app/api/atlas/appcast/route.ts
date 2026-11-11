@@ -8,15 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '168'
-const SHORT_VERSION    = '1.6.8'
-const RELEASE_DATE     = 'Wed, 11 Nov 2026 21:24:09 +0000'
+const CURRENT_VERSION  = '169'
+const SHORT_VERSION    = '1.6.9'
+const RELEASE_DATE     = 'Wed, 11 Nov 2026 22:02:22 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '19757760'
-const ED_SIGNATURE     = 'MmaPTfaCQMgVtVOlEVp5SyI/NfAXTS845cjIwiZore/ZEuNJpRCrXzGTz8T/o/voCbM8g+k0LUO5H3ldGH4dBA=='
+const DMG_LENGTH       = '19727578'
+const ED_SIGNATURE     = 'GYafQ/zSNnMTUvLfD1wPqZGcN2mYZ+LS7S5sK4OAlarduH1HsAtioZxm/EnCVRkecdP0qi99xuhzd7c3jm1TAw=='
 
 const RELEASE_NOTES = `
 <ul>
+  <li>Fixed: cancelling, suspending, or otherwise forcing a sign-out of the Mac app was also unexpectedly logging you out of the website if you were signed in there too — each now only signs out the one session that needs to</li>
   <li>Fixed: when an install couldn't be authorized (subscription ended, monthly limit reached, device not registered, or a verification error), ATLAS silently did nothing instead of explaining why — it now tells you exactly what happened and what to do next</li>
   <li>The install/uninstall/recovery progress animation has been redesigned — files now flow between the ATLAS app and a Mac screen along a smooth path, with the screen glowing softly each time a file arrives</li>
   <li>Settings is now organized into panels (Account, General, Usage, Support, About) instead of one long scroll, matching the account dashboard on the website</li>

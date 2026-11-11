@@ -177,8 +177,18 @@ actor SupabaseService {
         return try parseSession(data)
     }
 
+    // scope=local is critical here: GoTrue's /auth/v1/logout defaults to
+    // scope=global when no scope is given, which revokes EVERY session for
+    // this user across every device/browser — not just this one. Every call
+    // site here is the ATLAS Mac app force-signing itself out locally
+    // (cancelled subscription, suspended account, password changed, device
+    // removed, etc.) and must never also kick the user off a website session
+    // they have open elsewhere. Confirmed via Supabase auth logs: a forced
+    // sign-out in the app was observed logging out an active website browser
+    // session at the same moment, with no code anywhere on the website side
+    // causing it — this was the actual cause.
     func signOut(accessToken: String) async throws {
-        _ = try await post(path: "/auth/v1/logout", body: [:] as [String: String],
+        _ = try await post(path: "/auth/v1/logout?scope=local", body: [:] as [String: String],
                            token: accessToken)
     }
 
