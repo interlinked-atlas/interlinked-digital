@@ -7,7 +7,7 @@ import { createClient as createBrowserClient } from "@/lib/supabase/client"
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
-type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended"
+type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended" | "feedback"
 
 const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "var(--text-muted)"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "var(--text-muted)"
@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [tickets, setTickets]     = useState<any[]>([])
   const [failures, setFailures]   = useState<any[]>([])
   const [patterns, setPatterns]   = useState<any[]>([])
+  const [cancellationFeedback, setCancellationFeedback] = useState<any[]>([])
   const [monthlyUsage, setMonthlyUsage] = useState<any[]>([])
   const [gateUsage, setGateUsage]       = useState<any[]>([])
   const [expandedTicket, setExpandedTicket]   = useState<string | null>(null)
@@ -159,7 +160,7 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes] = await Promise.all([
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, feedbackRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
@@ -172,6 +173,7 @@ export default function AdminPage() {
       fetch("/api/atlas/admin/install-counts", { headers }).then(r => r.json()).catch(() => ({ counts: [] })),
       fetch("/api/atlas/admin/failures", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
+      fetch("/api/atlas/admin/cancellation-feedback", { headers }).then(r => r.json()).catch(() => []),
     ])
     setUsers(profRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -182,6 +184,7 @@ export default function AdminPage() {
     setGateUsage(Array.isArray(gateRes?.counts) ? gateRes.counts : [])
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
+    setCancellationFeedback(Array.isArray(feedbackRes) ? feedbackRes : [])
 
     // Load titan_memory directly (admin only)
     const { data: tmData } = await supabase
@@ -576,7 +579,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
-          {(["subscribers","devices","suspended","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
+          {(["subscribers","devices","suspended","feedback","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "var(--atlas-border-color)" : "transparent", color: tab === t ? "var(--atlas-fg)" : "var(--atlas-text-label)", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
@@ -1023,6 +1026,37 @@ export default function AdminPage() {
             </div>
           )
         })()}
+
+        {/* ── CANCELLATION FEEDBACK ── */}
+        {tab === "feedback" && (
+          <div style={card}>
+            <div style={{ padding:"14px 18px", borderBottom:"1px solid var(--atlas-divider)" }}>
+              <p style={{...labelStyle}}>Cancellation Feedback — {cancellationFeedback.length} total</p>
+              <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                Optional, skippable reason/feedback collected at the cancel-confirmation modal. Most recent first.
+              </p>
+            </div>
+            {cancellationFeedback.length === 0
+              ? <div style={{padding:"40px",textAlign:"center",color:"var(--atlas-text-label)"}}>No cancellation feedback yet.</div>
+              : cancellationFeedback.map((f: any) => (
+                <div key={f.id} style={{ padding:"14px 18px", borderBottom:"1px solid var(--atlas-divider-subtle)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", marginBottom:"4px" }}>
+                    <p style={{fontSize:"13px",color:"var(--atlas-text-body)",fontWeight:500,margin:0}}>{f.email}</p>
+                    <span style={{ fontSize:"10px", color:"var(--atlas-text-label)" }}>{fmt(f.created_at)}</span>
+                  </div>
+                  {f.reason && (
+                    <span style={{ display:"inline-block", fontSize:"9px", fontWeight:700, padding:"2px 7px", borderRadius:"4px", border:"1px solid rgba(240,160,48,0.4)", color:"#F0A030", background:"rgba(240,160,48,0.1)", marginBottom:"6px" }}>
+                      {String(f.reason).toUpperCase()}
+                    </span>
+                  )}
+                  {f.feedback && (
+                    <p style={{ fontSize:"12px", color:"var(--atlas-text-mid)", lineHeight:1.5, margin:0 }}>{f.feedback}</p>
+                  )}
+                </div>
+              ))
+            }
+          </div>
+        )}
 
         {/* ── LOGS ── */}
         {tab === "logs" && (

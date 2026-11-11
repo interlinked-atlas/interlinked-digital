@@ -248,6 +248,9 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const graceDeadlineLabel = graceDeadlineMs
     ? new Date(graceDeadlineMs).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : null
+  // Rounds up so "23.9 hours left" still reads as "1 day left" rather than
+  // "0 days left" — matches the email reminder's own framing at day 8.
+  const graceDaysLeft = graceDeadlineMs ? Math.max(0, Math.ceil((graceDeadlineMs - Date.now()) / (24 * 60 * 60 * 1000))) : null
   const statusColor = isCancelled ? "text-red-400 bg-red-500/15" : isPastDue ? "text-yellow-400 bg-yellow-500/15" : isScheduledToCancel ? "text-yellow-400 bg-yellow-500/15" : isActive ? "text-emerald-400 bg-emerald-500/15" : "text-white/40 bg-white/10"
   const statusLabel = isCancelled ? "Cancelled" : isPastDue ? "Payment Failed" : isScheduledToCancel ? "Cancels at period end" : isActive ? "Active" : "Inactive"
 
@@ -544,6 +547,21 @@ export default function AccountDashboard({ user, subscription, profile, devices,
               }}>ATLAS</div>
             </div>
           </div>
+          {withinGracePeriod && graceDaysLeft !== null && (
+            <div style={{
+              margin: "14px 22px 0", padding: "12px 14px", borderRadius: "10px",
+              background: graceDaysLeft <= 2 ? "rgba(224,85,85,0.08)" : "rgba(240,160,48,0.08)",
+              border: `1px solid ${graceDaysLeft <= 2 ? "rgba(224,85,85,0.25)" : "rgba(240,160,48,0.25)"}`,
+              display: "flex", alignItems: "center", gap: "8px",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={graceDaysLeft <= 2 ? "#E05555" : "#F0A030"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+              <p style={{ fontSize: "12px", color: graceDaysLeft <= 2 ? "#E05555" : "#F0A030", fontWeight: 600, margin: 0 }}>
+                {graceDaysLeft === 0 ? "Last day" : `${graceDaysLeft} day${graceDaysLeft === 1 ? "" : "s"} left`} to reactivate for free — after {graceDeadlineLabel}, this account can only be restored by contacting support.
+              </p>
+            </div>
+          )}
           <div style={{ padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
             {withinGracePeriod && (
               <button onClick={handleReactivate} disabled={loading === "reactivate"} style={{
