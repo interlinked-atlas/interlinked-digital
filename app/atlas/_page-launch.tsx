@@ -231,6 +231,10 @@ export default function ATLASLaunchPage() {
         .launch-faq-chevron { flex-shrink: 0; transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
         .launch-faq-a { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; padding: 0 2px 12px; margin: 0; }
 
+        @media (min-width: 681px) {
+          html { zoom: 0.8; }
+        }
+
         @media (max-width: 680px) {
           .launch-hero-section { padding: 20px !important; }
           .launch-hero-logo-icon { width: 64px !important; height: 64px !important; }
