@@ -121,7 +121,7 @@ export default function PlansPage() {
     if (loggedIn) {
       router.push(dest)
     } else {
-      router.push(`/auth/login?redirect=${encodeURIComponent(dest)}`)
+      router.push(`/auth/signup?redirect=${encodeURIComponent(dest)}`)
     }
   }
 
