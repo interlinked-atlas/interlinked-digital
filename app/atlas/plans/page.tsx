@@ -193,6 +193,30 @@ export default function PlansPage() {
         .plans-interlinked-logo-light { display: none; }
         html.light .plans-interlinked-logo-dark { display: none !important; }
         html.light .plans-interlinked-logo-light { display: inline-block !important; }
+
+        /* Same app-window -> Mac-screen file-flow animation from the launch
+           page, rotated 90°: app window left, Mac screen right, icons
+           travel a horizontal curved path behind the plan card (z-index
+           below it) so they appear to pass through it on the way across. */
+        @keyframes plansFlowFileAcross {
+          0% { offset-distance: 0%; opacity: 0; }
+          6% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { offset-distance: 100%; opacity: 0; }
+        }
+        .plans-flow-file {
+          position: absolute; width: 18px; height: 18px; border-radius: 5px;
+          display: flex; align-items: center; justify-content: center;
+          offset-path: path('M 10,110 C 70,60 150,160 210,110 C 270,60 350,160 410,110');
+          animation: plansFlowFileAcross 5.2s cubic-bezier(0.37,0,0.63,1) infinite;
+        }
+        @keyframes plansScreenArrivalGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes plansScreenArrivalFlash { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .plans-screen-glow { animation: plansScreenArrivalGlow 0.87s ease-in-out infinite; }
+        .plans-screen-glow-fill { animation: plansScreenArrivalFlash 0.87s ease-in-out infinite; }
+        @media (max-width: 860px) {
+          .plans-flow-visual { display: none !important; }
+        }
       `}</style>
 
       {/* ── Fixed bottom scroll hint ── */}
@@ -309,8 +333,53 @@ export default function PlansPage() {
 
         {/* Plan card */}
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 80px' }}>
+          <div style={{ position: 'relative' }}>
+            {/* App window (left) -> Mac screen (right), icons flowing behind the card */}
+            <div className="plans-flow-visual" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 420, height: 220, pointerEvents: 'none', zIndex: 0 }}>
+              {/* ATLAS app window (left) — files leave from here */}
+              <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 110, height: 76, borderRadius: 9, border: '1px solid var(--atlas-border-faint)', background: 'var(--atlas-plans-card)', boxShadow: '0 16px 36px rgba(0,0,0,0.25)' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, borderBottom: '1px solid var(--atlas-border-faint)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 7px', boxSizing: 'border-box' }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#E05555' }} />
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#E0B155' }} />
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#55C27A' }} />
+                </div>
+                <img src="/atlas-logo.png" alt="" style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', width: 26, height: 26, objectFit: 'contain', opacity: 0.9 }} />
+              </div>
+
+              {/* Mac screen (right) — glows on each file arrival */}
+              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 128, height: 92 }}>
+                <div className="plans-screen-glow" style={{ position: 'absolute', inset: -36, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,207,178,0.75) 0%, rgba(62,207,178,0.25) 45%, transparent 72%)', filter: 'blur(16px)' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 128, height: 82, borderRadius: 9, border: '2px solid var(--atlas-text-dim)', background: '#0C0C12' }}>
+                  <div className="plans-screen-glow-fill" style={{ position: 'absolute', inset: 3, borderRadius: 4, background: 'radial-gradient(circle at 50% 60%, rgba(62,207,178,0.5), rgba(62,207,178,0.05) 70%)' }} />
+                </div>
+                <div style={{ position: 'absolute', top: 82, left: '50%', transform: 'translateX(-50%)', width: 38, height: 8, background: 'var(--atlas-text-dim)', borderRadius: '0 0 3px 3px' }} />
+                <div style={{ position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%)', width: 58, height: 3, background: 'var(--atlas-text-dim)', borderRadius: 2, opacity: 0.8 }} />
+              </div>
+
+              {/* Files leaving the app, flowing across to the screen */}
+              <div className="plans-flow-file" style={{ animationDelay: '0s', background: '#3ECFB2' }}>
+                <svg viewBox="0 0 20 20"><path d="M4 13V9 M8 15V5 M12 16V4 M16 12V10" stroke="#06211D" strokeWidth={2} strokeLinecap="round" /></svg>
+              </div>
+              <div className="plans-flow-file" style={{ animationDelay: '-0.87s', background: '#5E6AD2' }}>
+                <svg viewBox="0 0 20 20"><circle cx="7" cy="14" r="2.4" fill="#fff" /><circle cx="15" cy="11" r="2.4" fill="#fff" /><path d="M9.4 14V5.5L17.4 4V11" stroke="#fff" strokeWidth={1.6} fill="none" strokeLinecap="round" /></svg>
+              </div>
+              <div className="plans-flow-file" style={{ animationDelay: '-1.73s', background: '#F0A030' }}>
+                <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="#3A2600" strokeWidth={1.8} /><line x1="10" y1="10" x2="10" y2="5" stroke="#3A2600" strokeWidth={1.8} strokeLinecap="round" /></svg>
+              </div>
+              <div className="plans-flow-file" style={{ animationDelay: '-2.6s', background: '#E8ECFF' }}>
+                <svg viewBox="0 0 20 20"><path d="M5 2.5h7l3 3V17.5H5z" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /><path d="M12 2.5v3h3" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /></svg>
+              </div>
+              <div className="plans-flow-file" style={{ animationDelay: '-3.47s', background: '#E05555' }}>
+                <svg viewBox="0 0 20 20"><circle cx="10" cy="5.5" r="2.4" fill="#fff" /><path d="M10 8v5 M6.5 17l2-4h3l2 4" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" fill="none" /></svg>
+              </div>
+              <div className="plans-flow-file" style={{ animationDelay: '-4.33s', background: '#3ECFB2' }}>
+                <svg viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" rx="1.5" fill="none" stroke="#06211D" strokeWidth={1.6} /><path d="M3 8h14" stroke="#06211D" strokeWidth={1.6} /></svg>
+              </div>
+            </div>
+
           <FadeUp delay={0}>
             <div className="plan-card" style={{
+              position: 'relative', zIndex: 1,
               background: 'var(--atlas-plans-card)',
               borderRadius: '16px',
               border: '1px solid rgba(62,207,178,0.25)',
@@ -366,6 +435,7 @@ export default function PlansPage() {
               </div>
             </div>
           </FadeUp>
+          </div>
 
           {/* Footer note */}
           <FadeUp delay={80}>
