@@ -423,10 +423,6 @@ export default function ATLASLaunchPage() {
               <span>{label}</span>
             </div>
           ))}
-          <div style={{ gridColumn: '1 / -1', justifySelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 14, lineHeight: 1.35, color: palette.textSubtle }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECFB2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-            <span>File Sharing (Coming Soon)</span>
-          </div>
         </div>
       </div>
 
