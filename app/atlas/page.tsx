@@ -283,7 +283,7 @@ export default function ATLASLaunchPage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(145px)' }}>
 
           <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 'normal' }}>
-            <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease' }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
+            <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease', marginTop: 10 }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
             <div className="launch-shimmer-text launch-hero-subscribe" style={{ fontSize: 56, fontWeight: 800, marginTop: 4, letterSpacing: -0.5, display: 'inline-block', backgroundImage: shimmerGradient }}>Subscribe Now.</div>
           </h1>
 
