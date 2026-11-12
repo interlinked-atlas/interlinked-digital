@@ -804,57 +804,120 @@ function nov12LaunchEmail() {
   `)
 }
 
+// ─────────────────────────────────────────────
+// Release announcement — the one email that deliberately breaks from the
+// shared dark base() shell above. This is a light-mode design matching the
+// actual launch page's own light theme (same palette as the site's light
+// mode: bg #F2F4FF, card #FFFFFF, text #0D1035), with the real ATLAS logo
+// lockup ("by InterLinked") and hero copy ("is officially here. Subscribe
+// Now.") carried over 1:1 from the site rather than a generic announcement.
+// Self-contained: not built from base()/eyebrow()/heading()/tealBtn() since
+// those are hardcoded to the dark palette.
+// ─────────────────────────────────────────────
 function releaseEmail() {
-  return base('ATLAS V1 is live', `
-    <!-- Top teal/indigo gradient bar -->
-    <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
+  const LBG     = '#F2F4FF'
+  const LCARD   = '#FFFFFF'
+  const LTEXT   = '#0D1035'
+  const LMUTED  = '#6B7299'
+  const LSUBTLE = '#3A3F66'
+  const LBORDER = 'rgba(13,16,53,0.08)'
 
-    <div style="padding:36px 36px 40px;">
-      ${eyebrow('Waitlist Exclusive · Live Now')}
+  return `<!DOCTYPE html>
+<html lang="en" style="background:${LBG};">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>ATLAS V1 is live</title>
+  <style>:root { color-scheme: light; supported-color-schemes: light; }</style>
+</head>
+<body style="margin:0;padding:0;background:${LBG};background-color:${LBG};-webkit-font-smoothing:antialiased;" bgcolor="${LBG}">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${LBG};background-color:${LBG};" bgcolor="${LBG}">
+  <tr><td align="center" style="padding:52px 20px 48px;background:${LBG};background-color:${LBG};" bgcolor="${LBG}">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
 
-      <!-- macOS badge -->
-      <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
-        <tr>
-          <td valign="middle" style="padding-right:8px;">
-            <img src="${APPLE_LOGO_B64}" width="18" height="18" alt="" style="display:block;border:0;opacity:0.7;">
-          </td>
-          <td valign="middle">
-            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;color:#ADADBA;letter-spacing:0.01em;">macOS</span>
-          </td>
-        </tr>
-      </table>
+      <!-- Card -->
+      <tr><td style="background:${LCARD};background-color:${LCARD};border-radius:16px;border:1px solid ${LBORDER};overflow:hidden;box-shadow:0 20px 60px rgba(13,16,53,0.08);" bgcolor="${LCARD}">
+        <div style="height:2px;background:linear-gradient(90deg,${TEAL} 0%,${INDIGO} 100%);"></div>
 
-      ${heading('ATLAS V1 is here. You get it first.')}
-      <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#ADADBA;line-height:1.7;letter-spacing:-0.005em;">
-        You joined the ATLAS waitlist before anyone else — which means before we open this up to anyone else,
-        <strong style="color:${WHITE};font-weight:600;">you're first in line.</strong> ATLAS V1 for macOS is live right now.
-        No more remote-install services, no more handing a stranger access to your Mac, no more paying per file.
-        ATLAS installs, tracks, and cleanly uninstalls your plugins and software automatically — all on your own machine, privately.
-      </p>
+        <div style="padding:40px 36px 40px;text-align:center;">
+          <!-- ATLAS logo lockup -->
+          <img src="https://www.interlinked.digital/email-assets/atlas-icon.png" width="48" height="48" alt="ATLAS" style="display:block;border:0;margin:0 auto 10px;width:48px;height:48px;object-fit:contain;">
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:28px;font-weight:800;letter-spacing:10px;color:${LTEXT};padding-left:10px;margin-bottom:10px;">ATLAS</div>
+          <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 32px;">
+            <tr>
+              <td valign="middle" style="padding-right:6px;">
+                <span style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:13px;color:${LMUTED};">by</span>
+              </td>
+              <td valign="middle">
+                <img src="https://www.interlinked.digital/email-assets/interlinked-logo.png" width="90" height="auto" alt="InterLinked" style="display:block;border:0;width:90px;opacity:0.85;">
+              </td>
+            </tr>
+          </table>
 
-      ${infoBox([
-        'TITAN MEMORY™ — learns every installer you run',
-        'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
-        'Bulk installation &amp; full install history',
-        'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
-        'Built-in virus scanner &amp; ATLAS CLEANER™',
-      ], TEAL)}
+          <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${TEAL};">The Wait Is Over</p>
+          <h1 style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em;color:${LTEXT};">is officially <span style="font-style:italic;font-weight:600;">here</span>.</h1>
+          <h2 style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:36px;font-weight:800;letter-spacing:-0.02em;color:${TEAL};">Subscribe Now.</h2>
 
-      ${tealBtn('Get ATLAS V1', 'https://www.interlinked.digital/atlas')}
+          <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:${LSUBTLE};line-height:1.7;letter-spacing:-0.005em;text-align:left;">
+            ATLAS V1 for macOS is live. No more remote-install services, no more handing a stranger access to your Mac, no more paying per file —
+            ATLAS installs, tracks, and cleanly uninstalls your plugins and software automatically, all on your own machine, privately.
+          </p>
 
-      ${divider()}
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:rgba(62,207,178,0.06);border-radius:10px;border:1px solid rgba(62,207,178,0.18);margin:0 0 28px;">
+            <tr><td style="padding:18px 20px;text-align:left;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                ${[
+                  'TITAN MEMORY™ — learns every installer you run',
+                  'TITAN CORE™ — universal engine for PKG, DMG, ZIP &amp; more',
+                  'Bulk installation &amp; full install history',
+                  'Uninstall, Rollback &amp; ATLAS RECOVERY KIT™',
+                  'Built-in virus scanner &amp; ATLAS CLEANER™',
+                ].map(r => `<tr><td style="padding:5px 0;">
+                  <table cellpadding="0" cellspacing="0" border="0"><tr>
+                    <td style="width:18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;color:${TEAL};vertical-align:top;padding-top:1px;">✓</td>
+                    <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${LSUBTLE};letter-spacing:-0.005em;">${r}</td>
+                  </tr></table>
+                </td></tr>`).join('')}
+              </table>
+            </td></tr>
+          </table>
 
-      <!-- Secondary: Windows teaser -->
-      <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ADADBA;letter-spacing:-0.01em;">Windows Version of ATLAS Coming Soon.</p>
-      <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">Stay tuned for more updates.</p>
+          <!-- Get ATLAS V1 button, apple logo inline — matches the site's btn-primary -->
+          <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+            <tr>
+              <td align="center" style="background:${TEAL};background-color:${TEAL};border-radius:999px;" bgcolor="${TEAL}">
+                <a href="https://www.interlinked.digital/atlas/plans" style="display:inline-flex;align-items:center;gap:8px;padding:16px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:${LTEXT};text-decoration:none;">
+                  <img src="https://www.interlinked.digital/email-assets/apple-logo.png" width="18" height="18" alt="" style="display:inline-block;vertical-align:middle;border:0;width:18px;height:18px;object-fit:contain;margin-right:6px;">Get ATLAS V1
+                </a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:12px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;color:${LMUTED};">macOS Monterey or Above. &nbsp;·&nbsp; Windows Version Coming Soon.</p>
 
-      ${divider()}
+          <div style="height:1px;background:${LBORDER};margin:28px 0;"></div>
+          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${LMUTED};line-height:1.6;">
+            You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${LSUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
+          </p>
+        </div>
+      </td></tr>
 
-      <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${MUTED};line-height:1.6;">
-        You're receiving this because you joined the ATLAS waitlist. To unsubscribe, reply with "unsubscribe" or email <a href="mailto:atlas@interlinked.digital?subject=unsubscribe" style="color:${SUBTLE};text-decoration:none;">atlas@interlinked.digital</a>.
-      </p>
-    </div>
-  `)
+      <!-- Footer -->
+      <tr><td align="center" style="padding-top:28px;">
+        <p style="margin:0 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#A8ADC8;">INTERLINKED DIGITAL</p>
+        <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#B0B5D0;">
+          <a href="https://www.interlinked.digital/atlas/account" style="color:#9BA0C0;text-decoration:none;">Manage account</a>
+          &nbsp;&nbsp;·&nbsp;&nbsp;
+          <a href="https://www.interlinked.digital/atlas" style="color:#9BA0C0;text-decoration:none;">interlinked.digital</a>
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`
 }
 
 function supportReceivedEmail(issueType: string, message: string) {
