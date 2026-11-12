@@ -207,14 +207,14 @@ export default function PlansPage() {
         .plans-flow-file {
           position: absolute; width: 18px; height: 18px; border-radius: 5px;
           display: flex; align-items: center; justify-content: center;
-          offset-path: path('M 10,110 C 70,60 150,160 210,110 C 270,60 350,160 410,110');
+          offset-path: path('M 20,110 C 140,40 280,180 410,110 C 540,40 680,180 800,110');
           animation: plansFlowFileAcross 5.2s cubic-bezier(0.37,0,0.63,1) infinite;
         }
         @keyframes plansScreenArrivalGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
         @keyframes plansScreenArrivalFlash { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         .plans-screen-glow { animation: plansScreenArrivalGlow 0.87s ease-in-out infinite; }
         .plans-screen-glow-fill { animation: plansScreenArrivalFlash 0.87s ease-in-out infinite; }
-        @media (max-width: 860px) {
+        @media (max-width: 980px) {
           .plans-flow-visual { display: none !important; }
         }
       `}</style>
@@ -335,7 +335,7 @@ export default function PlansPage() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 80px' }}>
           <div style={{ position: 'relative' }}>
             {/* App window (left) -> Mac screen (right), icons flowing behind the card */}
-            <div className="plans-flow-visual" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 420, height: 220, pointerEvents: 'none', zIndex: 0 }}>
+            <div className="plans-flow-visual" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 820, height: 220, pointerEvents: 'none', zIndex: 0 }}>
               {/* ATLAS app window (left) — files leave from here */}
               <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 110, height: 76, borderRadius: 9, border: '1px solid var(--atlas-border-faint)', background: 'var(--atlas-plans-card)', boxShadow: '0 16px 36px rgba(0,0,0,0.25)' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, borderBottom: '1px solid var(--atlas-border-faint)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 7px', boxSizing: 'border-box' }}>
