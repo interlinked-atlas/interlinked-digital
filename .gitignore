@@ -21,3 +21,6 @@ Desktop/ATLAS.dmg
 Desktop/ATLAS.Test/ATLAS.dmg
 .vercel
 .env*
+
+# Claude Code's own personal memory/session data — never belongs in this repo
+.claude/

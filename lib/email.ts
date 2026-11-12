@@ -888,7 +888,12 @@ function releaseEmail() {
           <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
             <tr>
               <td align="center" style="background:${TEAL};background-color:${TEAL};border-radius:999px;" bgcolor="${TEAL}">
-                <a href="https://www.interlinked.digital/atlas/plans" style="display:inline-flex;align-items:center;gap:8px;padding:16px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:${LTEXT};text-decoration:none;">
+                <!-- TEMPORARY: points at the preview launch page, not the
+                     live site — swap to https://www.interlinked.digital/atlas
+                     (or wherever the real launch page lands) once it's
+                     actually merged/published. The user will remind, but
+                     don't forget this on your own either. -->
+                <a href="https://v0-interlinked-git-preview-atlas-launch-page-portaltitan0999.vercel.app/atlas" style="display:inline-flex;align-items:center;gap:8px;padding:16px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:${LTEXT};text-decoration:none;">
                   <img src="https://www.interlinked.digital/email-assets/apple-logo.png" width="18" height="18" alt="" style="display:inline-block;vertical-align:middle;border:0;width:18px;height:18px;object-fit:contain;margin-right:6px;">Get ATLAS V1
                 </a>
               </td>
