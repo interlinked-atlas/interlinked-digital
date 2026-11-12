@@ -304,7 +304,7 @@ export default function ATLASLaunchPage() {
                 </div>
               </div>
             </div>
-            <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999 }}>
+            <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999, border: `1px solid ${palette.border}` }}>
               View Demo
             </a>
           </div>
