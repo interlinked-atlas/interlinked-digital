@@ -1,1005 +1,503 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { startCheckoutSession } from '@/app/actions/stripe'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTheme } from 'next-themes'
 
-const PLANS = [
-  {
-    id: 'atlas',
-    name: 'ATLAS',
-    price: '$30',
-    period: '/mo',
-    color: '#3ECFB2',
-    accentColor: '#3ECFB2',
-    recommended: true,
-    features: [
-      'Up to 3 devices',
-      '25 installs per month, per device',
-      'Bulk installation',
-      'Uninstall & Rollback',
-      'TITAN CORE™',
-      'Smart Storage',
-      'Full install history',
-    ],
-    excluded: [],
-    stripeUrl: 'https://www.interlinked.digital/atlas/checkout?plan=atlas',
+const FEATURES: Record<string, { title: string; body: string }> = {
+  install: {
+    title: 'Installation',
+    body: "Drop in a plugin or software installer and ATLAS handles the install automatically — no manual drag-and-drop into system folders, no guessing where a format needs to go. One click, and it's installed correctly.",
   },
+  uninstall: {
+    title: 'Uninstallation',
+    body: 'ATLAS removes exactly what it installed, nothing more — including the install receipts and leftover files most uninstallers skip, so your system folders stay clean and organized instead of accumulating orphaned files over time.',
+  },
+  recovery: {
+    title: 'Recovery / Rollback',
+    body: 'If an install needs to be undone, ATLAS can roll it back — restoring your system to the way it was before that install, when that’s possible for the install in question.',
+  },
+  'recovery-kit': {
+    title: 'ATLAS Recovery Kit™',
+    body: 'A cloud backup of your ATLAS install history. If you move to a new Mac or need to restore your setup, ATLAS Recovery Kit™ keeps that history backed up and available, so you’re not starting over from scratch.',
+  },
+  cleaner: {
+    title: 'ATLAS Cleaner™',
+    body: 'Finds leftover files from software that was removed outside of ATLAS, so your Mac doesn’t quietly accumulate clutter from installers and plugins you no longer use.',
+  },
+  formats: {
+    title: 'Product Format Management',
+    body: 'Plugins can come in several formats — AU, VST, VST3, AAX, and more. ATLAS keeps track of which formats of a product are installed and where, so you always know the status of each format instead of hunting through system folders yourself.',
+  },
+}
+
+const FEATURE_TABS: { key: string; label: string }[] = [
+  { key: 'install', label: 'Installation' },
+  { key: 'uninstall', label: 'Uninstallation' },
+  { key: 'recovery', label: 'Recovery / Rollback' },
+  { key: 'recovery-kit', label: 'ATLAS Recovery Kit™' },
+  { key: 'cleaner', label: 'ATLAS Cleaner™' },
+  { key: 'formats', label: 'Product Format Management' },
 ]
 
-const FEATURES = [
-  {
-    icon: '⚡',
-    title: 'Automated installs',
-    desc: 'Drop any DMG, ZIP, PKG, or plugin — ATLAS handles the rest autonomously.',
-  },
-  {
-    icon: '↩',
-    title: 'Uninstall & rollback',
-    desc: 'Track every file placed. Undo any install cleanly, with full recovery support.',
-  },
-  {
-    icon: '◈',
-    title: 'TITAN CORE™',
-    desc: 'Pre-flight checks, smart recovery, signature validation, and install verification.',
-  },
+const PLAN_BULLETS = [
+  'Up to 3 devices',
+  '25 installs / month, per device',
+  'TITAN CORE™',
+  'Smart Storage',
+  'Full install history',
+  'Bulk installation',
+  'Uninstall & Rollback',
+  'Trash install file',
+  'ATLAS CLEANER™',
+  'ATLAS RECOVERY KIT™',
+  'Cloud Backup',
+  'Built-In Virus Scanner',
 ]
 
-const TOS_TEXT = `ATLAS® — Terms of Service
-© InterLinked®. All rights reserved.
-Last updated: 2025
+const REVIEWS: { quote: string; author: string }[] = [
+  { quote: 'ATLAS changed the way my production is set up.', author: 'Marcus T., Producer' },
+  { quote: 'This changed the game for me — I was able to recover my audio plugins!', author: 'Jordan K., Sound Engineer' },
+  { quote: "Finally, an installer that doesn't leave a mess behind.", author: 'Dana R., Composer' },
+  { quote: 'Recovery Kit saved my entire setup after a Mac migration.', author: 'Alicia M., Mix Engineer' },
+  { quote: 'Takes the guesswork out of installing plugins across formats.', author: 'Theo B., Sound Designer' },
+  { quote: 'My entire sample library migrated over without a single missing file.', author: 'Priya S., Audio Editor' },
+  { quote: "Uninstalls are actually clean now — no more leftover junk in my plugin folders.", author: 'Chris L., Mastering Engineer' },
+  { quote: 'Wish I had this years ago — it just works, every time.', author: 'Nina F., Beatmaker' },
+]
 
-1. ACCEPTANCE
-By using ATLAS®, you agree to these Terms in full. If you do not agree, do not use the application.
+const FAQS: { q: string; a: string }[] = [
+  { q: 'What is ATLAS?', a: 'ATLAS is an autonomous installation application for macOS, designed to make installing software effortless, dependable, and refined.' },
+  { q: 'What operating systems does ATLAS support?', a: 'ATLAS supports macOS 12 Monterey or later. Windows is Coming Soon.' },
+  { q: 'Can ATLAS be shared?', a: 'ATLAS Subscribers can have up to 3 devices, each with its own 25-install-per-month allowance.' },
+  { q: 'Can ATLAS fail?', a: 'ATLAS automates installation, but it cannot guarantee that every installer will work. Some installers may be unsupported, unusual, damaged, require interaction, or otherwise fail.' },
+  { q: 'Can I use my own files?', a: 'Yes. ATLAS allows you to use your own files and installers.' },
+]
 
-2. DESCRIPTION
-ATLAS® is an autonomous installation and configuration utility developed by InterLinked®. It automates the installation of third-party software on macOS.
-
-3. USER RESPONSIBILITY
-All software installed through ATLAS is installed at your sole direction and risk. You are solely responsible for ensuring you have a valid license for every piece of software you install.
-
-4. NO WARRANTY
-ATLAS® is provided AS IS without warranties of any kind. InterLinked® is not liable for instability, data loss, software conflicts, or any other consequences arising from software you install using ATLAS.
-
-5. DATA COLLECTION & LOGS
-InterLinked® collects certain usage data to provide, improve, and support ATLAS services. This includes:
-• Installation logs (app names, file types, timestamps, result status)
-• Device identifiers (hardware UUID, device name, macOS version)
-• Account activity associated with your InterLinked® account
-
-This data is securely transmitted to InterLinked® servers and stored in your account dashboard. It is used solely for:
-• Account support and troubleshooting
-• Product improvements and future updates
-• Installation history accessible through your account
-
-Log data is stored securely and is never sold to third parties. You may request deletion by contacting interlinked.digital@gmail.com.
-
-6. PROHIBITED USE
-Piracy, license circumvention, keygen use, or any unlicensed use of software through ATLAS is strictly prohibited and is solely the user's legal responsibility.
-
-7. SYSTEM ACCESS
-ATLAS requests Full Disk Access, Accessibility, and Automation permissions solely to perform installations you initiate. Your admin password, if provided, is stored securely in the macOS Keychain and is never transmitted externally.
-
-8. SUBSCRIPTION & BILLING
-ATLAS is available via an ATLAS subscription at $30/month. Subscriptions are managed through InterLinked® at interlinked.digital/atlas. Cancellations take effect at the end of the current billing period.
-
-9. CHANGES
-InterLinked® reserves the right to update these terms at any time. Continued use of ATLAS constitutes acceptance of the current terms.
-
-10. CONTACT
-interlinked.digital@gmail.com
-interlinked.digital`
-
-type Plan = typeof PLANS[0]
-type Step = 'landing' | 'plan' | 'account'
-
-// ─── Scroll-animate hook ────────────────────────────────────────────────────
-function useInView(ref: React.RefObject<Element | null>, once = true) {
-  const [visible, setVisible] = useState(false)
+export default function ATLASLaunchPage() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    if (!ref.current) return
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          if (once) obs.disconnect()
-        } else if (!once) {
-          setVisible(false)
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
-    )
-    obs.observe(ref.current)
-    return () => obs.disconnect()
-  }, [ref, once])
-  return visible
-}
+    setMounted(true)
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
+      setTheme(prefersLight ? 'light' : 'dark')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const isDark = !mounted || theme !== 'light'
 
-// ─── Animated section wrapper ───────────────────────────────────────────────
-function FadeUp({
-  children,
-  delay = 0,
-  style = {},
-}: {
-  children: React.ReactNode
-  delay?: number
-  style?: React.CSSProperties
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const visible = useInView(ref)
-  return (
-    <div
-      ref={ref}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(28px)',
-        transition: `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
+  const [scrollY, setScrollY] = useState(0)
+  const [selectedFeature, setSelectedFeature] = useState('install')
+  const [faqOpen, setFaqOpen] = useState<Record<number, boolean>>({})
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [logoDrag, setLogoDrag] = useState({ x: 0, y: 0 })
+  const dragState = useRef<{ dragging: boolean; originX: number; originY: number }>({ dragging: false, originX: 0, originY: 0 })
 
-// ─── ToS modal ──────────────────────────────────────────────────────────────
-function TosModal({ onClose }: { onClose: () => void }) {
-  const [opacity, setOpacity] = useState(0)
-  useEffect(() => { requestAnimationFrame(() => setOpacity(1)) }, [])
-
-  function close() {
-    setOpacity(0)
-    setTimeout(onClose, 160)
-  }
-
-  return (
-    <div
-      onClick={close}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-        backdropFilter: 'blur(8px)',
-        opacity, transition: 'opacity 0.17s ease',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#111113',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '16px',
-          width: '100%', maxWidth: '520px',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
-          overflow: 'hidden',
-          opacity,
-          transform: `scale(${0.96 + 0.04 * opacity})`,
-          transition: 'opacity 0.17s ease, transform 0.17s ease',
-        }}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <span style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-            Terms of Service — ATLAS
-          </span>
-          <button
-            onClick={close}
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '6px',
-              width: '26px', height: '26px',
-              cursor: 'pointer', color: '#8A8A96',
-              fontSize: '11px', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-          >✕</button>
-        </div>
-        <div style={{ maxHeight: '380px', overflowY: 'auto', padding: '18px' }}>
-          <pre style={{
-            color: '#8A8A96', fontSize: '11.5px', lineHeight: '1.8',
-            whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
-          }}>
-            {TOS_TEXT}
-          </pre>
-        </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button
-            onClick={close}
-            style={{
-              width: '100%', padding: '12px',
-              border: 'none', background: 'transparent',
-              color: '#8A8A96', fontSize: '12px',
-              fontWeight: 500, cursor: 'pointer',
-              transition: 'color 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main page ──────────────────────────────────────────────────────────────
-export default function AtlasSignupPage() {
-  const [step, setStep] = useState<Step>('landing')
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
-  const [email, setEmail] = useState('')
-  const [confirmEmail, setConfirmEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [tosAgreed, setTosAgreed] = useState(false)
-  const [showTosModal, setShowTosModal] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  // Kick off hero text animation on mount
-  const [heroIn, setHeroIn] = useState(false)
   useEffect(() => {
-    const t = setTimeout(() => setHeroIn(true), 80)
-    return () => clearTimeout(t)
+    const onScroll = () => setScrollY(window.scrollY || 0)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  function handleSelectPlan(plan: Plan) {
-    setSelectedPlan(plan)
-    setError('')
-    setTosAgreed(false)
-    setStep('account')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const onLogoDragMove = useCallback((e: MouseEvent) => {
+    if (!dragState.current.dragging) return
+    setLogoDrag({ x: e.clientX - dragState.current.originX, y: e.clientY - dragState.current.originY })
+  }, [])
+  const stopLogoDrag = useCallback(() => { dragState.current.dragging = false }, [])
+  useEffect(() => {
+    window.addEventListener('mousemove', onLogoDragMove)
+    window.addEventListener('mouseup', stopLogoDrag)
+    return () => {
+      window.removeEventListener('mousemove', onLogoDragMove)
+      window.removeEventListener('mouseup', stopLogoDrag)
+    }
+  }, [onLogoDragMove, stopLogoDrag])
+  const startLogoDrag = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragState.current = { dragging: true, originX: e.clientX - logoDrag.x, originY: e.clientY - logoDrag.y }
   }
 
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selectedPlan) return
-    if (!tosAgreed) { setError('Please agree to the Terms of Service to continue.'); return }
-    if (email !== confirmEmail) { setError('Email addresses do not match.'); return }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    setError('')
-    setLoading(true)
+  const scrollBlur = Math.max(0, Math.min(16, scrollY / 18))
+  const scrollFade = Math.max(0.15, 1 - scrollY / 400)
 
-    // 1. Create Supabase account via server API (admin createUser — no confirmation email)
-    const signUpRes = await fetch('/api/atlas/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    const signUpData = await signUpRes.json()
-    if (!signUpRes.ok || !signUpData.userId) {
-      setLoading(false)
-      setError(signUpData.error ?? 'Account creation failed. Please try again.')
-      return
+  const palette = isDark
+    ? { bg: '#07080F', bgCard: '#111115', bgFooter: '#0B0B0D', text: '#E8ECFF', textMuted: '#525260', textSubtle: '#B8BEDC', border: 'rgba(232,236,255,0.08)' }
+    : { bg: '#F2F4FF', bgCard: '#FFFFFF', bgFooter: '#E7EAFB', text: '#0D1035', textMuted: '#6B7299', textSubtle: '#3A3F66', border: 'rgba(13,16,53,0.08)' }
+
+  const toggleBorder = isDark ? '#1E2240' : '#DDE2F5'
+  const toggleIconColor = isDark ? 'rgba(255,255,255,0.38)' : '#4A5280'
+  const shimmerGradient = isDark
+    ? 'linear-gradient(100deg, #E8ECFF 40%, #3ECFB2 50%, #E8ECFF 60%)'
+    : 'linear-gradient(100deg, #0D1035 40%, #3ECFB2 50%, #0D1035 60%)'
+
+  const logoUrl = isDark ? '/launch/interlinked-logo-dark.png' : '/launch/interlinked-logo-light.png'
+  const shotHeaderUrl = isDark ? '/launch/shot-header-dark.png' : '/launch/shot-header-light.png'
+  const shotAppUrl = isDark ? '/launch/shot-app-dark.png' : '/launch/shot-app-light.png'
+
+  const activeFeature = FEATURES[selectedFeature] ?? FEATURES.install
+
+  const toggleFaq = (i: number) => setFaqOpen(prev => ({ ...prev, [i]: !prev[i] }))
+
+  const tabStyle = (key: string): React.CSSProperties => {
+    const active = selectedFeature === key
+    return {
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: 14, fontWeight: 600, borderRadius: 20, padding: '9px 16px', cursor: 'pointer',
+      transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
+      color: active ? '#3ECFB2' : palette.textSubtle,
+      border: active ? '1px solid rgba(62,207,178,0.5)' : `1px solid ${palette.border}`,
+      background: active ? 'rgba(62,207,178,0.1)' : 'transparent',
     }
-
-    // 2. Create Stripe Checkout Session. The browser has no Supabase session
-    // yet (signup above used the admin API, which doesn't set auth cookies),
-    // so this takes the email-only branch inside startCheckoutSession — no
-    // client_reference_id is set, but the webhook's checkout.session.completed
-    // handler already falls back to matching the account by email, which
-    // resolves correctly since /api/atlas/signup just created that exact
-    // profile row.
-    let result
-    try {
-      result = await startCheckoutSession(selectedPlan.id, email)
-    } catch (err) {
-      setLoading(false)
-      setError('Failed to create checkout session. Please try again.')
-      return
-    }
-    setLoading(false)
-
-    if (!result.ok) {
-      setError('This email already has an active subscription.')
-      return
-    }
-
-    window.location.href = result.url
   }
 
   return (
-    <>
-      <style>{`
-        @font-face {
-          font-family: 'SF-Intellivised';
-          src: url('/fonts/SF-Intellivised.ttf') format('truetype');
-          font-weight: normal; font-style: normal; font-display: swap;
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <main style={{ margin: 0, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: palette.bg }}>
+      <style jsx global>{`
+        @font-face { font-family: 'SF-Intellivised'; src: url('/fonts/SF-Intellivised.ttf') format('truetype'); }
         html { scroll-behavior: smooth; }
-        body { background: #080809; color: #FFFFFF; }
-        ::selection { background: rgba(62,207,178,0.25); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
-        input::placeholder { color: rgba(255,255,255,0.20); }
-        input:focus { outline: none; border-color: rgba(62,207,178,0.5) !important; box-shadow: 0 0 0 3px rgba(62,207,178,0.08) !important; }
-        .plan-card { transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease; }
-        .plan-card:hover { transform: translateY(-3px); }
-        .feature-card { transition: background 0.18s ease, border-color 0.18s ease; }
-        .feature-card:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.08) !important; }
-        .cta-btn { transition: opacity 0.15s, transform 0.15s cubic-bezier(0.16,1,0.3,1), box-shadow 0.15s; }
-        .cta-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-        .cta-btn:active:not(:disabled) { transform: scale(0.98); }
-        .cta-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .nav-back { transition: color 0.12s; }
-        .nav-back:hover { color: #FFFFFF !important; }
-        .tos-link:hover { opacity: 0.75 !important; }
+        .launch-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
+        .launch-login-btn { display: inline-block; padding: 5px 12px; border-radius: 7px; background: none; font-size: 12px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; letter-spacing: -0.01em; line-height: 20px; text-decoration: none; transition: border-color 0.2s ease, color 0.2s ease; }
+        .launch-login-btn:hover { border-color: rgba(62,207,178,0.4) !important; color: #3ECFB2 !important; }
+        .launch-theme-toggle { width: 30px; height: 30px; border-radius: 7px; background: none; padding: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease; }
+        @keyframes launchThemeToggleJiggle {
+          0%, 100% { transform: rotate(0deg); }
+          15% { transform: rotate(-16deg); }
+          30% { transform: rotate(13deg); }
+          45% { transform: rotate(-10deg); }
+          60% { transform: rotate(7deg); }
+          75% { transform: rotate(-4deg); }
+          90% { transform: rotate(2deg); }
+        }
+        .launch-theme-toggle-jiggle { animation: launchThemeToggleJiggle 0.7s ease-in-out 1.4s 1 both; }
+
+        @keyframes launchHeroUnblur { from { filter: blur(10px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
+        @keyframes launchHeroFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes launchHeroSlideLeft { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes launchHeroSlideRight { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: translateX(0); } }
+        .launch-anim-logo-icon { animation: launchHeroUnblur 0.9s ease-out both; }
+        .launch-anim-logo-text { animation: launchHeroFadeIn 1.3s ease-out both; animation-delay: 0.25s; }
+        .launch-anim-logo-sub { animation: launchHeroFadeIn 1.1s ease-out both; animation-delay: 0.55s; }
+        .launch-anim-shot-left { animation: launchHeroSlideLeft 0.8s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.7s; }
+        .launch-anim-shot-right { animation: launchHeroSlideRight 0.8s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.85s; }
+
+        @keyframes launchScrollCueBounce { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(6px); opacity: 1; } }
+        .launch-scroll-cue { animation: launchScrollCueBounce 2.2s ease-in-out infinite; animation-delay: 1.6s; }
+
+        @keyframes launchSubscribeShimmer { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+        .launch-shimmer-text { background-size: 250% 100%; background-position: -150% 0; -webkit-background-clip: text; background-clip: text; color: transparent; animation: launchSubscribeShimmer 8s linear infinite; animation-delay: 1s; }
+
+        .launch-btn-primary { box-shadow: 0 8px 28px rgba(62,207,178,0.35), inset 0 1px 0 rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.22); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .launch-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(62,207,178,0.5), inset 0 1px 0 rgba(255,255,255,0.35); }
+        .launch-btn-secondary { background: rgba(232,236,255,0.05); border: 1px solid rgba(232,236,255,0.16); backdrop-filter: blur(6px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
+        .launch-btn-secondary:hover { transform: translateY(-2px); background: rgba(232,236,255,0.09); border-color: rgba(232,236,255,0.28); }
+        .launch-os-req { font-family: 'Space Grotesk', -apple-system, sans-serif; }
+
+        .launch-review-banner { width: 100%; }
+        .launch-review-slide {
+          position: absolute; top: 0; left: 0; right: 0;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          opacity: 0; animation: launchReviewCycle 36s ease-in-out infinite;
+        }
+        .launch-review-stars { color: #FFD469; font-size: 15px; letter-spacing: 2px; line-height: 1; }
+        .launch-review-quote { color: var(--launch-review-text); font-style: italic; font-weight: 500; font-size: 18px; text-align: center; max-width: 560px; line-height: 1.35; transition: color 0.3s ease; }
+        .launch-review-author { color: var(--launch-review-author); font-size: 12px; font-weight: 600; letter-spacing: 0.4px; margin-top: 1px; transition: color 0.3s ease; }
+        @keyframes launchReviewCycle {
+          0% { opacity: 0; transform: translateY(6px); }
+          2% { opacity: 1; transform: translateY(0); }
+          7% { opacity: 1; transform: translateY(0); }
+          9% { opacity: 0; transform: translateY(-6px); }
+          100% { opacity: 0; }
+        }
+
+        @keyframes launchFlowFileUp {
+          0% { offset-distance: 0%; opacity: 0; }
+          6% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { offset-distance: 100%; opacity: 0; }
+        }
+        .launch-flow-file {
+          position: absolute; width: 18px; height: 18px; border-radius: 5px;
+          display: flex; align-items: center; justify-content: center;
+          offset-path: path('M 160,280 C 112,230 222,190 160,145 C 108,105 224,62 160,25');
+          animation: launchFlowFileUp 5.2s cubic-bezier(0.37,0,0.63,1) infinite;
+        }
+        @keyframes launchScreenArrivalGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes launchScreenArrivalFlash { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .launch-screen-glow { animation: launchScreenArrivalGlow 0.87s ease-in-out infinite; }
+        .launch-screen-glow-fill { animation: launchScreenArrivalFlash 0.87s ease-in-out infinite; }
+        .launch-faq-item { border-bottom: 1px solid var(--launch-faq-border, rgba(232,236,255,0.08)); }
+        .launch-faq-q { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; cursor: pointer; list-style: none; user-select: none; background: none; border: none; width: 100%; text-align: left; }
+        .launch-faq-q:focus-visible { outline: 2px solid #3ECFB2; outline-offset: 2px; border-radius: 4px; }
+        .launch-faq-chevron { flex-shrink: 0; transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+        .launch-faq-a { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; padding: 0 2px 12px; margin: 0; }
+
+        @media (min-width: 681px) {
+          html { zoom: 1; }
+        }
+
+        @media (max-width: 680px) {
+          .launch-hero-section { padding: 20px !important; }
+          .launch-hero-logo-icon { width: 64px !important; height: 64px !important; }
+          .launch-hero-logo-text { font-size: 34px !important; letter-spacing: 14px !important; padding-left: 14px !important; }
+          .launch-hero-line1 { font-size: 18px !important; }
+          .launch-hero-subscribe { font-size: 30px !important; }
+          .launch-hero-cta-row { flex-direction: column !important; width: 100%; max-width: 260px; }
+          .launch-hero-cta-row .launch-btn { width: 100%; }
+          .launch-hero-shots, .launch-hero-visual { display: none !important; }
+          .launch-section-pad { padding-left: 20px !important; padding-right: 20px !important; }
+          .launch-plan-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
       `}</style>
 
-      {showTosModal && <TosModal onClose={() => setShowTosModal(false)} />}
-
-      <main style={{
-        minHeight: '100vh',
-        background: '#080809',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        WebkitFontSmoothing: 'antialiased',
-      }}>
-
-        {/* ── Top nav bar ── */}
-        <nav style={{
-          position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(8,8,9,0.85)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          padding: '0 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: '52px',
-        }}>
-          {/* Left slot: "Back to InterLinked" on landing, "← Back" on inner steps */}
-          {step === 'landing' ? (
-            <a
-              href="https://www.interlinked.digital/"
-              className="nav-back"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-                textDecoration: 'none', transition: 'color 0.12s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Back to InterLinked©
-            </a>
+      {/* Top-right bar: Login + Dark/Light toggle */}
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 50, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <a href="https://www.interlinked.digital/auth/login" className="launch-login-btn" style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}>Login</a>
+        <button
+          className="launch-theme-toggle launch-theme-toggle-jiggle"
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{ border: `1px solid ${toggleBorder}`, color: toggleIconColor }}
+        >
+          {isDark ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
           ) : (
-            <button
-              className="nav-back"
-              onClick={() => { setStep('landing'); setSelectedPlan(null) }}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-                display: 'flex', alignItems: 'center', gap: '6px',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Back
-            </button>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
           )}
-          {/* Right slot: Sign in */}
-          <a
-            href="/auth/login"
-            style={{
-              color: '#8A8A96', fontSize: '13px', fontWeight: 500,
-              textDecoration: 'none', transition: 'color 0.12s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-          >
-            Sign in
-          </a>
-        </nav>
+        </button>
+      </div>
 
-        {/* ── Landing / hero ── */}
-        {step === 'landing' && (
-          <div>
+      {/* ================= HERO ================= */}
+      <div className="launch-hero-section" style={{ width: '100%', height: 886, minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', left: 0, top: -26 }}>
 
-            {/* Hero */}
-            <section style={{
-              maxWidth: '860px', margin: '0 auto',
-              padding: '100px 24px 80px',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                opacity: heroIn ? 1 : 0,
-                transform: heroIn ? 'translateY(0)' : 'translateY(32px)',
-                transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)',
-              }}>
-                {/* ATLAS star logo */}
-                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-                  <img
-                    src="/atlas-logo.png"
-                    alt="ATLAS"
-                    style={{
-                      width: 'clamp(64px, 10vw, 88px)',
-                      height: 'clamp(64px, 10vw, 88px)',
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 0 28px rgba(62,207,178,0.22))',
-                    }}
-                  />
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-110px)' }}>
 
-                <h1 style={{
-                  fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
-                  fontSize: 'clamp(64px, 12vw, 110px)',
-                  fontWeight: 'normal',
-                  letterSpacing: 'clamp(14px, 2.5vw, 28px)',
-                  textIndent: 'clamp(14px, 2.5vw, 28px)',
-                  lineHeight: 1,
-                  marginBottom: '28px',
-                  background: 'linear-gradient(160deg, #FFFFFF 30%, rgba(255,255,255,0.55) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}>
-                  ATLAS
-                </h1>
-
-                <p style={{
-                  fontSize: '18px', fontWeight: 400,
-                  color: 'rgba(255,255,255,0.55)',
-                  letterSpacing: '-0.01em', lineHeight: 1.5,
-                  maxWidth: '480px', margin: '0 auto 14px',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 180ms',
-                }}>
-                  The future of macOS installation.
-                </p>
-
-                <p style={{
-                  fontSize: '13px',
-                  color: 'rgba(255,255,255,0.25)',
-                  letterSpacing: '3px',
-                  textTransform: 'uppercase',
-                  marginBottom: '48px',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 260ms',
-                }}>
-                  by InterLinked®
-                </p>
-
-                <div style={{
-                  display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap',
-                  opacity: heroIn ? 1 : 0,
-                  transition: 'opacity 0.8s cubic-bezier(0.16,1,0.3,1) 340ms',
-                }}>
-                  <button
-                    className="cta-btn"
-                    onClick={() => setStep('plan')}
-                    style={{
-                      background: '#3ECFB2',
-                      border: 'none',
-                      borderRadius: '10px',
-                      padding: '12px 28px',
-                      color: '#080809',
-                      fontSize: '14px', fontWeight: 700,
-                      cursor: 'pointer',
-                      letterSpacing: '-0.01em',
-                      boxShadow: '0 0 32px rgba(62,207,178,0.25)',
-                    }}
-                  >
-                    Get started →
-                  </button>
-                  <a
-                    href="/auth/login"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '10px',
-                      padding: '12px 24px',
-                      color: '#FFFFFF',
-                      fontSize: '14px', fontWeight: 500,
-                      cursor: 'pointer',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    Sign in
-                  </a>
-                </div>
-              </div>
-            </section>
-
-            {/* Divider */}
-            <div style={{
-              width: '100%', height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
-            }} />
-
-            {/* Features */}
-            <section style={{
-              maxWidth: '860px', margin: '0 auto',
-              padding: '80px 24px',
-            }}>
-              <FadeUp>
-                <p style={{
-                  textAlign: 'center',
-                  fontSize: '11px', fontWeight: 600,
-                  letterSpacing: '3px', textTransform: 'uppercase',
-                  color: '#3ECFB2', marginBottom: '40px',
-                }}>
-                  What ATLAS does
-                </p>
-              </FadeUp>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '14px',
-              }}>
-                {FEATURES.map((f, i) => (
-                  <FadeUp key={f.title} delay={i * 90}>
-                    <div
-                      className="feature-card"
-                      style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        borderRadius: '14px',
-                        padding: '24px',
-                        height: '100%',
-                      }}
-                    >
-                      <div style={{ fontSize: '22px', marginBottom: '14px', lineHeight: 1 }}>{f.icon}</div>
-                      <h3 style={{
-                        fontSize: '14px', fontWeight: 600,
-                        color: '#FFFFFF', marginBottom: '8px',
-                        letterSpacing: '-0.01em',
-                      }}>{f.title}</h3>
-                      <p style={{
-                        fontSize: '13px', color: '#525260',
-                        lineHeight: 1.6, letterSpacing: '-0.005em',
-                      }}>{f.desc}</p>
-                    </div>
-                  </FadeUp>
-                ))}
-              </div>
-            </section>
-
-            {/* Divider */}
-            <div style={{
-              width: '100%', height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent)',
-            }} />
-
-            {/* Plans teaser */}
-            <section style={{
-              maxWidth: '560px', margin: '0 auto',
-              padding: '80px 24px 100px',
-              textAlign: 'center',
-            }}>
-              <FadeUp>
-                <p style={{
-                  fontSize: '11px', fontWeight: 600,
-                  letterSpacing: '3px', textTransform: 'uppercase',
-                  color: '#44444E', marginBottom: '18px',
-                }}>
-                  Pricing
-                </p>
-                <h2 style={{
-                  fontSize: '32px', fontWeight: 700,
-                  color: '#FFFFFF', marginBottom: '14px',
-                  letterSpacing: '-0.03em', lineHeight: 1.15,
-                }}>
-                  Pick a plan. Start installing.
-                </h2>
-                <p style={{
-                  fontSize: '14px', color: '#525260',
-                  lineHeight: 1.6, marginBottom: '36px',
-                }}>
-                  One plan. Bulk installs, uninstall & rollback, TITAN CORE™,
-                  Smart Storage, and full install history — all included.
-                </p>
-                <button
-                  className="cta-btn"
-                  onClick={() => setStep('plan')}
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    borderRadius: '10px',
-                    padding: '12px 28px',
-                    color: '#FFFFFF',
-                    fontSize: '14px', fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  See plans →
-                </button>
-              </FadeUp>
-            </section>
-          </div>
-        )}
-
-        {/* ── Plan selection ── */}
-        {step === 'plan' && (
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '48px 24px 80px' }}>
-            <FadeUp>
-              <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: '28px', fontWeight: 700,
-                  color: '#FFFFFF', letterSpacing: '-0.03em', marginBottom: '10px',
-                }}>
-                  Choose your plan
-                </h2>
-                <p style={{ fontSize: '14px', color: '#525260' }}>
-                  Subscribe and create your account — takes 60 seconds
-                </p>
-              </div>
-            </FadeUp>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '24px' }}>
-              {PLANS.map((plan, i) => (
-                <FadeUp key={plan.id} delay={i * 80}>
-                  <div
-                    className="plan-card"
-                    style={{
-                      background: '#0E0E10',
-                      borderRadius: '16px',
-                      border: plan.recommended
-                        ? `1px solid ${plan.accentColor}40`
-                        : '1px solid rgba(255,255,255,0.07)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      boxShadow: plan.recommended
-                        ? `0 0 40px ${plan.accentColor}14`
-                        : 'none',
-                    }}
-                  >
-                    {plan.recommended && (
-                      <div style={{
-                        background: `${plan.accentColor}18`,
-                        borderBottom: `1px solid ${plan.accentColor}28`,
-                        padding: '6px 0',
-                        textAlign: 'center',
-                        color: plan.accentColor,
-                        fontSize: '9px', fontWeight: 800,
-                        letterSpacing: '2.5px',
-                      }}>
-                        MOST POPULAR
-                      </div>
-                    )}
-
-                    <div style={{
-                      padding: '20px 20px 16px',
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                      <div style={{
-                        color: plan.accentColor,
-                        fontSize: '9px', fontWeight: 800,
-                        letterSpacing: '2px', marginBottom: '12px',
-                        textTransform: 'uppercase',
-                      }}>
-                        {plan.name}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                        <span style={{ color: '#FFFFFF', fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                          {plan.price}
-                        </span>
-                        <span style={{ color: '#525260', fontSize: '12px' }}>{plan.period}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                      {plan.features.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ color: plan.accentColor, fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>✓</span>
-                          <span style={{ color: '#CCCCCC', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
-                        </div>
-                      ))}
-                      {plan.excluded.map(f => (
-                        <div key={f} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '10px', fontWeight: 700, marginTop: '2px', flexShrink: 0 }}>·</span>
-                          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '12px', lineHeight: 1.45 }}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ padding: '0 16px 16px' }}>
-                      <button
-                        className="cta-btn"
-                        onClick={() => handleSelectPlan(plan)}
-                        style={{
-                          width: '100%', padding: '10px',
-                          borderRadius: '10px',
-                          border: plan.recommended ? 'none' : `1px solid ${plan.accentColor}35`,
-                          background: plan.recommended
-                            ? plan.accentColor
-                            : `${plan.accentColor}12`,
-                          color: plan.recommended ? '#080809' : plan.accentColor,
-                          fontSize: '12px', fontWeight: 700,
-                          cursor: 'pointer', letterSpacing: '-0.01em',
-                        }}
-                      >
-                        Get started — {plan.name}
-                      </button>
-                    </div>
-                  </div>
-                </FadeUp>
-              ))}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <img className="launch-anim-logo-icon launch-hero-logo-icon" src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
+            <div className="launch-anim-logo-text launch-hero-logo-text" style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 60, fontWeight: 'normal', letterSpacing: 34, color: palette.text, textTransform: 'uppercase', paddingLeft: 34, lineHeight: 1, transition: 'color 0.3s ease' }}>ATLAS</div>
+            <div className="launch-anim-logo-sub" onMouseDown={startLogoDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -26, transform: `translate(${logoDrag.x}px, ${logoDrag.y}px)`, cursor: dragState.current.dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}>
+              <span style={{ fontStyle: 'italic', fontSize: 14, color: palette.textMuted }}>by</span>
+              <img src={logoUrl} alt="InterLinked" draggable={false} style={{ width: 130, height: 'auto', display: 'block', opacity: 0.85, pointerEvents: 'none' }} />
             </div>
-
-            <FadeUp delay={200}>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px', marginBottom: '6px' }}>
-                  Secure payment via Stripe · Cancel anytime
-                </p>
-                <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '12px' }}>
-                  Already subscribed?{' '}
-                  <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in →</a>
-                </p>
-              </div>
-            </FadeUp>
           </div>
-        )}
 
-        {/* ── Account creation ── */}
-        {step === 'account' && selectedPlan && (
-          <div style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 24px 80px' }}>
-            <FadeUp>
-              {/* Plan badge */}
-              <div style={{
-                background: `${selectedPlan.accentColor}0C`,
-                border: `1px solid ${selectedPlan.accentColor}28`,
-                borderRadius: '12px',
-                padding: '12px 16px',
-                marginBottom: '16px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div>
-                  <div style={{
-                    color: selectedPlan.accentColor, fontSize: '9px',
-                    fontWeight: 800, letterSpacing: '2px',
-                    textTransform: 'uppercase', marginBottom: '4px',
-                  }}>
-                    {selectedPlan.name} Plan
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                    <span style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: 700 }}>{selectedPlan.price}</span>
-                    <span style={{ color: '#525260', fontSize: '11px' }}>{selectedPlan.period}</span>
-                  </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(145px)' }}>
+
+          <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 'normal' }}>
+            <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease', marginTop: 24 }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
+            <div className="launch-shimmer-text launch-hero-subscribe" style={{ fontSize: 56, fontWeight: 800, marginTop: 4, letterSpacing: -0.5, display: 'inline-block', backgroundImage: shimmerGradient }}>Subscribe Now.</div>
+          </h1>
+
+          <div className="launch-hero-cta-row" style={{ display: 'flex', gap: 16, zIndex: 5, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <a href="/atlas/plans" className="launch-btn launch-btn-primary" style={{ background: '#3ECFB2', color: palette.text, fontWeight: 800, fontSize: 16, padding: '16px 32px', borderRadius: 999, gap: 8, transition: 'color 0.3s ease' }}>
+                <img src="/launch/apple-logo.png" alt="" style={{ width: 22, height: 22, objectFit: 'contain', display: 'block' }} />
+                Get ATLAS V1
+              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div className="launch-os-req" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>
+                  <img src="/launch/apple-logo.png" alt="" style={{ width: 15, height: 15, objectFit: 'contain', opacity: 0.8 }} />
+                  macOS Monterey or Above.
                 </div>
-                <button
-                  onClick={() => { setStep('plan'); setError(''); setTosAgreed(false) }}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '7px', padding: '5px 12px',
-                    color: '#8A8A96', fontSize: '11px', fontWeight: 500,
-                    cursor: 'pointer', transition: 'color 0.12s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#8A8A96')}
-                >
-                  Change
+                <div className="launch-os-req" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6, opacity: 0.7 }}>
+                  <img src="/launch/windows-logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.85 }} />
+                  Windows Version Coming Soon.
+                </div>
+              </div>
+            </div>
+            <a href="#demo" className="launch-btn launch-btn-secondary" style={{ color: palette.text, fontWeight: 700, fontSize: 16, padding: '16px 32px', borderRadius: 999 }}>
+              View Demo
+            </a>
+          </div>
+
+          <div className="launch-review-banner" style={{ position: 'relative', height: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22, ['--launch-review-text' as any]: palette.text, ['--launch-review-author' as any]: palette.textMuted }}>
+            {REVIEWS.map((r, i) => (
+              <div className="launch-review-slide" key={r.author} style={{ animationDelay: `${i * 4.5}s` }}>
+                <div className="launch-review-stars">★★★★★</div>
+                <div className="launch-review-quote">“{r.quote}”</div>
+                <div className="launch-review-author">— {r.author}</div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+        </div>
+
+        <div className="launch-hero-shots" style={{ position: 'absolute', left: 40, top: 267, width: 422, height: 378 }}>
+          <div className="launch-anim-shot-left" style={{ position: 'absolute', top: 0, left: 0, width: 360, height: 260, borderRadius: 10, boxShadow: '0 30px 60px rgba(0,0,0,0.35)', overflow: 'hidden', border: `1px solid ${palette.border}` }}>
+            <img src={shotHeaderUrl} alt="ATLAS splash screen" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </div>
+          <div className="launch-anim-shot-right" style={{ position: 'absolute', top: 140, left: 90, width: 330, height: 220, borderRadius: 10, boxShadow: '0 30px 60px rgba(0,0,0,0.45)', overflow: 'hidden', border: `1px solid ${palette.border}` }}>
+            <img src={shotAppUrl} alt="ATLAS drop-files window" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </div>
+        </div>
+
+        <div className="launch-hero-visual" style={{ position: 'absolute', right: 50, top: 310, width: 320, height: 350, filter: `blur(${scrollBlur * 0.35}px)`, opacity: scrollFade, transition: 'filter 0.05s linear, opacity 0.05s linear', transform: 'scale(1.45)', transformOrigin: 'center', pointerEvents: 'none' }}>
+
+          {/* Mac screen (top) — glows on each file arrival */}
+          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 150, height: 108 }}>
+            <div className="launch-screen-glow" style={{ position: 'absolute', inset: -40, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,207,178,0.75) 0%, rgba(62,207,178,0.25) 45%, transparent 72%)', filter: 'blur(18px)' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 150, height: 96, borderRadius: 10, border: `2px solid ${palette.textMuted}`, background: '#0C0C12' }}>
+              <div className="launch-screen-glow-fill" style={{ position: 'absolute', inset: 3, borderRadius: 4, background: 'radial-gradient(circle at 50% 60%, rgba(62,207,178,0.5), rgba(62,207,178,0.05) 70%)' }} />
+            </div>
+            <div style={{ position: 'absolute', top: 96, left: '50%', transform: 'translateX(-50%)', width: 44, height: 9, background: palette.textMuted, borderRadius: '0 0 3px 3px' }} />
+            <div style={{ position: 'absolute', top: 105, left: '50%', transform: 'translateX(-50%)', width: 68, height: 4, background: palette.textMuted, borderRadius: 2, opacity: 0.8 }} />
+          </div>
+
+          {/* ATLAS app window (bottom) — files leave from here */}
+          <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 132, height: 88, borderRadius: 9, border: `1px solid ${palette.border}`, background: palette.bgCard, boxShadow: '0 16px 36px rgba(0,0,0,0.25)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 20, borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'center', gap: 4, padding: '0 8px', boxSizing: 'border-box' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E05555' }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E0B155' }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#55C27A' }} />
+            </div>
+            <img src="/launch/atlas-logo-icon.png" alt="" style={{ position: 'absolute', top: 38, left: '50%', transform: 'translateX(-50%)', width: 30, height: 30, objectFit: 'contain', opacity: 0.9 }} />
+          </div>
+
+          {/* Ambient vertical light column connecting app to screen */}
+          <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', width: 2, height: 154, background: 'linear-gradient(to top, rgba(62,207,178,0.3), rgba(94,106,210,0.12) 50%, transparent)', filter: 'blur(3px)' }} />
+
+          {/* Files leaving the app — varied audio-software/file icon chips, each
+              traveling the same smooth curved path up to the screen. */}
+          <div className="launch-flow-file" style={{ animationDelay: '0s', background: '#3ECFB2' }}>
+            <svg viewBox="0 0 20 20"><path d="M4 13V9 M8 15V5 M12 16V4 M16 12V10" stroke="#06211D" strokeWidth={2} strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-0.87s', background: '#5E6AD2' }}>
+            <svg viewBox="0 0 20 20"><circle cx="7" cy="14" r="2.4" fill="#fff" /><circle cx="15" cy="11" r="2.4" fill="#fff" /><path d="M9.4 14V5.5L17.4 4V11" stroke="#fff" strokeWidth={1.6} fill="none" strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-1.73s', background: '#F0A030' }}>
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="#3A2600" strokeWidth={1.8} /><line x1="10" y1="10" x2="10" y2="5" stroke="#3A2600" strokeWidth={1.8} strokeLinecap="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-2.6s', background: '#E8ECFF' }}>
+            <svg viewBox="0 0 20 20"><path d="M5 2.5h7l3 3V17.5H5z" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /><path d="M12 2.5v3h3" fill="none" stroke="#20244A" strokeWidth={1.6} strokeLinejoin="round" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-3.47s', background: '#E05555' }}>
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="5.5" r="2.4" fill="#fff" /><path d="M10 8v5 M6.5 17l2-4h3l2 4" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" fill="none" /></svg>
+          </div>
+          <div className="launch-flow-file" style={{ animationDelay: '-4.33s', background: '#3ECFB2' }}>
+            <svg viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" rx="1.5" fill="none" stroke="#06211D" strokeWidth={1.6} /><path d="M3 8h14" stroke="#06211D" strokeWidth={1.6} /></svg>
+          </div>
+        </div>
+
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, background: `linear-gradient(to bottom, transparent, ${palette.bg})`, transition: 'background 0.3s ease', pointerEvents: 'none', zIndex: 25 }} />
+
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 20, zIndex: 30, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <a href="#demo" className="launch-scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textDecoration: 'none', cursor: 'pointer', pointerEvents: 'auto' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: palette.textMuted }}>Scroll to explore</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={palette.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </a>
+        </div>
+      </div>
+
+      {/* ================= DEMO ================= */}
+      <div id="demo" className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '72px 48px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: '#3ECFB2' }}>DEMO</div>
+        <h2 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.035em', color: palette.text, textAlign: 'center', margin: 0 }}>See ATLAS in Action</h2>
+        <p style={{ fontSize: 14, color: palette.textMuted, textAlign: 'center', maxWidth: 480, margin: 0 }}>A closer look at ATLAS&apos;s Features Overview — see installation, uninstallation, rollback, and more in action.</p>
+        <div style={{ width: '100%', maxWidth: 680, height: 1, background: palette.border, margin: '8px auto' }} />
+        <div style={{ width: '100%', maxWidth: 760, aspectRatio: '16/9', background: palette.bgCard, borderRadius: 14, border: `1px solid ${palette.border}`, overflow: 'hidden' }}>
+          <iframe src="https://www.youtube.com/embed/q2W9QkBKz2c?rel=0&modestbranding=1&color=white&fs=0" title="ATLAS Demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} />
+        </div>
+      </div>
+
+      {/* ================= FEATURES / PLAN ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '24px 48px 72px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <h2 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em', color: '#3ECFB2', textAlign: 'center', margin: 0 }}>Features</h2>
+        <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 15, color: palette.textSubtle, textAlign: 'center', margin: '-8px 0 0' }}>Select a feature to see what it does.</p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%', maxWidth: 760 }}>
+          {FEATURE_TABS.map(tab => (
+            <button key={tab.key} onClick={() => setSelectedFeature(tab.key)} style={tabStyle(tab.key)}>{tab.label}</button>
+          ))}
+        </div>
+
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 16, lineHeight: 1.6, color: palette.text, background: 'rgba(62,207,178,0.06)', border: '1px solid rgba(62,207,178,0.18)', borderRadius: 14, padding: 16, width: '100%', maxWidth: 760, textAlign: 'left', boxSizing: 'border-box' }}>
+          <span style={{ display: 'block', fontWeight: 700, color: '#3ECFB2', marginBottom: 6, fontSize: 16 }}>{activeFeature.title}</span>
+          {activeFeature.body}
+        </div>
+
+        <h3 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 18, fontWeight: 700, color: palette.text, textAlign: 'center', margin: '4px 0 0' }}>Everything in the ATLAS plan</h3>
+        <div className="launch-plan-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px 10px', width: '100%', maxWidth: 760, justifyContent: 'center' }}>
+          {PLAN_BULLETS.map(label => (
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 14, lineHeight: 1.35, color: palette.textSubtle }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECFB2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ================= FAQ ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bg, transition: 'background 0.3s ease', padding: '24px 48px 80px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', ['--launch-faq-border' as any]: palette.border }}>
+        <div style={{ width: '100%', maxWidth: 600 }}>
+          <h2 style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 17, fontWeight: 700, color: '#3ECFB2', textAlign: 'center', margin: '0 0 6px' }}>FAQ</h2>
+
+          {FAQS.map((item, idx) => {
+            const i = idx + 1
+            const open = !!faqOpen[i]
+            return (
+              <div className="launch-faq-item" key={i}>
+                <button className="launch-faq-q" onClick={() => toggleFaq(i)} style={{ color: palette.text }}>
+                  <span>{item.q}</span>
+                  <svg className="launch-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: palette.textSubtle, transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}><polyline points="6 9 12 15 18 9" /></svg>
                 </button>
-              </div>
-
-              {/* Form card */}
-              <div style={{
-                background: '#0E0E10',
-                borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.07)',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  padding: '16px 20px',
-                  borderBottom: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <h2 style={{
-                    color: '#FFFFFF', fontSize: '14px', fontWeight: 600,
-                    letterSpacing: '-0.01em', marginBottom: '4px',
-                  }}>Create your account</h2>
-                  <p style={{ color: '#525260', fontSize: '12px' }}>
-                    You&apos;ll complete payment right after
-                  </p>
+                <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.5s cubic-bezier(0.16,1,0.3,1)' }}>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p className="launch-faq-a" style={{ color: palette.textSubtle, opacity: open ? 1 : 0, transition: `opacity 0.35s ease ${open ? '0.15s' : '0s'}` }}>{item.a}</p>
+                  </div>
                 </div>
-
-                <form onSubmit={handleSignup} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {error && (
-                    <div style={{
-                      background: 'rgba(224,85,85,0.08)',
-                      border: '1px solid rgba(224,85,85,0.20)',
-                      borderRadius: '9px', padding: '10px 14px',
-                      color: '#E05555', fontSize: '12px', lineHeight: 1.5,
-                    }}>{error}</div>
-                  )}
-
-                  <input type="email" placeholder="Email address" value={email}
-                    onChange={e => setEmail(e.target.value)} required style={inputStyle} />
-
-                  <input type="email" placeholder="Confirm email address" value={confirmEmail}
-                    onChange={e => setConfirmEmail(e.target.value)} required style={inputStyle} />
-
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Password (min 8 chars)"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      style={{ ...inputStyle, paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      style={{
-                        position: 'absolute', right: '12px', top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#525260', padding: '2px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'color 0.12s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
-                      tabIndex={-1}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
-                  </div>
-
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirm password"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required
-                      style={{ ...inputStyle, paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(v => !v)}
-                      style={{
-                        position: 'absolute', right: '12px', top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#525260', padding: '2px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'color 0.12s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#8A8A96')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#525260')}
-                      tabIndex={-1}
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
-                  </div>
-
-                  {/* ToS */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <div
-                      onClick={() => setTosAgreed(a => !a)}
-                      style={{
-                        width: '18px', height: '18px', flexShrink: 0,
-                        borderRadius: '5px', cursor: 'pointer',
-                        border: `1.5px solid ${tosAgreed ? '#3ECFB2' : 'rgba(255,255,255,0.15)'}`,
-                        background: tosAgreed ? 'rgba(62,207,178,0.14)' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'border-color 0.15s, background 0.15s',
-                      }}
-                    >
-                      {tosAgreed && (
-                        <span style={{ color: '#3ECFB2', fontSize: '10px', fontWeight: 800, lineHeight: 1 }}>✓</span>
-                      )}
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#525260' }}>
-                      I agree to the{' '}
-                      <button
-                        type="button"
-                        className="tos-link"
-                        onClick={() => setShowTosModal(true)}
-                        style={{
-                          background: 'none', border: 'none', padding: 0,
-                          color: '#3ECFB2', fontSize: '12px',
-                          cursor: 'pointer', textDecoration: 'underline',
-                          fontFamily: 'inherit', opacity: 1,
-                          transition: 'opacity 0.12s',
-                        }}
-                      >
-                        Terms of Service
-                      </button>
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || !tosAgreed}
-                    className="cta-btn"
-                    style={{
-                      width: '100%', padding: '12px',
-                      border: 'none', borderRadius: '10px',
-                      background: `linear-gradient(135deg, ${selectedPlan.accentColor}, ${selectedPlan.accentColor}CC)`,
-                      color: selectedPlan.recommended ? '#080809' : '#fff',
-                      fontSize: '13px', fontWeight: 700,
-                      cursor: tosAgreed && !loading ? 'pointer' : 'not-allowed',
-                      marginTop: '4px',
-                      letterSpacing: '-0.01em',
-                      boxShadow: tosAgreed ? `0 0 24px ${selectedPlan.accentColor}22` : 'none',
-                      transition: 'box-shadow 0.2s',
-                    }}
-                  >
-                    {loading ? 'Creating account…' : 'Continue to checkout →'}
-                  </button>
-
-                  <p style={{ color: 'rgba(255,255,255,0.20)', fontSize: '11px', textAlign: 'center' }}>
-                    Already have an account?{' '}
-                    <a href="/auth/login" style={{ color: '#3ECFB2', textDecoration: 'none' }}>Sign in</a>
-                  </p>
-                </form>
               </div>
-            </FadeUp>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ================= FOOTER ================= */}
+      <div className="launch-section-pad" style={{ width: '100%', background: palette.bgFooter, transition: 'background 0.3s ease', padding: '48px 48px 32px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <span style={{ fontFamily: "'SF-Intellivised', -apple-system, sans-serif", fontSize: 16, letterSpacing: 6, color: palette.text, textTransform: 'uppercase' }}>ATLAS</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <a href="mailto:interlinked.digital@gmail.com" aria-label="Email InterLinked" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+          </a>
+          <a href="https://www.instagram.com/interlinked.___" aria-label="InterLinked on Instagram" target="_blank" rel="noopener" className="launch-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', border: `1px solid ${palette.border}`, color: palette.textSubtle }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>
+          </a>
+        </div>
+
+        <div style={{ display: 'flex', gap: 28, fontSize: 13, fontWeight: 500, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href="https://www.interlinked.digital" className="launch-btn" style={{ color: palette.textSubtle }}>InterLinked Digital</a>
+          <a href="https://www.interlinked.digital/atlas/terms" className="launch-btn" style={{ color: palette.textSubtle }}>Terms of Service</a>
+          <a href="https://www.interlinked.digital/atlas/privacy" className="launch-btn" style={{ color: palette.textSubtle }}>Privacy</a>
+          <button onClick={() => setSupportOpen(true)} className="launch-btn" style={{ color: palette.textSubtle, cursor: 'pointer', background: 'none', border: 'none', font: 'inherit' }}>Support</button>
+        </div>
+        <div style={{ fontSize: 11, color: palette.textMuted }}>© 2026 InterLinked Digital. All rights reserved.</div>
+      </div>
+
+      {/* Support modal */}
+      {supportOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setSupportOpen(false)}>
+          <div style={{ width: 420, background: '#141416', borderRadius: 16, padding: 28, boxSizing: 'border-box', border: '1px solid #26262A', boxShadow: '0 40px 80px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#F2F2F0' }}>Contact Support</div>
+              <span onClick={() => setSupportOpen(false)} style={{ cursor: 'pointer', color: '#8A8A96', fontSize: 20, lineHeight: 1 }}>×</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#8A8A96', marginBottom: 6, fontWeight: 600 }}>ISSUE TYPE</div>
+            <select style={{ width: '100%', background: '#0E0E10', border: '1px solid #2A2A2E', borderRadius: 8, padding: '10px 12px', color: '#D6D6DA', fontSize: 13, marginBottom: 14, boxSizing: 'border-box' }}>
+              <option>Installation Issue</option>
+              <option>Billing Question</option>
+              <option>Account Access</option>
+              <option>General</option>
+            </select>
+            <div style={{ fontSize: 12, color: '#8A8A96', marginBottom: 6, fontWeight: 600 }}>MESSAGE</div>
+            <textarea placeholder="How can we help?" style={{ width: '100%', height: 100, background: '#0E0E10', border: '1px solid #2A2A2E', borderRadius: 8, padding: '10px 12px', color: '#D6D6DA', fontSize: 13, boxSizing: 'border-box', resize: 'none', fontFamily: 'inherit' }} />
+            <button style={{ marginTop: 16, width: '100%', background: '#3ECFB2', color: '#06211D', fontWeight: 800, fontSize: 14, padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>Send Message</button>
+            <div style={{ marginTop: 12, fontSize: 11, color: '#5A5A62', textAlign: 'center' }}>Or email us directly at <span style={{ color: '#8A8A96' }}>interlinked.digital@gmail.com</span></div>
           </div>
-        )}
-
-        {/* Footer */}
-        <footer style={{
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-          padding: '24px',
-          textAlign: 'center',
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', letterSpacing: '0.02em' }}>
-            InterLinked® · All rights reserved
-          </p>
-        </footer>
-
-      </main>
-    </>
+        </div>
+      )}
+    </main>
   )
-}
-
-function EyeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 8C1 8 3.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 12.5 12.5 8 12.5C3.5 12.5 1 8 1 8Z"
-        stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  )
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2 2L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M6.5 4C7 3.8 7.5 3.5 8 3.5C12.5 3.5 15 8 15 8C15 8 14.3 9.3 13.2 10.4"
-        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M4 5.5C2.6 6.5 1.5 7.7 1 8C1 8 3.5 12.5 8 12.5C9.2 12.5 10.3 12.1 11.2 11.5"
-        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M5.8 5.8A2 2 0 0 0 10.2 10.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.09)',
-  borderRadius: '9px',
-  color: '#FFFFFF',
-  fontSize: '13px',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-  letterSpacing: '-0.005em',
 }
