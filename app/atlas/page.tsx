@@ -380,7 +380,7 @@ export default function ATLASLaunchPage() {
 
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, background: `linear-gradient(to bottom, transparent, ${palette.bg})`, transition: 'background 0.3s ease', pointerEvents: 'none', zIndex: 25 }} />
 
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 20, zIndex: 30, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 4, zIndex: 30, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
           <a href="#demo" className="launch-scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textDecoration: 'none', cursor: 'pointer', pointerEvents: 'auto' }}>
             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: palette.textMuted }}>Scroll to explore</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={palette.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
