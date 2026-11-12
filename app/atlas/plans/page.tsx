@@ -207,14 +207,14 @@ export default function PlansPage() {
         .plans-flow-file {
           position: absolute; width: 18px; height: 18px; border-radius: 5px;
           display: flex; align-items: center; justify-content: center;
-          offset-path: path('M 20,110 C 140,40 280,180 410,110 C 540,40 680,180 800,110');
+          offset-path: path('M 20,130 C 150,50 300,210 440,130 C 580,50 730,210 880,130');
           animation: plansFlowFileAcross 5.2s cubic-bezier(0.37,0,0.63,1) infinite;
         }
         @keyframes plansScreenArrivalGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
         @keyframes plansScreenArrivalFlash { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         .plans-screen-glow { animation: plansScreenArrivalGlow 0.87s ease-in-out infinite; }
         .plans-screen-glow-fill { animation: plansScreenArrivalFlash 0.87s ease-in-out infinite; }
-        @media (max-width: 980px) {
+        @media (max-width: 1060px) {
           .plans-flow-visual { display: none !important; }
         }
       `}</style>
@@ -335,25 +335,25 @@ export default function PlansPage() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 80px' }}>
           <div style={{ position: 'relative' }}>
             {/* App window (left) -> Mac screen (right), icons flowing behind the card */}
-            <div className="plans-flow-visual" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 820, height: 220, pointerEvents: 'none', zIndex: 0 }}>
+            <div className="plans-flow-visual" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 900, height: 260, pointerEvents: 'none', zIndex: 0 }}>
               {/* ATLAS app window (left) — files leave from here */}
-              <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 110, height: 76, borderRadius: 9, border: '1px solid var(--atlas-border-faint)', background: 'var(--atlas-plans-card)', boxShadow: '0 16px 36px rgba(0,0,0,0.25)' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, borderBottom: '1px solid var(--atlas-border-faint)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 7px', boxSizing: 'border-box' }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#E05555' }} />
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#E0B155' }} />
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#55C27A' }} />
+              <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 165, height: 114, borderRadius: 12, border: '1px solid var(--atlas-border-faint)', background: 'var(--atlas-plans-card)', boxShadow: '0 20px 44px rgba(0,0,0,0.25)' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderBottom: '1px solid var(--atlas-border-faint)', display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', boxSizing: 'border-box' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#E05555' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#E0B155' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#55C27A' }} />
                 </div>
-                <img src="/atlas-logo.png" alt="" style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', width: 26, height: 26, objectFit: 'contain', opacity: 0.9 }} />
+                <img src="/atlas-logo.png" alt="" style={{ position: 'absolute', top: 44, left: '50%', transform: 'translateX(-50%)', width: 39, height: 39, objectFit: 'contain', opacity: 0.9 }} />
               </div>
 
               {/* Mac screen (right) — glows on each file arrival */}
-              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 128, height: 92 }}>
-                <div className="plans-screen-glow" style={{ position: 'absolute', inset: -36, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,207,178,0.75) 0%, rgba(62,207,178,0.25) 45%, transparent 72%)', filter: 'blur(16px)' }} />
-                <div style={{ position: 'absolute', top: 0, left: 0, width: 128, height: 82, borderRadius: 9, border: '2px solid var(--atlas-text-dim)', background: '#0C0C12' }}>
-                  <div className="plans-screen-glow-fill" style={{ position: 'absolute', inset: 3, borderRadius: 4, background: 'radial-gradient(circle at 50% 60%, rgba(62,207,178,0.5), rgba(62,207,178,0.05) 70%)' }} />
+              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 192, height: 138 }}>
+                <div className="plans-screen-glow" style={{ position: 'absolute', inset: -54, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,207,178,0.75) 0%, rgba(62,207,178,0.25) 45%, transparent 72%)', filter: 'blur(20px)' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 192, height: 123, borderRadius: 12, border: '3px solid var(--atlas-text-dim)', background: '#0C0C12' }}>
+                  <div className="plans-screen-glow-fill" style={{ position: 'absolute', inset: 4, borderRadius: 6, background: 'radial-gradient(circle at 50% 60%, rgba(62,207,178,0.5), rgba(62,207,178,0.05) 70%)' }} />
                 </div>
-                <div style={{ position: 'absolute', top: 82, left: '50%', transform: 'translateX(-50%)', width: 38, height: 8, background: 'var(--atlas-text-dim)', borderRadius: '0 0 3px 3px' }} />
-                <div style={{ position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%)', width: 58, height: 3, background: 'var(--atlas-text-dim)', borderRadius: 2, opacity: 0.8 }} />
+                <div style={{ position: 'absolute', top: 123, left: '50%', transform: 'translateX(-50%)', width: 56, height: 12, background: 'var(--atlas-text-dim)', borderRadius: '0 0 4px 4px' }} />
+                <div style={{ position: 'absolute', top: 135, left: '50%', transform: 'translateX(-50%)', width: 86, height: 4, background: 'var(--atlas-text-dim)', borderRadius: 3, opacity: 0.8 }} />
               </div>
 
               {/* Files leaving the app, flowing across to the screen */}
