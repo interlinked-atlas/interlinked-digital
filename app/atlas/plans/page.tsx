@@ -22,7 +22,6 @@ const MONTHLY = {
     'ATLAS RECOVERY KIT™',
     'Cloud Backup',
     'Built-In Virus Scanner',
-    'File Sharing (Coming Soon)',
   ],
 }
 
@@ -191,6 +190,9 @@ export default function PlansPage() {
           -webkit-text-fill-color: #0D1035 !important;
           color: #0D1035;
         }
+        .plans-interlinked-logo-light { display: none; }
+        html.light .plans-interlinked-logo-dark { display: none !important; }
+        html.light .plans-interlinked-logo-light { display: inline-block !important; }
       `}</style>
 
       {/* ── Fixed bottom scroll hint ── */}
@@ -274,30 +276,29 @@ export default function PlansPage() {
             transform: heroIn ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: '20px' }}>
               <img
                 src="/atlas-logo.png"
                 alt="ATLAS"
-                style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(62,207,178,0.25))' }}
+                style={{ width: 56, height: 56, objectFit: 'contain' }}
               />
               <h1 className="plans-atlas-title" style={{
                 fontFamily: "'SF-Intellivised', -apple-system, sans-serif",
-                fontSize: '32px',
+                fontSize: '34px',
                 fontWeight: 'normal',
-                letterSpacing: '10px',
-                textIndent: '10px',
+                letterSpacing: '12px',
+                textIndent: '12px',
                 lineHeight: 1,
                 margin: 0,
-                background: 'linear-gradient(160deg, #FFFFFF 30%, rgba(255,255,255,0.55) 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                color: 'var(--atlas-fg)',
               }}>
                 ATLAS
               </h1>
-              <span style={{ fontSize: '10px', color: 'var(--atlas-text-dim)', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                by InterLinked®
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                <span style={{ fontStyle: 'italic', fontSize: 13, color: 'var(--atlas-text-dim)' }}>by</span>
+                <img src="/plans-assets/interlinked-logo-dark.png" alt="InterLinked" className="plans-interlinked-logo plans-interlinked-logo-dark" style={{ width: 90, height: 'auto', display: 'block', opacity: 0.85 }} />
+                <img src="/plans-assets/interlinked-logo-light.png" alt="InterLinked" className="plans-interlinked-logo plans-interlinked-logo-light" style={{ width: 90, height: 'auto', display: 'none', opacity: 0.85 }} />
+              </div>
             </div>
 
             <p style={{ fontSize: '14px', color: 'var(--atlas-text-sub)', marginBottom: '20px' }}>
@@ -350,15 +351,17 @@ export default function PlansPage() {
                   onClick={() => handleSelectPlan(plan.priceId)}
                   className="cta-btn"
                   style={{
-                    width: '100%', padding: '10px',
-                    borderRadius: '9px', border: 'none',
+                    width: '100%', padding: '12px',
+                    borderRadius: '999px', border: 'none',
                     background: '#3ECFB2',
-                    color: '#080809', fontSize: '13px', fontWeight: 700,
+                    color: '#080809', fontSize: '14px', fontWeight: 800,
                     cursor: 'pointer', letterSpacing: '-0.01em',
                     boxShadow: '0 0 20px rgba(62,207,178,0.22)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   }}
                 >
-                  Get ATLAS →
+                  <img src="/email-assets/apple-logo.png" alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+                  Get ATLAS V1
                 </button>
               </div>
             </div>
@@ -479,16 +482,18 @@ export default function PlansPage() {
                   onClick={() => handleSelectPlan('atlas')}
                   className="cta-btn"
                   style={{
-                    padding: '13px 32px',
-                    borderRadius: '12px', border: 'none',
+                    padding: '14px 32px',
+                    borderRadius: '999px', border: 'none',
                     background: '#3ECFB2',
-                    color: '#080809', fontSize: '14px', fontWeight: 700,
+                    color: '#080809', fontSize: '15px', fontWeight: 800,
                     cursor: 'pointer',
                     boxShadow: '0 0 28px rgba(62,207,178,0.28)',
                     letterSpacing: '-0.01em',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}
                 >
-                  Get ATLAS →
+                  <img src="/email-assets/apple-logo.png" alt="" style={{ width: 17, height: 17, objectFit: 'contain' }} />
+                  Get ATLAS V1
                 </button>
               </div>
             </FadeUp>
