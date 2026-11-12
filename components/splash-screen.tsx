@@ -48,7 +48,13 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           <img
             src="/images/interlinked-logo-full.png"
             alt="InterLinked"
-            className={cn("w-full h-auto object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
+            className={cn("il-logo-dark w-full h-auto object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
+            style={{ filter: "drop-shadow(0 0 14px var(--il-glow))" }}
+          />
+          <img
+            src="/images/interlinked-logo-full-light.png"
+            alt="InterLinked"
+            className={cn("il-logo-light w-full h-auto object-contain transition-all duration-700", phase >= 2 ? "animate-pulse-slow" : "")}
             style={{ filter: "drop-shadow(0 0 14px var(--il-glow))" }}
           />
         </div>

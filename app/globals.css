@@ -289,6 +289,17 @@ html.light {
   }
 }
 
+/* ── InterLinked wordmark: swap white/black logo variant with theme, same
+   class-based + pre-hydration-media-query pattern as the vars above ── */
+.il-logo-dark { display: inline-block; }
+.il-logo-light { display: none; }
+html.light .il-logo-dark { display: none; }
+html.light .il-logo-light { display: inline-block; }
+@media (prefers-color-scheme: light) {
+  html:not(.dark):not(.light) .il-logo-dark { display: none; }
+  html:not(.dark):not(.light) .il-logo-light { display: inline-block; }
+}
+
 /* ── Homepage product card hover (CSS-driven so vars resolve correctly) ── */
 .il-product-card {
   background: var(--il-card-bg);

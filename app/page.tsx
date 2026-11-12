@@ -44,9 +44,16 @@ export default function Home() {
             <div className="text-center mb-16">
               <h1 className="animate-fade-in-1" style={{ lineHeight: 1, marginBottom: "0" }}>
                 <img
+                  className="il-logo-dark"
                   src="/images/interlinked-logo-full.png"
                   alt="InterLinked"
-                  style={{ width: "clamp(220px, 34vw, 380px)", height: "auto", display: "inline-block" }}
+                  style={{ width: "clamp(220px, 34vw, 380px)", height: "auto" }}
+                />
+                <img
+                  className="il-logo-light"
+                  src="/images/interlinked-logo-full-light.png"
+                  alt="InterLinked"
+                  style={{ width: "clamp(220px, 34vw, 380px)", height: "auto" }}
                 />
               </h1>
             </div>
