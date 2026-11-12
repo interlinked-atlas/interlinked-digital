@@ -232,7 +232,7 @@ export default function ATLASLaunchPage() {
         .launch-faq-a { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; padding: 0 2px 12px; margin: 0; }
 
         @media (min-width: 681px) {
-          html { zoom: 0.8; }
+          html { zoom: 1; }
         }
 
         @media (max-width: 680px) {
