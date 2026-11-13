@@ -1774,6 +1774,7 @@ export default function AdminPage() {
                   <div><span style={labelStyle}>Description (shown in the detail popup)</span><textarea style={{ ...inputStyle, minHeight: "60px", resize: "vertical" }} value={catalogDraft.description ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, description: e.target.value }))} placeholder="Short description of what this does" /></div>
                   <div style={{ display: "flex", gap: "10px" }}>
                     <div style={{ flex: 1 }}><span style={labelStyle}>File Size</span><input style={inputStyle} value={catalogDraft.file_size ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, file_size: e.target.value }))} placeholder="e.g. 2.4 GB" /></div>
+                    <div style={{ flex: 1 }}><span style={labelStyle}>Version</span><input style={inputStyle} value={catalogDraft.version ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, version: e.target.value }))} placeholder="e.g. 1.0.5" /></div>
                   </div>
                   <div><span style={labelStyle}>Specs (one per line)</span><textarea style={{ ...inputStyle, minHeight: "60px", resize: "vertical" }} value={catalogDraft.specs ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, specs: e.target.value }))} placeholder={"macOS 11+\\nAU / VST3 / AAX\\n64-bit only"} /></div>
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "var(--atlas-fg)", cursor: "pointer" }}>

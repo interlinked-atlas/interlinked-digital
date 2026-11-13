@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     file_size:    body.file_size ?? null,
     specs:        body.specs ?? null,
     titan_verified: body.titan_verified ?? false,
+    version:      body.version ?? null,
     sort_order:   body.sort_order ?? 0,
   }).select('id').single()
 
