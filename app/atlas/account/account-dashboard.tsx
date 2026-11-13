@@ -105,6 +105,7 @@ export default function AccountDashboard({ user, subscription, profile, devices,
   const [kitDownloading, setKitDownloading] = useState<string | null>(null)
   const [logsExpanded, setLogsExpanded] = useState(false)
   const [kitsExpanded, setKitsExpanded] = useState(false)
+  const [setupExpanded, setSetupExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>("billing")
   const router = useRouter()
   const supabase = createClient()
@@ -949,6 +950,56 @@ export default function AccountDashboard({ user, subscription, profile, devices,
             <a href="/atlas/release-notes" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "11px", color: "var(--atlas-text-label)", textDecoration: "underline" }}>
               View release notes
             </a>
+
+            {/* ── Setup Instructions (same steps shown right after checkout) ── */}
+            <div style={{ marginTop: "16px", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", overflow: "hidden" }}>
+              <button onClick={() => setSetupExpanded(v => !v)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--atlas-text-body)", margin: 0 }}>Setup Instructions</p>
+                <span style={{ fontSize: "10px", color: "var(--atlas-text-faint)", transform: setupExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease", flexShrink: 0 }}>▶</span>
+              </button>
+              {setupExpanded && (
+                <div style={{ padding: "4px 16px 18px", borderTop: "1px solid var(--atlas-divider)" }}>
+                  <SetupStep number={1} title="Open the downloaded .dmg">
+                    Once it finishes downloading, double-click <code style={{ background: "var(--atlas-log-bg)", padding: "1px 5px", borderRadius: "4px" }}>ATLAS.dmg</code> in
+                    your Downloads folder to mount it.
+                  </SetupStep>
+                  <SetupStep number={2} title="Drag ATLAS into Applications">
+                    <p style={{ marginBottom: "10px" }}>
+                      A window opens with the ATLAS icon and an Applications folder shortcut side by side. Drag the ATLAS icon onto
+                      the Applications folder to install it.
+                    </p>
+                    <img src="/atlas-guide/drag-drop.png" alt="Drag the ATLAS icon into the Applications folder shortcut"
+                      style={{ width: "100%", height: "auto", borderRadius: "8px", border: "1px solid var(--atlas-border-color)", display: "block" }} />
+                  </SetupStep>
+                  <SetupStep number={3} title="Open ATLAS — and allow it past Gatekeeper">
+                    <p style={{ marginBottom: "10px" }}>
+                      Since ATLAS is a new app, macOS will block it the first time you open it. This is expected and normal — here&apos;s how to get past it:
+                    </p>
+                    <img src="/atlas-guide/gatekeeper-warning.png" alt={'macOS warning dialog: "ATLAS" Not Opened — Apple could not verify "ATLAS" is free of malware'}
+                      style={{ width: "100%", maxWidth: "260px", height: "auto", borderRadius: "8px", border: "1px solid var(--atlas-border-color)", display: "block", margin: "0 auto 12px" }} />
+                    <ol style={{ paddingLeft: "18px", margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <li>Open your Applications folder and double-click ATLAS.</li>
+                      <li>You&apos;ll see this warning — click <strong>Done</strong> (not Move to Trash).</li>
+                      <li>Go to <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong> next to the ATLAS warning.</li>
+                      <li>Confirm with your password or Touch ID when prompted. ATLAS will now launch, and every time after this you can open it normally.</li>
+                    </ol>
+                  </SetupStep>
+                  <SetupStep number={4} title="Sign in and grant permissions">
+                    <p style={{ marginBottom: "8px" }}>
+                      Sign in with the email and password you used to subscribe. ATLAS will then walk you through a one-time setup:
+                    </p>
+                    <ul style={{ paddingLeft: "18px", margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <li><strong>Admin password</strong> — ATLAS asks for your Mac&apos;s login password once, so it can install and uninstall plugins cleanly. This is stored securely in macOS Keychain, never sent anywhere.</li>
+                      <li><strong>Full Disk Access</strong> — macOS may prompt you to grant this in System Settings → Privacy &amp; Security so ATLAS can manage plugin files across your system.</li>
+                    </ul>
+                  </SetupStep>
+                  <SetupStep number={5} title="Start installing" last>
+                    Drag any plugin installer — a .dmg, .pkg, or .zip — onto the ATLAS window, and it handles the rest: installation,
+                    tracking, and clean uninstall whenever you need it.
+                  </SetupStep>
+                </div>
+              )}
+            </div>
             </>
           ) : (
             <p style={{ fontSize: "13px", color: "var(--atlas-text-label)" }}>
@@ -1247,6 +1298,22 @@ function NotifRow({ label, description, enabled, onChange, locked }: {
           }} />
         </button>
       )}
+    </div>
+  )
+}
+
+function SetupStep({ number, title, children, last }: {
+  number: number; title: string; children: React.ReactNode; last?: boolean
+}) {
+  return (
+    <div style={{ display: "flex", gap: "12px", paddingTop: "14px", paddingBottom: last ? 0 : "14px", borderBottom: last ? "none" : "1px solid var(--atlas-divider)" }}>
+      <span style={{ flexShrink: 0, width: "22px", height: "22px", borderRadius: "50%", background: "rgba(62,207,178,0.12)", color: "#3ECFB2", fontSize: "11px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px" }}>
+        {number}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--atlas-text-body)", marginBottom: "6px" }}>{title}</p>
+        <div style={{ fontSize: "11px", color: "var(--atlas-text-label)", lineHeight: 1.6 }}>{children}</div>
+      </div>
     </div>
   )
 }
