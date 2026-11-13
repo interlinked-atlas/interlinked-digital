@@ -94,6 +94,8 @@ export default function AdminPage() {
   const [catalogSearch, setCatalogSearch]           = useState("")
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
   const [catalogUploadingId, setCatalogUploadingId] = useState<string | null>(null)
+  const [browserMaintenance, setBrowserMaintenance] = useState(false)
+  const [browserMaintenanceSaving, setBrowserMaintenanceSaving] = useState(false)
 
   // Recovery Kits admin state
   const [rkSubscribers, setRkSubscribers]   = useState<any[]>([])
@@ -175,7 +177,7 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes] = await Promise.all([
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes, browserStatusRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
@@ -190,6 +192,7 @@ export default function AdminPage() {
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/audit-log", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/catalog",   { headers }).then(r => r.json()).catch(() => []),
+      fetch("/api/atlas/admin/catalog/status", { headers }).then(r => r.json()).catch(() => ({ maintenance: false })),
     ])
     setUsers(profRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -202,6 +205,7 @@ export default function AdminPage() {
     setPatterns(Array.isArray(patRes) ? patRes : [])
     setAuditLog(Array.isArray(auditRes) ? auditRes : [])
     setCatalog(Array.isArray(catRes) ? catRes : [])
+    setBrowserMaintenance(!!browserStatusRes?.maintenance)
 
     // Load titan_memory directly (admin only)
     const { data: tmData } = await supabase
@@ -451,14 +455,34 @@ export default function AdminPage() {
   async function saveCatalogItem() {
     setCatalogSaving(true)
     const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    let newId: string | null = null
     if (newCatalogItem) {
-      await fetch("/api/atlas/admin/catalog", { method: "POST", headers, body: JSON.stringify(catalogDraft) })
+      const res = await fetch("/api/atlas/admin/catalog", { method: "POST", headers, body: JSON.stringify(catalogDraft) }).then(r => r.json()).catch(() => ({}))
+      newId = res?.id ?? null
     } else {
       await fetch("/api/atlas/admin/catalog", { method: "PATCH", headers, body: JSON.stringify({ id: editingCatalogItem.id, ...catalogDraft }) })
     }
     const catRes = await fetch("/api/atlas/admin/catalog", { headers: await authHeader() }).then(r => r.json()).catch(() => [])
-    setCatalog(Array.isArray(catRes) ? catRes : [])
-    setEditingCatalogItem(null); setNewCatalogItem(false); setCatalogSaving(false)
+    const rows = Array.isArray(catRes) ? catRes : []
+    setCatalog(rows)
+    setNewCatalogItem(false)
+    setCatalogSaving(false)
+    // After creating a new product, drop straight into editing it so an
+    // image can be uploaded immediately (upload-image needs a real id).
+    if (newId) {
+      const created = rows.find((r: any) => r.id === newId)
+      if (created) { setEditingCatalogItem(created); setCatalogDraft(created); return }
+    }
+    setEditingCatalogItem(null)
+  }
+
+  async function toggleBrowserMaintenance() {
+    setBrowserMaintenanceSaving(true)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const next = !browserMaintenance
+    const res = await fetch("/api/atlas/admin/catalog/status", { method: "PATCH", headers, body: JSON.stringify({ maintenance: next }) }).then(r => r.json()).catch(() => null)
+    if (res?.ok) setBrowserMaintenance(res.maintenance)
+    setBrowserMaintenanceSaving(false)
   }
 
   async function deleteCatalogItem(id: string) {
@@ -1659,6 +1683,37 @@ export default function AdminPage() {
 
           return (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+              background: browserMaintenance ? "rgba(240,160,48,0.1)" : "var(--atlas-card)",
+              border: `1px solid ${browserMaintenance ? "rgba(240,160,48,0.4)" : "var(--atlas-border-color)"}`,
+              borderRadius: "10px", padding: "12px 16px",
+            }}>
+              <div>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--atlas-fg)", margin: 0 }}>
+                  {browserMaintenance ? "ATLAS Browser is disabled for users" : "ATLAS Browser is live"}
+                </p>
+                <p style={{ fontSize: "10.5px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
+                  {browserMaintenance
+                    ? "Users see: “ATLAS Browser is Currently being Upgraded. Please Try Again Later.”"
+                    : "Users can browse and download products normally."}
+                </p>
+              </div>
+              <button
+                onClick={toggleBrowserMaintenance}
+                disabled={browserMaintenanceSaving}
+                style={{
+                  fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
+                  color: browserMaintenance ? "#08090E" : "#F0A030",
+                  background: browserMaintenance ? "#3ECFB2" : "transparent",
+                  border: browserMaintenance ? "none" : "1px solid rgba(240,160,48,0.5)",
+                  borderRadius: "7px", padding: "7px 14px", cursor: "pointer",
+                }}
+              >
+                {browserMaintenanceSaving ? "Saving…" : browserMaintenance ? "Re-enable ATLAS Browser" : "ATLAS Browser is Currently being Upgraded. Please Try Again Later"}
+              </button>
+            </div>
+
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
                 <p style={{ fontSize: "8px", color: "var(--atlas-text-label)", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>Products</p>
