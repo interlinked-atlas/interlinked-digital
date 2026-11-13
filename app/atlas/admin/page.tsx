@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
-type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended" | "feedback" | "download-page"
+type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended" | "feedback" | "download-page" | "browser"
 
 const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "var(--text-muted)"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "var(--text-muted)"
@@ -84,6 +84,16 @@ export default function AdminPage() {
   const [titanMemory, setTitanMemory]       = useState<any[]>([])
   const [promotingId, setPromotingId]       = useState<string | null>(null)
   const [toastMsg, setToastMsg]             = useState<string | null>(null)
+
+  // ATLAS Browser catalog admin state
+  const [catalog, setCatalog]                     = useState<any[]>([])
+  const [editingCatalogItem, setEditingCatalogItem] = useState<any | null>(null)
+  const [newCatalogItem, setNewCatalogItem]         = useState(false)
+  const [catalogSaving, setCatalogSaving]           = useState(false)
+  const [catalogDraft, setCatalogDraft]             = useState<any>({})
+  const [catalogSearch, setCatalogSearch]           = useState("")
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
+  const [catalogUploadingId, setCatalogUploadingId] = useState<string | null>(null)
 
   // Recovery Kits admin state
   const [rkSubscribers, setRkSubscribers]   = useState<any[]>([])
@@ -165,7 +175,7 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes] = await Promise.all([
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
@@ -179,6 +189,7 @@ export default function AdminPage() {
       fetch("/api/atlas/admin/failures", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/patterns",  { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/audit-log", { headers }).then(r => r.json()).catch(() => []),
+      fetch("/api/atlas/admin/catalog",   { headers }).then(r => r.json()).catch(() => []),
     ])
     setUsers(profRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -190,6 +201,7 @@ export default function AdminPage() {
     setFailures(Array.isArray(failRes) ? failRes : [])
     setPatterns(Array.isArray(patRes) ? patRes : [])
     setAuditLog(Array.isArray(auditRes) ? auditRes : [])
+    setCatalog(Array.isArray(catRes) ? catRes : [])
 
     // Load titan_memory directly (admin only)
     const { data: tmData } = await supabase
@@ -436,6 +448,46 @@ export default function AdminPage() {
     setPatterns(p => p.filter((x: any) => x.id !== id))
   }
 
+  async function saveCatalogItem() {
+    setCatalogSaving(true)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    if (newCatalogItem) {
+      await fetch("/api/atlas/admin/catalog", { method: "POST", headers, body: JSON.stringify(catalogDraft) })
+    } else {
+      await fetch("/api/atlas/admin/catalog", { method: "PATCH", headers, body: JSON.stringify({ id: editingCatalogItem.id, ...catalogDraft }) })
+    }
+    const catRes = await fetch("/api/atlas/admin/catalog", { headers: await authHeader() }).then(r => r.json()).catch(() => [])
+    setCatalog(Array.isArray(catRes) ? catRes : [])
+    setEditingCatalogItem(null); setNewCatalogItem(false); setCatalogSaving(false)
+  }
+
+  async function deleteCatalogItem(id: string) {
+    if (!confirm("Delete this product from ATLAS Browser? This cannot be undone.")) return
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    await fetch("/api/atlas/admin/catalog", { method: "DELETE", headers, body: JSON.stringify({ id }) })
+    setCatalog(c => c.filter((x: any) => x.id !== id))
+  }
+
+  async function uploadCatalogImage(id: string, file: File) {
+    setCatalogUploadingId(id)
+    const token = (await authHeader())["Authorization"]
+    const form = new FormData()
+    form.append("file", file)
+    form.append("id", id)
+    const res = await fetch("/api/atlas/admin/catalog/upload-image", {
+      method: "POST",
+      headers: { Authorization: token },
+      body: form,
+    }).then(r => r.json()).catch(() => null)
+    if (res?.image_url) {
+      setCatalog(c => c.map((x: any) => x.id === id ? { ...x, image_url: res.image_url } : x))
+      showToast("Image uploaded")
+    } else {
+      showToast("Image upload failed")
+    }
+    setCatalogUploadingId(null)
+  }
+
   function showToast(msg: string) {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(null), 3500)
@@ -618,7 +670,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
-          {(["subscribers","devices","suspended","feedback","logs","support","failures","patterns","recovery-kits","download-page"] as Tab[]).map(t => (
+          {(["subscribers","devices","suspended","feedback","logs","support","failures","patterns","recovery-kits","download-page","browser"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "var(--atlas-border-color)" : "transparent", color: tab === t ? "var(--atlas-fg)" : "var(--atlas-text-label)", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
@@ -1593,6 +1645,111 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* ── ATLAS BROWSER CATALOG ── */}
+        {tab === "browser" && (() => {
+          const categories = ["daw", "app", "plugin", "bundle", "sample_kit", "expansion_pack"]
+          const filtered = catalog.filter((c: any) => {
+            if (catalogCategoryFilter !== "all" && c.category !== catalogCategoryFilter) return false
+            if (catalogSearch.trim() && !(`${c.name} ${c.brand ?? ""}`).toLowerCase().includes(catalogSearch.toLowerCase())) return false
+            return true
+          })
+          const missingLinks = catalog.filter((c: any) => !c.external_url).length
+          const missingImages = catalog.filter((c: any) => !c.image_url).length
+
+          return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
+                <p style={{ fontSize: "8px", color: "var(--atlas-text-label)", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>Products</p>
+                <p style={{ fontSize: "20px", fontWeight: 700, color: "var(--atlas-fg)", margin: 0 }}>{catalog.length}</p>
+              </div>
+              <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
+                <p style={{ fontSize: "8px", color: "var(--atlas-text-label)", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>Missing Link</p>
+                <p style={{ fontSize: "20px", fontWeight: 700, color: missingLinks > 0 ? "#F0A030" : "#3ECFB2", margin: 0 }}>{missingLinks}</p>
+              </div>
+              <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px", minWidth: "90px" }}>
+                <p style={{ fontSize: "8px", color: "var(--atlas-text-label)", letterSpacing: "2px", marginBottom: "4px", textTransform: "uppercase" }}>Missing Image</p>
+                <p style={{ fontSize: "20px", fontWeight: 700, color: missingImages > 0 ? "#F0A030" : "#3ECFB2", margin: 0 }}>{missingImages}</p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder="Search by name or brand…"
+                value={catalogSearch}
+                onChange={e => setCatalogSearch(e.target.value)}
+                style={{ ...inputStyle, flex: 1, minWidth: "180px" }}
+              />
+              <select value={catalogCategoryFilter} onChange={e => setCatalogCategoryFilter(e.target.value)} style={{ ...inputStyle, width: "160px" }}>
+                <option value="all">All categories</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button onClick={() => { setNewCatalogItem(true); setCatalogDraft({ category: "plugin", platform: "both", sort_order: 0 }) }}
+                style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "8px 16px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                + New Product
+              </button>
+            </div>
+
+            {(newCatalogItem || editingCatalogItem) && (
+              <div style={{ ...card, padding: "16px 18px" }}>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: "16px" }}>{newCatalogItem ? "New Product" : "Edit: "}{editingCatalogItem?.name}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div><span style={labelStyle}>Name</span><input style={inputStyle} value={catalogDraft.name ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, name: e.target.value }))} placeholder="e.g. Xfer Serum 2" /></div>
+                  <div><span style={labelStyle}>Brand</span><input style={inputStyle} value={catalogDraft.brand ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, brand: e.target.value }))} placeholder="e.g. Xfer Records" /></div>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={labelStyle}>Category</span>
+                      <select style={inputStyle} value={catalogDraft.category ?? "plugin"} onChange={e => setCatalogDraft((d: any) => ({ ...d, category: e.target.value }))}>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={labelStyle}>Platform</span>
+                      <select style={inputStyle} value={catalogDraft.platform ?? "both"} onChange={e => setCatalogDraft((d: any) => ({ ...d, platform: e.target.value }))}>
+                        <option value="both">Mac/Win</option>
+                        <option value="mac">Mac only</option>
+                        <option value="win">Win only</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div><span style={labelStyle}>External Link (where to get it)</span><input style={inputStyle} value={catalogDraft.external_url ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, external_url: e.target.value }))} placeholder="https://..." /></div>
+                  <div><span style={labelStyle}>Image URL</span><input style={inputStyle} value={catalogDraft.image_url ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, image_url: e.target.value }))} placeholder="Uploaded automatically below, or paste one" /></div>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                    <button onClick={saveCatalogItem} disabled={catalogSaving} style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "6px 16px", cursor: "pointer" }}>{catalogSaving ? "Saving…" : "Save Product"}</button>
+                    <button onClick={() => { setEditingCatalogItem(null); setNewCatalogItem(false) }} style={{ fontSize: "11px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", padding: "6px 16px", cursor: "pointer" }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {filtered.map((c: any) => (
+                <div key={c.id} style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "6px", background: "var(--atlas-bg)", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {c.image_url ? <img src={c.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "9px", color: "var(--atlas-text-faint)" }}>—</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{c.name}</p>
+                    <p style={{ fontSize: "10px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
+                      {c.brand ?? "—"} · {c.category} · {c.platform === "both" ? "Mac/Win" : c.platform === "mac" ? "Mac only" : "Win only"}
+                      {!c.external_url && <span style={{ color: "#F0A030" }}> · no link</span>}
+                    </p>
+                  </div>
+                  <label style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "rgba(62,207,178,0.08)", border: "1px solid rgba(62,207,178,0.25)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>
+                    {catalogUploadingId === c.id ? "Uploading…" : "Image"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} disabled={catalogUploadingId === c.id}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadCatalogImage(c.id, f) }} />
+                  </label>
+                  <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
+                  <button onClick={() => deleteCatalogItem(c.id)} style={{ fontSize: "10px", color: "#E05555", background: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+          )
+        })()}
 
       </main>
     </div>
