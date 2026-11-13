@@ -28,6 +28,10 @@ const FEATURES: Record<string, { title: string; body: string }> = {
     title: 'Product Format Management',
     body: 'Plugins can come in several formats — AU, VST, VST3, AAX, and more. ATLAS keeps track of which formats of a product are installed and where, so you always know the status of each format instead of hunting through system folders yourself.',
   },
+  browser: {
+    title: 'ATLAS Browser™',
+    body: 'Discover plugins, apps, and sample content from trusted developers — all in one place inside ATLAS. Browse by category or brand, see details for each product, and get sent straight to the developer’s own page to download it. ATLAS never hosts the files itself.',
+  },
 }
 
 const FEATURE_TABS: { key: string; label: string }[] = [
@@ -37,6 +41,7 @@ const FEATURE_TABS: { key: string; label: string }[] = [
   { key: 'recovery-kit', label: 'ATLAS Recovery Kit™' },
   { key: 'cleaner', label: 'ATLAS Cleaner™' },
   { key: 'formats', label: 'Product Format Management' },
+  { key: 'browser', label: 'ATLAS Browser (NEW)' },
 ]
 
 const PLAN_BULLETS = [
