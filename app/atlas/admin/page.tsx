@@ -1776,6 +1776,10 @@ export default function AdminPage() {
                     <div style={{ flex: 1 }}><span style={labelStyle}>File Size</span><input style={inputStyle} value={catalogDraft.file_size ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, file_size: e.target.value }))} placeholder="e.g. 2.4 GB" /></div>
                   </div>
                   <div><span style={labelStyle}>Specs (one per line)</span><textarea style={{ ...inputStyle, minHeight: "60px", resize: "vertical" }} value={catalogDraft.specs ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, specs: e.target.value }))} placeholder={"macOS 11+\\nAU / VST3 / AAX\\n64-bit only"} /></div>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "var(--atlas-fg)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!catalogDraft.titan_verified} onChange={e => setCatalogDraft((d: any) => ({ ...d, titan_verified: e.target.checked }))} />
+                    TITAN Verified — ATLAS can auto-install this one-tap when the downloaded file is detected
+                  </label>
                   <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                     <button onClick={saveCatalogItem} disabled={catalogSaving} style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "6px 16px", cursor: "pointer" }}>{catalogSaving ? "Saving…" : "Save Product"}</button>
                     <button onClick={() => { setEditingCatalogItem(null); setNewCatalogItem(false) }} style={{ fontSize: "11px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "7px", padding: "6px 16px", cursor: "pointer" }}>Cancel</button>
@@ -1795,6 +1799,7 @@ export default function AdminPage() {
                     <p style={{ fontSize: "10px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
                       {c.brand ?? "—"} · {c.category} · {c.platform === "both" ? "Mac/Win" : c.platform === "mac" ? "Mac only" : "Win only"}
                       {!c.external_url && <span style={{ color: "#F0A030" }}> · no link</span>}
+                      {c.titan_verified && <span style={{ color: "#3ECFB2" }}> · TITAN Verified</span>}
                     </p>
                   </div>
                   <label style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "rgba(62,207,178,0.08)", border: "1px solid rgba(62,207,178,0.25)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>
