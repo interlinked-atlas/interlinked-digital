@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
+import DownloadPagePreview from "@/app/atlas/download/download-client"
 
 const ADMIN_EMAIL = "titantinstaller@gmail.com"
 
-type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended" | "feedback"
+type Tab = "subscribers" | "devices" | "logs" | "support" | "failures" | "patterns" | "recovery-kits" | "suspended" | "feedback" | "download-page"
 
 const planColor    = (p: string) => p === "atlas" ? "#3ECFB2" : "var(--text-muted)"
 const statusColor  = (s: string) => s === "active" ? "#3ECFB2" : s === "cancelled" || s === "canceled" ? "#E05555" : s === "past_due" ? "#F0A030" : "var(--text-muted)"
@@ -615,7 +616,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: "3px", marginBottom: "20px", background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "4px", flexWrap: "wrap" }}>
-          {(["subscribers","devices","suspended","feedback","logs","support","failures","patterns","recovery-kits"] as Tab[]).map(t => (
+          {(["subscribers","devices","suspended","feedback","logs","support","failures","patterns","recovery-kits","download-page"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex: 1, minWidth: "80px", padding: "8px 6px", borderRadius: "7px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "capitalize", background: tab === t ? "var(--atlas-border-color)" : "transparent", color: tab === t ? "var(--atlas-fg)" : "var(--atlas-text-label)", position: "relative" }}>
               {t}
               {t === "support"  && openTickets.length  > 0 && <span style={{ marginLeft:"5px", background:"#E05555", color:"#fff", fontSize:"8px", fontWeight:800, padding:"1px 4px", borderRadius:"8px" }}>{openTickets.length}</span>}
@@ -1573,6 +1574,21 @@ export default function AdminPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* ── DOWNLOAD PAGE PREVIEW ── */}
+        {tab === "download-page" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ background: "var(--atlas-card)", border: "1px solid var(--atlas-border-color)", borderRadius: "10px", padding: "12px 18px" }}>
+              <p style={{ fontSize: "11px", color: "var(--atlas-text-label)", margin: 0 }}>
+                Preview only — this is the exact page a subscriber lands on right after checkout, at <code style={{ color: "#3ECFB2" }}>/atlas/download</code>.
+                The Download button here uses your own admin session, so it only works if your account itself has an active subscription.
+              </p>
+            </div>
+            <div style={{ border: "1px solid var(--atlas-border-color)", borderRadius: "12px", overflow: "hidden" }}>
+              <DownloadPagePreview />
+            </div>
           </div>
         )}
 
