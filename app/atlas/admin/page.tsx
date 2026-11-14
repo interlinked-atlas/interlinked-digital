@@ -455,12 +455,14 @@ export default function AdminPage() {
   async function saveCatalogItem() {
     setCatalogSaving(true)
     const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const cleanLinks = (catalogDraft.links ?? []).filter((l: any) => l.url?.trim())
+    const draft = { ...catalogDraft, links: cleanLinks }
     let newId: string | null = null
     if (newCatalogItem) {
-      const res = await fetch("/api/atlas/admin/catalog", { method: "POST", headers, body: JSON.stringify(catalogDraft) }).then(r => r.json()).catch(() => ({}))
+      const res = await fetch("/api/atlas/admin/catalog", { method: "POST", headers, body: JSON.stringify(draft) }).then(r => r.json()).catch(() => ({}))
       newId = res?.id ?? null
     } else {
-      await fetch("/api/atlas/admin/catalog", { method: "PATCH", headers, body: JSON.stringify({ id: editingCatalogItem.id, ...catalogDraft }) })
+      await fetch("/api/atlas/admin/catalog", { method: "PATCH", headers, body: JSON.stringify({ id: editingCatalogItem.id, ...draft }) })
     }
     const catRes = await fetch("/api/atlas/admin/catalog", { headers: await authHeader() }).then(r => r.json()).catch(() => [])
     const rows = Array.isArray(catRes) ? catRes : []
@@ -1769,7 +1771,43 @@ export default function AdminPage() {
                       </select>
                     </div>
                   </div>
-                  <div><span style={labelStyle}>External Link (where to get it)</span><input style={inputStyle} value={catalogDraft.external_url ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, external_url: e.target.value }))} placeholder="https://..." /></div>
+                  <div>
+                    <span style={labelStyle}>Download Links (add more than one if needed — e.g. Mac / Win, or multiple mirrors)</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {(catalogDraft.links ?? []).map((link: any, i: number) => (
+                        <div key={i} style={{ display: "flex", gap: "6px" }}>
+                          <input
+                            style={{ ...inputStyle, flex: "0 0 110px" }}
+                            value={link.label ?? ""}
+                            placeholder="Label (optional)"
+                            onChange={e => setCatalogDraft((d: any) => {
+                              const links = [...(d.links ?? [])]
+                              links[i] = { ...links[i], label: e.target.value }
+                              return { ...d, links }
+                            })}
+                          />
+                          <input
+                            style={{ ...inputStyle, flex: 1 }}
+                            value={link.url ?? ""}
+                            placeholder="https://..."
+                            onChange={e => setCatalogDraft((d: any) => {
+                              const links = [...(d.links ?? [])]
+                              links[i] = { ...links[i], url: e.target.value }
+                              return { ...d, links }
+                            })}
+                          />
+                          <button
+                            onClick={() => setCatalogDraft((d: any) => ({ ...d, links: (d.links ?? []).filter((_: any, j: number) => j !== i) }))}
+                            style={{ fontSize: "11px", color: "#E05555", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "0 10px", cursor: "pointer" }}
+                          >Remove</button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setCatalogDraft((d: any) => ({ ...d, links: [...(d.links ?? []), { label: "", url: "" }] }))}
+                        style={{ fontSize: "11px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid rgba(62,207,178,0.3)", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", alignSelf: "flex-start" }}
+                      >+ Add Link</button>
+                    </div>
+                  </div>
                   <div><span style={labelStyle}>Image URL</span><input style={inputStyle} value={catalogDraft.image_url ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, image_url: e.target.value }))} placeholder="Uploaded automatically below, or paste one" /></div>
                   <div><span style={labelStyle}>Description (shown in the detail popup)</span><textarea style={{ ...inputStyle, minHeight: "60px", resize: "vertical" }} value={catalogDraft.description ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, description: e.target.value }))} placeholder="Short description of what this does" /></div>
                   <div style={{ display: "flex", gap: "10px" }}>
@@ -1780,6 +1818,10 @@ export default function AdminPage() {
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "var(--atlas-fg)", cursor: "pointer" }}>
                     <input type="checkbox" checked={!!catalogDraft.titan_verified} onChange={e => setCatalogDraft((d: any) => ({ ...d, titan_verified: e.target.checked }))} />
                     TITAN Verified — ATLAS can auto-install this one-tap when the downloaded file is detected
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "var(--atlas-fg)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={catalogDraft.is_available ?? true} onChange={e => setCatalogDraft((d: any) => ({ ...d, is_available: e.target.checked }))} />
+                    Available in ATLAS Browser — uncheck to show "Available Soon" and hide the Download button
                   </label>
                   <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                     <button onClick={saveCatalogItem} disabled={catalogSaving} style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "6px 16px", cursor: "pointer" }}>{catalogSaving ? "Saving…" : "Save Product"}</button>
@@ -1799,10 +1841,29 @@ export default function AdminPage() {
                     <p style={{ fontSize: "12px", fontWeight: 600, color: "#C0C8E8", margin: 0 }}>{c.name}</p>
                     <p style={{ fontSize: "10px", color: "var(--atlas-text-label)", margin: "2px 0 0" }}>
                       {c.brand ?? "—"} · {c.category} · {c.platform === "both" ? "Mac/Win" : c.platform === "mac" ? "Mac only" : "Win only"}
-                      {!c.external_url && <span style={{ color: "#F0A030" }}> · no link</span>}
+                      {!c.external_url && !(c.links?.length) && <span style={{ color: "#F0A030" }}> · no link</span>}
+                      {c.links?.length > 1 && <span style={{ color: "#5E6AD2" }}> · {c.links.length} links</span>}
                       {c.titan_verified && <span style={{ color: "#3ECFB2" }}> · TITAN Verified</span>}
+                      {c.is_available === false && <span style={{ color: "#E05555" }}> · Available Soon</span>}
                     </p>
                   </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--atlas-text-label)", cursor: "pointer", flexShrink: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={c.is_available !== false}
+                      onChange={async e => {
+                        const next = e.target.checked
+                        setCatalog((prev: any[]) => prev.map(x => x.id === c.id ? { ...x, is_available: next } : x))
+                        const token = (await supabase.auth.getSession()).data.session?.access_token
+                        await fetch("/api/atlas/admin/catalog", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ id: c.id, is_available: next }),
+                        })
+                      }}
+                    />
+                    Available
+                  </label>
                   <label style={{ fontSize: "10px", fontWeight: 600, color: "#3ECFB2", background: "rgba(62,207,178,0.08)", border: "1px solid rgba(62,207,178,0.25)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>
                     {catalogUploadingId === c.id ? "Uploading…" : "Image"}
                     <input type="file" accept="image/*" style={{ display: "none" }} disabled={catalogUploadingId === c.id}

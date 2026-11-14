@@ -50,11 +50,13 @@ export async function POST(req: NextRequest) {
     platform:     body.platform,
     image_url:    body.image_url ?? null,
     external_url: body.external_url ?? null,
+    links:        body.links ?? [],
     description:  body.description ?? null,
     file_size:    body.file_size ?? null,
     specs:        body.specs ?? null,
     titan_verified: body.titan_verified ?? false,
     version:      body.version ?? null,
+    is_available: body.is_available ?? true,
     sort_order:   body.sort_order ?? 0,
   }).select('id').single()
 
