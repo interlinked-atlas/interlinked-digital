@@ -93,7 +93,7 @@ export default function AdminPage() {
   const [catalogDraft, setCatalogDraft]             = useState<any>({})
   const [catalogSearch, setCatalogSearch]           = useState("")
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
-  const [catalogSort, setCatalogSort]               = useState("default")
+  const [catalogSort, setCatalogSort]               = useState("newest")
   const [catalogUploadingId, setCatalogUploadingId] = useState<string | null>(null)
   const [browserMaintenance, setBrowserMaintenance] = useState(false)
   const [browserMaintenanceSaving, setBrowserMaintenanceSaving] = useState(false)
@@ -1679,17 +1679,14 @@ export default function AdminPage() {
           const filtered = catalog.filter((c: any) => {
             if (catalogCategoryFilter !== "all" && c.category !== catalogCategoryFilter) return false
             if (catalogSearch.trim() && !(`${c.name} ${c.brand ?? ""}`).toLowerCase().includes(catalogSearch.toLowerCase())) return false
+            // "mac" / "win" act as a strict platform filter — only that
+            // platform's products show, not "both" rows too.
+            if (catalogSort === "mac" && c.platform !== "mac") return false
+            if (catalogSort === "win" && c.platform !== "win") return false
             return true
-          }).sort((a: any, b: any) => {
-            if (catalogSort === "newest") {
-              return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
-            }
-            if (catalogSort === "os") {
-              const rank: Record<string, number> = { mac: 0, win: 1, both: 2 }
-              return (rank[a.platform] ?? 3) - (rank[b.platform] ?? 3)
-            }
-            return 0 // "default" — preserve the category/sort_order ordering from the API
-          })
+          }).sort((a: any, b: any) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+          )
           const missingLinks = catalog.filter((c: any) => !c.external_url).length
           const missingImages = catalog.filter((c: any) => !c.image_url).length
 
@@ -1754,9 +1751,9 @@ export default function AdminPage() {
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <select value={catalogSort} onChange={e => setCatalogSort(e.target.value)} style={{ ...inputStyle, width: "150px" }}>
-                <option value="default">Sort: Default</option>
                 <option value="newest">Sort: Newly Added</option>
-                <option value="os">Sort: OS (Mac/Win)</option>
+                <option value="mac">OS: Mac Only</option>
+                <option value="win">OS: Win Only</option>
               </select>
               <button onClick={() => { setNewCatalogItem(true); setCatalogDraft({ category: "plugin", platform: "both", sort_order: 0 }) }}
                 style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "8px 16px", cursor: "pointer", whiteSpace: "nowrap" }}>
