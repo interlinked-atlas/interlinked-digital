@@ -1,8 +1,9 @@
-// Records one ATLAS Browser download event for the authenticated user.
-// Fire-and-forget from the Mac app (Core/AtlasBrowserDownloadReporter.swift)
-// — same auth shape as app/api/atlas/logs/route.ts, but a plain one-shot
-// event row rather than a log upload: no idempotency key, since a user
-// re-downloading the same product later is a second legitimate row.
+// Records one ATLAS Browser download event for the authenticated user,
+// gated by that user's independent 25/month Browser download cap (separate
+// from the regular install limit). Enforcement + the insert happen
+// atomically in one Postgres function (report_browser_download) — unlike
+// the install limit's reserve/confirm/release split, a Browser download is
+// a single synchronous action so there's nothing to confirm later.
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -50,20 +51,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { error: insertError } = await supabase.from('atlas_browser_downloads').insert({
-    user_id: user.id, // derived from the verified token — never from client-supplied data
-    catalog_item_id: catalog_item_id ?? null,
-    product_name,
-    brand: brand ?? null,
-    link_url: link_url ?? null,
-    hardware_uuid: hardware_uuid ?? null,
-    device_name: device_name ?? null,
+  const { data, error: rpcError } = await supabase.rpc('report_browser_download', {
+    p_user_id: user.id, // derived from the verified token — never from client-supplied data
+    p_catalog_item_id: catalog_item_id ?? null,
+    p_product_name: product_name,
+    p_brand: brand ?? null,
+    p_link_url: link_url ?? null,
+    p_hardware_uuid: hardware_uuid ?? null,
+    p_device_name: device_name ?? null,
   })
 
-  if (insertError) {
-    console.error('[ATLAS] atlas_browser_downloads insert failed:', insertError.message)
-    return NextResponse.json({ error: 'Failed to save download event' }, { status: 500 })
+  if (rpcError) {
+    console.error('[ATLAS] report_browser_download failed:', rpcError.message)
+    return NextResponse.json({ error: 'Failed to record download' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  // data is the function's jsonb result: { allowed, reason, used, limit, next_reset }
+  return NextResponse.json(data)
 }
