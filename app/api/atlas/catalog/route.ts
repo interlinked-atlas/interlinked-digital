@@ -14,7 +14,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from('atlas_catalog')
-    .select('id, name, brand, category, platform, image_url, external_url, links, description, file_size, specs, titan_verified, version, is_available, sort_order')
+    .select('id, name, brand, category, platform, image_url, external_url, links, description, file_size, specs, titan_verified, version, is_available, sort_order, created_at')
     .order('category', { ascending: true })
     .order('sort_order', { ascending: true })
 
