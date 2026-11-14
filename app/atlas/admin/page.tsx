@@ -95,6 +95,7 @@ export default function AdminPage() {
   const [catalogSearch, setCatalogSearch]           = useState("")
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
   const [catalogSort, setCatalogSort]               = useState("newest")
+  const [catalogHasLinksOnly, setCatalogHasLinksOnly] = useState(false)
   const [catalogUploadingId, setCatalogUploadingId] = useState<string | null>(null)
   const [browserMaintenance, setBrowserMaintenance] = useState(false)
   const [browserMaintenanceSaving, setBrowserMaintenanceSaving] = useState(false)
@@ -1709,6 +1710,7 @@ export default function AdminPage() {
             // platform's products show, not "both" rows too.
             if (catalogSort === "mac" && c.platform !== "mac") return false
             if (catalogSort === "win" && c.platform !== "win") return false
+            if (catalogHasLinksOnly && !((c.links?.length ?? 0) > 0 || c.external_url)) return false
             return true
           }).sort((a: any, b: any) => {
             if (catalogSort === "az") return a.name.localeCompare(b.name)
@@ -1785,6 +1787,10 @@ export default function AdminPage() {
                 <option value="mac">OS: Mac Only</option>
                 <option value="win">OS: Win Only</option>
               </select>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "var(--atlas-text-label)", cursor: "pointer", whiteSpace: "nowrap" }}>
+                <input type="checkbox" checked={catalogHasLinksOnly} onChange={e => setCatalogHasLinksOnly(e.target.checked)} />
+                Has Links Only
+              </label>
               <button onClick={() => { setNewCatalogItem(true); setCatalogDraft({ category: "plugin", platform: "both", sort_order: 0 }) }}
                 style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "8px 16px", cursor: "pointer", whiteSpace: "nowrap" }}>
                 + New Product
