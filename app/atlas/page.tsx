@@ -254,6 +254,17 @@ export default function ATLASLaunchPage() {
           .launch-plan-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
 
+        /* Tablet range (iPad portrait/landscape, Surface, etc.): the hero's
+           screenshot mockups and visualizer are absolutely positioned at
+           desktop-only pixel offsets and collide with the centered title
+           text once the viewport is too narrow to fit all three side by
+           side, well before the 680px mobile breakpoint kicks in. Hide them
+           here the same way mobile does, but keep desktop font sizing since
+           there's still plenty of width for it. */
+        @media (min-width: 681px) and (max-width: 1300px) {
+          .launch-hero-shots, .launch-hero-visual { display: none !important; }
+        }
+
         @media (max-width: 320px) {
           .launch-hero-logo-icon { width: 52px !important; height: 52px !important; }
           .launch-hero-logo-text { font-size: 26px !important; letter-spacing: 10px !important; padding-left: 10px !important; }
