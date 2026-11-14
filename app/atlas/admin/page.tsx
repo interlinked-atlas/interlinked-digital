@@ -1684,9 +1684,11 @@ export default function AdminPage() {
             if (catalogSort === "mac" && c.platform !== "mac") return false
             if (catalogSort === "win" && c.platform !== "win") return false
             return true
-          }).sort((a: any, b: any) =>
-            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
-          )
+          }).sort((a: any, b: any) => {
+            if (catalogSort === "az") return a.name.localeCompare(b.name)
+            if (catalogSort === "za") return b.name.localeCompare(a.name)
+            return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+          })
           const missingLinks = catalog.filter((c: any) => !c.external_url).length
           const missingImages = catalog.filter((c: any) => !c.image_url).length
 
@@ -1752,6 +1754,8 @@ export default function AdminPage() {
               </select>
               <select value={catalogSort} onChange={e => setCatalogSort(e.target.value)} style={{ ...inputStyle, width: "150px" }}>
                 <option value="newest">Sort: Newly Added</option>
+                <option value="az">Sort: A-Z</option>
+                <option value="za">Sort: Z-A</option>
                 <option value="mac">OS: Mac Only</option>
                 <option value="win">OS: Win Only</option>
               </select>
