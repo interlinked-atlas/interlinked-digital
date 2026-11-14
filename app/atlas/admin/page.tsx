@@ -87,6 +87,7 @@ export default function AdminPage() {
 
   // ATLAS Browser catalog admin state
   const [catalog, setCatalog]                     = useState<any[]>([])
+  const [browserDownloads, setBrowserDownloads]   = useState<any[]>([])
   const [editingCatalogItem, setEditingCatalogItem] = useState<any | null>(null)
   const [newCatalogItem, setNewCatalogItem]         = useState(false)
   const [catalogSaving, setCatalogSaving]           = useState(false)
@@ -178,7 +179,7 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true)
     const headers = await authHeader()
-    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes, browserStatusRes] = await Promise.all([
+    const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes, browserStatusRes, browserDlRes] = await Promise.all([
       supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
@@ -194,6 +195,7 @@ export default function AdminPage() {
       fetch("/api/atlas/admin/audit-log", { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/catalog",   { headers }).then(r => r.json()).catch(() => []),
       fetch("/api/atlas/admin/catalog/status", { headers }).then(r => r.json()).catch(() => ({ maintenance: false })),
+      fetch("/api/atlas/admin/browser-downloads", { headers }).then(r => r.json()).catch(() => []),
     ])
     setUsers(profRes.data ?? [])
     setSubscriptions(subRes.data ?? [])
@@ -207,6 +209,7 @@ export default function AdminPage() {
     setAuditLog(Array.isArray(auditRes) ? auditRes : [])
     setCatalog(Array.isArray(catRes) ? catRes : [])
     setBrowserMaintenance(!!browserStatusRes?.maintenance)
+    setBrowserDownloads(Array.isArray(browserDlRes) ? browserDlRes : [])
 
     // Load titan_memory directly (admin only)
     const { data: tmData } = await supabase
@@ -612,6 +615,7 @@ export default function AdminPage() {
   function userDevices(uid: string) { return devices.filter(d => d.user_id === uid) }
   function userLogs(uid: string) { return logs.filter(l => l.user_id === uid) }
   function userTickets(uid: string) { return tickets.filter((t: any) => t.user_id === uid) }
+  function userBrowserDownloads(uid: string) { return browserDownloads.filter((d: any) => d.user_id === uid) }
   function userCurrentUsage(uid: string) {
     const now = new Date()
     return monthlyUsage.find(m => m.user_id === uid && new Date(m.period_end) >= now)
@@ -781,6 +785,7 @@ export default function AdminPage() {
               const uDevs    = userDevices(u.id)
               const uLogs    = userLogs(u.id)
               const uTickets = userTickets(u.id)
+              const uBrowserDownloads = userBrowserDownloads(u.id)
               const usage    = userCurrentUsage(u.id)
               const open     = expandedUser === u.id
               const confirmedInstalls = uLogs.filter(l => l.log_type === "confirmed-success")
@@ -816,6 +821,7 @@ export default function AdminPage() {
                       { id: "logs",     label: "Logs",     count: uLogs.length },
                       { id: "devices",  label: "Devices",  count: uDevs.length },
                       { id: "support",  label: "Support",  count: uTickets.length, alert: uTickets.filter((t:any)=>t.status==="open").length > 0 },
+                      { id: "browser",  label: "Browser Downloads", count: uBrowserDownloads.length },
                     ]
                     return (
                       <div style={{ borderTop:"1px solid var(--atlas-divider)" }}>
@@ -1071,6 +1077,26 @@ export default function AdminPage() {
                                     {l.device_name && <p style={{ fontSize:"9px", color:"var(--atlas-text-label)", margin:"1px 0 0" }}>{l.device_name}</p>}
                                   </div>
                                   <span style={{ fontSize:"10px", color:"var(--atlas-text-label)", flexShrink:0 }}>{fmtDateTime(l.installed_at)}</span>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        )}
+
+                        {/* ── BROWSER DOWNLOADS tab ── */}
+                        {activeProfileTab === "browser" && (
+                          <div style={{ maxHeight:"420px", overflowY:"auto" }}>
+                            {uBrowserDownloads.length === 0
+                              ? <p style={{ padding:"24px", textAlign:"center", color:"var(--atlas-text-label)", fontSize:"12px" }}>No Browser downloads yet.</p>
+                              : uBrowserDownloads.map((d: any) => (
+                                <div key={d.id} style={{ display:"flex", gap:"8px", alignItems:"center", padding:"9px 18px", borderBottom:"1px solid #0A0C18" }}>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <p style={{ fontSize:"12px", color:"#C0C8E8", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                                      {d.product_name}{d.brand ? <span style={{ color:"var(--atlas-text-label)" }}> · {d.brand}</span> : null}
+                                    </p>
+                                    {d.device_name && <p style={{ fontSize:"9px", color:"var(--atlas-text-label)", margin:"1px 0 0" }}>{d.device_name}</p>}
+                                  </div>
+                                  <span style={{ fontSize:"10px", color:"var(--atlas-text-label)", flexShrink:0 }}>{fmtDateTime(d.downloaded_at)}</span>
                                 </div>
                               ))
                             }
