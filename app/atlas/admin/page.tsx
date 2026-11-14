@@ -1814,12 +1814,25 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div>
-                    <span style={labelStyle}>Download Links (add more than one if needed — e.g. Mac / Win, or multiple mirrors)</span>
+                    <span style={labelStyle}>Download Links (add one per OS, or multiple mirrors — pick which OS each link is for)</span>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {(catalogDraft.links ?? []).map((link: any, i: number) => (
                         <div key={i} style={{ display: "flex", gap: "6px" }}>
+                          <select
+                            style={{ ...inputStyle, flex: "0 0 90px" }}
+                            value={link.platform ?? "both"}
+                            onChange={e => setCatalogDraft((d: any) => {
+                              const links = [...(d.links ?? [])]
+                              links[i] = { ...links[i], platform: e.target.value }
+                              return { ...d, links }
+                            })}
+                          >
+                            <option value="both">Mac/Win</option>
+                            <option value="mac">Mac</option>
+                            <option value="win">Win</option>
+                          </select>
                           <input
-                            style={{ ...inputStyle, flex: "0 0 110px" }}
+                            style={{ ...inputStyle, flex: "0 0 100px" }}
                             value={link.label ?? ""}
                             placeholder="Label (optional)"
                             onChange={e => setCatalogDraft((d: any) => {
@@ -1845,7 +1858,7 @@ export default function AdminPage() {
                         </div>
                       ))}
                       <button
-                        onClick={() => setCatalogDraft((d: any) => ({ ...d, links: [...(d.links ?? []), { label: "", url: "" }] }))}
+                        onClick={() => setCatalogDraft((d: any) => ({ ...d, links: [...(d.links ?? []), { label: "", url: "", platform: "both" }] }))}
                         style={{ fontSize: "11px", fontWeight: 600, color: "#3ECFB2", background: "none", border: "1px solid rgba(62,207,178,0.3)", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", alignSelf: "flex-start" }}
                       >+ Add Link</button>
                     </div>
