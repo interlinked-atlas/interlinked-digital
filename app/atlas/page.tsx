@@ -241,7 +241,8 @@ export default function ATLASLaunchPage() {
         }
 
         @media (max-width: 680px) {
-          .launch-hero-section { padding: 20px !important; }
+          .launch-hero-section { height: auto !important; min-height: 100vh !important; max-height: none !important; overflow: visible !important; padding: 56px 20px 40px !important; }
+          .launch-hero-top, .launch-hero-bottom { transform: none !important; }
           .launch-hero-logo-icon { width: 64px !important; height: 64px !important; }
           .launch-hero-logo-text { font-size: 34px !important; letter-spacing: 14px !important; padding-left: 14px !important; }
           .launch-hero-line1 { font-size: 18px !important; }
@@ -251,6 +252,13 @@ export default function ATLASLaunchPage() {
           .launch-hero-shots, .launch-hero-visual { display: none !important; }
           .launch-section-pad { padding-left: 20px !important; padding-right: 20px !important; }
           .launch-plan-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+
+        @media (max-width: 320px) {
+          .launch-hero-logo-icon { width: 52px !important; height: 52px !important; }
+          .launch-hero-logo-text { font-size: 26px !important; letter-spacing: 10px !important; padding-left: 10px !important; }
+          .launch-hero-subscribe { font-size: 24px !important; }
+          .launch-plan-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -274,7 +282,7 @@ export default function ATLASLaunchPage() {
       {/* ================= HERO ================= */}
       <div className="launch-hero-section" style={{ width: '100%', height: 886, minHeight: 640, maxHeight: 980, background: palette.bg, transition: 'background 0.3s ease', boxSizing: 'border-box', padding: '24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', left: 0, top: -26 }}>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-110px)' }}>
+        <div className="launch-hero-top" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(-110px)' }}>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, transform: 'translateY(26px)' }}>
             <img className="launch-anim-logo-icon launch-hero-logo-icon" src="/launch/atlas-logo-icon.png" alt="ATLAS" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
@@ -285,7 +293,7 @@ export default function ATLASLaunchPage() {
             </div>
           </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(145px)' }}>
+        <div className="launch-hero-bottom" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, transform: 'translateY(145px)' }}>
 
           <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 'normal' }}>
             <div className="launch-hero-line1" style={{ fontSize: 30, fontWeight: 700, color: palette.text, transition: 'color 0.3s ease', marginTop: 24 }}>is officially <span style={{ fontStyle: 'italic', fontWeight: 600 }}>here</span>.</div>
