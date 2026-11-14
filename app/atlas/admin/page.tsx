@@ -58,6 +58,8 @@ export default function AdminPage() {
 
   const [limitInput, setLimitInput]   = useState<Record<string, string>>({})
   const [limitSavingId, setLimitSavingId] = useState<string | null>(null)
+  const [browserLimitInput, setBrowserLimitInput] = useState<Record<string, string>>({})
+  const [browserLimitSavingId, setBrowserLimitSavingId] = useState<string | null>(null)
   const [resettingId, setResettingId]     = useState<string | null>(null)
   const [bulkLimitInput, setBulkLimitInput] = useState("")
   const [bulkSaving, setBulkSaving]         = useState(false)
@@ -181,7 +183,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes, browserStatusRes, browserDlRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,monthly_browser_download_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -256,6 +258,25 @@ export default function AdminPage() {
     if (!res.ok) { showToast("Failed to save limit"); return }
     setUsers(u => u.map(x => x.id === userID ? { ...x, monthly_install_limit: limit } : x))
     showToast(limit === null ? "Reverted to standard 25/month" : `Limit set to ${limit}/month`)
+  }
+
+  async function saveBrowserDownloadLimit(userID: string) {
+    const raw = browserLimitInput[userID]?.trim() ?? ""
+    const limit = raw === "" ? null : parseInt(raw, 10)
+    if (limit !== null && (!Number.isInteger(limit) || limit < 1 || limit > 25)) {
+      showToast("Enter a number from 1 to 25, or leave blank for the standard 25")
+      return
+    }
+    setBrowserLimitSavingId(userID)
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" }
+    const res = await fetch("/api/atlas/admin/browser-download-limit", {
+      method: "PATCH", headers,
+      body: JSON.stringify({ user_id: userID, monthly_browser_download_limit: limit }),
+    })
+    setBrowserLimitSavingId(null)
+    if (!res.ok) { showToast("Failed to save Browser download limit"); return }
+    setUsers(u => u.map(x => x.id === userID ? { ...x, monthly_browser_download_limit: limit } : x))
+    showToast(limit === null ? "Browser downloads reverted to standard 25/month" : `Browser download limit set to ${limit}/month`)
   }
 
   async function resetInstallUsage(userID: string) {
@@ -901,6 +922,39 @@ export default function AdminPage() {
                                 </div>
                                 <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
                                   Leave blank for the standard 25/month. Takes effect on their next install attempt — no app update needed. "Reset Usage" zeroes their count for the current period only; it doesn't change their limit.
+                                </p>
+                              </div>
+                              <div style={{ gridColumn: "span 2" }}>
+                                <span style={labelStyle}>ATLAS Browser Download Limit (1–25 per period)</span>
+                                <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={25}
+                                    placeholder={u.monthly_browser_download_limit != null ? String(u.monthly_browser_download_limit) : "25 (standard)"}
+                                    value={browserLimitInput[u.id] ?? (u.monthly_browser_download_limit != null ? String(u.monthly_browser_download_limit) : "")}
+                                    onChange={e => setBrowserLimitInput(m => ({ ...m, [u.id]: e.target.value }))}
+                                    style={{ ...inputStyle, width: "110px" }}
+                                  />
+                                  <button
+                                    onClick={() => saveBrowserDownloadLimit(u.id)}
+                                    disabled={browserLimitSavingId === u.id}
+                                    style={{ fontSize:"11px", fontWeight:600, color:"#08090E", background:"#3ECFB2", border:"none", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                  >
+                                    {browserLimitSavingId === u.id ? "Saving…" : "Save Limit"}
+                                  </button>
+                                  {u.monthly_browser_download_limit != null && (
+                                    <button
+                                      onClick={() => { setBrowserLimitInput(m => ({ ...m, [u.id]: "" })); saveBrowserDownloadLimit(u.id) }}
+                                      disabled={browserLimitSavingId === u.id}
+                                      style={{ fontSize:"11px", color:"var(--atlas-text-label)", background:"none", border:"1px solid var(--atlas-border-color)", borderRadius:"7px", padding:"6px 14px", cursor:"pointer" }}
+                                    >
+                                      Revert to 25
+                                    </button>
+                                  )}
+                                </div>
+                                <p style={{ fontSize:"10px", color:"var(--atlas-text-label)", marginTop:"6px" }}>
+                                  Caps how many products this user can download through ATLAS Browser per period — independent of their install limit above. Max 25. Takes effect on their next download attempt — no app update needed.
                                 </p>
                               </div>
                               <div style={{ gridColumn: "span 2" }}>
