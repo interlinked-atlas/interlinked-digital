@@ -30,7 +30,7 @@ const FEATURES: Record<string, { title: string; body: string }> = {
   },
   browser: {
     title: 'ATLAS Browser™',
-    body: 'Discover plugins, apps, and sample content from trusted developers — all in one place inside ATLAS. Browse by category or brand, see details for each product. ATLAS never hosts the files itself.',
+    body: 'Browse and select from available catalogs of plugins, apps, and sample content — all in one place inside ATLAS. Filter by category or brand and see full details for each product before you decide. ATLAS does not host any files.',
   },
 }
 
