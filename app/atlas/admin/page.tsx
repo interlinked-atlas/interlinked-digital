@@ -93,6 +93,7 @@ export default function AdminPage() {
   const [catalogDraft, setCatalogDraft]             = useState<any>({})
   const [catalogSearch, setCatalogSearch]           = useState("")
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
+  const [catalogSort, setCatalogSort]               = useState("default")
   const [catalogUploadingId, setCatalogUploadingId] = useState<string | null>(null)
   const [browserMaintenance, setBrowserMaintenance] = useState(false)
   const [browserMaintenanceSaving, setBrowserMaintenanceSaving] = useState(false)
@@ -1679,6 +1680,15 @@ export default function AdminPage() {
             if (catalogCategoryFilter !== "all" && c.category !== catalogCategoryFilter) return false
             if (catalogSearch.trim() && !(`${c.name} ${c.brand ?? ""}`).toLowerCase().includes(catalogSearch.toLowerCase())) return false
             return true
+          }).sort((a: any, b: any) => {
+            if (catalogSort === "newest") {
+              return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+            }
+            if (catalogSort === "os") {
+              const rank: Record<string, number> = { mac: 0, win: 1, both: 2 }
+              return (rank[a.platform] ?? 3) - (rank[b.platform] ?? 3)
+            }
+            return 0 // "default" — preserve the category/sort_order ordering from the API
           })
           const missingLinks = catalog.filter((c: any) => !c.external_url).length
           const missingImages = catalog.filter((c: any) => !c.image_url).length
@@ -1742,6 +1752,11 @@ export default function AdminPage() {
               <select value={catalogCategoryFilter} onChange={e => setCatalogCategoryFilter(e.target.value)} style={{ ...inputStyle, width: "160px" }}>
                 <option value="all">All categories</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={catalogSort} onChange={e => setCatalogSort(e.target.value)} style={{ ...inputStyle, width: "150px" }}>
+                <option value="default">Sort: Default</option>
+                <option value="newest">Sort: Newly Added</option>
+                <option value="os">Sort: OS (Mac/Win)</option>
               </select>
               <button onClick={() => { setNewCatalogItem(true); setCatalogDraft({ category: "plugin", platform: "both", sort_order: 0 }) }}
                 style={{ fontSize: "11px", fontWeight: 600, color: "#08090E", background: "#3ECFB2", border: "none", borderRadius: "7px", padding: "8px 16px", cursor: "pointer", whiteSpace: "nowrap" }}>
