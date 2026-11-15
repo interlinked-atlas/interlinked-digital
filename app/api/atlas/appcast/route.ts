@@ -8,16 +8,17 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '172'
-const SHORT_VERSION    = '1.7.2'
-const RELEASE_DATE     = 'Sun, 15 Nov 2026 14:23:00 +0000'
+const CURRENT_VERSION  = '173'
+const SHORT_VERSION    = '1.7.3'
+const RELEASE_DATE     = 'Sun, 15 Nov 2026 22:36:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20795142'
-const ED_SIGNATURE     = '0fWIVJgBGuizR3wA9HGLLFrlTuj+KrdAqI7dBmD2Y/zCJVAMavYmqJbk8uak0Abjdmi7vefTBtovwSYomcjaAQ=='
+const DMG_LENGTH       = '20822554'
+const ED_SIGNATURE     = 'H+CdgVe3pOVipLzg9dO50HCTlyHyP8HikmFbbYTQs8q18l74VDakhy9f9pTUgSSJ5C35jsbi4h85qHyBxlLPAw=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed: clicking the Dock icon while ATLAS was minimized did nothing — it now reopens normally</li>
+  <li>Improved readability of the Available Now / Available Soon badges in ATLAS Browser</li>
+  <li>Accounts are now signed out immediately upon cancellation, not just on next background check</li>
 </ul>
 `.trim()
 
