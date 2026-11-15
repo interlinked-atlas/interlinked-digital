@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '171'
-const SHORT_VERSION    = '1.7.1'
-const RELEASE_DATE     = 'Sun, 15 Nov 2026 12:29:00 +0000'
+const CURRENT_VERSION  = '172'
+const SHORT_VERSION    = '1.7.2'
+const RELEASE_DATE     = 'Sun, 15 Nov 2026 14:23:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20795051'
-const ED_SIGNATURE     = 'xR5Fk8WUWlapSJFPZzXtJiMC8ZAxpgGxeNQP8j+eKSpKsA73p7Xzsbi3S0PW9ySDOUvCAwpLENlTiGguHnKxBA=='
+const DMG_LENGTH       = '20795142'
+const ED_SIGNATURE     = '0fWIVJgBGuizR3wA9HGLLFrlTuj+KrdAqI7dBmD2Y/zCJVAMavYmqJbk8uak0Abjdmi7vefTBtovwSYomcjaAQ=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>ATLAS Browser is now available in all 8 supported languages</li>
+  <li>Fixed: clicking the Dock icon while ATLAS was minimized did nothing — it now reopens normally</li>
 </ul>
 `.trim()
 
