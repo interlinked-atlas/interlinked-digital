@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient as createBrowserClient } from "@/lib/supabase/client"
@@ -91,9 +91,16 @@ export default function AdminPage() {
   const [catalog, setCatalog]                     = useState<any[]>([])
   const [browserDownloads, setBrowserDownloads]   = useState<any[]>([])
   const [editingCatalogItem, setEditingCatalogItem] = useState<any | null>(null)
+  const catalogEditFormRef = useRef<HTMLDivElement>(null)
   const [newCatalogItem, setNewCatalogItem]         = useState(false)
   const [catalogSaving, setCatalogSaving]           = useState(false)
   const [catalogDraft, setCatalogDraft]             = useState<any>({})
+
+  useEffect(() => {
+    if (newCatalogItem || editingCatalogItem) {
+      catalogEditFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [newCatalogItem, editingCatalogItem])
   const [catalogSearch, setCatalogSearch]           = useState("")
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all")
   const [catalogSort, setCatalogSort]               = useState("newest")
@@ -1852,7 +1859,7 @@ export default function AdminPage() {
             </div>
 
             {(newCatalogItem || editingCatalogItem) && (
-              <div style={{ ...card, padding: "16px 18px" }}>
+              <div ref={catalogEditFormRef} style={{ ...card, padding: "16px 18px" }}>
                 <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: "16px" }}>{newCatalogItem ? "New Product" : "Edit: "}{editingCatalogItem?.name}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <div><span style={labelStyle}>Name</span><input style={inputStyle} value={catalogDraft.name ?? ""} onChange={e => setCatalogDraft((d: any) => ({ ...d, name: e.target.value }))} placeholder="e.g. Xfer Serum 2" /></div>
@@ -1984,7 +1991,7 @@ export default function AdminPage() {
                     <input type="file" accept="image/*" style={{ display: "none" }} disabled={catalogUploadingId === c.id}
                       onChange={e => { const f = e.target.files?.[0]; if (f) uploadCatalogImage(c.id, f) }} />
                   </label>
-                  <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c); window.scrollTo({ top: 0, behavior: "smooth" }) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
+                  <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
                   <button onClick={() => deleteCatalogItem(c.id)} style={{ fontSize: "10px", color: "#E05555", background: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Delete</button>
                 </div>
               ))}
