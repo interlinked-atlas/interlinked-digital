@@ -427,6 +427,15 @@ export async function POST(req: NextRequest) {
             },
             notes: 'ATLAS access revoked immediately; Stripe subscription remains active (billed) until current_period_end unless separately cancelled there.',
           })
+          // Previously only the eventual customer.subscription.deleted (weeks
+          // away, at Stripe's own period end) triggered an admin alert — a
+          // cancellation scheduled today via cancel_at_period_end produced no
+          // admin-facing notification at all until then. This fires the
+          // moment access is actually revoked instead.
+          await notifyAdmin(
+            'Subscription Cancelled',
+            `${email} just cancelled. ATLAS access revoked immediately. They have 10 days to reactivate for free before permanent suspension.`
+          )
         }
 
         // Reversal: the customer undid a scheduled cancellation before it took
