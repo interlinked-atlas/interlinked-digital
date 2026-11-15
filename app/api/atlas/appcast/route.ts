@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '170'
-const SHORT_VERSION    = '1.7.0'
-const RELEASE_DATE     = 'Sun, 15 Nov 2026 01:05:00 +0000'
+const CURRENT_VERSION  = '171'
+const SHORT_VERSION    = '1.7.1'
+const RELEASE_DATE     = 'Sun, 15 Nov 2026 12:29:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20779434'
-const ED_SIGNATURE     = 'tOtscYgykzdviNlM2v6As6x/Xt/XAXW9HS6NQt3akSc9Ax5jtw8MMASoJfELuln7wn2mPv65eX/4koiVdjMtDA=='
+const DMG_LENGTH       = '20795051'
+const ED_SIGNATURE     = 'xR5Fk8WUWlapSJFPZzXtJiMC8ZAxpgGxeNQP8j+eKSpKsA73p7Xzsbi3S0PW9ySDOUvCAwpLENlTiGguHnKxBA=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>New: ATLAS Browser</li>
+  <li>ATLAS Browser is now available in all 8 supported languages</li>
 </ul>
 `.trim()
 
