@@ -1984,7 +1984,7 @@ export default function AdminPage() {
                     <input type="file" accept="image/*" style={{ display: "none" }} disabled={catalogUploadingId === c.id}
                       onChange={e => { const f = e.target.files?.[0]; if (f) uploadCatalogImage(c.id, f) }} />
                   </label>
-                  <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
+                  <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c); window.scrollTo({ top: 0, behavior: "smooth" }) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
                   <button onClick={() => deleteCatalogItem(c.id)} style={{ fontSize: "10px", color: "#E05555", background: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Delete</button>
                 </div>
               ))}
