@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '177'
-const SHORT_VERSION    = '1.7.7'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 04:25:00 +0000'
+const CURRENT_VERSION  = '178'
+const SHORT_VERSION    = '1.7.8'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 08:20:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20826420'
-const ED_SIGNATURE     = 'q7p3HLjB0qfc7qBw4CI425/vTeeA4ZFuU6vyQsEJTm0wpdXS+oY6EPFGejwsJHPHN4GE0t+9O2h74uS7YwdEDw=='
+const DMG_LENGTH       = '20831716'
+const ED_SIGNATURE     = 'NBBtuwFoRrUyVl6rgaZgk7GJ4AKsOV5vG2d26wmt/9BUCrsdOEF8Tlw3PbEikVQL8YtTSonfoaJEphE5GV7lAQ=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed a persistent window wobble on some Macs when ATLAS Browser was open</li>
+  <li>Fixed the real cause of the ATLAS Browser window wobble — the window was being forced to the wrong size whenever the first-launch disclosure screen was showing</li>
 </ul>
 `.trim()
 

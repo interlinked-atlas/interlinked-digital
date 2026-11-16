@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var permCheckTimer: Timer? = nil
     @State private var unsupportedExtension: String? = nil
     @State private var showHistory = false
+    @State private var showBrowser = false
     @State private var libraryLastActivity = Date()
     @State private var libraryIdleTimer: Timer? = nil
     @State private var rollingBack: InstallRecord? = nil
@@ -191,6 +192,17 @@ struct ContentView: View {
             PermissionsSetupView { showPermissionsSheet = false }
         }
         .sheet(isPresented: $showAbout) { AboutView() }
+        // ATLAS Browser used to be a .sheet — on macOS, any attached sheet
+        // disables dragging the parent window until it's dismissed, which is
+        // exactly the "can't move the app" bug. It's now an in-window overlay
+        // (same pattern as Recovery Mode below) so the title bar stays
+        // draggable while Browser is open.
+        // Floating "ready to install" cards for Browser downloads that just
+        // landed in ~/Downloads — see AtlasPendingDownloadsStore.
+        .overlay(alignment: .bottomTrailing) {
+            ReadyToInstallBanner(onInstall: { url in beginInstall(url: url) })
+                .padding(16)
+        }
         .sheet(isPresented: Binding(
             get: { !reviewStore.reviews.isEmpty },
             set: { _ in } // dismissed only via explicit Confirm/Dismiss actions inside the sheet
@@ -298,6 +310,63 @@ struct ContentView: View {
                     }
                 )
                 .zIndex(100)
+            }
+
+            // ATLAS Browser — full-window overlay, same pattern as Recovery
+            // Mode above. Uses resizeMainWindowKeepingCenter (not
+            // setContentSize) so the resize can never hand AppKit an
+            // off-screen frame on a smaller or differently-arranged
+            // display — see that function's comment.
+            //
+            // The outer .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // below is load-bearing, not decorative — AtlasBrowserEntryView's
+            // own content has a concrete fixed size (860x620 for the real
+            // Browser grid, or 520x600 for its splash disclosure), and
+            // that's the ONLY branch in this ZStack that does. SwiftUI's
+            // WindowGroup auto-sizes the window to fit the root view's
+            // ideal size by default; RecoveryModeView and mainView both
+            // stay greedy/infinite so they never give that mechanism a
+            // concrete target.
+            //
+            // IMPORTANT: AtlasBrowserEntryView shows the splash (520x600)
+            // and the real grid (860x620) at DIFFERENT times, not just
+            // different sizes on entry/exit. Resizing to a single hardcoded
+            // size on first appear (860x620) left the window forced to the
+            // wrong size — and therefore fighting SwiftUI's own layout of
+            // whichever child was actually on screen — every time the
+            // splash showed (i.e. every time the user hadn't checked "Don't
+            // show again"). That mismatch was the real wobble, just more
+            // visible on faster/higher-refresh hardware. Fixed by routing
+            // the resize through onResize, which the entry view fires for
+            // the specific child it's actually showing, both on first
+            // appear and on every splash<->browser transition.
+            if showBrowser {
+                AtlasBrowserEntryView(
+                    onExit: {
+                        if let window = AppDelegate.mainWindow {
+                            AppDelegate.resizeMainWindowKeepingCenter(
+                                window,
+                                contentSize: CGSize(width: 760, height: 500),
+                                minContentSize: CGSize(width: 760, height: 500),
+                                maxContentSize: CGSize(width: 760, height: 500)
+                            )
+                        }
+                        showBrowser = false
+                    },
+                    onResize: { size in
+                        guard let window = AppDelegate.mainWindow else { return }
+                        AppDelegate.resizeMainWindowKeepingCenter(
+                            window,
+                            contentSize: size,
+                            minContentSize: size,
+                            maxContentSize: size == CGSize(width: 860, height: 620)
+                                ? CGSize(width: 900, height: 700)
+                                : size
+                        )
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(99)
             }
 
             // Main content — always full window width, never resizes for history
@@ -419,6 +488,8 @@ struct ContentView: View {
                 setupComplete = true
             }
             startPermissionPolling()
+            AtlasDownloadWatcher.shared.start()
+            AtlasBrowserNewProductWatcher.shared.start()
             if !tourDismissed {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                     showTour = true
@@ -427,6 +498,8 @@ struct ContentView: View {
         }
         .onDisappear {
             stopPermissionPolling()
+            AtlasDownloadWatcher.shared.stop()
+            AtlasBrowserNewProductWatcher.shared.stop()
         }
         .task {
             // Automation check is slow (spawns osascript) — run non-blocking.
@@ -687,6 +760,8 @@ struct ContentView: View {
             .disabled(busy)
             .opacity(busy ? 0.3 : 1)
 
+            NotificationBellButton()
+
             // TITAN CORE™ live action indicator (Pro only, shown while active)
             if titanCore.isActive && !titanCore.currentAction.isEmpty {
                 HStack(spacing: 5) {
@@ -940,6 +1015,20 @@ struct ContentView: View {
                 .disabled(busy)
                 .opacity(busy ? 0.3 : 1)
                 .tourAnchor("history")
+
+                // ATLAS Browser — placement here is provisional, not yet
+                // decided as the final home for this feature.
+                AtlasLabelButton(
+                    icon: "square.grid.2x2",
+                    label: "Browser",
+                    isActive: showBrowser,
+                    jiggles: true
+                ) {
+                    showBrowser = true
+                }
+                .disabled(busy)
+                .opacity(busy ? 0.3 : 1)
+                .tourAnchor("browser")
 
                 if queue.isProcessing || appState.phase == .installing ||
                    appState.phase == .processing || rollbackInProgress ||
@@ -2301,6 +2390,10 @@ struct ContentView: View {
                 ATLASNotification.send(
                     title: L(.notifySuccessTitle),
                     body: String(format: L(.notifySuccessBody), name))
+                NotificationCenterStore.shared.add(
+                    kind: .installSuccess,
+                    title: L(.notifySuccessTitle),
+                    body: String(format: L(.notifySuccessBody), name))
                 MenuBarStatusManager.shared.menuStatus = .success
                 // Show activation alert only when user must manually act (enter a key, visit a URL)
                 if let doc = pendingDocInfo, doc.requiresUserAction {
@@ -2312,6 +2405,10 @@ struct ContentView: View {
                     Task { await monthlyLimit.releaseReservation(reservationID: reservationID) }
                 }
                 ATLASNotification.send(
+                    title: L(.notifyFailedTitle),
+                    body: reason)
+                NotificationCenterStore.shared.add(
+                    kind: .installFailed,
                     title: L(.notifyFailedTitle),
                     body: reason)
                 MenuBarStatusManager.shared.menuStatus = .failure
@@ -2448,11 +2545,16 @@ struct ContentView: View {
                 }
                 return ""
             }()
+            let queueBody = "\(succeeded) installed successfully\(demoNote)" +
+                      (failed > 0 ? ", \(failed) failed." : ".") + rescanNote
             ATLASNotification.send(
                 title: L(.notifyQueueCompleteTitle),
-                body: "\(succeeded) installed successfully\(demoNote)" +
-                      (failed > 0 ? ", \(failed) failed." : ".") + rescanNote
+                body: queueBody
             )
+            NotificationCenterStore.shared.add(
+                kind: failed > 0 ? .installFailed : .installSuccess,
+                title: L(.notifyQueueCompleteTitle),
+                body: queueBody)
             MenuBarStatusManager.shared.menuStatus = failed > 0 ? .failure : .success
         }
     }
@@ -2847,11 +2949,12 @@ struct ContentView: View {
                 if rollbackQueueTotal == 1 {
                     // Single uninstall — existing summary card
                     uninstallResult = result
-                    ATLASNotification.send(
-                        title: result.success ? L(.notifyUninstallComplete) : L(.notifyUninstallFailed),
-                        body:  result.success
-                            ? String(format: L(.notifyUninstallSuccessBody), record.fileName)
-                            : "\(record.fileName): \(result.detail)")
+                    let uninstallTitle = result.success ? L(.notifyUninstallComplete) : L(.notifyUninstallFailed)
+                    let uninstallBody = result.success
+                        ? String(format: L(.notifyUninstallSuccessBody), record.fileName)
+                        : "\(record.fileName): \(result.detail)"
+                    ATLASNotification.send(title: uninstallTitle, body: uninstallBody)
+                    NotificationCenterStore.shared.add(kind: .uninstall, title: uninstallTitle, body: uninstallBody)
                     MenuBarStatusManager.shared.menuStatus = result.success ? .success : .failure
                     rollingBack = nil
                 } else {
@@ -2864,10 +2967,13 @@ struct ContentView: View {
                     } else {
                         let ok  = batchRollbackResults.filter {  $0.1.success }.count
                         let bad = batchRollbackResults.filter { !$0.1.success }.count
-                        ATLASNotification.send(
+                        let batchBody = "\(ok) item\(ok == 1 ? "" : "s") removed" +
+                                   (bad > 0 ? ", \(bad) failed." : ".")
+                        ATLASNotification.send(title: L(.notifyBatchUninstallTitle), body: batchBody)
+                        NotificationCenterStore.shared.add(
+                            kind: .uninstall,
                             title: L(.notifyBatchUninstallTitle),
-                            body:  "\(ok) item\(ok == 1 ? "" : "s") removed" +
-                                   (bad > 0 ? ", \(bad) failed." : "."))
+                            body: batchBody)
                         MenuBarStatusManager.shared.menuStatus = bad > 0 ? .failure : .success
                     }
                 }
@@ -3304,6 +3410,7 @@ struct AtlasLabelButton: View {
     let icon: String
     let label: String
     var isActive: Bool = false
+    var jiggles: Bool = false
     let action: () -> Void
 
     @State private var hovered = false
@@ -3311,8 +3418,14 @@ struct AtlasLabelButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.atlasFont(size: 10.5, weight: .medium))
+                Group {
+                    if jiggles {
+                        Image(systemName: icon).modifier(PeriodicJiggle())
+                    } else {
+                        Image(systemName: icon)
+                    }
+                }
+                .font(.atlasFont(size: 10.5, weight: .medium))
                 Text(label)
                     .font(.atlasFont(size: 11, weight: .medium))
             }
@@ -3340,5 +3453,41 @@ struct AtlasLabelButton: View {
         .scaleEffect(hovered ? 1.02 : 1.0)
         .animation(.atlasSnap, value: hovered)
         .onHover { hovered = $0 }
+    }
+}
+
+/// Nudges whatever it's attached to with a quick side-to-side shake every
+/// 10 seconds — used to draw attention to the Browser button without being
+/// a constant, distracting animation. Timer is invalidated on disappear so
+/// it doesn't keep firing after the view (or window) is gone.
+private struct PeriodicJiggle: ViewModifier {
+    @State private var angle: Double = 0
+    @State private var timer: Timer?
+
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(angle))
+            .onAppear {
+                timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in
+                    jiggle()
+                }
+            }
+            .onDisappear {
+                timer?.invalidate()
+                timer = nil
+            }
+    }
+
+    private func jiggle() {
+        withAnimation(.easeInOut(duration: 0.09)) { angle = -12 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+            withAnimation(.easeInOut(duration: 0.09)) { angle = 10 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.easeInOut(duration: 0.09)) { angle = -6 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.27) {
+            withAnimation(.easeInOut(duration: 0.09)) { angle = 0 }
+        }
     }
 }
