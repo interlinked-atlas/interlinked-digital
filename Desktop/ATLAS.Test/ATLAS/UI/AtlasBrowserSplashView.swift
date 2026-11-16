@@ -230,6 +230,7 @@ struct AtlasBrowserEntryView: View {
     /// and would otherwise keep the window sized for whichever child
     /// happened to be visible first.
     var onResize: (CGSize) -> Void
+    var reloadSignal: AtlasBrowserReloadSignal = AtlasBrowserReloadSignal()
 
     @AppStorage("atlasBrowserSplashDismissed") private var splashDismissed = false
     @State private var proceeded = false
@@ -250,7 +251,7 @@ struct AtlasBrowserEntryView: View {
                     }
                 )
             } else {
-                AtlasBrowserView(onClose: onExit)
+                AtlasBrowserView(onClose: onExit, reloadSignal: reloadSignal)
             }
         }
         .onAppear { onResize(showingSplash ? CGSize(width: 520, height: 600) : CGSize(width: 860, height: 620)) }

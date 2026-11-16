@@ -8,16 +8,17 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '179'
-const SHORT_VERSION    = '1.7.9'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 09:10:00 +0000'
+const CURRENT_VERSION  = '1710'
+const SHORT_VERSION    = '1.7.10'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 10:05:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20847283'
-const ED_SIGNATURE     = 'nrQluK3G5WbtMZZpEzPI/Oi47Fc7hRZ5/4K6eSN2gdYTyrjJ7Dj68yQ8cLCgDuKPC1uBNX3osVO10dfKvYanAA=='
+const DMG_LENGTH       = '20829697'
+const ED_SIGNATURE     = 'CSFiQMrECoFlv8O1tV/G0OhDC5OBhkq0l2PIZmUZcqyX6aBzRZoLkDBv6Svl8XvGSUOuGwL2fgEVd1hDafY/AQ=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>ATLAS Browser now opens in its own window instead of resizing the main ATLAS window — permanently fixes the window wobble some Macs saw</li>
+  <li>Fixed ATLAS Browser showing a stale "Currently being Upgraded" message after it was already re-enabled in the admin panel</li>
+  <li>Centered the Browser maintenance message in the window instead of it sitting on the left edge</li>
 </ul>
 `.trim()
 

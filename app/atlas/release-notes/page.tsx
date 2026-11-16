@@ -8,6 +8,14 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.7.10',
+    date: 'November 16, 2026',
+    notes: [
+      'Fixed ATLAS Browser showing a stale "Currently being Upgraded" message after it had already been re-enabled in the admin panel',
+      'Centered the Browser maintenance message in the window',
+    ],
+  },
+  {
     version: '1.7.9',
     date: 'November 16, 2026',
     notes: [

@@ -1810,7 +1810,7 @@ export default function AdminPage() {
                   borderRadius: "7px", padding: "7px 14px", cursor: "pointer",
                 }}
               >
-                {browserMaintenanceSaving ? "Saving…" : browserMaintenance ? "Re-enable ATLAS Browser" : "ATLAS Browser is Currently being Upgraded. Please Try Again Later"}
+                {browserMaintenanceSaving ? "Saving…" : browserMaintenance ? "Re-enable ATLAS Browser" : "Disable ATLAS Browser"}
               </button>
             </div>
 

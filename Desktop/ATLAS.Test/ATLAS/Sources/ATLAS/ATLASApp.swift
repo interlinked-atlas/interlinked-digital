@@ -592,6 +592,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     static let shared = BrowserWindowController()
 
+    private let reloadSignal = AtlasBrowserReloadSignal()
+
     private init() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
@@ -602,11 +604,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.center()
+        let signal = reloadSignal
         super.init(window: window)
         window.delegate = self
         window.contentView = NSHostingView(rootView: AtlasBrowserEntryView(
             onExit: { [weak self] in self?.close() },
-            onResize: { _ in }
+            onResize: { _ in },
+            reloadSignal: signal
         ))
     }
 
@@ -626,6 +630,10 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         AppState.shared.browserIsOpen = true
+        // See AtlasBrowserReloadSignal's comment — this is what makes
+        // maintenance-mode and catalog state fresh on every open, not just
+        // the window's first-ever open.
+        reloadSignal.token += 1
     }
 
     func windowWillClose(_ notification: Notification) {
