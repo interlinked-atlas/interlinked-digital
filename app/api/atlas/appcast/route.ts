@@ -8,17 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '173'
-const SHORT_VERSION    = '1.7.3'
-const RELEASE_DATE     = 'Sun, 15 Nov 2026 22:36:00 +0000'
+const CURRENT_VERSION  = '174'
+const SHORT_VERSION    = '1.7.4'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 02:32:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20822554'
-const ED_SIGNATURE     = 'H+CdgVe3pOVipLzg9dO50HCTlyHyP8HikmFbbYTQs8q18l74VDakhy9f9pTUgSSJ5C35jsbi4h85qHyBxlLPAw=='
+const DMG_LENGTH       = '20825420'
+const ED_SIGNATURE     = 'F/ceFS7zyBiq9K6JXN8mruHmN9KaZx0Qh3BLqkp1Ksn4nakKgl7uEHd2ctXs033cl+uVsWh50BbUb9NStrWKCw=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Improved readability of the Available Now / Available Soon badges in ATLAS Browser</li>
-  <li>Accounts are now signed out immediately upon cancellation, not just on next background check</li>
+  <li>Fixed: the ATLAS window couldn't be moved while ATLAS Browser was open</li>
 </ul>
 `.trim()
 
