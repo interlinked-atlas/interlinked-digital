@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '176'
-const SHORT_VERSION    = '1.7.6'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 04:04:00 +0000'
+const CURRENT_VERSION  = '177'
+const SHORT_VERSION    = '1.7.7'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 04:25:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20825513'
-const ED_SIGNATURE     = 'tkQFl7p1NnOKBqANmQCHfNhQDG+nOmbS/D2CwuY95106pP2UgJXVKUheSS7ZQVjdeG0mEZmcM1xSN2cqe96sBQ=='
+const DMG_LENGTH       = '20826420'
+const ED_SIGNATURE     = 'q7p3HLjB0qfc7qBw4CI425/vTeeA4ZFuU6vyQsEJTm0wpdXS+oY6EPFGejwsJHPHN4GE0t+9O2h74uS7YwdEDw=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed a window wobble some Macs saw when opening or closing ATLAS Browser</li>
+  <li>Fixed a persistent window wobble on some Macs when ATLAS Browser was open</li>
 </ul>
 `.trim()
 

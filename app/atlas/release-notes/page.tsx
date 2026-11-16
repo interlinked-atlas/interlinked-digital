@@ -8,10 +8,10 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
-    version: '1.7.6',
+    version: '1.7.7',
     date: 'November 15, 2026',
     notes: [
-      'Fixed a window wobble some Macs saw when opening or closing ATLAS Browser — the window now resizes around its center and stays within the screen’s visible area instead of growing from a corner',
+      'Fixed a persistent window wobble some Macs saw when ATLAS Browser was open',
     ],
   },
   {
