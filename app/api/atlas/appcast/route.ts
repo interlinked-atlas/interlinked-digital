@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '174'
-const SHORT_VERSION    = '1.7.4'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 02:32:00 +0000'
+const CURRENT_VERSION  = '175'
+const SHORT_VERSION    = '1.7.5'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 03:45:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20825420'
-const ED_SIGNATURE     = 'F/ceFS7zyBiq9K6JXN8mruHmN9KaZx0Qh3BLqkp1Ksn4nakKgl7uEHd2ctXs033cl+uVsWh50BbUb9NStrWKCw=='
+const DMG_LENGTH       = '20825415'
+const ED_SIGNATURE     = 'LUQWjrvg7Q1ZJA6tpsTpQykI9x9aVxUNRGn2os55oIpFR7MeEmNTaxb+1RckZwmcITrG2ulR9ri7idmry4ydCw=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed: the ATLAS window couldn't be moved while ATLAS Browser was open</li>
+  <li>Fixed a visual wobble when opening or closing ATLAS Browser</li>
 </ul>
 `.trim()
 
