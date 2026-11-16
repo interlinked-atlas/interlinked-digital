@@ -45,6 +45,8 @@ class AppState: ObservableObject {
     // is blocked. SettingsWindowController sets this for anything that
     // still wants to know whether Settings happens to be open.
     @Published var settingsIsOpen = false
+    // Same pattern as settingsIsOpen — BrowserWindowController sets this.
+    @Published var browserIsOpen = false
     // SettingsWindowController's "Replay Tour" action lives outside
     // ContentView now, so it signals the request here instead of calling
     // into ContentView's own @State directly.

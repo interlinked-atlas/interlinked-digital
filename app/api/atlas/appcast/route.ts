@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '178'
-const SHORT_VERSION    = '1.7.8'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 08:20:00 +0000'
+const CURRENT_VERSION  = '179'
+const SHORT_VERSION    = '1.7.9'
+const RELEASE_DATE     = 'Mon, 16 Nov 2026 09:10:00 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20831716'
-const ED_SIGNATURE     = 'NBBtuwFoRrUyVl6rgaZgk7GJ4AKsOV5vG2d26wmt/9BUCrsdOEF8Tlw3PbEikVQL8YtTSonfoaJEphE5GV7lAQ=='
+const DMG_LENGTH       = '20847283'
+const ED_SIGNATURE     = 'nrQluK3G5WbtMZZpEzPI/Oi47Fc7hRZ5/4K6eSN2gdYTyrjJ7Dj68yQ8cLCgDuKPC1uBNX3osVO10dfKvYanAA=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed the real cause of the ATLAS Browser window wobble — the window was being forced to the wrong size whenever the first-launch disclosure screen was showing</li>
+  <li>ATLAS Browser now opens in its own window instead of resizing the main ATLAS window — permanently fixes the window wobble some Macs saw</li>
 </ul>
 `.trim()
 

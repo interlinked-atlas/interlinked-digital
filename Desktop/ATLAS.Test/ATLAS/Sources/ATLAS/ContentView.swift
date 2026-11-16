@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var permCheckTimer: Timer? = nil
     @State private var unsupportedExtension: String? = nil
     @State private var showHistory = false
-    @State private var showBrowser = false
     @State private var libraryLastActivity = Date()
     @State private var libraryIdleTimer: Timer? = nil
     @State private var rollingBack: InstallRecord? = nil
@@ -312,62 +311,16 @@ struct ContentView: View {
                 .zIndex(100)
             }
 
-            // ATLAS Browser — full-window overlay, same pattern as Recovery
-            // Mode above. Uses resizeMainWindowKeepingCenter (not
-            // setContentSize) so the resize can never hand AppKit an
-            // off-screen frame on a smaller or differently-arranged
-            // display — see that function's comment.
-            //
-            // The outer .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // below is load-bearing, not decorative — AtlasBrowserEntryView's
-            // own content has a concrete fixed size (860x620 for the real
-            // Browser grid, or 520x600 for its splash disclosure), and
-            // that's the ONLY branch in this ZStack that does. SwiftUI's
-            // WindowGroup auto-sizes the window to fit the root view's
-            // ideal size by default; RecoveryModeView and mainView both
-            // stay greedy/infinite so they never give that mechanism a
-            // concrete target.
-            //
-            // IMPORTANT: AtlasBrowserEntryView shows the splash (520x600)
-            // and the real grid (860x620) at DIFFERENT times, not just
-            // different sizes on entry/exit. Resizing to a single hardcoded
-            // size on first appear (860x620) left the window forced to the
-            // wrong size — and therefore fighting SwiftUI's own layout of
-            // whichever child was actually on screen — every time the
-            // splash showed (i.e. every time the user hadn't checked "Don't
-            // show again"). That mismatch was the real wobble, just more
-            // visible on faster/higher-refresh hardware. Fixed by routing
-            // the resize through onResize, which the entry view fires for
-            // the specific child it's actually showing, both on first
-            // appear and on every splash<->browser transition.
-            if showBrowser {
-                AtlasBrowserEntryView(
-                    onExit: {
-                        if let window = AppDelegate.mainWindow {
-                            AppDelegate.resizeMainWindowKeepingCenter(
-                                window,
-                                contentSize: CGSize(width: 760, height: 500),
-                                minContentSize: CGSize(width: 760, height: 500),
-                                maxContentSize: CGSize(width: 760, height: 500)
-                            )
-                        }
-                        showBrowser = false
-                    },
-                    onResize: { size in
-                        guard let window = AppDelegate.mainWindow else { return }
-                        AppDelegate.resizeMainWindowKeepingCenter(
-                            window,
-                            contentSize: size,
-                            minContentSize: size,
-                            maxContentSize: size == CGSize(width: 860, height: 620)
-                                ? CGSize(width: 900, height: 700)
-                                : size
-                        )
-                    }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .zIndex(99)
-            }
+            // ATLAS Browser used to be an in-window overlay here, resizing
+            // the main window to fit it (same pattern as Recovery Mode
+            // above). That resize-vs-SwiftUI-layout race was the actual
+            // cause of a persistent window wobble (worse on a Mac mini M4)
+            // that three separate fix attempts (v1.7.5-v1.7.8) never fully
+            // eliminated — each just changed how the race played out.
+            // v1.7.9 moves Browser to its own NSWindow (BrowserWindowController,
+            // same pattern as SettingsWindowController below) instead, so
+            // opening it never touches the main window's frame at all —
+            // removing the race rather than tuning it.
 
             // Main content — always full window width, never resizes for history
             // Reverted from the "Liquid Chrome Glass shell" — that transparent
@@ -1021,10 +974,10 @@ struct ContentView: View {
                 AtlasLabelButton(
                     icon: "square.grid.2x2",
                     label: "Browser",
-                    isActive: showBrowser,
+                    isActive: appState.browserIsOpen,
                     jiggles: true
                 ) {
-                    showBrowser = true
+                    BrowserWindowController.shared.show()
                 }
                 .disabled(busy)
                 .opacity(busy ? 0.3 : 1)

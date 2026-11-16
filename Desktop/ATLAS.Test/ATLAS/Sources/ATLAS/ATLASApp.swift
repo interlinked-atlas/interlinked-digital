@@ -446,6 +446,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
 
         // Order front and activate BEFORE updating SwiftUI state — this ensures
         // the window is on-screen before SwiftUI re-renders into it.
+        // makeKeyAndOrderFront alone does NOT restore a miniaturized window —
+        // without this check, clicking the Dock icon while minimized appeared
+        // to do nothing, since the window stayed collapsed in the Dock.
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
         window.alphaValue = 0
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -579,6 +585,51 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         AppState.shared.settingsIsOpen = false
+    }
+}
+
+@MainActor
+final class BrowserWindowController: NSWindowController, NSWindowDelegate {
+    static let shared = BrowserWindowController()
+
+    private init() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        window.contentView = NSHostingView(rootView: AtlasBrowserEntryView(
+            onExit: { [weak self] in self?.close() },
+            onResize: { _ in }
+        ))
+    }
+
+    required init?(coder: NSCoder) { fatalError("Not designed for storyboard/XIB use") }
+
+    func show() {
+        if let browserWindow = window, let main = AppDelegate.mainWindow {
+            let mainFrame = main.frame
+            let size = browserWindow.frame.size
+            let origin = NSPoint(
+                x: mainFrame.midX - size.width  / 2,
+                y: mainFrame.midY - size.height / 2)
+            browserWindow.setFrameOrigin(origin)
+        } else {
+            window?.center()
+        }
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        AppState.shared.browserIsOpen = true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        AppState.shared.browserIsOpen = false
     }
 }
 
