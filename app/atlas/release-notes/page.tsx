@@ -8,6 +8,13 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.7.11',
+    date: 'November 16, 2026',
+    notes: [
+      "ATLAS Browser's enable/disable toggle in the admin panel now syncs to the app in real time",
+    ],
+  },
+  {
     version: '1.7.10',
     date: 'November 16, 2026',
     notes: [
