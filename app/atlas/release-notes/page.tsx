@@ -8,6 +8,49 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.7.6',
+    date: 'November 15, 2026',
+    notes: [
+      'Fixed a window wobble some Macs saw when opening or closing ATLAS Browser — the window now resizes around its center and stays within the screen’s visible area instead of growing from a corner',
+    ],
+  },
+  {
+    version: '1.7.4',
+    date: 'November 15, 2026',
+    notes: [
+      'Fixed: the ATLAS window couldn’t be moved while ATLAS Browser was open',
+    ],
+  },
+  {
+    version: '1.7.3',
+    date: 'November 15, 2026',
+    notes: [
+      'Improved readability of the Available Now / Available Soon badges in ATLAS Browser',
+      'Accounts are now signed out immediately upon cancellation, not just on the next background check',
+    ],
+  },
+  {
+    version: '1.7.2',
+    date: 'November 15, 2026',
+    notes: [
+      'Fixed: clicking the Dock icon while ATLAS was minimized did nothing — it now reopens normally',
+    ],
+  },
+  {
+    version: '1.7.1',
+    date: 'November 15, 2026',
+    notes: [
+      'ATLAS Browser is now fully localized in all 8 supported languages',
+    ],
+  },
+  {
+    version: '1.7.0',
+    date: 'November 15, 2026',
+    notes: [
+      'New: ATLAS Browser — discover and download third-party plugins, apps, and sample content, all in one place',
+    ],
+  },
+  {
     version: '1.6.9',
     date: 'November 11, 2026',
     notes: [
