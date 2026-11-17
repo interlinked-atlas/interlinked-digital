@@ -8,16 +8,18 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '1711'
-const SHORT_VERSION    = '1.7.11'
-const RELEASE_DATE     = 'Mon, 16 Nov 2026 11:00:00 +0000'
+const CURRENT_VERSION  = '1712'
+const SHORT_VERSION    = '1.7.12'
+const RELEASE_DATE     = 'Tue, 17 Nov 2026 07:54:40 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20842117'
-const ED_SIGNATURE     = 'rBopdraWcP/AjR+OY/eFTiSOMCBbOIqZErtO+UeSCTEtkjvPt4H2kJF3+X130DNwtdADzvjfhw69/JmpXNh/Aw=='
+const DMG_LENGTH       = '20844068'
+const ED_SIGNATURE     = '21go5eWIuKTeRX0NJqpUTw4q5H1ouMXVBwjjeNXurC77wvyYcfkqcyTP+il+q0gcF2+5dGH0PMzaQsvHUPuxCA=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>ATLAS Browser's enable/disable toggle in the admin panel now syncs to the app in real time, instead of only updating the next time Browser is reopened</li>
+  <li>Fixed uninstall sometimes stalling indefinitely partway through</li>
+  <li>Fixed a rare issue where uninstalling could use an excessive amount of memory</li>
+  <li>ATLAS Browser is now the first button on the left in the toolbar</li>
 </ul>
 `.trim()
 

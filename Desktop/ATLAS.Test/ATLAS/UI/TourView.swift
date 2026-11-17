@@ -12,6 +12,7 @@ struct TourStep {
 private func makeTourSteps() -> [TourStep] { [
     TourStep(icon: "arrow.down.to.line.circle.fill",        title: L(.tourStep0Title), body: L(.tourStep0Body), anchorID: "dropZone"),
     TourStep(icon: "books.vertical.fill",                   title: L(.tourStep1Title), body: L(.tourStep1Body), anchorID: "history"),
+    TourStep(icon: "square.grid.2x2",                       title: L(.tourStep8Title), body: L(.tourStep8Body), anchorID: "browser"),
     TourStep(icon: "square.stack.3d.down.right.fill",       title: L(.tourStep2Title), body: L(.tourStep2Body), anchorID: "installedProducts"),
     TourStep(icon: "arrow.uturn.backward.circle.fill",      title: L(.tourStep3Title), body: L(.tourStep3Body), anchorID: "installedProducts"),
     TourStep(icon: "sparkles",                              title: L(.tourStep4Title), body: L(.tourStep4Body), anchorID: "cleanerRow"),
@@ -304,8 +305,9 @@ struct TourView: View {
 
     private func navigate(_ dir: Int) {
         let next = max(0, min(tourSteps.count - 1, step + dir))
-        // Stepping forward from step 1 → step 2 opens the Library panel first
-        if dir > 0 && step == 1 && next == 2 {
+        // Stepping forward into the "installedProducts" step opens the
+        // Library panel first so that anchor is actually visible.
+        if dir > 0 && step == 2 && next == 3 {
             onLibraryOpen?()
             withAnimation(.easeOut(duration: 0.15)) { cardOpacity = 0 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {

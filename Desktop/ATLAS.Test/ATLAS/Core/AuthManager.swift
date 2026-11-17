@@ -299,8 +299,33 @@ final class AuthManager: ObservableObject {
     /// becomes active/foregrounded) so an admin-forced device removal is
     /// caught right away instead of waiting on a background timer that
     /// macOS App Nap can throttle heavily while ATLAS sits backgrounded.
+    ///
+    /// Also re-checks suspension/cancellation/payment-failed here, for the
+    /// same reason — a subscription cancelled while ATLAS sat backgrounded
+    /// previously waited on the same throttled 5s timer as device removal,
+    /// so a real cancellation could sit unenforced far longer than 5s until
+    /// the app happened to come back to the foreground on its own. This
+    /// mirrors the planSyncTimer's own suspension/billing checks exactly.
     func checkDeviceStillRegistered() async {
         guard let s = session, !s.isExpired else { return }
+
+        if let p = try? await SupabaseService.shared.getProfile(
+            accessToken: s.accessToken, userID: s.userID) {
+            if p.isSuspended == true {
+                await MainActor.run {
+                    self.signOut(reason: "Your account has been suspended. Contact support if you believe this is an error.")
+                }
+                return
+            }
+            if p.subscriptionStatus == "cancelled" || p.subscriptionStatus == "payment_failed" {
+                let msg = p.subscriptionStatus == "payment_failed"
+                    ? "Your last payment failed. Visit interlinked.digital/atlas to update your billing info."
+                    : "Your subscription has been cancelled. Visit interlinked.digital/atlas to subscribe again."
+                await MainActor.run { self.signOut(reason: msg) }
+                return
+            }
+        }
+
         guard let list = try? await SupabaseService.shared.getDevices(
             accessToken: s.accessToken, userID: s.userID) else { return }
         let myUUID = atlasHardwareUUID()

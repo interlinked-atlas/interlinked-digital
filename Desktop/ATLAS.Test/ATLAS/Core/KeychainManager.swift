@@ -100,20 +100,27 @@ struct KeychainManager {
     static func loadPassword() -> String? {
         if let cached = _cachedPassword { return cached }
 
-        // kSecUseAuthenticationUISkip previously here made a denied read fail
-        // silently (nil, no prompt, no error) instead of asking the user —
-        // on an ad-hoc signed build, a changed signature after a rebuild can
-        // make macOS deny access to an item saved under the old signature,
-        // which showed up as "logged out instantly after quitting and
-        // relaunching" with no error message. Without the skip flag, that
-        // same case now shows the normal system Keychain prompt instead of
-        // failing silently, and the read succeeds once the user allows it.
+        // kSecUseAuthenticationUISkip: true is required here. Without it, a
+        // denied/ACL-mismatched read (e.g. after an ad-hoc rebuild changes
+        // the code signature) makes SecItemCopyMatching present a system
+        // Keychain prompt and BLOCK SYNCHRONOUSLY until it's answered — with
+        // no timeout and no way to cancel it. If that prompt doesn't become
+        // key (app not frontmost, call running off the main thread mid-task,
+        // hidden behind another window), the call hangs forever. This was
+        // tried without the skip flag and caused uninstalls to stall
+        // indefinitely (e.g. stuck at 24%), and each retry leaked another
+        // permanently-blocked thread — 10+ GB of leaked memory from a few
+        // retries. A denied/stale-signature read now just fails fast to nil,
+        // same as hasPassword()/clearPassword() already expect; callers
+        // (e.g. RollbackEngine) already handle nil by surfacing "No password
+        // stored" instead of hanging.
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String:  true,
-            kSecMatchLimit as String:  kSecMatchLimitOne
+            kSecMatchLimit as String:  kSecMatchLimitOne,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip
         ]
 
         var result: AnyObject?
@@ -167,15 +174,16 @@ struct KeychainManager {
 
     static func loadSession() -> ATLASSession? {
         if let cached = _cachedSession { return cached }
-        // See loadPassword() above — no kSecUseAuthenticationUISkip, so a
-        // denied read (e.g. after a rebuild changed the ad-hoc signature)
-        // prompts the user instead of silently returning nil and logging
-        // them out with no explanation.
+        // See loadPassword() above — kSecUseAuthenticationUISkip is
+        // required so a denied/stale-signature read fails fast to nil
+        // instead of blocking forever on a system prompt that may never
+        // become visible.
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: sessionAccount,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne]
+                                 kSecMatchLimit as String: kSecMatchLimitOne,
+                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
@@ -276,12 +284,13 @@ struct KeychainManager {
     }
 
     private static func keychainGet(account: String) -> Data? {
-        // See loadPassword() above — no kSecUseAuthenticationUISkip.
+        // See loadPassword() above — kSecUseAuthenticationUISkip required.
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                  kSecAttrService as String: service,
                                  kSecAttrAccount as String: account,
                                  kSecReturnData as String: true,
-                                 kSecMatchLimit as String: kSecMatchLimitOne]
+                                 kSecMatchLimit as String: kSecMatchLimitOne,
+                                 kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip]
         var result: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data

@@ -25,12 +25,7 @@ struct AtlasBrowserView: View {
     @State private var allItems: [AtlasCatalogItem] = []
     @State private var isLoading = true
     @State private var loadFailed = false
-    // Backed by BrowserMaintenanceManager's live poll (see its comment),
-    // not a one-shot fetch in load() below — so an admin toggle takes
-    // effect within seconds even while this window is already open,
-    // not just on the next time Browser is opened.
-    @ObservedObject private var maintenanceManager = BrowserMaintenanceManager.shared
-    private var underMaintenance: Bool { maintenanceManager.isUnderMaintenance }
+    @State private var underMaintenance = false
     @State private var searchText = ""
     @State private var hoveredID: String? = nil
     @State private var selectedItem: AtlasCatalogItem? = nil
@@ -298,16 +293,6 @@ struct AtlasBrowserView: View {
         .frame(width: 860, height: 620)
         .clipShape(RoundedRectangle(cornerRadius: ATLASRadius.lg, style: .continuous))
         .task(id: reloadSignal.token) { await load() }
-        // Covers the admin flipping maintenance OFF while this window is
-        // already open and showing the "being upgraded" screen — the live
-        // poll above flips underMaintenance immediately, but the catalog
-        // itself was never fetched (load() returned early while
-        // maintenance was on), so fetch it now instead of showing an
-        // empty grid.
-        .onChange(of: maintenanceManager.isUnderMaintenance) { nowUnderMaintenance in
-            guard !nowUnderMaintenance, allItems.isEmpty, !isLoading else { return }
-            Task { await load() }
-        }
     }
 
     private var header: some View {
@@ -783,9 +768,9 @@ struct AtlasBrowserView: View {
     private func load() async {
         isLoading = true
         loadFailed = false
-        async let maintenanceRefresh: Void = maintenanceManager.refreshNow()
+        async let maintenance = AtlasBrowserService.fetchMaintenanceMode()
         async let limitRefresh: Void = downloadLimit.refreshUsage()
-        await maintenanceRefresh
+        underMaintenance = await maintenance
         await limitRefresh
         if underMaintenance {
             isLoading = false

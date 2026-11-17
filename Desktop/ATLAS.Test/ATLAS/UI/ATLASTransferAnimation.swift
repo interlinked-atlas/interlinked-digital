@@ -24,6 +24,7 @@ enum ATLASTransferMode {
 struct ATLASTransferAnimation: View {
     let mode: ATLASTransferMode
     let isAnimating: Bool   // particles flow when true, freeze when false
+    var scale: CGFloat = 1.0   // visual scale only — doesn't change the animation's native 140pt canvas
 
     private let particleCount = 6
     private let cycleDuration: Double = 3.6   // one full particle's travel time
@@ -97,6 +98,8 @@ struct ATLASTransferAnimation: View {
             }
         }
         .frame(height: 140)
+        .scaleEffect(scale)
+        .frame(height: 140 * scale)
         .frame(maxWidth: .infinity)
     }
 

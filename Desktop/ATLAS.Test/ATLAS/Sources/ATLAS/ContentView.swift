@@ -959,19 +959,6 @@ struct ContentView: View {
 
             HStack(spacing: 5) {
                 AtlasLabelButton(
-                    icon: "books.vertical",
-                    label: "Dashboard",
-                    isActive: showHistory
-                ) {
-                    withAnimation(.atlasSpring) { showHistory.toggle() }
-                }
-                .disabled(busy)
-                .opacity(busy ? 0.3 : 1)
-                .tourAnchor("history")
-
-                // ATLAS Browser — placement here is provisional, not yet
-                // decided as the final home for this feature.
-                AtlasLabelButton(
                     icon: "square.grid.2x2",
                     label: "Browser",
                     isActive: appState.browserIsOpen,
@@ -982,6 +969,17 @@ struct ContentView: View {
                 .disabled(busy)
                 .opacity(busy ? 0.3 : 1)
                 .tourAnchor("browser")
+
+                AtlasLabelButton(
+                    icon: "books.vertical",
+                    label: "Dashboard",
+                    isActive: showHistory
+                ) {
+                    withAnimation(.atlasSpring) { showHistory.toggle() }
+                }
+                .disabled(busy)
+                .opacity(busy ? 0.3 : 1)
+                .tourAnchor("history")
 
                 if queue.isProcessing || appState.phase == .installing ||
                    appState.phase == .processing || rollbackInProgress ||

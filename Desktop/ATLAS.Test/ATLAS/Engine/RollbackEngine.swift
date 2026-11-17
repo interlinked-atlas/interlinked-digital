@@ -279,18 +279,35 @@ struct RollbackEngine {
                     // live receipts. fileEvidenceMap-based evidence is unaffected —
                     // the installedFiles branch above this one still requires it,
                     // exactly as before.
+                    // Safety ceiling independent of otherOwnedPaths/otherLiveReceiptPaths:
+                    // those sets are the only thing normally keeping a receipt's file list
+                    // from being accepted wholesale, but they're EMPTY by construction when
+                    // there are no other live products to exclude against (e.g. uninstalling
+                    // the last/only remaining item). An implausibly large receipt BOM (a
+                    // shared/aggregate installer's full file list) taken wholesale in that
+                    // case caused an 11+ GB memory spike — the resulting set gets duplicated
+                    // across several more full-size collections downstream (collapseByDirectory,
+                    // trash manifest, etc). A single plugin/app's genuine receipt is never
+                    // remotely this large, so this ceiling only ever trips on the pathological
+                    // case, failing closed (preserved, not deleted) rather than exploding memory.
+                    let maxReceiptFilesPerUninstall = 50_000
                     var authorizedCount = 0
                     var preservedCount = 0
-                    for f in files
-                    where !otherOwnedPaths.contains(f)
-                       && !otherLiveReceiptPaths.contains(f) {
-                        candidates.insert(f)
-                        positivelyOwnedPaths.insert(f)
-                        authorizedCount += 1
+                    if files.count > maxReceiptFilesPerUninstall {
+                        await logger.log("⚠ Receipt \(receiptID) reports \(files.count) files — exceeds safety ceiling (\(maxReceiptFilesPerUninstall)); preserving all of them rather than risk an unbounded uninstall. This usually means the receipt covers shared/aggregate content.")
+                        alog.notice("[ATLAS-ROLLBACK] receipt \(receiptID, privacy: .public) oversized — \(files.count) files exceeds ceiling, skipping wholesale acceptance")
+                    } else {
+                        for f in files
+                        where !otherOwnedPaths.contains(f)
+                           && !otherLiveReceiptPaths.contains(f) {
+                            candidates.insert(f)
+                            positivelyOwnedPaths.insert(f)
+                            authorizedCount += 1
+                        }
                     }
                     preservedCount = files.count - authorizedCount
                     if preservedCount > 0 {
-                        await logger.log("  \(receiptID): \(authorizedCount) authorized, \(preservedCount) preserved (claimed by another installed product)")
+                        await logger.log("  \(receiptID): \(authorizedCount) authorized, \(preservedCount) preserved (claimed by another installed product, or receipt exceeded safety ceiling)")
                     }
                 }
             }

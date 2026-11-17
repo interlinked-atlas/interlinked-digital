@@ -162,7 +162,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
             options: [.userInitiatedAllowingIdleSystemSleep],
             reason: "Keep background account/device sync timers responsive")
         MonthlyLimitManager.shared.startLiveSync()
-        BrowserMaintenanceManager.shared.startLiveSync()
         InstallEngine.cleanupStaleMounts()
         InstallEngine.killLeakedAuthWatchers()
         // Check for queue items that survived a crash or force-quit last session.

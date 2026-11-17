@@ -8,6 +8,15 @@ export const metadata = {
 // version to the TOP of this array in the same commit that ships the build.
 const RELEASES = [
   {
+    version: '1.7.12',
+    date: 'November 17, 2026',
+    notes: [
+      'Fixed uninstall sometimes stalling indefinitely partway through',
+      'Fixed a rare issue where uninstalling could use an excessive amount of memory',
+      'ATLAS Browser is now the first button on the left in the toolbar',
+    ],
+  },
+  {
     version: '1.7.11',
     date: 'November 16, 2026',
     notes: [
