@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 
 const FEATURES: Record<string, { title: string; body: string }> = {
@@ -79,6 +80,7 @@ const FAQS: { q: string; a: string }[] = [
 ]
 
 export default function ATLASLaunchPage() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -95,6 +97,18 @@ export default function ATLASLaunchPage() {
   const [selectedFeature, setSelectedFeature] = useState('install')
   const [faqOpen, setFaqOpen] = useState<Record<number, boolean>>({})
   const [supportOpen, setSupportOpen] = useState(false)
+  const [gateOpen, setGateOpen] = useState(false)
+  const [gateCode, setGateCode] = useState('')
+  const [gateError, setGateError] = useState(false)
+
+  function submitInviteCode() {
+    if (gateCode.trim().toLowerCase() === 'atx26') {
+      setGateOpen(false)
+      router.push('/atlas/plans')
+    } else {
+      setGateError(true)
+    }
+  }
   const [logoDrag, setLogoDrag] = useState({ x: 0, y: 0 })
   const dragState = useRef<{ dragging: boolean; originX: number; originY: number }>({ dragging: false, originX: 0, originY: 0 })
 
@@ -313,10 +327,14 @@ export default function ATLASLaunchPage() {
 
           <div className="launch-hero-cta-row" style={{ display: 'flex', gap: 16, zIndex: 5, alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <a href="/atlas/plans" className="launch-btn launch-btn-primary" style={{ background: '#3ECFB2', color: palette.text, fontWeight: 800, fontSize: 16, padding: '16px 32px', borderRadius: 999, gap: 8, transition: 'color 0.3s ease' }}>
+              <button
+                onClick={() => { setGateCode(''); setGateError(false); setGateOpen(true) }}
+                className="launch-btn launch-btn-primary"
+                style={{ background: '#3ECFB2', color: palette.text, fontWeight: 800, fontSize: 16, padding: '16px 32px', borderRadius: 999, gap: 8, transition: 'color 0.3s ease', border: 'none', cursor: 'pointer' }}
+              >
                 <img src="/launch/apple-logo.png" alt="" style={{ width: 22, height: 22, objectFit: 'contain', display: 'block' }} />
                 Get ATLAS V1
-              </a>
+              </button>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                 <div className="launch-os-req" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: palette.textMuted, letterSpacing: 1.6 }}>
                   <img src="/launch/apple-logo.png" alt="" style={{ width: 15, height: 15, objectFit: 'contain', opacity: 0.8 }} />
@@ -499,6 +517,32 @@ export default function ATLASLaunchPage() {
         </div>
         <div style={{ fontSize: 11, color: palette.textMuted }}>© 2026 InterLinked Digital. All rights reserved.</div>
       </div>
+
+      {/* Invite-only access gate */}
+      {gateOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setGateOpen(false)}>
+          <div style={{ width: 380, background: '#141416', borderRadius: 16, padding: 28, boxSizing: 'border-box', border: '1px solid #26262A', boxShadow: '0 40px 80px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#F2F2F0' }}>ATLAS V1 is invite-only</div>
+              <span onClick={() => setGateOpen(false)} style={{ cursor: 'pointer', color: '#8A8A96', fontSize: 20, lineHeight: 1 }}>×</span>
+            </div>
+            <div style={{ fontSize: 13, color: '#8A8A96', marginBottom: 16, lineHeight: 1.5 }}>Enter your access code to continue.</div>
+            <input
+              type="text"
+              value={gateCode}
+              onChange={e => { setGateCode(e.target.value); setGateError(false) }}
+              onKeyDown={e => { if (e.key === 'Enter') submitInviteCode() }}
+              placeholder="Access code"
+              autoFocus
+              style={{ width: '100%', background: '#0E0E10', border: `1px solid ${gateError ? '#E05A5A' : '#2A2A2E'}`, borderRadius: 8, padding: '10px 12px', color: '#D6D6DA', fontSize: 13, boxSizing: 'border-box', outline: 'none', marginBottom: gateError ? 8 : 16 }}
+            />
+            {gateError && (
+              <div style={{ fontSize: 12, color: '#E05A5A', marginBottom: 14 }}>That code isn&apos;t valid. Double-check and try again.</div>
+            )}
+            <button onClick={submitInviteCode} style={{ width: '100%', background: '#3ECFB2', color: '#06211D', fontWeight: 800, fontSize: 14, padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>Continue →</button>
+          </div>
+        </div>
+      )}
 
       {/* Support modal */}
       {supportOpen && (
