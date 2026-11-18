@@ -8,18 +8,23 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '1712'
-const SHORT_VERSION    = '1.7.12'
-const RELEASE_DATE     = 'Tue, 17 Nov 2026 07:54:40 +0000'
+const CURRENT_VERSION  = '1713'
+const SHORT_VERSION    = '1.7.13'
+const RELEASE_DATE     = 'Wed, 18 Nov 2026 22:43:26 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '20844068'
-const ED_SIGNATURE     = '21go5eWIuKTeRX0NJqpUTw4q5H1ouMXVBwjjeNXurC77wvyYcfkqcyTP+il+q0gcF2+5dGH0PMzaQsvHUPuxCA=='
+const DMG_LENGTH       = '21330025'
+const ED_SIGNATURE     = 'zbAnBwfnuT3QQMpvRqx5gBP5ZX1rPWYcAjT2MxRlFJETUqwXVZSqoEd8yXt+KmoZ6+TW8UP1Qs7bbVGLSRA1Cg=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>Fixed uninstall sometimes stalling indefinitely partway through</li>
-  <li>Fixed a rare issue where uninstalling could use an excessive amount of memory</li>
-  <li>ATLAS Browser is now the first button on the left in the toolbar</li>
+  <li>Added customizable notification toggles for downloads, installs, and uninstalls</li>
+  <li>Added "View in My Products" shortcut from a downloaded item in ATLAS Browser</li>
+  <li>ATLAS Browser now warns before downloading an installer built only for Apple Silicon or only for Intel</li>
+  <li>ATLAS now detects when an installer silently fails due to an architecture mismatch, instead of reporting a false success</li>
+  <li>Added support for .img installer files</li>
+  <li>Redesigned the install queue for a cleaner, more readable look in both light and dark mode</li>
+  <li>Fixed ATLAS Browser occasionally failing to load on first open</li>
+  <li>My Products now stays in sync when a product is uninstalled or cleared from your library</li>
 </ul>
 `.trim()
 
