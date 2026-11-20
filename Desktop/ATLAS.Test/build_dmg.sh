@@ -44,7 +44,11 @@ echo "==> Architecture check..."
 lipo -info "$APP_SRC/Contents/MacOS/ATLAS"
 
 echo "==> Signing app bundle..."
-codesign --force --deep --sign - \
+# Signed with a persistent local certificate (not ad-hoc) so TCC permission
+# grants (Full Disk Access, etc.) survive future rebuilds/updates instead of
+# resetting on every release — ad-hoc signing pins TCC to the exact binary
+# hash, so literally every rebuild looked like a new app.
+codesign --force --deep --sign "ATLAS Code Signing" \
   --entitlements "$PROJ/ATLAS.entitlements" \
   "$APP_SRC"
 

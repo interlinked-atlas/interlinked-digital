@@ -8,16 +8,16 @@ import { NextResponse } from 'next/server'
 // CFBundleVersion in Info.plist must match CURRENT_VERSION (e.g. "300" → "3.0.0")
 // Run: .build/artifacts/sparkle/bin/sign_update ATLAS.dmg  → paste signature below
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION  = '1714'
-const SHORT_VERSION    = '1.7.14'
-const RELEASE_DATE     = 'Fri, 20 Nov 2026 01:28:29 +0000'
+const CURRENT_VERSION  = '1715'
+const SHORT_VERSION    = '1.7.15'
+const RELEASE_DATE     = 'Fri, 20 Nov 2026 04:33:56 +0000'
 const DMG_URL          = 'https://www.interlinked.digital/downloads/ATLAS.dmg'
-const DMG_LENGTH       = '21378934'
-const ED_SIGNATURE     = 'ZogcXDF/yJsGSsTGMa88O26V2ur1VUozHbXiA8hCXd0Noz27WGl7w0R1Eyeb6UvihGR3YTWF1ZAFCt+AxAJ4Aw=='
+const DMG_LENGTH       = '21395999'
+const ED_SIGNATURE     = 'mHTL9rdphAUmn14EsEVSoGmOWfqonW5lbkC+LNgzgophyAKiUi9cfL41EaD0xCL+di68tOV+j6GUUuzAdZFVBg=='
 
 const RELEASE_NOTES = `
 <ul>
-  <li>ATLAS now reports its running version, so support and admin tools can see exactly what you're on</li>
+  <li>ATLAS is now signed with a persistent certificate — permissions you grant (Full Disk Access, etc.) will carry over through future updates instead of needing to be re-granted each time</li>
 </ul>
 `.trim()
 
