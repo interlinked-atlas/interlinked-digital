@@ -35,10 +35,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ used: 0, limit: 999999, remaining: 999999, forced_update_version: forcedUpdateVersion })
   }
 
-  let body: { hardware_uuid?: string } = {}
+  let body: { hardware_uuid?: string; app_version?: string } = {}
   try { body = await req.json() } catch { /* no body sent */ }
   const hardwareUUID = body.hardware_uuid?.trim()
   if (!hardwareUUID) return NextResponse.json({ error: 'missing_device_id' }, { status: 400 })
+
+  if (body.app_version?.trim()) {
+    // Best-effort — never blocks the usage/forced-update response below.
+    await supabase.from('profiles').update({ atlas_current_version: body.app_version.trim() }).eq('id', user.id)
+  }
 
   const { data, error } = await supabase.rpc('atlas_current_usage', {
     p_user_id: user.id,

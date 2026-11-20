@@ -190,7 +190,7 @@ export default function AdminPage() {
     setLoading(true)
     const headers = await authHeader()
     const [profRes, subRes, devRes, logRes, tickRes, usageRes, gateRes, failRes, patRes, auditRes, catRes, browserStatusRes, browserDlRes] = await Promise.all([
-      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,monthly_browser_download_limit,atlas_forced_update_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id,email,plan,subscription_status,created_at,privacy_consent,billing_interval,billing_anchor_day,monthly_install_limit,monthly_browser_download_limit,atlas_forced_update_version,atlas_current_version,atlas_suspended,atlas_suspended_reason,grace_period_used_at").order("created_at", { ascending: false }),
       supabase.from("subscriptions").select("id,user_id,stripe_customer_id,stripe_subscription_id,plan,status,current_period_start,current_period_end,cancel_at_period_end,admin_granted_access,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("devices").select("id,user_id,device_name,hardware_uuid,last_seen,created_at").order("last_seen", { ascending: false }),
       supabase.from("install_logs").select("id,user_id,app_name,log_type,filename,content,device_name,hardware_uuid,installed_at").order("installed_at", { ascending: false }).limit(500),
@@ -545,6 +545,66 @@ export default function AdminPage() {
       showToast("Image upload failed")
     }
     setCatalogUploadingId(null)
+  }
+
+  // Encrypts the installer client-side (AES-256-GCM via WebCrypto) before it
+  // ever leaves the browser, uploads the ciphertext directly to Supabase
+  // Storage via a signed URL, then hands the raw key + metadata to a
+  // server route that wraps the key under the server-only master key and
+  // never persists it unwrapped. Envelope format matches RecoveryKitCrypto
+  // exactly: { v: 1, nonce: base64, ciphertext: base64 }.
+  async function uploadCatalogInstaller(id: string, file: File) {
+    setCatalogUploadingId(id)
+    try {
+      const token = (await authHeader())["Authorization"]
+
+      const rawKey = crypto.getRandomValues(new Uint8Array(32))
+      const iv = crypto.getRandomValues(new Uint8Array(12))
+      const cryptoKey = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", false, ["encrypt"])
+      const fileBytes = await file.arrayBuffer()
+      const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, fileBytes)
+
+      const envelope = JSON.stringify({
+        v: 1,
+        nonce: btoa(String.fromCharCode(...iv)),
+        ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+      })
+      const envelopeBytes = new TextEncoder().encode(envelope)
+
+      const sha256Buf = await crypto.subtle.digest("SHA-256", envelopeBytes)
+      const sha256 = Array.from(new Uint8Array(sha256Buf)).map(b => b.toString(16).padStart(2, "0")).join("")
+
+      const uploadUrlRes = await fetch("/api/atlas/admin/catalog/installer-upload-url", {
+        method: "POST",
+        headers: { Authorization: token, "Content-Type": "application/json" },
+        body: JSON.stringify({ catalog_item_id: id }),
+      }).then(r => r.json()).catch(() => null)
+      if (!uploadUrlRes?.signed_url) { showToast("Installer upload failed"); return }
+
+      const putRes = await fetch(uploadUrlRes.signed_url, { method: "PUT", body: envelopeBytes })
+      if (!putRes.ok) { showToast("Installer upload failed"); return }
+
+      const completeRes = await fetch("/api/atlas/admin/catalog/installer-complete", {
+        method: "POST",
+        headers: { Authorization: token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          catalog_item_id: id,
+          path: uploadUrlRes.path,
+          filename: file.name,
+          size: envelopeBytes.byteLength,
+          sha256,
+          key: btoa(String.fromCharCode(...rawKey)),
+        }),
+      }).then(r => r.json()).catch(() => null)
+      if (!completeRes?.ok) { showToast("Installer upload failed"); return }
+
+      setCatalog(c => c.map((x: any) => x.id === id
+        ? { ...x, installer_filename: file.name, installer_size: envelopeBytes.byteLength }
+        : x))
+      showToast("Installer uploaded & encrypted")
+    } finally {
+      setCatalogUploadingId(null)
+    }
   }
 
   function showToast(msg: string) {
@@ -966,6 +1026,11 @@ export default function AdminPage() {
                               </div>
                               <div style={{ gridColumn: "span 2" }}>
                                 <span style={labelStyle}>Force Update</span>
+                                <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap", marginBottom:"8px" }}>
+                                  <span style={{ fontSize:"9px", fontWeight:700, color:"var(--atlas-text-label)" }}>
+                                    Running: {u.atlas_current_version ? `v${u.atlas_current_version}` : "Unknown (hasn't polled since this shipped)"}
+                                  </span>
+                                </div>
                                 <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
                                   <input
                                     type="text"
@@ -1967,6 +2032,7 @@ export default function AdminPage() {
                       {c.links?.length > 1 && <span style={{ color: "#5E6AD2" }}> · {c.links.length} links</span>}
                       {c.titan_verified && <span style={{ color: "#3ECFB2" }}> · TITAN Verified</span>}
                       {c.is_available === false && <span style={{ color: "#E05555" }}> · Available Soon</span>}
+                      {c.installer_filename && <span style={{ color: "#5E6AD2" }}> · ATLAS-hosted ({c.installer_filename})</span>}
                     </p>
                   </div>
                   <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--atlas-text-label)", cursor: "pointer", flexShrink: 0 }}>
@@ -1990,6 +2056,11 @@ export default function AdminPage() {
                     {catalogUploadingId === c.id ? "Uploading…" : "Image"}
                     <input type="file" accept="image/*" style={{ display: "none" }} disabled={catalogUploadingId === c.id}
                       onChange={e => { const f = e.target.files?.[0]; if (f) uploadCatalogImage(c.id, f) }} />
+                  </label>
+                  <label style={{ fontSize: "10px", fontWeight: 600, color: "#5E6AD2", background: "rgba(94,106,210,0.08)", border: "1px solid rgba(94,106,210,0.25)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>
+                    {catalogUploadingId === c.id ? "Uploading…" : (c.installer_filename ? "Replace Installer" : "Upload Installer")}
+                    <input type="file" style={{ display: "none" }} disabled={catalogUploadingId === c.id}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadCatalogInstaller(c.id, f) }} />
                   </label>
                   <button onClick={() => { setEditingCatalogItem(c); setCatalogDraft(c) }} style={{ fontSize: "10px", color: "var(--atlas-text-label)", background: "none", border: "1px solid var(--atlas-border-color)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Edit</button>
                   <button onClick={() => deleteCatalogItem(c.id)} style={{ fontSize: "10px", color: "#E05555", background: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" }}>Delete</button>
